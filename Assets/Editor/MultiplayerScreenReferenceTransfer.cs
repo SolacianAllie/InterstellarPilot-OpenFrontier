@@ -77,6 +77,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		{
 			public readonly List<string> Done = new List<string>();
 			public readonly List<string> Problems = new List<string>();
+			public readonly List<string> Manual = new List<string>();
 
 			public bool Success => Problems.Count == 0;
 
@@ -84,8 +85,16 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			{
 				System.Text.StringBuilder builder = new System.Text.StringBuilder();
 
-				builder.Append(Success ? "Done. Transferred:\n" : "INCOMPLETE - nothing was saved.\n");
+				builder.Append(Success
+					? "Done. Transferred:\n"
+					: "INCOMPLETE - nothing was saved.\n");
+
 				builder.Append("  " + (Done.Count == 0 ? "nothing" : string.Join("\n  ", Done)) + "\n");
+
+				if (Manual.Count > 0)
+				{
+					builder.Append("\nStill to do by hand:\n  " + string.Join("\n  ", Manual));
+				}
 
 				if (Problems.Count > 0)
 				{
@@ -98,6 +107,16 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			public void Note(string what)
 			{
 				Done.Add(what);
+			}
+
+			/// <summary>
+			/// A step this tool cannot perform. Not a fault, so it does not stop
+			/// the save - but it is always reported, because a silent skip is how
+			/// a screen ends up half-wired with nothing in the log.
+			/// </summary>
+			public void Manual_(string what)
+			{
+				Manual.Add(what);
 			}
 
 			public void Fail(string what)
@@ -153,8 +172,24 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			Assign(target, nameof(target.MultipleItemsSelectedRoot), source.MultipleItemsSelectedRoot, report,
 				"MultipleItemsSelectedRoot <- MultiSelectRoot");
 
-			Assign(target, nameof(target.ItemsList), source.ItemsList, report,
-				"ItemsList <- ScrollRectGameList");
+			// ItemsList cannot be transferred: the field is typed SavedHostItemsUI and
+			// the object carries LoadGameItemsUI. Those are different classes -
+			// both derive from ScrollList, but of different item types - so the
+			// reference cannot be assigned across. The component has to be
+			// swapped in the inspector, and the field re-assigned afterwards.
+			//
+			// Reported rather than silently skipped, because leaving it is what
+			// stops the screen working, but it is a manual step rather than a
+			// fault with this prefab.
+			if (target.ItemsList == null)
+			{
+				report.Manual_("ItemsList still needs SavedHostItemsUI - swap the component on "
+					+ "ScrollRectGameList, then re-run to assign it");
+			}
+			else
+			{
+				report.Note("ItemsList already assigned");
+			}
 
 			// ---- detail labels -------------------------------------------
 			// The info panel's save-specific rows are hidden rather than
@@ -278,10 +313,41 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			SetText(contents, "TextNoItems",
 				"No hosts yet. Use Add Host to enter a join code.", report);
 
-			// The load button is the only one with a text caption; the others are
-			// icon-only, so there is nothing to relabel on them.
-			SetText(contents, "TextScreenTitle", "Multiplayer", report);
-			SetTextByValue(contents, "Load Game", "Join", report);
+			// The load button's caption.
+			//
+			// This is TextScreenTitle - the SAME object as the screen title. In
+			// LoadGameScreen one label serves both, reading "Load Game", because
+			// the screen is reached from a main menu that is already titled Load
+			// Game. This screen needs both "Multiplayer" (the screen) and "Join"
+			// (the button), so they have to be told apart.
+			//
+			// Order matters: capture which object is which before writing either,
+			// or the second lookup fails on a value the first just replaced.
+			Text screenTitle = FindText(contents, "TextScreenTitle");
+			Text joinCaption = FindTextByValue(contents, "Load Game");
+
+			if (joinCaption != null && joinCaption == screenTitle)
+			{
+				// One label cannot be both. Duplicate it for the button, which is
+				// what the other buttons in this row have anyway.
+				report.Fail(
+					"the screen title and the join button share one label (\"TextScreenTitle\"). "
+					+ "Add a separate text object under ButtonIconLoad and set JoinButton's caption to it.");
+			}
+			else
+			{
+				if (screenTitle != null)
+				{
+					screenTitle.text = "Multiplayer";
+					report.Note("screen title set to Multiplayer");
+				}
+
+				if (joinCaption != null)
+				{
+					joinCaption.text = "Join";
+					report.Note("load button relabelled to Join");
+				}
+			}
 
 			// Captions in the repurposed detail rows. The values are overwritten
 			// at runtime; only the row headings need to stop saying what a save
@@ -314,6 +380,23 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 			label.text = text;
 			report.Note(objectName + " text set to \"" + text + "\"");
+		}
+
+		/// <summary>
+		/// Finds a label by its current text, since several labels are named the
+		/// same and only their content distinguishes them.
+		/// </summary>
+		private static Text FindTextByValue(GameObject root, string currentText)
+		{
+			foreach (Text candidate in root.GetComponentsInChildren<Text>(includeInactive: true))
+			{
+				if (candidate.text == currentText)
+				{
+					return candidate;
+				}
+			}
+
+			return null;
 		}
 
 		/// <summary>
