@@ -182,18 +182,6 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			Assign(target, nameof(target.HostStatusLabel), source.SaveGameFilesize, report,
 				"HostStatusLabel <- SaveGameFilesize (repurposed)");
 
-			// The title, so the screen does not read "Load Game".
-			Text title = FindText(contents, "TextScreenTitle");
-			if (title != null)
-			{
-				title.text = "Multiplayer";
-				report.Note("title set to Multiplayer");
-			}
-			else
-			{
-				report.Fail("could not find TextScreenTitle to rename");
-			}
-
 			// ---- hide the save-only rows ---------------------------------
 
 			// Deactivated rather than deleted: a save file's author, version,
@@ -286,16 +274,73 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				report.Note("removed the import button");
 			}
 
-			// The empty "no items" message should mention hosts, not games.
-			Text noItems = FindText(contents, "TextNoItems");
+			// The empty-list message should mention hosts, not games.
+			SetText(contents, "TextNoItems",
+				"No hosts yet. Use Add Host to enter a join code.", report);
 
-			if (noItems != null)
+			// The load button is the only one with a text caption; the others are
+			// icon-only, so there is nothing to relabel on them.
+			SetText(contents, "TextScreenTitle", "Multiplayer", report);
+			SetTextByValue(contents, "Load Game", "Join", report);
+
+			// Captions in the repurposed detail rows. The values are overwritten
+			// at runtime; only the row headings need to stop saying what a save
+			// file is.
+			SetTextByValue(contents, "Filename:", "Code:", report);
+			SetTextByValue(contents, "Date:", "Added:", report);
+			SetTextByValue(contents, "File size:", "Status:", report);
+
+			// The pilot row's caption is repurposed too - the host's status lives
+			// in the file-size row, and the pilot row is hidden, so nothing to do
+			// beyond the hides above.
+
+			// The title uses a placeholder token the game substitutes at runtime;
+			// the screen title is set directly rather than through it.
+			return report;
+		}
+
+		/// <summary>
+		/// Sets a label's text by its object name.
+		/// </summary>
+		private static void SetText(GameObject root, string objectName, string text, Report report)
+		{
+			Text label = FindText(root, objectName);
+
+			if (label == null)
 			{
-				noItems.text = "You have not added any hosts yet. Use Add Host to enter a join code.";
-				report.Note("empty-list message updated");
+				report.Fail("could not find a label called " + objectName);
+				return;
 			}
 
-			return report;
+			label.text = text;
+			report.Note(objectName + " text set to \"" + text + "\"");
+		}
+
+		/// <summary>
+		/// Sets a label's text by its CURRENT text, since several labels are
+		/// named the same and only their content distinguishes them.
+		/// </summary>
+		private static void SetTextByValue(GameObject root, string currentText, string replacement, Report report)
+		{
+			Text match = null;
+
+			foreach (Text candidate in root.GetComponentsInChildren<Text>(includeInactive: true))
+			{
+				if (candidate.text == currentText)
+				{
+					match = candidate;
+					break;
+				}
+			}
+
+			if (match == null)
+			{
+				report.Fail("could not find a label reading \"" + currentText + "\"");
+				return;
+			}
+
+			match.text = replacement;
+			report.Note("\"" + currentText + "\" relabelled to \"" + replacement + "\"");
 		}
 
 		private static void Assign(object target, string fieldName, UnityEngine.Object value, Report report, string description)

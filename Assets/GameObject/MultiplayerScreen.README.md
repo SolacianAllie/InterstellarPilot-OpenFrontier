@@ -12,9 +12,14 @@ One thing: **run `Tools > Multiplayer > Transfer Screen References`.**
 
 It moves every reference from the `LoadGameScreen` component (which the clone
 still carries, holding correct references under the old field names) across to
-`MultiplayerScreen`, retitles the screen, hides the save-only detail rows, and
-deletes the import button. It reports what it did, refuses to save if anything
-is missing, and is safe to re-run.
+`MultiplayerScreen`, retitles the screen, relabels the visible text, hides the
+save-only detail rows, and deletes the import button. It reports what it did,
+refuses to save if anything is missing, and is safe to re-run.
+
+The buttons are already in the prefab - it is a copy of LoadGameScreen, so
+nothing needs adding. The transfer only re-points the references and renames
+what each button now means: `ButtonIconLoad` becomes Join, `ButtonIconExport`
+becomes Add Host.
 
 It needs **both** components on the prefab: `LoadGameScreen` as the source of
 the references, and `MultiplayerScreen` as the destination. If `LoadGameScreen`
