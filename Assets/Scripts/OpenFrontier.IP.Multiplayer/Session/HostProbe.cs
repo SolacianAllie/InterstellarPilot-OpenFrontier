@@ -54,8 +54,16 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public bool IsKnown => Reachability != HostReachability.Unknown;
 
-		/// <summary>A line fit to show next to the host's name.</summary>
-		public string Describe()
+		/// <summary>
+		/// The connection state alone, as one word or short phrase.
+		/// </summary>
+		/// <remarks>
+		/// Split out from <see cref="Describe"/> so the host list can give the
+		/// player count its own label instead of running the two together into
+		/// one string. The details panel, which has one label for the lot,
+		/// still uses <see cref="Describe"/>.
+		/// </remarks>
+		public string DescribeState()
 		{
 			switch (Reachability)
 			{
@@ -63,15 +71,13 @@ namespace OpenFrontier.IP.Multiplayer
 					return "Checking...";
 
 				case HostReachability.Online:
-					return AcceptingPlayers
-						? "Online" + (PlayerCount > 0 ? " - " + PlayerCount + " connected" : string.Empty)
-						: "Online - not accepting players";
+					return AcceptingPlayers ? "Online" : "Not accepting players";
 
 				case HostReachability.VersionMismatch:
-					return "Different version" + (HostVersion != null ? " (" + HostVersion + ")" : string.Empty);
+					return "Different version";
 
 				case HostReachability.NotAccepting:
-					return "Online - not accepting players";
+					return "Not accepting players";
 
 				default:
 					// No reply. Either nothing is listening, or the host is
@@ -80,6 +86,26 @@ namespace OpenFrontier.IP.Multiplayer
 					// claim is made.
 					return "Offline";
 			}
+		}
+
+		/// <summary>A line fit to show next to the host's name.</summary>
+		public string Describe()
+		{
+			string state = DescribeState();
+
+			if (Reachability == HostReachability.VersionMismatch && HostVersion != null)
+			{
+				// The one case where knowing the state is not enough - the
+				// player has to be told which build to go and get.
+				return state + " (" + HostVersion + ")";
+			}
+
+			if (Reachability == HostReachability.Online && AcceptingPlayers && PlayerCount > 0)
+			{
+				return state + " - " + PlayerCount + " connected";
+			}
+
+			return state;
 		}
 	}
 

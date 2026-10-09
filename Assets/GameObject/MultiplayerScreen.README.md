@@ -13,25 +13,27 @@ One thing: **run `Tools > Multiplayer > Transfer Screen References`.**
 It moves every reference from the `LoadGameScreen` component (which the clone
 still carries, holding correct references under the old field names) across to
 `MultiplayerScreen`, retitles the screen, relabels the visible text, hides the
-save-only detail rows, and deletes the import button. It reports what it did,
+save-only detail rows, and wires the row prefab. It reports what it did,
 refuses to save if anything is missing, and is safe to re-run.
 
-The buttons are already in the prefab - it is a copy of LoadGameScreen, so
-nothing needs adding. The transfer only re-points the references and renames
-what each button now means: `ButtonIconLoad` becomes Join, `ButtonIconExport`
-becomes Add Host.
+The buttons are already in the prefab and already wired - it is a copy of
+LoadGameScreen, so nothing needs adding, and `ButtonIconLoad` plus the
+hand-duplicated `ButtonIconAddHost` both have their references set.
 
-It needs **both** components on the prefab: `LoadGameScreen` as the source of
-the references, and `MultiplayerScreen` as the destination. If `LoadGameScreen`
-has already been removed, restore the prefab from git and add
-`MultiplayerScreen` alongside it.
+`ButtonIconAddHost` was duplicated from the load button in the editor rather
+than cloned by the tool, so it arrived with nothing pointing at it. It is wired
+now. It carries no children - neither does any other button in the row, which
+is icon-only throughout - and it has no inherited click listeners.
+
+`ButtonIconExport` was deleted: hosts are reached over the network, so there is
+nothing to export, and an import has the same problem.
 
 ### The mapping it applies
 
 | `MultiplayerScreen` | From | Clone object |
 |---|---|---|
 | `JoinButton` | `LoadGameButton` | `ButtonIconLoad` |
-| `AddHostButton` | `ExportFileButton` | `ButtonIconExport` |
+| `AddHostButton` | `ExportFileButton` | `ButtonIconAddHost` |
 | `RenameHostButton` | `RenameFileButton` | `ButtonIconRename` |
 | `DeleteHostButton` | `DeleteGameConfirmButton` | `ButtonIconDelete` |
 | `HostInfoRoot` | `GameInfoRoot` | - |
@@ -42,22 +44,40 @@ has already been removed, restore the prefab from git and add
 | `HostAddedLabel` | `SaveGameDateLabel` | `TextDate` |
 | `HostStatusLabel` | `SaveGameFilesize` | `TextFileSizeValue` |
 
-The import button is deleted rather than repurposed: there is no file to
-import, since a host is reached over the network.
-
 `HostStatusLabel` has no natural counterpart - the save panel has no "is this
 reachable" row - so it borrows `TextFileSizeValue`, and that row's own "File
 size" caption is hidden so the status is not mislabelled.
 
+### The row prefab
+
+`ScrollList` instantiates its `ItemPrefab` once per row, so the list needs a
+row prefab carrying `SavedHostItemUI` - there is no multiplayer equivalent to
+`LoadGameItem.prefab`, which is the template the save-game list clones.
+
+`Assets/GameObject/MultiplayerGameItem.prefab` is that prefab. The tool swaps
+`LoadGameItemUI` for `SavedHostItemUI` on it and wires the labels by **object
+name**, so the mapping survives a re-layout:
+
+| `SavedHostItemUI` | Object |
+|---|---|
+| `NameLabel` | `TextHostSenario` |
+| `StatusLabel` | `TextConnection` |
+| `VersionLabel` | `TextHostVersion` |
+| `PlayerCountLabel` | `TextHostPlayerCount` |
+
+`PermadeathImage` is switched off. It came over from the save-game row and is a
+plain white box, which means nothing to a host; unreachable rows are dimmed
+instead. `Selected` is left alone - the list owns that one.
+
 ### Still manual
 
-**The list scripts.** `ScrollRectGameList` carries `LoadGameItemsUI`; it needs
-`SavedHostItemsUI` from `SavedHostItemsUI.cs`. The row prefab inside it carries
-`LoadGameItemUI`; it needs `SavedHostItemUI`, with three labels wired:
-
-- `NameLabel` - the host's name (was `ScenarioNameLabel`)
-- `StatusLabel` - online / offline (new; reuse the old date or scenario label)
-- `OfflineIndicator` - dimmed when unreachable (was `DisabledIndicator`)
+**The list script.** `ScrollRectGameList` carries `LoadGameItemsUI`; it needs
+`SavedHostItemsUI`. This one cannot be automated: the two are unrelated classes,
+so no reference can cross between them and a component swap drops its
+serialized data. Add `SavedHostItemsUI` in the inspector, remove
+`LoadGameItemsUI`, then re-run the tool - it sets `ItemPrefab` only once
+`ItemsList` is assigned, so running it before the swap reports the remaining
+step rather than appearing to succeed.
 
 **The main menu's screen reference.** `MainMenuScreen.MultiplayerScreenPrefab`
 in `MenuScreenScene.unity` points at a prefab that was deleted when this screen
@@ -87,20 +107,27 @@ A reply proves something specific: the host process is running, is in a game,
 and has multiplayer listening right now. That is exactly the question worth
 asking before a player tries to join.
 
-The status column reads:
+The result splits across four labels rather than piling into one string, so
+each gets its own column:
 
-| Shown | Meaning |
+| Label | Shows |
 |---|---|
-| `Checking...` | A probe is in flight. Shown rather than `Offline`, which would be a claim not yet checked. |
-| `Online` | Reached, and accepting players. Appends `- N connected` when others are in. |
-| `Online - not accepting players` | Reached, but the host has stopped admitting players. |
-| `Different version (x.y.z)` | Reached, but running another build. Reports their version. |
-| `Offline` | Nothing answered. Either not hosting, offline, or a network in between blocked it — indistinguishable from here. |
-| `Connected` | This player is in that session right now. Takes precedence over the above. |
+| `StatusLabel` | `Checking...` / `Online` / `Not accepting players` / `Different version` / `Offline` / `Connected` |
+| `PlayerCountLabel` | `N` - hidden when the host is up but empty |
+| `VersionLabel` | `v1.2.3` - hidden unless the version is the reason it cannot be joined |
+| whole row, dimmed | Confirmed unreachable |
 
-Probes re-run every 15 seconds while the screen is open, in parallel so a list
-of unreachable hosts still settles within one timeout rather than one per host.
+`Checking...` rather than `Offline`: a claim not yet checked is a lie the
+player acts on. For the same reason only a *completed* probe dims a row - a
+host being probed right now is not dimmed.
+
+A matching version is never shown. Every healthy row displaying `0.1.1` would
+be noise; the version appears only when it is the reason the join will be
+refused, and then it is the one thing worth telling the player.
 
 `Offline` deliberately does not distinguish "host closed the game" from "a
 router blocked it". With no server there is nothing to ask, and a more
 specific-sounding guess would send players after the wrong problem.
+
+Probes re-run every 15 seconds while the screen is open, in parallel so a list
+of unreachable hosts still settles within one timeout rather than one per host.

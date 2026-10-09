@@ -461,7 +461,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		private static Report TransferItemPrefab()
 		{
 			Report report = new Report();
-			const string itemPath = "Assets/GameObject/SavedHostItem.prefab";
+			const string itemPath = "Assets/GameObject/MultiplayerGameItem.prefab";
 			const string sourcePath = "Assets/GameObject/LoadGameItem.prefab";
 
 			if (AssetDatabase.LoadAssetAtPath<GameObject>(itemPath) != null)
@@ -495,7 +495,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 				if (source == null && target == null)
 				{
-					report.Fail("SavedHostItem.prefab carries neither row script");
+					report.Fail(itemPath + " carries neither row script");
 				}
 				else
 				{
@@ -509,31 +509,40 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 						target = contents.AddComponent<OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI>();
 					}
 
-					// Reuse the prefab's own labels. The field names differ, so
-					// they are copied across by object name.
-					target.NameLabel = FindLabel(contents, "TextSubtitleName");
-					target.StatusLabel = FindLabel(contents, "TextDate");
-					target.OfflineIndicator = FindGraphic(contents, "TextOlderVersion");
+					// Wired by object name, so the mapping survives a re-layout of
+					// the prefab.
+					target.NameLabel = FindLabel(contents, "TextHostSenario");
+					target.StatusLabel = FindLabel(contents, "TextConnection");
+					target.VersionLabel = FindLabel(contents, "TextHostVersion");
+					target.PlayerCountLabel = FindLabel(contents, "TextHostPlayerCount");
 
-					if (target.NameLabel == null || target.StatusLabel == null)
+					List<string> unwired = new List<string>();
+
+					if (target.NameLabel == null) unwired.Add("TextHostSenario (NameLabel)");
+					if (target.StatusLabel == null) unwired.Add("TextConnection (StatusLabel)");
+					if (target.VersionLabel == null) unwired.Add("TextHostVersion (VersionLabel)");
+					if (target.PlayerCountLabel == null) unwired.Add("TextHostPlayerCount (PlayerCountLabel)");
+
+					if (unwired.Count > 0)
 					{
-						report.Fail("could not find the labels to reuse in " + itemPath);
+						report.Fail(itemPath + ": could not find " + string.Join(", ", unwired));
 					}
 					else
 					{
-						report.Note("SavedHostItem.prefab created and wired");
+						report.Note("MultiplayerGameItem.prefab wired");
 					}
 
-					// Save-file-only rows have no meaning for a host.
-					foreach (string dead in new[] { "TextHeaderAutoSave", "PermadeathImage", "Selected" })
-					{
-						Transform found = contents.transform.FindDeep(dead);
+					// The permadeath chip came over from the save-game row. It is
+					// a plain white box with no meaning for a host, and the row
+					// now dims unreachable hosts instead of badging them, so it
+					// is switched off rather than left showing an empty chip.
+					// "Selected" is left alone - the list owns that one.
+					Transform chip = contents.transform.FindDeep("PermadeathImage");
 
-						if (found != null)
-						{
-							found.gameObject.SetActive(false);
-							report.Note("hid " + dead);
-						}
+					if (chip != null && chip.gameObject.activeSelf)
+					{
+						chip.gameObject.SetActive(false);
+						report.Note("hid PermadeathImage");
 					}
 
 					PrefabUtility.SaveAsPrefabAsset(contents, itemPath);
@@ -558,7 +567,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 						AssetDatabase.LoadAssetAtPath<GameObject>(itemPath);
 
 					PrefabUtility.SaveAsPrefabAsset(screen, PrefabPath);
-					report.Note("list ItemPrefab set to SavedHostItem");
+					report.Note("list ItemPrefab set to MultiplayerGameItem");
 				}
 				else
 				{
@@ -574,12 +583,6 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		{
 			Transform found = root.transform.FindDeep(objectName);
 			return found == null ? null : found.GetComponent<TMPro.TextMeshProUGUI>();
-		}
-
-		private static Graphic FindGraphic(GameObject root, string objectName)
-		{
-			Transform found = root.transform.FindDeep(objectName);
-			return found == null ? null : found.GetComponent<Graphic>();
 		}
 
 		/// <summary>
