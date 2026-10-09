@@ -28,6 +28,19 @@ namespace OpenFrontier.IP.UI
 
 		public Button LoadGameButton;
 
+		public Button MultiplayerButton;
+
+		/// <summary>
+		/// The multiplayer screen prefab.
+		///
+		/// Typed as <see cref="ScreenBase"/> rather than the concrete
+		/// multiplayer screen on purpose. The multiplayer assembly depends on
+		/// this one, so naming its types here would make the two assemblies
+		/// reference each other - which Unity forbids. Holding the prefab as a
+		/// screen keeps the dependency pointing one way only.
+		/// </summary>
+		public ScreenBase MultiplayerScreenPrefab;
+
 		public SkirmishSetupScreen SkirmishSetupUI;
 
 		public Text VersionText;
@@ -83,6 +96,38 @@ namespace OpenFrontier.IP.UI
 		public void LoadGame()
 		{
 			UIController.Instance.ScreenNavigator.NavigateToScreen<LoadGameScreen>();
+		}
+
+		/// <summary>
+		/// Opens the multiplayer screen, instantiating it from
+		/// <see cref="MultiplayerScreenPrefab"/>.
+		///
+		/// Instantiated here rather than looked up by type in the navigator's
+		/// screen table, because that table is keyed on types from this assembly
+		/// and the multiplayer screen belongs to an assembly that depends on this
+		/// one. Naming it here would make the assemblies reference each other.
+		/// </summary>
+		public void Multiplayer()
+		{
+			if (MultiplayerScreenPrefab == null)
+			{
+				Debug.LogError("Multiplayer is unavailable: no multiplayer screen is assigned.");
+				return;
+			}
+
+			ScreenBase screen = Instantiate(MultiplayerScreenPrefab);
+
+			if (screen == null)
+			{
+				Debug.LogError("Multiplayer is unavailable: the multiplayer screen could not be created.");
+				return;
+			}
+
+			// The navigator does this for its own screens; a directly
+			// instantiated one needs it called explicitly.
+			screen.Awake();
+
+			UIController.Instance.ScreenNavigator.NavigateToScreen(screen);
 		}
 
 		public void StoryScene()
