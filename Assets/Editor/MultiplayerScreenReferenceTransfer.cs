@@ -149,14 +149,11 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			}
 
 			// ---- controls: reuse the existing buttons -------------------
-			// The clone's four bottom buttons become join / add / rename /
-			// delete. The import button has no equivalent and goes away.
+			// The clone's buttons become join / rename / delete, and a new
+			// Add Host button is created beside them.
 
 			Assign(target, nameof(target.JoinButton), source.LoadGameButton, report,
 				"JoinButton <- LoadGameButton");
-
-			Assign(target, nameof(target.AddHostButton), source.ExportFileButton, report,
-				"AddHostButton <- ExportFileButton");
 
 			Assign(target, nameof(target.RenameHostButton), source.RenameFileButton, report,
 				"RenameHostButton <- RenameFileButton");
@@ -309,6 +306,31 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				report.Note("removed the import button");
 			}
 
+			// Export goes too, for the same reasons: a host is reached over the
+			// network, so there is nothing to export, and its save-file icon
+			// would be misleading on a button that now adds a host.
+			if (source.ExportFileButton != null)
+			{
+				GameObject exportObject = source.ExportFileButton.gameObject;
+				source.ExportFileButton = null;
+				UnityEngine.Object.DestroyImmediate(exportObject);
+				report.Note("removed the export button");
+			}
+
+			// ---- create the Add Host button ------------------------------
+			// Beside the delete button, which is where the row ends up once
+			// import and export are gone.
+			if (target.DeleteHostButton == null)
+			{
+				report.Fail("DeleteHostButton is unassigned, so Add Host has nowhere to go");
+			}
+			else
+			{
+				GameObject addHost = CreateAddHostButton(target.DeleteHostButton.gameObject);
+				Assign(target, nameof(target.AddHostButton), addHost.GetComponent<Button>(), report,
+					"AddHostButton created beside Delete");
+			}
+
 			SetText(contents, "TextNoItems",
 				"No hosts yet. Use Add Host to enter a join code.", report);
 
@@ -399,6 +421,41 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 			match.text = replacement;
 			report.Note("\"" + currentText + "\" relabelled to \"" + replacement + "\"");
+		}
+
+		/// <summary>
+		/// Creates the Add Host button by cloning the delete button, so it
+		/// matches the others in the row exactly.
+		/// </summary>
+		///
+		/// Building it from scratch would mean guessing at the sprite, colours
+		/// and helper scripts; cloning guarantees it matches. The clone is placed
+		/// after the delete button in the same row, then given its own label.
+		private static GameObject CreateAddHostButton(GameObject template)
+		{
+			GameObject created = UnityEngine.Object.Instantiate(template, template.transform.parent);
+			created.name = "ButtonIconAddHost";
+
+			Button button = created.GetComponent<Button>();
+
+			if (button != null)
+			{
+				// The clone inherits the template's click listeners, which belong
+				// to the delete action. Cleared so the new button starts inert and
+				// the screen wires it up itself.
+				button.onClick = new Button.ButtonClickedEvent();
+			}
+
+			// Name it. The row's captions are all named "Text", so the label is
+			// found as the button's own child.
+			Text label = created.GetComponentInChildren<Text>(includeInactive: true);
+
+			if (label != null)
+			{
+				label.text = "Add Host";
+			}
+
+			return created;
 		}
 
 		private static void Assign(object target, string fieldName, UnityEngine.Object value, Report report, string description)

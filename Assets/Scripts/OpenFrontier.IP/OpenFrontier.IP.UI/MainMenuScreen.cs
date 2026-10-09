@@ -133,6 +133,18 @@ namespace OpenFrontier.IP.UI
 				return;
 			}
 
+			// Already open? Bring it back rather than stacking a second copy. The lookup
+			// is by the prefab's own type, so this stays clear of naming the
+			// multiplayer type - the two assemblies reference each other only one
+			// way, and this file is on the UI side of that line.
+			ScreenBase existing = UIController.Instance.ScreenNavigator.GetLoadedScreen(MultiplayerScreenPrefab.GetType());
+
+			if (existing != null)
+			{
+				UIController.Instance.ScreenNavigator.NavigateToScreen(existing);
+				return;
+			}
+
 			ScreenBase screen = Instantiate(MultiplayerScreenPrefab);
 
 			if (screen == null)
@@ -145,7 +157,23 @@ namespace OpenFrontier.IP.UI
 			// instantiated one needs it called explicitly.
 			screen.Awake();
 
-			UIController.Instance.ScreenNavigator.NavigateToScreen(screen);
+			ScreenNavigator navigator = UIController.Instance.ScreenNavigator;
+
+			// Make sure this menu is on the navigation stack before the
+			// multiplayer screen goes on top of it.
+			//
+			// The navigator only stacks a screen it navigates to itself. This
+			// menu is scene-placed and was never navigated to, so it is absent -
+			// and GetBackTargetScreen only returns a target for a stack index
+			// above zero. Without this, the back button's first press finds no
+			// target and does nothing, which looks like the button needing two
+			// presses to work.
+			if (!this.IsInNavigationStack())
+			{
+				navigator.NavigateToScreen(this);
+			}
+
+			navigator.NavigateToScreen(screen);
 		}
 
 		public void StoryScene()

@@ -449,6 +449,16 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			HostProbe.ProbeAll(targets, (probed, result) =>
 			{
+				// A probe can land after the player has backed out. Touching the
+				// list then re-initialises it - ScrollList.Refresh() calls Awake
+				// if it thinks it is not awake - which fights the screen's own
+				// teardown and leaves the navigation state inconsistent, so the
+				// back button stops responding on the first press.
+				if (isTornDown || ItemsList == null)
+				{
+					return;
+				}
+
 				if (byCode.TryGetValue(ProbeKey(probed), out SavedHost host))
 				{
 					host.ProbeResult = result;
@@ -461,6 +471,11 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				}
 			});
 		}
+
+		/// <summary>
+		/// Set once the screen is going away, so late probe results are ignored.
+		/// </summary>
+		private bool isTornDown;
 
 		/// <summary>
 		/// A stable key for a probed code, so results can be matched back to the
