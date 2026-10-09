@@ -76,19 +76,55 @@ if [ "$DRY" -eq 1 ]; then
 	exit 0
 fi
 
+# 0. Record what the tree looks like now, so a mistake here is one command to
+#    undo rather than a hunt through 92 rewritten files.
+echo "→ noting the pre-swap state"
+git rev-parse HEAD | sed 's/^/    restore point: /'
+
 # 1. every m_fontAsset / m_sharedMaterial-bearing scene+prefab
 echo "→ repointing font references"
 grep -rl "$OLD_GUID" Assets --include='*.unity' --include='*.prefab' 2>/dev/null \
 	| while IFS= read -r f; do sed -i "s/$OLD_GUID/$NEW_GUID/g" "$f"; echo "    $f"; done
 
-# 2. TMP Settings default font (both copies ship in this project)
+# 2. TMP Settings default font (both copies ship in this project).
+#
+#    There can be MORE THAN ONE Liberation asset: this project ships two sets,
+#    under "Assets/Resources/fonts & materials/" and
+#    "Assets/TextMesh Pro/Resources/Fonts & Materials/", with different GUIDs.
+#    A single OLD_GUID replacement misses the second one, and a TMP Settings
+#    left pointing at a retired font is how text ends up rendering from a
+#    font nobody chose. So the default font is repointed by NAME rather than by
+#    the old GUID, which catches both copies.
 echo "→ repointing TMP Settings default font"
 for s in "Assets/TextMesh Pro/Resources/TMP Settings.asset" "Assets/Resources/TMP Settings.asset"; do
-	[ -f "$s" ] && sed -i "s/$OLD_GUID/$NEW_GUID/g" "$s" && echo "    $s"
+	[ -f "$s" ] || continue
+	sed -i "s/$OLD_GUID/$NEW_GUID/g" "$s"
+	# Any other guid sitting in m_defaultFontAsset is a second retired font.
+	python3 - "$s" "$NEW_GUID" <<-'PY'
+		import re, sys
+		p, new = sys.argv[1], sys.argv[2]
+		s = open(p).read()
+		def fix(m):
+		    return f"  m_defaultFontAsset: {{fileID: 11400000, guid: {new}, type: 2}}"
+		s2 = re.sub(r"  m_defaultFontAsset: \{fileID: \d+, guid: [a-f0-9]{32}, type: \d+\}", fix, s)
+		if s2 != s:
+		    open(p, "w").write(s2)
+		    print(f"    {p} (was pointing at a second font asset)")
+		else:
+		    print(f"    {p}")
+	PY
 done
 
-# 3. the old font asset itself + its fallback keep a dangling reference chain;
-#    clear the fallback tables so TMP cannot route to the broken pair.
+# 3. The old font asset's fallback table points at its own fallback pair, which
+#    is now retired too. Clear it so TMP cannot route to a broken chain.
+#
+#    The empty list MUST be written as "[]" on the SAME line as the key:
+#
+#        m_FallbackFontAssetTable: []
+#
+#    Writing it as a bare "  []" line underneath is not valid YAML - Unity
+#    rejects the whole asset with "Expect ':' between key and value", and both
+#    retired font assets stop parsing entirely. That is what this did before.
 echo "→ clearing fallback tables on the retired fonts"
 for f in "Assets/Resources/fonts & materials/LiberationSans SDF.asset" \
 	"Assets/Resources/fonts & materials/LiberationSans SDF - Fallback.asset" \
@@ -99,8 +135,17 @@ for f in "Assets/Resources/fonts & materials/LiberationSans SDF.asset" \
 		import re, sys
 		p = sys.argv[1]
 		s = open(p).read()
-		# replace the whole fallback table body with an empty list
-		s = re.sub(r"(m_FallbackFontAssetTable:\n)(?:  - .*\n)+", r"\1  []\n", s)
+
+		# Collapse the key plus any following list items into one inline empty
+		# list, and repair a "  []" line left by an earlier version of this script.
+		s = re.sub(r"m_FallbackFontAssetTable:\n(?:\s+- .*\n|\s*\[\]\n)*",
+		           "m_FallbackFontAssetTable: []\n", s)
+		s = re.sub(r"m_FallbackFontAssetTable: \[\]\n\s*\[\]\n",
+		           "m_FallbackFontAssetTable: []\n", s)
+
+		if "\n  []" in s:
+		    sys.exit("error: " + p + " still has a bare '[]' line; refusing to write")
+
 		open(p, "w").write(s)
 		print("    " + p)
 	PY
