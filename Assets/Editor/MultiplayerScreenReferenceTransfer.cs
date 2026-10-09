@@ -331,6 +331,28 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 					"AddHostButton created beside Delete");
 			}
 
+			// ---- the row prefab ---------------------------------------
+			// The list instantiates ItemPrefab once per row, so it needs its own
+			// prefab carrying SavedHostItemUI. Cloned from LoadGameItem.prefab,
+			// which already has the right shape - two text labels and a
+			// disabled indicator - so only the script and the field names change.
+			Report itemReport = TransferItemPrefab();
+
+			foreach (string note in itemReport.Done)
+			{
+				report.Note(note);
+			}
+
+			foreach (string problem in itemReport.Problems)
+			{
+				report.Fail(problem);
+			}
+
+			foreach (string note in itemReport.Manual)
+			{
+				report.Manual_(note);
+			}
+
 			SetText(contents, "TextNoItems",
 				"No hosts yet. Use Add Host to enter a join code.", report);
 
@@ -421,6 +443,143 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 			match.text = replacement;
 			report.Note("\"" + currentText + "\" relabelled to \"" + replacement + "\"");
+		}
+
+		/// <summary>
+		/// Builds SavedHostItem.prefab from LoadGameItem.prefab and points the
+		/// list's ItemPrefab at it.
+		/// </summary>
+		///
+		/// The two row scripts line up closely - LoadGameItemUI shows a name, a
+		/// date and a disabled indicator, and SavedHostItemUI shows a name, a
+		/// status and an offline indicator - so the existing prefab is the right
+		/// starting point. What changes is the script and three field names.
+		///
+		/// The fields are renamed rather than rewired by position because that
+		/// survives a re-layout of the prefab; the two graphics that have no
+		/// equivalent are deactivated.
+		private static Report TransferItemPrefab()
+		{
+			Report report = new Report();
+			const string itemPath = "Assets/GameObject/SavedHostItem.prefab";
+			const string sourcePath = "Assets/GameObject/LoadGameItem.prefab";
+
+			if (AssetDatabase.LoadAssetAtPath<GameObject>(itemPath) != null)
+			{
+				report.Note("SavedHostItem.prefab already exists");
+			}
+			else if (AssetDatabase.LoadAssetAtPath<GameObject>(sourcePath) == null)
+			{
+				report.Fail("could not find " + sourcePath + " to clone the row prefab from");
+				return report;
+			}
+			else
+			{
+				// Cloned as an asset rather than instantiated in the scene, so the
+				// copy is a prefab in its own right.
+				GameObject sourceAsset = AssetDatabase.LoadAssetAtPath<GameObject>(sourcePath);
+				GameObject clone = UnityEngine.Object.Instantiate(sourceAsset);
+				PrefabUtility.SaveAsPrefabAsset(clone, itemPath);
+				UnityEngine.Object.DestroyImmediate(clone);
+
+				report.Note("cloned " + sourcePath + " to " + itemPath);
+			}
+
+			GameObject contents = PrefabUtility.LoadPrefabContents(itemPath);
+
+			try
+			{
+				LoadGameItemUI source = contents.GetComponent<LoadGameItemUI>();
+				OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI target =
+					contents.GetComponent<OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI>();
+
+				if (source == null && target == null)
+				{
+					report.Fail("SavedHostItem.prefab carries neither row script");
+				}
+				else
+				{
+					if (source != null)
+					{
+						UnityEngine.Object.DestroyImmediate(source);
+					}
+
+					if (target == null)
+					{
+						target = contents.AddComponent<OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI>();
+					}
+
+					// Reuse the prefab's own labels. The field names differ, so
+					// they are copied across by object name.
+					target.NameLabel = FindLabel(contents, "TextSubtitleName");
+					target.StatusLabel = FindLabel(contents, "TextDate");
+					target.OfflineIndicator = FindGraphic(contents, "TextOlderVersion");
+
+					if (target.NameLabel == null || target.StatusLabel == null)
+					{
+						report.Fail("could not find the labels to reuse in " + itemPath);
+					}
+					else
+					{
+						report.Note("SavedHostItem.prefab created and wired");
+					}
+
+					// Save-file-only rows have no meaning for a host.
+					foreach (string dead in new[] { "TextHeaderAutoSave", "PermadeathImage", "Selected" })
+					{
+						Transform found = contents.transform.FindDeep(dead);
+
+						if (found != null)
+						{
+							found.gameObject.SetActive(false);
+							report.Note("hid " + dead);
+						}
+					}
+
+					PrefabUtility.SaveAsPrefabAsset(contents, itemPath);
+				}
+			}
+			finally
+			{
+				PrefabUtility.UnloadPrefabContents(contents);
+			}
+
+			// Point the list at it.
+			GameObject screen = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+
+			if (screen != null)
+			{
+				OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen component =
+					screen.GetComponent<OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen>();
+
+				if (component != null && component.ItemsList != null)
+				{
+					component.ItemsList.ItemPrefab =
+						AssetDatabase.LoadAssetAtPath<GameObject>(itemPath);
+
+					PrefabUtility.SaveAsPrefabAsset(screen, PrefabPath);
+					report.Note("list ItemPrefab set to SavedHostItem");
+				}
+				else
+				{
+					report.Manual_("ItemsList is still unassigned - swap LoadGameItemsUI for "
+						+ "SavedHostItemsUI on ScrollRectGameList, then re-run");
+				}
+			}
+
+			return report;
+		}
+
+		private static TMPro.TextMeshProUGUI FindLabel(GameObject root, string objectName)
+		{
+			Transform found = root.transform.FindDeep(objectName);
+			return found == null ? null : found.GetComponent<TMPro.TextMeshProUGUI>();
+		}
+
+		private static Graphic FindGraphic(GameObject root, string objectName)
+		{
+			Transform found = root.transform.FindDeep(objectName);
+			return found == null ? null : found.GetComponent<Graphic>();
 		}
 
 		/// <summary>
