@@ -4,8 +4,10 @@ using OpenFrontier.IP.Multiplayer.UI;
 using OpenFrontier.IP.UI;
 using OpenFrontier.IP.UI.Screens;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace OpenFrontier.IP.Multiplayer.EditorTools
@@ -27,7 +29,17 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 	/// </summary>
 	public static class MultiplayerUIBaker
 	{
-		private const string MenuPrefabPath = "Assets/GameObject/MainMenuScreen.prefab";
+		/// <summary>
+		/// The main menu is a SCENE, not a prefab.
+		///
+		/// SceneNameMapping.MenuSceneName points at MenuScreenScene, and that
+		/// scene holds its own hand-placed copy of the menu. There is also a
+		/// MainMenuScreen.prefab, but nothing loads it - an earlier version of
+		/// this tool added the button to that prefab, where it was invisible.
+		/// This is the file that actually has to change.
+		/// </summary>
+		private const string MenuScenePath = "Assets/Scenes/ui/menu/MenuScreenScene.unity";
+
 		private const string ScreenPrefabPath = "Assets/GameObject/MultiplayerScreen.prefab";
 
 		[MenuItem("Tools/Multiplayer/Build Main Menu UI")]
@@ -38,8 +50,9 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			// is in flight, so stop and let the user commit or stash first.
 			if (!EditorUtility.DisplayDialog(
 					"Multiplayer UI",
-					"This rewrites MainMenuScreen.prefab and creates MultiplayerScreen.prefab.\n\n"
-						+ "It is safe to re-run, but unsaved work in the project will not survive it.",
+					"This edits MenuScreenScene (the scene the main menu actually lives in)\n"
+						+ "and creates MultiplayerScreen.prefab.\n\n"
+						+ "It is safe to re-run. Save your open work first.",
 					"Continue",
 					"Cancel"))
 			{
@@ -73,38 +86,105 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		[MenuItem("Tools/Multiplayer/Verify Main Menu UI")]
 		public static void Verify()
 		{
-			GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPrefabPath);
+			// Verify the SCENE, because the scene is what the game loads.
+			Scene scene = EditorSceneManager.OpenScene(MenuScenePath, OpenSceneMode.Additive);
 
-			if (prefab == null)
+			if (!scene.IsValid())
 			{
-				EditorUtility.DisplayDialog("Multiplayer UI", "Could not load " + MenuPrefabPath, "OK");
+				EditorUtility.DisplayDialog("Multiplayer UI", "Could not open " + MenuScenePath, "OK");
 				return;
 			}
 
-			MainMenuScreen screen = prefab.GetComponent<MainMenuScreen>();
-			bool hasButton = screen != null && screen.MultiplayerButton != null;
-			bool hasScreen = screen != null && screen.MultiplayerScreenPrefab != null;
-
-			string report =
-				"Root object: " + prefab.name + "\n"
-				+ "MainMenuScreen component: " + (screen != null ? "present" : "MISSING") + "\n"
-				+ "Multiplayer button: " + (hasButton ? "present" : "MISSING") + "\n"
-				+ "Multiplayer screen prefab: " + (hasScreen ? "assigned" : "NOT ASSIGNED") + "\n"
-				+ "Buttons in prefab: " + CountButtons(prefab) + "\n"
-				+ "\nButton appearance: " + DescribeButtonAppearance(hasButton ? screen.MultiplayerButton : null);
-
-			if (!string.Equals(prefab.name, "MainMenuScreen", StringComparison.Ordinal))
+			try
 			{
-				report += "\n\nWARNING: the root object has been renamed. This prefab is probably damaged - "
-					+ "restore it with: git checkout -- " + MenuPrefabPath;
-			}
+				MainMenuScreen screen = null;
 
-			EditorUtility.DisplayDialog("Multiplayer UI", report, "OK");
+				foreach (GameObject rootObject in scene.GetRootGameObjects())
+				{
+					screen = rootObject.GetComponentInChildren<MainMenuScreen>(includeInactive: true);
+
+					if (screen != null)
+					{
+						break;
+					}
+				}
+
+				if (screen == null)
+				{
+					EditorUtility.DisplayDialog(
+						"Multiplayer UI",
+						"No MainMenuScreen found in " + MenuScenePath,
+						"OK");
+
+					return;
+				}
+
+				bool hasButton = screen.MultiplayerButton != null;
+				bool hasScreen = screen.MultiplayerScreenPrefab != null;
+
+				Transform column = FindButtonColumn(screen.transform);
+
+				string report =
+					"Scene: " + MenuScenePath + "\n"
+					+ "MainMenuScreen: found\n"
+					+ "Button column: " + (column != null ? column.name : "NOT FOUND") + "\n"
+					+ "Buttons in menu: " + screen.GetComponentsInChildren<Button>(includeInactive: true).Length + "\n"
+					+ "Multiplayer button: " + (hasButton ? "present" : "MISSING") + "\n"
+					+ "Multiplayer screen prefab: " + (hasScreen ? "assigned" : "NOT ASSIGNED") + "\n"
+					+ "\nButton appearance: " + DescribeButtonAppearance(hasButton ? screen.MultiplayerButton : null)
+					+ "\n\nMenu in the OPEN scene(s): " + DescribeOpenScenes(screen);
+
+				EditorUtility.DisplayDialog("Multiplayer UI", report, "OK");
+			}
+			finally
+			{
+				EditorSceneManager.CloseScene(scene, removeScene: true);
+			}
 		}
 
-		private static int CountButtons(GameObject prefab)
+		/// <summary>
+		/// Reports the Multiplayer button in whatever scene the user currently
+		/// has open.
+		///
+		/// A stale open copy of the menu shows the old button set even when the
+		/// file on disk is correct, and that is indistinguishable from the button
+		/// simply not having been added. Saying which scene is open, and whether
+		/// it has the button, separates the two.
+		/// </summary>
+		private static string DescribeOpenScenes(MainMenuScreen savedScreen)
 		{
-			return prefab.GetComponentsInChildren<Button>(includeInactive: true).Length;
+			System.Text.StringBuilder builder = new System.Text.StringBuilder();
+
+			for (int i = 0; i < SceneManager.sceneCount; i++)
+			{
+				Scene open = SceneManager.GetSceneAt(i);
+
+				if (!open.isLoaded)
+				{
+					continue;
+				}
+
+				foreach (GameObject rootObject in open.GetRootGameObjects())
+				{
+					MainMenuScreen found = rootObject.GetComponentInChildren<MainMenuScreen>(includeInactive: true);
+
+					if (found == null)
+					{
+						continue;
+					}
+
+					builder.Append("\n  " + open.name + ": button=")
+						.Append(found.MultiplayerButton != null ? "present" : "MISSING")
+						.Append(", dirty=").Append(open.isDirty);
+				}
+			}
+
+			if (builder.Length == 0)
+			{
+				return "none open (open MenuScreenScene to check)";
+			}
+
+			return builder.ToString();
 		}
 
 		/// <summary>
@@ -261,73 +341,77 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 		private static void AddMainMenuButton()
 		{
-			if (AssetDatabase.LoadAssetAtPath<GameObject>(MenuPrefabPath) == null)
+			// The menu lives in a SCENE, so the scene has to be open and saved
+			// rather than edited through the prefab APIs.
+			//
+			// Opening it additively leaves the user's currently open scene alone,
+			// and the edit is then saved back to this one path only. Using
+			// LoadPrefabContents here (as an earlier version did) would modify a
+			// prefab the game never loads, which is why the button appeared
+			// nowhere.
+			Scene scene = EditorSceneManager.OpenScene(MenuScenePath, OpenSceneMode.Additive);
+
+			if (!scene.IsValid())
 			{
-				Debug.LogError("Could not load " + MenuPrefabPath);
+				Debug.LogError("Could not open " + MenuScenePath);
 				return;
 			}
 
-			// Edit the prefab through LoadPrefabContents/SaveAsPrefabAsset.
-			//
-			// The previous version loaded the prefab ASSET, instantiated it into
-			// the scene, then parented the new button under a transform taken
-			// from that asset rather than from the instance. Parenting under a
-			// persistent object is rejected by Unity ("Cannot instantiate objects
-			// with a parent which is persistent"), so the button was silently
-			// dropped at the scene root and SaveAsPrefabAsset then wrote a
-			// mangled hierarchy back - re-serialising the whole prefab with new
-			// file IDs. LoadPrefabContents gives a real, editable copy of the
-			// prefab contents, which is the supported way to edit one.
-			GameObject contents = PrefabUtility.LoadPrefabContents(MenuPrefabPath);
+			GameObject[] roots = scene.GetRootGameObjects();
 
-			try
+			MainMenuScreen menuScreen = null;
+			Transform sceneRoot = null;
+
+			foreach (GameObject rootObject in roots)
 			{
-				MainMenuScreen contentsScreen = contents.GetComponent<MainMenuScreen>();
+				MainMenuScreen candidate = rootObject.GetComponentInChildren<MainMenuScreen>(includeInactive: true);
 
-				if (contentsScreen == null)
+				if (candidate != null)
 				{
-					Debug.LogError("MainMenuScreen component missing from " + MenuPrefabPath);
-					return;
+					menuScreen = candidate;
+					sceneRoot = candidate.transform;
+					break;
 				}
+			}
 
-				// Always make sure the screen prefab is assigned, even when the
-				// button already exists.
-				if (contentsScreen.MultiplayerScreenPrefab == null)
-				{
-					contentsScreen.MultiplayerScreenPrefab = AssetDatabase.LoadAssetAtPath<ScreenBase>(ScreenPrefabPath);
-				}
+			if (menuScreen == null)
+			{
+				Debug.LogError("No MainMenuScreen found in " + MenuScenePath + ". Add the button by hand.");
+				EditorSceneManager.CloseScene(scene, removeScene: true);
+				return;
+			}
 
-				if (contentsScreen.MultiplayerButton != null)
-				{
-					Debug.Log("Main menu already has a Multiplayer button; refreshing references only.");
-					PrefabUtility.SaveAsPrefabAsset(contents, MenuPrefabPath);
-					return;
-				}
+			// Always make sure the screen prefab is assigned.
+			if (menuScreen.MultiplayerScreenPrefab == null)
+			{
+				menuScreen.MultiplayerScreenPrefab = AssetDatabase.LoadAssetAtPath<ScreenBase>(ScreenPrefabPath);
+			}
 
+			if (menuScreen.MultiplayerButton == null)
+			{
 				// The vertical layout column that holds every other menu button.
-				Transform column = contents.transform.Find("LayoutVerticalBottomLeft")
-					?? FindButtonColumn(contents.transform);
+				Transform column = FindButtonColumn(sceneRoot);
 
 				if (column == null)
 				{
 					Debug.LogError("Could not find the main menu button column. Add the button by hand.");
+					EditorSceneManager.CloseScene(scene, removeScene: true);
 					return;
 				}
 
 				// Take an existing button as the template so sprite, colours,
 				// sizing and the three helper scripts all match the rest of the
-				// column exactly.
-				Button template = FindTemplateButton(contentsScreen);
+				// column exactly. Its scene object is a normal transform, so
+				// parenting under it works.
+				Button template = FindTemplateButton(menuScreen);
 
 				if (template == null)
 				{
 					Debug.LogError("Could not find a menu button to copy. Add the button by hand.");
+					EditorSceneManager.CloseScene(scene, removeScene: true);
 					return;
 				}
 
-				// Parent under the CONTENTS column, which is a normal scene
-				// object - this is the parenting that the asset-based version got
-				// wrong.
 				GameObject buttonObject = UnityEngine.Object.Instantiate(template.gameObject, column);
 				buttonObject.name = "ButtonMultiplayer";
 
@@ -350,37 +434,52 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 					layoutElement.layoutPriority = 1;
 				}
 
-				contentsScreen.MultiplayerButton = button;
-
-				PrefabUtility.SaveAsPrefabAsset(contents, MenuPrefabPath);
-
-				// Force the asset pipeline to pick the change up NOW, before the
-				// contents copy is unloaded.
-				//
-				// SaveAsPrefabAsset writes the file, but a prefab already open in a
-				// loaded scene can keep serving the pre-save version from memory -
-				// the menu then shows without the button and it looks as though
-				// the tool silently did nothing. Importing while the copy is still
-				// loaded forces the change through.
-				AssetDatabase.ImportAsset(MenuPrefabPath, ImportAssetOptions.ForceUpdate);
-
-				AssetDatabase.SaveAssets();
-				Debug.Log("Added ButtonMultiplayer to the main menu.");
+				menuScreen.MultiplayerButton = button;
 			}
-			finally
+
+			// Mark the scene dirty so the change is actually written, then save it
+			// back to its own path. EditorSceneManager.SaveScene writes the open
+			// scene, which is why the scene is opened additively here rather than
+			// being loaded into the user's current one.
+			EditorSceneManager.MarkSceneDirty(scene);
+			bool saved = EditorSceneManager.SaveScene(scene);
+
+			EditorSceneManager.CloseScene(scene, removeScene: true);
+
+			AssetDatabase.Refresh();
+
+			if (!saved)
 			{
-				// Always release the loaded copy, even on an early return, or the
-				// prefab stays locked and shows as open for editing.
-				PrefabUtility.UnloadPrefabContents(contents);
+				Debug.LogError("Failed to save " + MenuScenePath);
+				return;
 			}
+
+			Debug.Log("Added ButtonMultiplayer to " + MenuScenePath);
 		}
 
 		private static Transform FindButtonColumn(Transform root)
 		{
+			// Prefer the column the menu actually uses, by name. Falling back to
+			// "first vertical layout containing buttons" would happily pick an
+			// unrelated panel elsewhere in the scene and put the button in it.
+			Transform named = root.Find("LayoutVerticalBottomLeft");
+
+			if (named != null)
+			{
+				return named;
+			}
+
 			foreach (Transform child in root.GetComponentsInChildren<Transform>(includeInactive: true))
 			{
-				if (child.GetComponent<VerticalLayoutGroup>() != null
-					&& child.GetComponentInChildren<Button>(includeInactive: true) != null)
+				LayoutGroup layout = child.GetComponent<VerticalLayoutGroup>();
+
+				if (layout == null || layout is GridLayoutGroup)
+				{
+					continue;
+				}
+
+				// A real column of buttons, not a one-off panel.
+				if (child.GetComponentsInChildren<Button>(includeInactive: true).Length >= 3)
 				{
 					return child;
 				}
@@ -395,6 +494,11 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			if (screen.TutorialsButton != null)
 			{
 				return screen.TutorialsButton;
+			}
+
+			if (screen.QuitButton != null)
+			{
+				return screen.QuitButton;
 			}
 
 			return screen.GetComponentInChildren<Button>(includeInactive: true);
