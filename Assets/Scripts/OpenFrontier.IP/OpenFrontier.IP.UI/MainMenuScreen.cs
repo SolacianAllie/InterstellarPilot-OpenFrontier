@@ -121,9 +121,15 @@ namespace OpenFrontier.IP.UI
 		{
 			if (MultiplayerScreenPrefab == null)
 			{
+				// A prefab link can go stale on its own: the prefab is
+				// re-serialised, or a component it pointed at is replaced, and
+				// the reference silently resolves to null. That looks exactly
+				// like "never assigned", which is a misleading thing to be told
+				// when the field plainly has something in it in the inspector.
 				Debug.LogError(
-					"Multiplayer is unavailable: MainMenuScreen.MultiplayerScreenPrefab is not assigned. "
-						+ "Assign MultiplayerScreen.prefab to it in the inspector.");
+					"Multiplayer is unavailable: MainMenuScreen.MultiplayerScreenPrefab does not resolve. "
+						+ "Either it is empty, or it points at a component the prefab no longer has. "
+						+ "Reassign MultiplayerScreen.prefab in the inspector.");
 				return;
 			}
 

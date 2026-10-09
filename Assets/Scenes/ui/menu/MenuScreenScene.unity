@@ -1781,7 +1781,7 @@ MonoBehaviour:
   m_text: Quit
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 72d825414db179d229920a6f4b617b08, type: 2}
-  m_sharedMaterial: {fileID: 0}
+  m_sharedMaterial: {fileID: -6302575969257711444, guid: 72d825414db179d229920a6f4b617b08, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -2714,7 +2714,7 @@ MonoBehaviour:
   ContinueGameButton: {fileID: 502}
   LoadGameButton: {fileID: 692}
   MultiplayerButton: {fileID: 631435557}
-  MultiplayerScreenPrefab: {fileID: 6220518117131624257, guid: 9065ee360e2eafa9da28421fd584d495, type: 3}
+  MultiplayerScreenPrefab: {fileID: 6994030380759206077, guid: c23b6869a3d2e4310aec882bb9a9c65c, type: 3}
   SkirmishSetupUI: {fileID: 0}
   VersionText: {fileID: 689}
 --- !u!114 &558
