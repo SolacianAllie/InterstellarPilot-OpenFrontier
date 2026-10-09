@@ -58,6 +58,16 @@ namespace OpenFrontier.IP.UI
 			{
 				Application.Quit();
 			});
+
+			// Wired here rather than as a persistent listener in the scene,
+			// which is how every other menu button in this project is wired.
+			// A persistent listener stored in the scene would work too, but the
+			// menu is hand-placed scene content and this keeps the button working
+			// without depending on that serialization.
+			if (MultiplayerButton != null)
+			{
+				MultiplayerButton.onClick.AddListener(Multiplayer);
+			}
 		}
 
 		protected override void ApplyFadingState()
@@ -111,7 +121,9 @@ namespace OpenFrontier.IP.UI
 		{
 			if (MultiplayerScreenPrefab == null)
 			{
-				Debug.LogError("Multiplayer is unavailable: no multiplayer screen is assigned.");
+				Debug.LogError(
+					"Multiplayer is unavailable: MainMenuScreen.MultiplayerScreenPrefab is not assigned. "
+						+ "Run Tools > Multiplayer > Build Main Menu UI to create and wire it.");
 				return;
 			}
 

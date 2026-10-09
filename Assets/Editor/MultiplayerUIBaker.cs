@@ -131,8 +131,10 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 					+ "Buttons in menu: " + screen.GetComponentsInChildren<Button>(includeInactive: true).Length + "\n"
 					+ "Multiplayer button: " + (hasButton ? "present" : "MISSING") + "\n"
 					+ "Multiplayer screen prefab: " + (hasScreen ? "assigned" : "NOT ASSIGNED") + "\n"
+					+ "Click listener: added by MainMenuScreen.awake(), so nothing to see in the scene file\n"
 					+ "\nButton appearance: " + DescribeButtonAppearance(hasButton ? screen.MultiplayerButton : null)
-					+ "\n\nMenu in the OPEN scene(s): " + DescribeOpenScenes(screen);
+					+ "\n\nMenu in the OPEN scene(s): " + DescribeOpenScenes(screen)
+					+ "\n\n" + DescribeScreenPrefab();
 
 				EditorUtility.DisplayDialog("Multiplayer UI", report, "OK");
 			}
@@ -140,6 +142,66 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			{
 				EditorSceneManager.CloseScene(scene, removeScene: true);
 			}
+		}
+
+		/// <summary>
+		/// Reports whether the multiplayer screen prefab is actually usable.
+		/// </summary>
+		///
+		/// An unassigned field on the screen is invisible in every other check:
+		/// the screen loads, the click fires, no error is logged, and the player
+		/// just sees a blank panel. Listing the fields that are still empty names
+		/// the fault directly.
+		private static string DescribeScreenPrefab()
+		{
+			GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ScreenPrefabPath);
+
+			if (prefab == null)
+			{
+				return "Screen prefab: MISSING (" + ScreenPrefabPath + ")";
+			}
+
+			MultiplayerScreen screen = prefab.GetComponent<MultiplayerScreen>();
+
+			if (screen == null)
+			{
+				return "Screen prefab: has no MultiplayerScreen component";
+			}
+
+			ScreenBase baseScreen = screen as ScreenBase;
+			int missing = 0;
+
+			missing += Missing(screen.ModeOffButton, "ModeOffButton");
+			missing += Missing(screen.ModeJoinButton, "ModeJoinButton");
+			missing += Missing(screen.ModeHostButton, "ModeHostButton");
+			missing += Missing(screen.HostButton, "HostButton");
+			missing += Missing(screen.StopHostingButton, "StopHostingButton");
+			missing += Missing(screen.JoinCodeField, "JoinCodeField");
+			missing += Missing(screen.JoinButton, "JoinButton");
+			missing += Missing(screen.JoinCodeDisplay, "JoinCodeDisplay");
+			missing += Missing(screen.StatusText, "StatusText");
+			missing += Missing(screen.BackButton, "BackButton");
+
+			bool hasScaler = prefab.GetComponent<CanvasScaler>() != null;
+			bool hasCanvasGroup = prefab.GetComponent<CanvasGroup>() != null;
+			int canvases = baseScreen == null || baseScreen.Canvases == null ? 0 : baseScreen.Canvases.Count;
+
+			return "Screen prefab:\n"
+				+ "  unassigned fields: " + (missing == 0 ? "none" : missing + " <-- MUST BE FIXED") + "\n"
+				+ "  CanvasScaler on root: " + (hasScaler ? "yes" : "NO <-- screen will not scale") + "\n"
+				+ "  CanvasGroup on root: " + (hasCanvasGroup ? "yes" : "NO") + "\n"
+				+ "  Canvases assigned: " + canvases + (canvases == 0 ? " <-- MUST BE FIXED" : "");
+		}
+
+		private static int Missing(UnityEngine.Object reference, string fieldName)
+		{
+			if (reference != null)
+			{
+				return 0;
+			}
+
+			Debug.LogWarning("MultiplayerScreen." + fieldName + " is not assigned.");
+			return 1;
 		}
 
 		/// <summary>
@@ -228,8 +290,13 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 			if (existing != null)
 			{
-				Debug.Log("MultiplayerScreen.prefab already exists; leaving it alone.");
-				return;
+				// Rebuild rather than skip. An earlier version kept any existing
+				// prefab, which meant a half-built one - missing field references,
+				// no canvas - could never be repaired by re-running the tool, and
+				// produced a screen that opened to an empty panel with nothing
+				// logged. A prefab is cheap to regenerate, so always do.
+				Debug.Log("Replacing the existing " + ScreenPrefabPath + ".");
+				AssetDatabase.DeleteAsset(ScreenPrefabPath);
 			}
 
 			// Layout mirrors the other full-screen panels: a title at the top, a
@@ -331,10 +398,79 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			screen.BackButton = back;
 			screen.CanvasGroups = new System.Collections.Generic.List<CanvasGroup> { canvasGroup };
 
+			// A screen prefab is its own canvas root, exactly like
+			// EnterNumberScreen: RectTransform + Canvas + CanvasScaler +
+			// CanvasGroup. ScreenBase.Canvases then lists those canvases so
+			// Awake can find the scalers - without it, Awake logs an error and
+			// the screen renders at the wrong size.
+			Canvas canvas = root.AddComponent<Canvas>();
+			canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+			CanvasScaler scaler = root.AddComponent<CanvasScaler>();
+			scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+			scaler.referenceResolution = new Vector2(800f, 600f);
+			scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+			scaler.matchWidthOrHeight = 1f;
+
+			ScreenBase asBase = screen;
+			asBase.Canvases = new System.Collections.Generic.List<Canvas> { canvas };
+			asBase.CanvasGroups = new System.Collections.Generic.List<CanvasGroup> { canvasGroup };
+
 			GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, ScreenPrefabPath);
 			UnityEngine.Object.DestroyImmediate(root);
 
+			// Verify what was actually written. An unassigned field here produces
+			// a screen that opens, logs nothing, and shows an empty panel - which
+			// is what happened when this was written without the check.
+			VerifyScreenPrefabOrThrow();
+
 			Debug.Log("Created " + ScreenPrefabPath + " (" + prefab.name + ")");
+		}
+
+		/// <summary>
+		/// Fails loudly if the saved screen prefab is not actually wired up.
+		/// </summary>
+		private static void VerifyScreenPrefabOrThrow()
+		{
+			GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ScreenPrefabPath);
+
+			if (prefab == null)
+			{
+				throw new InvalidOperationException("Screen prefab was not created at " + ScreenPrefabPath);
+			}
+
+			MultiplayerScreen screen = prefab.GetComponent<MultiplayerScreen>();
+
+			if (screen == null)
+			{
+				throw new InvalidOperationException("Saved screen prefab has no MultiplayerScreen component.");
+			}
+
+			System.Collections.Generic.List<string> problems = new System.Collections.Generic.List<string>();
+
+			if (screen.ModeOffButton == null) problems.Add("ModeOffButton");
+			if (screen.ModeJoinButton == null) problems.Add("ModeJoinButton");
+			if (screen.ModeHostButton == null) problems.Add("ModeHostButton");
+			if (screen.HostButton == null) problems.Add("HostButton");
+			if (screen.StopHostingButton == null) problems.Add("StopHostingButton");
+			if (screen.JoinCodeField == null) problems.Add("JoinCodeField");
+			if (screen.JoinButton == null) problems.Add("JoinButton");
+			if (screen.JoinCodeDisplay == null) problems.Add("JoinCodeDisplay");
+			if (screen.StatusText == null) problems.Add("StatusText");
+			if (screen.BackButton == null) problems.Add("BackButton");
+
+			if (prefab.GetComponent<CanvasScaler>() == null) problems.Add("CanvasScaler");
+
+			ScreenBase asBase = screen;
+
+			if (asBase.Canvases == null || asBase.Canvases.Count == 0) problems.Add("Canvases");
+
+			if (problems.Count > 0)
+			{
+				throw new InvalidOperationException(
+					"Saved screen prefab is missing: " + string.Join(", ", problems)
+					+ ". Delete " + ScreenPrefabPath + " and re-run this tool.");
+			}
 		}
 
 		// ---- main menu button ----------------------------------------------
