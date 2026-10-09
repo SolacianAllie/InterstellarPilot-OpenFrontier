@@ -2,7 +2,9 @@
     "name": "OpenFrontier.IP.Multiplayer",
     "rootNamespace": "OpenFrontier.IP.Multiplayer",
     "references": [
-        "OpenFrontier.IP"
+        "OpenFrontier.IP",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
