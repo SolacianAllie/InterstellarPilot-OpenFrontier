@@ -1,209 +1,230 @@
-using System;
-using OpenFrontier.IP.Engine;
+using System.Collections.Generic;
+using System.Linq;
+using OpenFrontier.IP.Multiplayer;
+using OpenFrontier.IP.UI;
+using OpenFrontier.IP.UI.Controls;
 using OpenFrontier.IP.UI.Screens;
+using OpenFrontier.IP.UI.Screens.MessageBox;
+using OpenFrontier.IP.UI.Screens.RenameUnit;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace OpenFrontier.IP.Multiplayer.UI
 {
 	/// <summary>
-	/// Main-menu screen for multiplayer: shows the mode, lets the player host a
-	/// session (and read the join code to share), or paste a code to join one.
+	/// The multiplayer screen: a list of saved hosts, the way LoadGameScreen is
+	/// a list of saved games.
 	///
-	/// This is deliberately a *setup* screen, not a session screen. Hosting
-	/// starts a listener and produces a code; joining opens a connection. What
-	/// happens inside the session (world streaming, controlling a faction) is
-	/// the business of later phases.
+	/// Built by adapting LoadGameScreen, so the list, the selection handling,
+	/// the keyboard entry screen and the rename and delete flows are the ones
+	/// the game already has. What changes here is the item type - a saved host
+	/// rather than a save file - and what the primary button does: it joins the
+	/// selected host instead of loading a scenario.
 	///
-	/// The screen owns nothing it did not create, and leaving the screen stops
-	/// whatever it started - so backing out of this menu always leaves
-	/// multiplayer as it was.
+	/// Import and export are removed: there is no file to move around, because
+	/// a host is reached over the network rather than from disk. Rename and
+	/// delete are kept, since a list of things the player has joined before
+	/// needs both.
 	/// </summary>
 	public class MultiplayerScreen : ScreenBase
 	{
-		/// <summary>Mode buttons, in the same order as <see cref="MultiplayerMode"/>.</summary>
-		public Button ModeOffButton;
+		/// <summary>The saved-host list. The clone carries this already wired.</summary>
+		public SavedHostItemsUI ItemsList;
 
-		public Button ModeJoinButton;
-
-		public Button ModeHostButton;
-
-		/// <summary>Opens a listener and shows the resulting code.</summary>
-		public Button HostButton;
-
-		/// <summary>Closes the session this player is hosting.</summary>
-		public Button StopHostingButton;
-
-		/// <summary>The box a player pastes a join code into.</summary>
-		public InputField JoinCodeField;
-
-		/// <summary>Attempts to join using <see cref="JoinCodeField"/>.</summary>
+		/// <summary>Joins the selected host. Sits where LoadGameScreen's load button is.</summary>
 		public Button JoinButton;
 
-		/// <summary>Shows the generated code while hosting.</summary>
-		public Text JoinCodeDisplay;
+		/// <summary>Adds a host by asking for a join code. Next to the join button.</summary>
+		public Button AddHostButton;
 
-		/// <summary>Status and error messages.</summary>
-		public Text StatusText;
+		public Button DeleteHostButton;
 
-		public Button BackButton;
+		public Button RenameHostButton;
 
-		private HostSession host;
+		public GameObject HostInfoRoot;
+
+		public Transform MultipleItemsSelectedRoot;
+
+		public Text HostNameLabel;
+
+		public Text HostCodeLabel;
+
+		public Text HostAddedLabel;
+
+		public Text HostStatusLabel;
+
+		public Text TitleLabel;
+
 		private ClientSession client;
 
 		protected override void awake()
 		{
 			base.awake();
 
-			ModeOffButton?.onClick.AddListener(() => SetMode(MultiplayerMode.Off));
-			ModeJoinButton?.onClick.AddListener(() => SetMode(MultiplayerMode.JoinOnly));
-			ModeHostButton?.onClick.AddListener(() => SetMode(MultiplayerMode.HostOrJoin));
+			JoinButton.onClick.AddListener(JoinSelectedHost);
+			AddHostButton.onClick.AddListener(AddHostButtonClick);
+			DeleteHostButton.onClick.AddListener(DeleteHostButtonClick);
+			RenameHostButton.onClick.AddListener(RenameHostButtonClick);
 
-			HostButton?.onClick.AddListener(StartHosting);
-			StopHostingButton?.onClick.AddListener(StopHosting);
-			JoinButton?.onClick.AddListener(StartJoining);
-			BackButton?.onClick.AddListener(NavigateBack);
-
-			// The join box should never sit there with placeholder text that
-			// looks like a real code.
-			if (JoinCodeField != null)
-			{
-				JoinCodeField.onValueChanged.AddListener(_ => RefreshControls());
-			}
-		}
-
-		protected override void start()
-		{
-			base.start();
-			SetMode(MultiplayerSettings.Mode, announce: false);
+			ItemsList.SelectedItemsChanged += OnSelectedItemsChanged;
 		}
 
 		protected override void refresh()
 		{
 			base.refresh();
-			RefreshControls();
+
+			SavedHostStore.InvalidateCache();
+			ItemsList.Refresh();
+			RefreshItemData();
 		}
 
-		private void SetMode(MultiplayerMode mode, bool announce = true)
+		protected override void start()
 		{
-			MultiplayerSettings.Mode = mode;
+			base.start();
 
-			// Switching mode ends anything the previous mode started. Hosting
-			// with multiplayer then switched off would otherwise leave a live
-			// listener behind, which is not what "off" should mean.
-			if (mode == MultiplayerMode.Off)
+			if (TitleLabel != null)
 			{
-				StopHosting();
-				Disconnect();
+				TitleLabel.text = "Multiplayer";
 			}
-
-			if (announce)
-			{
-				SetStatus(DescribeMode(mode));
-			}
-
-			RefreshControls();
 		}
 
-		private void StartHosting()
-		{
-			if (!MultiplayerSettings.CanHost)
-			{
-				SetStatus("Multiplayer is set to join-only. Switch it to Host or Join to host a session.");
-				return;
-			}
-
-			StopHosting();
-
-			// Listen on every local interface. Which one is reachable depends on
-			// the network, and the address that ends up in the code is chosen by
-			// the OS at connect time - see SessionCode's note on why the code
-			// carries the address at all.
-			IPAddressSelection.ListenAll(out System.Net.IPAddress address, out int port, out string problem);
-
-			if (address == null)
-			{
-				SetStatus(problem ?? "Couldn't work out a network address to host on.");
-				return;
-			}
-
-			host = HostSession.Start(address, port, SetStatus);
-
-			if (host == null)
-			{
-				return;
-			}
-
-			// Hosting a world changes what a connected player may do: no god
-			// mode, and only the host writes the shared save.
-			ApplyHostPermissions();
-
-			if (JoinCodeDisplay != null)
-			{
-				JoinCodeDisplay.text = host.JoinCode;
-			}
-
-			SetStatus("Hosting. Share this code with the players you want to invite.");
-			RefreshControls();
-		}
+		// ---- adding a host -------------------------------------------------
 
 		/// <summary>
-		/// Applies the restrictions a hosted session imposes. Uses the engine's
-		/// existing permission flags rather than bespoke checks, the same way
-		/// skirmish battles already disable god mode when launched from the
-		/// battles screen.
+		/// Asks for a join code using the same keyboard screen the rename and
+		/// save-file name entry uses, so the input feels like the rest of the
+		/// game rather than a bespoke prompt.
 		/// </summary>
-		private static void ApplyHostPermissions()
+		private void AddHostButtonClick()
 		{
-			EngineASX engine = EngineASX.Instance;
-
-			if (engine?.World?.Permissions == null)
+			UIController.Instance.ScreenNavigator.ShowRenameScreen(screen =>
 			{
-				return;
-			}
+				screen.TitleText = "Enter a join code...";
+				screen.MinCharacters = 1;
 
-			engine.World.Permissions.AllowGodMode = false;
+				// 40 covers the 32-character code with room for the separators
+				// the player might paste along with it.
+				screen.MaxCharacters = 40;
+
+				// Join codes are Base32 - A-Z and 2-7 - plus the dashes used for
+				// grouping. Rejecting anything else here means an obvious typo is
+				// caught while typing rather than as a failed connection.
+				screen.RegexPatternValidation = "^[A-Za-z2-7\\-]*$";
+				screen.RegexPatternValidationMessage = "That is not a join code. A code uses the letters A-Z, the digits 2-7, and dashes.";
+
+				screen.NewName = string.Empty;
+				screen.RenameConfirmed += (handler, confirmed, enteredCode) =>
+				{
+					if (!confirmed)
+					{
+						return;
+					}
+
+					if (string.IsNullOrWhiteSpace(enteredCode))
+					{
+						return;
+					}
+
+					// Confirm the code is at least well-formed before saving it,
+					// so the list cannot fill up with rubbish typed by mistake.
+					SessionCodeParseResult parsed = SessionCode.TryParse(enteredCode);
+
+					if (!parsed.Success)
+					{
+						UIController.Instance.ShowMessageBox(
+							parsed.Error, MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
+						return;
+					}
+
+					// Save the code exactly as typed. The parsed form is only used
+					// for validation here - the player can still attempt to join a
+					// host from a different version later and be told why, rather
+					// than having the entry silently rejected at add time.
+					SavedHost added = SavedHostStore.AddOrUpdate(null, enteredCode);
+
+					if (added == null)
+					{
+						return;
+					}
+
+					ItemsList.Refresh();
+					ItemsList.SetSelectedItems(new[] { added });
+					ItemsList.ScrollToSelected();
+					RefreshItemData();
+				};
+			});
 		}
 
-		private void StopHosting()
+		// ---- joining --------------------------------------------------------
+
+		private void JoinSelectedHost()
 		{
+			SavedHost host = SingleSelectedHost;
+
 			if (host == null)
 			{
 				return;
 			}
 
-			host.Dispose();
-			host = null;
+			SessionCodeParseResult parsed = SessionCode.TryParse(host.Code);
 
-			if (JoinCodeDisplay != null)
+			if (!parsed.Success)
 			{
-				JoinCodeDisplay.text = string.Empty;
-			}
-
-			SetStatus("Stopped hosting.");
-			RefreshControls();
-		}
-
-		private void StartJoining()
-		{
-			if (!MultiplayerSettings.CanJoin)
-			{
-				SetStatus("Multiplayer is switched off.");
+				UIController.Instance.ShowMessageBox(
+					"This host's code is not readable: " + parsed.Error,
+					MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
 				return;
 			}
 
-			string code = JoinCodeField != null ? JoinCodeField.text : string.Empty;
+			// The version is checked here, before any connection is attempted,
+			// so a host on a different build is refused immediately rather than
+			// after a timeout.
+			if (!parsed.Data.IsCompatibleWithLocalBuild(out string incompatibility))
+			{
+				UIController.Instance.ShowMessageBox(
+					incompatibility, MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
+				return;
+			}
 
 			Disconnect();
 
 			client = new ClientSession();
-			client.Failed += SetStatus;
-			client.Connected += () => SetStatus("Connected.");
-			client.Disconnected += SetStatus;
+			client.Failed += OnJoinFailed;
+			client.Connected += () => MarkConnected(host, true);
+			client.Disconnected += reason =>
+			{
+				MarkConnected(host, false);
 
-			// The join itself checks the version before opening a socket, so a
-			// code from a different build is refused without any network traffic.
-			client.Join(code);
+				if (!string.IsNullOrEmpty(reason))
+				{
+					UIController.Instance.ShowMessageBox(
+						reason, MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
+				}
+
+				Refresh();
+			};
+
+			client.Join(host.Code);
+		}
+
+		private void OnJoinFailed(string reason)
+		{
+			UIController.Instance.ShowMessageBox(reason, MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
+		}
+
+		/// <summary>
+		/// Records whether a session with this host is live, so the list can
+		/// show it. The flag lives on the entry rather than in a dictionary so
+		/// it survives the list being rebuilt.
+		/// </summary>
+		private void MarkConnected(SavedHost host, bool connected)
+		{
+			if (host != null)
+			{
+				host.IsConnected = connected;
+			}
+
+			RefreshItemData();
 		}
 
 		private void Disconnect()
@@ -217,70 +238,112 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			client = null;
 		}
 
-		private static string DescribeMode(MultiplayerMode mode)
+		// ---- rename / delete ------------------------------------------------
+
+		private void RenameHostButtonClick()
 		{
-			switch (mode)
+			SavedHost host = SingleSelectedHost;
+
+			if (host == null)
 			{
-				case MultiplayerMode.Off:
-					return "Multiplayer is off. Open Frontier will not listen for or connect to anyone.";
-
-				case MultiplayerMode.JoinOnly:
-					return "Join only. You can join a session someone else is hosting.";
-
-				default:
-					return "Host or join. You can host a session and join others'.";
+				return;
 			}
-		}
 
-		private void SetStatus(string message)
-		{
-			if (StatusText != null)
+			UIController.Instance.ScreenNavigator.ShowRenameScreen(screen =>
 			{
-				StatusText.text = message ?? string.Empty;
-			}
+				screen.TitleText = "Rename host...";
+				screen.MinCharacters = 1;
+				screen.MaxCharacters = 30;
+				screen.RegexPatternValidation = "^[a-zA-Z0-9 _-]*$";
+				screen.RegexPatternValidationMessage = "Acceptable characters: a-z, A-Z, 0-9, space, '-' and '_'";
+				screen.NewName = host.Name;
+				screen.RenameConfirmed += (handler, confirmed, newName) =>
+				{
+					if (confirmed)
+					{
+						SavedHostStore.Rename(host, newName);
+
+						// Rebuild so the row picks up the new name.
+						ItemsList.Refresh();
+						RefreshItemData();
+					}
+				};
+			});
 		}
 
-		private void RefreshControls()
+		private void DeleteHostButtonClick()
 		{
-			MultiplayerMode mode = MultiplayerSettings.Mode;
-			bool hosting = host != null;
+			int count = ItemsList.SelectedItemCount;
 
-			SetActive(ModeOffButton, mode == MultiplayerMode.Off);
-			SetActive(ModeJoinButton, mode == MultiplayerMode.JoinOnly);
-			SetActive(ModeHostButton, mode == MultiplayerMode.HostOrJoin);
-
-			SetInteractable(HostButton, !hosting && mode == MultiplayerMode.HostOrJoin);
-			SetInteractable(StopHostingButton, hosting);
-			SetInteractable(JoinButton, HasJoinableCode() && mode != MultiplayerMode.Off);
-		}
-
-		private bool HasJoinableCode()
-		{
-			return JoinCodeField != null && !string.IsNullOrWhiteSpace(JoinCodeField.text);
-		}
-
-		private static void SetActive(Selectable selectable, bool active)
-		{
-			if (selectable != null)
+			if (count == 0)
 			{
-				selectable.gameObject.SetActive(active);
+				return;
 			}
+
+			// Deleting a saved host only removes it from this player's list. It
+			// does not affect the host or their game, so the wording says so.
+			string message = count == 1
+				? "Remove this host from your list? The host and their game are not affected."
+				: $"Remove the {count} selected hosts from your list? The hosts and their games are not affected.";
+
+			UIController.Instance.ShowMessageBox(
+				message, MessageBoxButtons.OkCancel, DeleteConfirmed, MessageBoxIcon.Question);
 		}
 
-		private static void SetInteractable(Selectable selectable, bool interactable)
+		private void DeleteConfirmed(MessageBoxScreen sender, MessageBoxResult result)
 		{
-			if (selectable != null)
+			if (result != MessageBoxResult.Ok)
 			{
-				selectable.interactable = interactable;
+				return;
 			}
+
+			foreach (SavedHost host in ItemsList.SelectedItems.ToList())
+			{
+				SavedHostStore.Remove(host);
+			}
+
+			ItemsList.Refresh();
+			RefreshItemData();
+		}
+
+		// ---- details panel --------------------------------------------------
+
+		private SavedHost SingleSelectedHost =>
+			ItemsList.SelectedItemCount == 1 ? ItemsList.SingleSelectedItem : null;
+
+		private void OnSelectedItemsChanged(ScrollListBase sender)
+		{
+			RefreshItemData();
+		}
+
+		/// <summary>
+		/// Shows and hides the controls that only make sense for the current
+		/// selection, mirroring how LoadGameScreen does it.
+		/// </summary>
+		private void RefreshItemData()
+		{
+			SavedHost single = SingleSelectedHost;
+
+			HostInfoRoot.gameObject.SetActive(single != null);
+			MultipleItemsSelectedRoot.gameObject.SetActive(ItemsList.SelectedItemCount > 1);
+
+			JoinButton.gameObject.SetActive(single != null && !single.IsConnected);
+			DeleteHostButton.gameObject.SetActive(ItemsList.SelectedItemCount > 0);
+			RenameHostButton.gameObject.SetActive(single != null);
+
+			if (single == null)
+			{
+				return;
+			}
+
+			HostNameLabel.text = string.IsNullOrWhiteSpace(single.Name) ? single.Code : single.Name;
+			HostCodeLabel.text = single.Code;
+			HostAddedLabel.text = single.AddedUtc.ToLocalTime().ToString("dd-MMM-yyyy H:mm");
+			HostStatusLabel.text = single.IsConnected ? "Connected" : "Not connected";
 		}
 
 		protected override void onDestroy()
 		{
-			// Leaving the menu must not leave a listener running or a socket
-			// open. Hosting is a deliberate act that ends when the player backs
-			// out of the screen that started it.
-			StopHosting();
 			Disconnect();
 
 			base.onDestroy();
