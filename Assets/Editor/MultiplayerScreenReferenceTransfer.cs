@@ -313,41 +313,13 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			SetText(contents, "TextNoItems",
 				"No hosts yet. Use Add Host to enter a join code.", report);
 
-			// The load button's caption.
+			// The screen heading. It lives in the TitleBar, not on the button, so
+			// it is simply renamed - the button row is icon-only, like the rest.
 			//
-			// This is TextScreenTitle - the SAME object as the screen title. In
-			// LoadGameScreen one label serves both, reading "Load Game", because
-			// the screen is reached from a main menu that is already titled Load
-			// Game. This screen needs both "Multiplayer" (the screen) and "Join"
-			// (the button), so they have to be told apart.
-			//
-			// Order matters: capture which object is which before writing either,
-			// or the second lookup fails on a value the first just replaced.
-			Text screenTitle = FindText(contents, "TextScreenTitle");
-			Text joinCaption = FindTextByValue(contents, "Load Game");
-
-			if (joinCaption != null && joinCaption == screenTitle)
-			{
-				// One label cannot be both. Duplicate it for the button, which is
-				// what the other buttons in this row have anyway.
-				report.Fail(
-					"the screen title and the join button share one label (\"TextScreenTitle\"). "
-					+ "Add a separate text object under ButtonIconLoad and set JoinButton's caption to it.");
-			}
-			else
-			{
-				if (screenTitle != null)
-				{
-					screenTitle.text = "Multiplayer";
-					report.Note("screen title set to Multiplayer");
-				}
-
-				if (joinCaption != null)
-				{
-					joinCaption.text = "Join";
-					report.Note("load button relabelled to Join");
-				}
-			}
+			// This was previously mistaken for the load button's caption and
+			// looked for a second label reading "Load Game", which does not
+			// exist: there is only this one, and the button has no text at all.
+			SetText(contents, "TextScreenTitle", "Multiplayer", report);
 
 			// Captions in the repurposed detail rows. The values are overwritten
 			// at runtime; only the row headings need to stop saying what a save
@@ -380,23 +352,6 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 			label.text = text;
 			report.Note(objectName + " text set to \"" + text + "\"");
-		}
-
-		/// <summary>
-		/// Finds a label by its current text, since several labels are named the
-		/// same and only their content distinguishes them.
-		/// </summary>
-		private static Text FindTextByValue(GameObject root, string currentText)
-		{
-			foreach (Text candidate in root.GetComponentsInChildren<Text>(includeInactive: true))
-			{
-				if (candidate.text == currentText)
-				{
-					return candidate;
-				}
-			}
-
-			return null;
 		}
 
 		/// <summary>
