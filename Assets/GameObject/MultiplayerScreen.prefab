@@ -7043,7 +7043,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4534704304255049}
-  - component: {fileID: 114651560128206891}
   - component: {fileID: 6994030380759206077}
   m_Layer: 0
   m_Name: MultiplayerScreen
@@ -7068,63 +7067,6 @@ Transform:
   - {fileID: 224964469411310401}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
---- !u!114 &114651560128206891
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1709254077376921}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 408b5a89be90123921fb871d638311e8, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  restrictNavigationAway: 1
-  HelpButton: {fileID: 0}
-  CustomHelpTransform: {fileID: 0}
-  DeactivateType: 0
-  IgnoreCanvasGroupAlpha: 0
-  FadeRateMultiplier: 1
-  ShowDefaultBackButton: 1
-  KeepInNavigationStack: 1
-  FadeIn: 1
-  FadeOut: 1
-  CanvasGroups: []
-  KeepInMemory: 0
-  keepOtherScreensActive: 0
-  RefreshOnEnable: 0
-  RefreshOnStart: 1
-  Canvases:
-  - {fileID: 223208575754630950}
-  UpdateWhenNotCurrentScreen: 0
-  PauseWhenShown: 0
-  AllowTogglePause: 0
-  AcceptButton: {fileID: 0}
-  ExportFileButton: {fileID: 114734143864522482}
-  RenameFileButton: {fileID: 114536148047902537}
-  ImportFileButton: {fileID: 0}
-  DeleteGameConfirmButton: {fileID: 114667785438668446}
-  GameInfoRoot: {fileID: 1371939378208658}
-  MultipleItemsSelectedRoot: {fileID: 224739268104783211}
-  ItemsList: {fileID: 114633296557590524}
-  LoadGameButton: {fileID: 114426252596376205}
-  ScenarioAuthorLabel: {fileID: 114583788928901705}
-  ScenarioAuthoringToolLabel: {fileID: 114894352506636257}
-  SaveGameCreditsLabel: {fileID: 114260713349338959}
-  SaveGameNetWorthLabel: {fileID: 114382656168358062}
-  SaveGameDateLabel: {fileID: 114232415838589296}
-  SaveGameNameLabel: {fileID: 114965908813272002}
-  SaveGamePilotLabel: {fileID: 114415925016355036}
-  SaveGameFactionLabel: {fileID: 114993076962757715}
-  SaveGameVersion: {fileID: 114507522976744791}
-  SaveGameCreatedVersion: {fileID: 114544837802452058}
-  SaveGameFilename: {fileID: 114869737159367836}
-  SaveGameFilesize: {fileID: 114785416887765914}
-  SaveGameSectorLabel: {fileID: 114291547872775986}
-  SaveGamePermadeathLabel: {fileID: 114250083484182041}
-  SaveGameScenarioDateLabel: {fileID: 114350408777337066}
-  IncompatibleSaveIndicator: {fileID: 1733206282342372}
 --- !u!114 &6994030380759206077
 MonoBehaviour:
   m_ObjectHideFlags: 0

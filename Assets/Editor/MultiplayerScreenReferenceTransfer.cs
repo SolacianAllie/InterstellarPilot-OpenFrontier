@@ -309,7 +309,6 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				report.Note("removed the import button");
 			}
 
-			// The empty-list message should mention hosts, not games.
 			SetText(contents, "TextNoItems",
 				"No hosts yet. Use Add Host to enter a join code.", report);
 
@@ -332,8 +331,29 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			// in the file-size row, and the pilot row is hidden, so nothing to do
 			// beyond the hides above.
 
-			// The title uses a placeholder token the game substitutes at runtime;
-			// the screen title is set directly rather than through it.
+			// ---- remove the source component -----------------------------
+
+			// The clone carried LoadGameScreen purely so its references could be
+			// read. Leaving it on is not harmless: ScreenBase.awake() calls a
+			// single virtual awake(), and with two components deriving from
+			// ScreenBase on one GameObject only one override runs. LoadGameScreen's
+			// wins, and it dereferences the import button that was just deleted -
+			// a NullReferenceException every time the screen opens, with the
+			// multiplayer screen's own awake never running at all.
+			//
+			// Removed only once every reference has actually been transferred, so
+			// a failed run leaves the source intact and re-runnable.
+			if (report.Success && source != null)
+			{
+				UnityEngine.Object.DestroyImmediate(source);
+				report.Note("removed the LoadGameScreen component");
+			}
+			else if (source != null)
+			{
+				report.Manual_("LoadGameScreen left on the prefab - remove it once the "
+					+ "problems above are fixed, or its awake() will throw on every open");
+			}
+
 			return report;
 		}
 
