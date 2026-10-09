@@ -62,6 +62,17 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		{
 			base.awake();
 
+			// The prefab this screen was adapted from is LoadGameScreen, which
+			// still has its own field set. Swapping the script without remapping
+			// the fields leaves every one of them null, and each is dereferenced
+			// the moment the screen is opened - so the failure would look like a
+			// crash on opening rather than an unwired prefab. Naming it here
+			// means the console says what is actually wrong.
+			if (!AreReferencesAssigned())
+			{
+				return;
+			}
+
 			JoinButton.onClick.AddListener(JoinSelectedHost);
 			AddHostButton.onClick.AddListener(AddHostButtonClick);
 			DeleteHostButton.onClick.AddListener(DeleteHostButtonClick);
@@ -73,6 +84,13 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		protected override void refresh()
 		{
 			base.refresh();
+
+			// An unwired prefab would otherwise touch a null list here and throw
+			// on every refresh, burying the one message that explains why.
+			if (ItemsList == null)
+			{
+				return;
+			}
 
 			SavedHostStore.InvalidateCache();
 			ItemsList.Refresh();
@@ -91,7 +109,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		{
 			base.update();
 
-			if (Time.unscaledTime < nextProbeTime)
+			if (ItemsList == null || Time.unscaledTime < nextProbeTime)
 			{
 				return;
 			}
@@ -338,6 +356,40 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		private void OnSelectedItemsChanged(ScrollListBase sender)
 		{
 			RefreshItemData();
+		}
+
+		/// <summary>
+		/// Checks every reference this screen needs, and names the ones that are
+		/// missing.
+		/// </summary>
+		private bool AreReferencesAssigned()
+		{
+			List<string> missing = new List<string>();
+
+			if (ItemsList == null) missing.Add(nameof(ItemsList));
+			if (JoinButton == null) missing.Add(nameof(JoinButton));
+			if (AddHostButton == null) missing.Add(nameof(AddHostButton));
+			if (DeleteHostButton == null) missing.Add(nameof(DeleteHostButton));
+			if (RenameHostButton == null) missing.Add(nameof(RenameHostButton));
+			if (HostInfoRoot == null) missing.Add(nameof(HostInfoRoot));
+			if (MultipleItemsSelectedRoot == null) missing.Add(nameof(MultipleItemsSelectedRoot));
+			if (HostNameLabel == null) missing.Add(nameof(HostNameLabel));
+			if (HostCodeLabel == null) missing.Add(nameof(HostCodeLabel));
+			if (HostAddedLabel == null) missing.Add(nameof(HostAddedLabel));
+			if (HostStatusLabel == null) missing.Add(nameof(HostStatusLabel));
+
+			if (missing.Count == 0)
+			{
+				return true;
+			}
+
+			Debug.LogError(
+				"MultiplayerScreen is not fully wired. Unassigned: "
+				+ string.Join(", ", missing)
+				+ ". This prefab was cloned from LoadGameScreen, so its fields still have that "
+				+ "screen's names; see Assets/GameObject/MultiplayerScreen.README.md for the mapping.");
+
+			return false;
 		}
 
 		// ---- probing for liveness -------------------------------------------

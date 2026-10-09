@@ -8,15 +8,36 @@ type and what the primary button does are different.
 
 ## What still needs doing in the editor
 
-The prefab currently carries `LoadGameScreen`, not `MultiplayerScreen`. Swap the
-component, then wire the fields.
+Two things are outstanding. Both are one-line fixes in the inspector; the rest
+of this file is the field-by-field mapping.
 
-### 1. Replace the script
+### 1. The main menu's screen reference is stale
 
-On the prefab root, remove `LoadGameScreen` and add
-`OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen` (`MultiplayerScreen.cs`).
+`MainMenuScreen.MultiplayerScreenPrefab` in `MenuScreenScene.unity` points at
+the prefab that was deleted when this screen was rebuilt, so the reference is
+dead and the button logs "Multiplayer is unavailable".
 
-### 2. Swap the list scripts
+**Select `MainMenuScreen` in `MenuScreenScene` and drag
+`Assets/GameObject/MultiplayerScreen.prefab` into `Multiplayer Screen Prefab`.**
+
+### 2. The prefab still has `LoadGameScreen` on it
+
+The clone has not had its script swapped yet, so it still carries
+`LoadGameScreen` and all of that screen's field names.
+
+**On the prefab root: remove `LoadGameScreen`, add
+`OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen` (`MultiplayerScreen.cs`).**
+
+Until that is done the screen reports exactly which fields are unassigned, in
+one console message, rather than throwing when it is opened:
+
+```
+MultiplayerScreen is not fully wired. Unassigned: ItemsList, JoinButton, ...
+```
+
+### 3. Then wire the fields
+
+### 4. Swap the list scripts
 
 | Object | From | To |
 |---|---|---|
@@ -30,7 +51,7 @@ On the prefab root, remove `LoadGameScreen` and add
 - `StatusLabel` — "Connected" / "Not connected" (new)
 - `OfflineIndicator` — dimmed when not connected (was `DisabledIndicator`)
 
-### 3. Wire `MultiplayerScreen`'s fields
+### 5. Wire `MultiplayerScreen`'s fields
 
 The clone's old `LoadGameScreen` references map across like this. The file IDs
 are from the current clone, so these can be checked against the inspector:
@@ -50,7 +71,7 @@ are from the current clone, so these can be checked against the inspector:
 | `HostStatusLabel` | new — any spare text label in the info panel | — |
 | `TitleLabel` | the screen's own title text | — |
 
-### 4. Delete the import button
+### 6. Delete the import button
 
 There is no file to import — a host is reached over the network, not from
 disk. Remove the old `ImportFileButton` object (`114299931057912216`) from the
@@ -59,7 +80,7 @@ hierarchy and the field goes with it.
 Import and export are gone; rename and delete stay, because a list of hosts
 the player has joined before needs both.
 
-### 5. Hide the save-specific detail labels
+### 7. Hide the save-specific detail labels
 
 `ScenarioAuthorLabel`, `ScenarioAuthoringToolLabel`, `SaveGameCreditsLabel`,
 `SaveGameNetWorthLabel`, `SaveGamePilotLabel`, `SaveGameFactionLabel`,

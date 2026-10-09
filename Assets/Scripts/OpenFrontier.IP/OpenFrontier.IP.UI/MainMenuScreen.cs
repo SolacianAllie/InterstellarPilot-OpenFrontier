@@ -123,7 +123,7 @@ namespace OpenFrontier.IP.UI
 			{
 				Debug.LogError(
 					"Multiplayer is unavailable: MainMenuScreen.MultiplayerScreenPrefab is not assigned. "
-						+ "Run Tools > Multiplayer > Build Main Menu UI to create and wire it.");
+						+ "Assign MultiplayerScreen.prefab to it in the inspector.");
 				return;
 			}
 
