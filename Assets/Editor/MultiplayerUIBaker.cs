@@ -190,7 +190,8 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				+ "  unassigned fields: " + (missing == 0 ? "none" : missing + " <-- MUST BE FIXED") + "\n"
 				+ "  CanvasScaler on root: " + (hasScaler ? "yes" : "NO <-- screen will not scale") + "\n"
 				+ "  CanvasGroup on root: " + (hasCanvasGroup ? "yes" : "NO") + "\n"
-				+ "  Canvases assigned: " + canvases + (canvases == 0 ? " <-- MUST BE FIXED" : "");
+				+ "  Canvases assigned: " + canvases + (canvases == 0 ? " <-- MUST BE FIXED" : "") + "\n"
+				+ "  Objects in prefab: " + CountObjects(prefab) + " (need at least 20)";
 		}
 
 		private static int Missing(UnityEngine.Object reference, string fieldName)
@@ -202,6 +203,11 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 			Debug.LogWarning("MultiplayerScreen." + fieldName + " is not assigned.");
 			return 1;
+		}
+
+		private static int CountObjects(GameObject prefab)
+		{
+			return prefab.GetComponentsInChildren<Transform>(includeInactive: true).Length;
 		}
 
 		/// <summary>
@@ -461,6 +467,19 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 			if (prefab.GetComponent<CanvasScaler>() == null) problems.Add("CanvasScaler");
 
+			// A field reference pointing at an object that is not in the prefab
+			// serializes as a dangling file ID and reads back as null, which looks
+			// identical to "never assigned". Counting what was actually saved
+			// separates the two.
+			int expectedObjects = 20;
+
+			if (CountObjects(prefab) < expectedObjects)
+			{
+				problems.Add("hierarchy is truncated (found " + CountObjects(prefab)
+					+ " objects, expected at least " + expectedObjects
+					+ " - something was never parented and was dropped on save)");
+			}
+
 			ScreenBase asBase = screen;
 
 			if (asBase.Canvases == null || asBase.Canvases.Count == 0) problems.Add("Canvases");
@@ -681,6 +700,16 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			group.childControlHeight = true;
 			group.childForceExpandWidth = true;
 			group.childForceExpandHeight = true;
+
+			// Parent immediately.
+			//
+			// This was missing, and the result was that the row was never part of
+			// the hierarchy. Everything created under it - the mode buttons, the
+			// host buttons, the join field - was discarded when the prefab was
+			// saved, leaving a prefab with four objects and every field reference
+			// pointing at nothing. An unparented GameObject is not part of the
+			// scene graph and does not survive serialization.
+			row.transform.SetParent(parent, worldPositionStays: false);
 
 			return row;
 		}
