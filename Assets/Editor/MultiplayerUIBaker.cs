@@ -90,7 +90,8 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				+ "MainMenuScreen component: " + (screen != null ? "present" : "MISSING") + "\n"
 				+ "Multiplayer button: " + (hasButton ? "present" : "MISSING") + "\n"
 				+ "Multiplayer screen prefab: " + (hasScreen ? "assigned" : "NOT ASSIGNED") + "\n"
-				+ "Buttons in column: " + CountButtons(prefab);
+				+ "Buttons in prefab: " + CountButtons(prefab) + "\n"
+				+ "\nButton appearance: " + DescribeButtonAppearance(hasButton ? screen.MultiplayerButton : null);
 
 			if (!string.Equals(prefab.name, "MainMenuScreen", StringComparison.Ordinal))
 			{
@@ -104,6 +105,39 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		private static int CountButtons(GameObject prefab)
 		{
 			return prefab.GetComponentsInChildren<Button>(includeInactive: true).Length;
+		}
+
+		/// <summary>
+		/// Checks what the button actually looks like, rather than whether the
+		/// reference is set.
+		/// </summary>
+		///
+		/// A Multiplayer button with a valid reference, correct parent and active
+		/// flag can still be invisible - an empty label makes it read as blank
+		/// space. That is a different failure from a missing button, and it was
+		/// not distinguishable by looking at the serialized data alone.
+		private static string DescribeButtonAppearance(Button button)
+		{
+			if (button == null)
+			{
+				return "no button";
+			}
+
+			string text = "<no label>";
+
+			Text label = button.GetComponentInChildren<Text>();
+
+			if (label != null)
+			{
+				text = string.IsNullOrEmpty(label.text) ? "<EMPTY LABEL>" : "\"" + label.text + "\"";
+			}
+
+			Image image = button.GetComponent<Image>();
+			string sprite = image == null || image.sprite == null ? "<NO SPRITE>" : "sprite set";
+
+			return text + ", " + sprite
+				+ ", active=" + button.gameObject.activeInHierarchy
+				+ ", size=" + button.GetComponent<RectTransform>().rect.size;
 		}
 
 		// ---- screen prefab -------------------------------------------------
@@ -319,6 +353,16 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				contentsScreen.MultiplayerButton = button;
 
 				PrefabUtility.SaveAsPrefabAsset(contents, MenuPrefabPath);
+
+				// Force the asset pipeline to pick the change up NOW, before the
+				// contents copy is unloaded.
+				//
+				// SaveAsPrefabAsset writes the file, but a prefab already open in a
+				// loaded scene can keep serving the pre-save version from memory -
+				// the menu then shows without the button and it looks as though
+				// the tool silently did nothing. Importing while the copy is still
+				// loaded forces the change through.
+				AssetDatabase.ImportAsset(MenuPrefabPath, ImportAssetOptions.ForceUpdate);
 
 				AssetDatabase.SaveAssets();
 				Debug.Log("Added ButtonMultiplayer to the main menu.");
