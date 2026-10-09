@@ -46,7 +46,44 @@ namespace OpenFrontier.IP.Multiplayer
 		private const int ChecksumIndex = PayloadSize - 1;
 		private const int SecretOffset = 12;
 		private const int SecretLength = 7;
-		private const int SecretBytes = SecretLength * 8 / 32;
+
+		/// <summary>
+		/// Number of secret bytes a join code actually carries (7).
+		/// A host may generate a longer secret, but only this prefix travels in
+		/// the code and only this prefix is compared on a join - see
+		/// <see cref="SecretsMatch"/>, which exists so that mismatch is impossible
+		/// to get wrong.
+		/// </summary>
+		public const int EmbeddedSecretLength = SecretLength;
+
+		/// <summary>
+		/// Compares the secret a joiner presented against the one embedded in a
+		/// code, in constant time.
+		/// </summary>
+		public static bool SecretsMatch(byte[] expected, byte[] presented)
+		{
+			if (expected == null || presented == null)
+			{
+				return false;
+			}
+
+			if (presented.Length != SecretLength)
+			{
+				return false;
+			}
+
+			int difference = 0;
+
+			for (int i = 0; i < SecretLength; i++)
+			{
+				// A generated secret longer than the embedded prefix compares on
+				// that prefix only, which is what travels in the code.
+				byte expectedByte = i < expected.Length ? expected[i] : (byte)0;
+				difference |= expectedByte ^ presented[i];
+			}
+
+			return difference == 0;
+		}
 
 		// RFC 4648 Base32: no I, L, O, 0 or 1, so it survives being read aloud
 		// or copied off a screen without ambiguity.
@@ -254,6 +291,33 @@ namespace OpenFrontier.IP.Multiplayer
 		private static int FromVersionByte(byte value)
 		{
 			return value == VersionUnspecified ? -1 : value;
+		}
+
+		/// <summary>
+		/// Decodes a code back to its raw payload bytes, without interpreting the
+		/// fields. Exposed so tooling and tests can inspect or rebuild a code.
+		/// </summary>
+		/// <returns>False if the text is not a well-formed code.</returns>
+		public static bool TryDecodePayload(string text, out byte[] payload)
+		{
+			return TryDecode(text, out payload);
+		}
+
+		/// <summary>Encodes a raw payload back into Base32 text.</summary>
+		public static string EncodePayload(byte[] payload)
+		{
+			if (payload == null)
+			{
+				throw new ArgumentNullException(nameof(payload));
+			}
+
+			if (payload.Length != PayloadSize)
+			{
+				throw new ArgumentException(
+					"Payload must be exactly " + PayloadSize + " bytes; got " + payload.Length + ".", nameof(payload));
+			}
+
+			return Encode(payload);
 		}
 
 		private static string Encode(byte[] bytes)
