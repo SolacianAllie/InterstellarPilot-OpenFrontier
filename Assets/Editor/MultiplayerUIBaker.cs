@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using OpenFrontier.IP.Multiplayer.UI;
 using OpenFrontier.IP.UI;
 using OpenFrontier.IP.UI.Screens;
@@ -29,13 +30,22 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		private const string MenuPrefabPath = "Assets/GameObject/MainMenuScreen.prefab";
 		private const string ScreenPrefabPath = "Assets/GameObject/MultiplayerScreen.prefab";
 
-		// Copied from an existing main-menu button so the new one matches the
-		// rest of the column: same sprite, colours, transitions and sizing.
-		private const string SampleButtonPath = "Assets/GameObject/MainMenuScreen.prefab";
-
 		[MenuItem("Tools/Multiplayer/Build Main Menu UI")]
 		public static void Build()
 		{
+			// Safety net: this tool rewrites a large hand-laid-out prefab. If the
+			// working copy is dirty, saving over it would discard whatever else
+			// is in flight, so stop and let the user commit or stash first.
+			if (!EditorUtility.DisplayDialog(
+					"Multiplayer UI",
+					"This rewrites MainMenuScreen.prefab and creates MultiplayerScreen.prefab.\n\n"
+						+ "It is safe to re-run, but unsaved work in the project will not survive it.",
+					"Continue",
+					"Cancel"))
+			{
+				return;
+			}
+
 			BuildScreenPrefab();
 			AddMainMenuButton();
 			RegisterScreen();
@@ -47,6 +57,53 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				"Multiplayer UI",
 				"Added the Multiplayer button to the main menu and created MultiplayerScreen.prefab.",
 				"OK");
+		}
+
+		/// <summary>
+		/// Verifies the main menu prefab is still intact after this tool has run.
+		///
+		/// A previous version of this tool parented the new button under a
+		/// transform belonging to the prefab ASSET rather than to an editable
+		/// copy. Unity rejects that ("Cannot instantiate objects with a parent
+		/// which is persistent"), dropped the button at the scene root, and then
+		/// saved a mangled hierarchy back - re-serialising the whole prefab with
+		/// fresh file IDs and replacing the root object. This check exists so
+		/// that failure can never be silent again.
+		/// </summary>
+		[MenuItem("Tools/Multiplayer/Verify Main Menu UI")]
+		public static void Verify()
+		{
+			GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPrefabPath);
+
+			if (prefab == null)
+			{
+				EditorUtility.DisplayDialog("Multiplayer UI", "Could not load " + MenuPrefabPath, "OK");
+				return;
+			}
+
+			MainMenuScreen screen = prefab.GetComponent<MainMenuScreen>();
+			bool hasButton = screen != null && screen.MultiplayerButton != null;
+			bool hasScreen = screen != null && screen.MultiplayerScreenPrefab != null;
+
+			string report =
+				"Root object: " + prefab.name + "\n"
+				+ "MainMenuScreen component: " + (screen != null ? "present" : "MISSING") + "\n"
+				+ "Multiplayer button: " + (hasButton ? "present" : "MISSING") + "\n"
+				+ "Multiplayer screen prefab: " + (hasScreen ? "assigned" : "NOT ASSIGNED") + "\n"
+				+ "Buttons in column: " + CountButtons(prefab);
+
+			if (!string.Equals(prefab.name, "MainMenuScreen", StringComparison.Ordinal))
+			{
+				report += "\n\nWARNING: the root object has been renamed. This prefab is probably damaged - "
+					+ "restore it with: git checkout -- " + MenuPrefabPath;
+			}
+
+			EditorUtility.DisplayDialog("Multiplayer UI", report, "OK");
+		}
+
+		private static int CountButtons(GameObject prefab)
+		{
+			return prefab.GetComponentsInChildren<Button>(includeInactive: true).Length;
 		}
 
 		// ---- screen prefab -------------------------------------------------
@@ -161,7 +218,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			screen.CanvasGroups = new System.Collections.Generic.List<CanvasGroup> { canvasGroup };
 
 			GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, ScreenPrefabPath);
-			Object.DestroyImmediate(root);
+			UnityEngine.Object.DestroyImmediate(root);
 
 			Debug.Log("Created " + ScreenPrefabPath + " (" + prefab.name + ")");
 		}
@@ -170,102 +227,108 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 		private static void AddMainMenuButton()
 		{
-			GameObject menuPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(MenuPrefabPath);
-
-			if (menuPrefab == null)
+			if (AssetDatabase.LoadAssetAtPath<GameObject>(MenuPrefabPath) == null)
 			{
 				Debug.LogError("Could not load " + MenuPrefabPath);
 				return;
 			}
 
-			MainMenuScreen screen = menuPrefab.GetComponent<MainMenuScreen>();
+			// Edit the prefab through LoadPrefabContents/SaveAsPrefabAsset.
+			//
+			// The previous version loaded the prefab ASSET, instantiated it into
+			// the scene, then parented the new button under a transform taken
+			// from that asset rather than from the instance. Parenting under a
+			// persistent object is rejected by Unity ("Cannot instantiate objects
+			// with a parent which is persistent"), so the button was silently
+			// dropped at the scene root and SaveAsPrefabAsset then wrote a
+			// mangled hierarchy back - re-serialising the whole prefab with new
+			// file IDs. LoadPrefabContents gives a real, editable copy of the
+			// prefab contents, which is the supported way to edit one.
+			GameObject contents = PrefabUtility.LoadPrefabContents(MenuPrefabPath);
 
-			if (screen == null)
+			try
 			{
-				Debug.LogError("MainMenuScreen component missing from " + MenuPrefabPath);
-				return;
-			}
+				MainMenuScreen contentsScreen = contents.GetComponent<MainMenuScreen>();
 
-			// Always make sure the screen prefab is assigned, even if the button already
-			// exists - the prefab may have been created after the button was.
-			if (screen.MultiplayerScreenPrefab == null)
+				if (contentsScreen == null)
+				{
+					Debug.LogError("MainMenuScreen component missing from " + MenuPrefabPath);
+					return;
+				}
+
+				// Always make sure the screen prefab is assigned, even when the
+				// button already exists.
+				if (contentsScreen.MultiplayerScreenPrefab == null)
+				{
+					contentsScreen.MultiplayerScreenPrefab = AssetDatabase.LoadAssetAtPath<ScreenBase>(ScreenPrefabPath);
+				}
+
+				if (contentsScreen.MultiplayerButton != null)
+				{
+					Debug.Log("Main menu already has a Multiplayer button; refreshing references only.");
+					PrefabUtility.SaveAsPrefabAsset(contents, MenuPrefabPath);
+					return;
+				}
+
+				// The vertical layout column that holds every other menu button.
+				Transform column = contents.transform.Find("LayoutVerticalBottomLeft")
+					?? FindButtonColumn(contents.transform);
+
+				if (column == null)
+				{
+					Debug.LogError("Could not find the main menu button column. Add the button by hand.");
+					return;
+				}
+
+				// Take an existing button as the template so sprite, colours,
+				// sizing and the three helper scripts all match the rest of the
+				// column exactly.
+				Button template = FindTemplateButton(contentsScreen);
+
+				if (template == null)
+				{
+					Debug.LogError("Could not find a menu button to copy. Add the button by hand.");
+					return;
+				}
+
+				// Parent under the CONTENTS column, which is a normal scene
+				// object - this is the parenting that the asset-based version got
+				// wrong.
+				GameObject buttonObject = UnityEngine.Object.Instantiate(template.gameObject, column);
+				buttonObject.name = "ButtonMultiplayer";
+
+				Button button = buttonObject.GetComponent<Button>();
+
+				if (button != null)
+				{
+					button.onClick = new Button.ButtonClickedEvent();
+				}
+
+				SetLabel(buttonObject, "Multiplayer");
+
+				// Position comes from the column's VerticalLayoutGroup, so the
+				// transform needs no manual placement - only a sane default.
+				LayoutElement layoutElement = buttonObject.GetComponent<LayoutElement>();
+
+				if (layoutElement != null)
+				{
+					layoutElement.preferredHeight = 45f;
+					layoutElement.layoutPriority = 1;
+				}
+
+				contentsScreen.MultiplayerButton = button;
+
+				PrefabUtility.SaveAsPrefabAsset(contents, MenuPrefabPath);
+
+				AssetDatabase.SaveAssets();
+				Debug.Log("Added ButtonMultiplayer to the main menu.");
+			}
+			finally
 			{
-				screen.MultiplayerScreenPrefab = AssetDatabase.LoadAssetAtPath<ScreenBase>(ScreenPrefabPath);
+				// Always release the loaded copy, even on an early return, or the
+				// prefab stays locked and shows as open for editing.
+				PrefabUtility.UnloadPrefabContents(contents);
 			}
-
-			if (screen.MultiplayerButton != null)
-			{
-				Debug.Log("Main menu already has a Multiplayer button.");
-				PrefabUtility.SaveAsPrefabAsset(menuPrefab, MenuPrefabPath);
-				return;
-			}
-
-			// The vertical layout column that holds every other menu button.
-			Transform column = menuPrefab.transform.Find("LayoutVerticalBottomLeft");
-
-			if (column == null)
-			{
-				// Fall back to a search so a renamed or restructured prefab does
-				// not silently produce a button floating in the wrong place.
-				column = FindButtonColumn(menuPrefab.transform);
-			}
-
-			if (column == null)
-			{
-				Debug.LogError("Could not find the main menu button column. Add the button by hand.");
-				return;
-			}
-
-			GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(menuPrefab);
-			MainMenuScreen instanceScreen = instance.GetComponent<MainMenuScreen>();
-
-			// Carry the screen reference onto the working copy so it is written
-			// back with the button.
-			instanceScreen.MultiplayerScreenPrefab = screen.MultiplayerScreenPrefab;
-
-			// Take an existing button as the template so sprite, colours,
-			// sizing and the three helper scripts all match the rest of the
-			// column exactly.
-			Button template = FindTemplateButton(instanceScreen);
-
-			if (template == null)
-			{
-				Debug.LogError("Could not find a menu button to copy. Add the button by hand.");
-				PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.OutermostRoot, InteractionMode.AutomatedAction);
-				Object.DestroyImmediate(instance);
-				return;
-			}
-
-			GameObject buttonObject = Object.Instantiate(template.gameObject, column);
-			buttonObject.name = "ButtonMultiplayer";
-
-			Button button = buttonObject.GetComponent<Button>();
-
-			if (button != null)
-			{
-				button.onClick = new Button.ButtonClickedEvent();
-			}
-
-			SetLabel(buttonObject, "Multiplayer");
-
-			// Position comes from the column's VerticalLayoutGroup, so the
-			// transform needs no manual placement - only a sane default.
-			LayoutElement layoutElement = buttonObject.GetComponent<LayoutElement>();
-
-			if (layoutElement != null)
-			{
-				layoutElement.preferredHeight = 45f;
-				layoutElement.layoutPriority = 1;
-			}
-
-			instanceScreen.MultiplayerButton = button;
-
-			PrefabUtility.SaveAsPrefabAsset(instance, SampleButtonPath);
-			PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.OutermostRoot, InteractionMode.AutomatedAction);
-			Object.DestroyImmediate(instance);
-
-			AssetDatabase.SaveAssets();
-			Debug.Log("Added ButtonMultiplayer to the main menu.");
 		}
 
 		private static Transform FindButtonColumn(Transform root)
