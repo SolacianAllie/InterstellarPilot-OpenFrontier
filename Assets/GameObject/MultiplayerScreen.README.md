@@ -8,87 +8,56 @@ type and what the primary button does are different.
 
 ## What still needs doing in the editor
 
-Two things are outstanding. Both are one-line fixes in the inspector; the rest
-of this file is the field-by-field mapping.
+One thing: **run `Tools > Multiplayer > Transfer Screen References`.**
 
-### 1. The main menu's screen reference is stale
+It moves every reference from the `LoadGameScreen` component (which the clone
+still carries, holding correct references under the old field names) across to
+`MultiplayerScreen`, retitles the screen, hides the save-only detail rows, and
+deletes the import button. It reports what it did, refuses to save if anything
+is missing, and is safe to re-run.
 
-`MainMenuScreen.MultiplayerScreenPrefab` in `MenuScreenScene.unity` points at
-the prefab that was deleted when this screen was rebuilt, so the reference is
-dead and the button logs "Multiplayer is unavailable".
+It needs **both** components on the prefab: `LoadGameScreen` as the source of
+the references, and `MultiplayerScreen` as the destination. If `LoadGameScreen`
+has already been removed, restore the prefab from git and add
+`MultiplayerScreen` alongside it.
 
-**Select `MainMenuScreen` in `MenuScreenScene` and drag
-`Assets/GameObject/MultiplayerScreen.prefab` into `Multiplayer Screen Prefab`.**
+### The mapping it applies
 
-### 2. The prefab still has `LoadGameScreen` on it
-
-The clone has not had its script swapped yet, so it still carries
-`LoadGameScreen` and all of that screen's field names.
-
-**On the prefab root: remove `LoadGameScreen`, add
-`OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen` (`MultiplayerScreen.cs`).**
-
-Until that is done the screen reports exactly which fields are unassigned, in
-one console message, rather than throwing when it is opened:
-
-```
-MultiplayerScreen is not fully wired. Unassigned: ItemsList, JoinButton, ...
-```
-
-### 3. Then wire the fields
-
-### 4. Swap the list scripts
-
-| Object | From | To |
+| `MultiplayerScreen` | From | Clone object |
 |---|---|---|
-| `LoadGameList` | `LoadGameItemsUI` | `SavedHostItemsUI` |
-| the row prefab inside `ScrollRectGameList` | `LoadGameItemUI` | `SavedHostItemUI` |
+| `JoinButton` | `LoadGameButton` | `ButtonIconLoad` |
+| `AddHostButton` | `ExportFileButton` | `ButtonIconExport` |
+| `RenameHostButton` | `RenameFileButton` | `ButtonIconRename` |
+| `DeleteHostButton` | `DeleteGameConfirmButton` | `ButtonIconDelete` |
+| `HostInfoRoot` | `GameInfoRoot` | - |
+| `MultipleItemsSelectedRoot` | `MultipleItemsSelectedRoot` | `MultiSelectRoot` |
+| `ItemsList` | `ItemsList` | `ScrollRectGameList` |
+| `HostNameLabel` | `SaveGameNameLabel` | `LegacyTextSubTitle` |
+| `HostCodeLabel` | `SaveGameFilename` | `TextFilenameValue` |
+| `HostAddedLabel` | `SaveGameDateLabel` | `TextDate` |
+| `HostStatusLabel` | `SaveGameFilesize` | `TextFileSizeValue` |
 
-`SavedHostItemUI` needs three labels wired, matching the fields on
-`LoadGameItemUI`:
+The import button is deleted rather than repurposed: there is no file to
+import, since a host is reached over the network.
 
-- `NameLabel` — the host's name (was `ScenarioNameLabel`)
-- `StatusLabel` — "Connected" / "Not connected" (new)
-- `OfflineIndicator` — dimmed when not connected (was `DisabledIndicator`)
+`HostStatusLabel` has no natural counterpart - the save panel has no "is this
+reachable" row - so it borrows `TextFileSizeValue`, and that row's own "File
+size" caption is hidden so the status is not mislabelled.
 
-### 5. Wire `MultiplayerScreen`'s fields
+### Still manual
 
-The clone's old `LoadGameScreen` references map across like this. The file IDs
-are from the current clone, so these can be checked against the inspector:
+**The list scripts.** `ScrollRectGameList` carries `LoadGameItemsUI`; it needs
+`SavedHostItemsUI` from `SavedHostItemsUI.cs`. The row prefab inside it carries
+`LoadGameItemUI`; it needs `SavedHostItemUI`, with three labels wired:
 
-| `MultiplayerScreen` field | Take from | Current fileID |
-|---|---|---|
-| `ItemsList` | old `ItemsList` | `114633296557590524` |
-| `JoinButton` | old `LoadGameButton` | `114426252596376205` |
-| `AddHostButton` | old `ExportFileButton` (reuse the object) | `114734143864522482` |
-| `RenameHostButton` | old `RenameFileButton` | `114536148047902537` |
-| `DeleteHostButton` | old `DeleteGameConfirmButton` | `114667785438668446` |
-| `HostInfoRoot` | old `GameInfoRoot` | `1371939378208658` |
-| `MultipleItemsSelectedRoot` | old `MultipleItemsSelectedRoot` | `224739268104783211` |
-| `HostNameLabel` | old `SaveGameNameLabel` | `114965908813272002` |
-| `HostCodeLabel` | old `SaveGameFilename` | `114869737159367836` |
-| `HostAddedLabel` | old `SaveGameDateLabel` | `114232415838589296` |
-| `HostStatusLabel` | new — any spare text label in the info panel | — |
-| `TitleLabel` | the screen's own title text | — |
+- `NameLabel` - the host's name (was `ScenarioNameLabel`)
+- `StatusLabel` - online / offline (new; reuse the old date or scenario label)
+- `OfflineIndicator` - dimmed when unreachable (was `DisabledIndicator`)
 
-### 6. Delete the import button
-
-There is no file to import — a host is reached over the network, not from
-disk. Remove the old `ImportFileButton` object (`114299931057912216`) from the
-hierarchy and the field goes with it.
-
-Import and export are gone; rename and delete stay, because a list of hosts
-the player has joined before needs both.
-
-### 7. Hide the save-specific detail labels
-
-`ScenarioAuthorLabel`, `ScenarioAuthoringToolLabel`, `SaveGameCreditsLabel`,
-`SaveGameNetWorthLabel`, `SaveGamePilotLabel`, `SaveGameFactionLabel`,
-`SaveGameVersion`, `SaveGameCreatedVersion`, `SaveGamePermadeathLabel`,
-`SaveGameScenarioDateLabel`, `SaveGameSectorLabel` and
-`IncompatibleSaveIndicator` all describe a save file and have no meaning for a
-host. Deactivate them (or delete them) inside `HostInfoRoot` so the panel shows
-only name, code, when it was added, and connection state.
+**The main menu's screen reference.** `MainMenuScreen.MultiplayerScreenPrefab`
+in `MenuScreenScene.unity` points at a prefab that was deleted when this screen
+was rebuilt, so the reference is dead. Select `MainMenuScreen` and drag
+`MultiplayerScreen.prefab` into it.
 
 ## Why the screen looks the way it does
 
