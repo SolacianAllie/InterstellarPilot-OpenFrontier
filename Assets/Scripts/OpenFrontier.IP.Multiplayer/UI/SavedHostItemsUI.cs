@@ -28,9 +28,10 @@ namespace OpenFrontier.IP.Multiplayer.UI
 	/// <summary>
 	/// One row in the host list.
 	///
-	/// Shows the host's name, and whether a session with it is currently
-	/// connected. The status is deliberately not a live ping - there is no
-	/// server to ask - so it reports only what is actually known.
+	/// Shows the host's name and what the last liveness probe found: online,
+	/// offline, on a different build, or up but not accepting players.
+	/// "Checking..." while a probe is in flight - claiming a host is offline
+	/// before asking it would be a lie the player acts on.
 	/// </summary>
 	public class SavedHostItemUI : ScrollListItem<SavedHost>
 	{
@@ -38,7 +39,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 		public TextMeshProUGUI StatusLabel;
 
-		/// <summary>Dimmed when the host is not currently connected.</summary>
+		/// <summary>Dimmed when the host could not be reached.</summary>
 		public Graphic OfflineIndicator;
 
 		public override void Refresh()
@@ -54,18 +55,22 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			if (Item.IsConnected)
 			{
+				// Being in the session is the most useful thing to say, so it
+				// takes precedence over the probe result.
 				StatusLabel.text = "Connected";
 			}
 			else
 			{
-				// No server exists to ask whether a host is up, so say what is
-				// true rather than guessing at liveness.
-				StatusLabel.text = "Not connected";
+				StatusLabel.text = Item.ProbeResult.Describe();
 			}
 
 			if (OfflineIndicator != null)
 			{
-				OfflineIndicator.enabled = !Item.IsConnected;
+				// Dim only on a confirmed negative. While a probe is still in
+				// flight there is nothing to dim for.
+				OfflineIndicator.enabled = !Item.IsConnected
+					&& Item.ProbeResult.IsKnown
+					&& Item.ProbeResult.Reachability == HostReachability.Unreachable;
 			}
 		}
 	}

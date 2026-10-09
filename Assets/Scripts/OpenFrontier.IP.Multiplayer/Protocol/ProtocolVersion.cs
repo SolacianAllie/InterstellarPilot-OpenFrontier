@@ -36,5 +36,19 @@ namespace OpenFrontier.IP.Multiplayer
 		/// UI turns into a human-readable message.
 		/// </summary>
 		public const int HelloReplyMessageId = 2;
+
+		/// <summary>
+		/// A liveness probe. Sent before any handshake, and answered without one.
+		/// </summary>
+		///
+		/// This is deliberately separate from the handshake: a player browsing
+		/// their saved hosts should not create a session, consume a player slot
+		/// or leave a pending-peer entry every time the list refreshes. A reply
+		/// proves something specific and useful - the host process is running,
+		/// is in a game, and has multiplayer listening on this port right now.
+		public const int PingMessageId = 3;
+
+		/// <summary>The host's answer to a <see cref="PingMessageId"/>.</summary>
+		public const int PongMessageId = 4;
 	}
 }

@@ -93,15 +93,18 @@ namespace OpenFrontier.IP.Multiplayer
 
 		private void OnPeerAccepted(Socket socket)
 		{
-			if (!accepting || disposed)
+			if (disposed)
 			{
 				socket.Close();
 				return;
 			}
 
-			// Wrap immediately so the socket is owned by a channel. The peer is
-			// not a player yet: it must send a valid Hello and pass the version
-			// gate first, and is dropped if it doesn't.
+			// Note: a host that has stopped accepting players still ACCEPTS the
+			// socket. Refusing it here would make a probe report "offline" when
+			// the host is right there with a full session - the opposite of the
+			// truth, and the player would be told to go and check something that
+			// is working. Refusal happens at the handshake instead, where the
+			// peer is told why.
 			var channel = new MessageChannel(socket);
 			var pending = new RemotePlayer(channel, OnPlayerMessage, OnPlayerClosed);
 
@@ -123,6 +126,15 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </summary>
 		private void OnPlayerMessage(RemotePlayer player, int messageId, byte[] body)
 		{
+			// A liveness probe, answered without admitting a player. This runs
+			// before the handshake gate so a player browsing their host list does
+			// not create a session or occupy a slot.
+			if (messageId == ProtocolVersion.PingMessageId)
+			{
+				AnswerPing(player);
+				return;
+			}
+
 			if (messageId == ProtocolVersion.HelloMessageId)
 			{
 				if (player.Admitted)
@@ -158,6 +170,40 @@ namespace OpenFrontier.IP.Multiplayer
 		private void Reject(RemotePlayer player, HandshakeResult result)
 		{
 			Send(player, result, Versioning.Version, returning: false);
+			player.CloseAfterSend();
+		}
+
+		/// <summary>
+		/// Replies to a liveness probe and hangs up.
+		///
+		/// The reply carries this host's protocol and game version, which lets a
+		/// player see *why* a host is unreachable (wrong build) rather than just
+		/// that it is. The peer is never admitted, and the connection is closed
+		/// immediately so a probe costs one short exchange and no session state.
+		/// </summary>
+		private void AnswerPing(RemotePlayer player)
+		{
+			PongMessage pong = new PongMessage
+			{
+				ProtocolVersion = ProtocolVersion.Current,
+				GameVersion = Versioning.Version,
+
+				// Whether this host will actually admit a player right now. A
+				// probe succeeding while the host has stopped accepting players
+				// would otherwise read as a healthy session.
+				AcceptingPlayers = AcceptingPlayers,
+				PlayerCount = players.Count
+			};
+
+			try
+			{
+				player.Channel.Send(FramedMessage.Create(ProtocolVersion.PongMessageId, pong.ToBytes()));
+			}
+			catch (Exception)
+			{
+				// The prober went away. Nothing to do; the close below still runs.
+			}
+
 			player.CloseAfterSend();
 		}
 

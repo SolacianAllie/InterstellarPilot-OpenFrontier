@@ -112,9 +112,12 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
-			// Anything before the handshake is not something we act on. A peer
-			// gets exactly one chance to introduce itself.
-			if (!Admitted && messageId != ProtocolVersion.HelloMessageId)
+			// A ping is answered before any handshake and is not a join attempt, so it
+			// is let through the gate below. Everything else needs a handshake
+			// first: a peer gets exactly one chance to introduce itself.
+			bool isProbe = messageId == ProtocolVersion.PingMessageId;
+
+			if (!Admitted && !isProbe && messageId != ProtocolVersion.HelloMessageId)
 			{
 				closeHandler?.Invoke(this, "The other player didn't introduce itself properly.");
 				return;

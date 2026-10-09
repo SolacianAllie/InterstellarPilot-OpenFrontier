@@ -81,6 +81,31 @@ on a different build is saved like any other and refused with an explanation
 at join time, so a stale entry stays visible and explains itself rather than
 being silently discarded.
 
-"Connected" in the status column means a session with that host is live *now*.
-It is not a ping: with no server there is nothing to ask, and reporting a host
-as online without having checked would be worse than saying nothing.
+## Online status
+
+Each saved host is probed on the same port a real join would use. A probe is a
+single short connection carrying one small message; the host answers it without
+a handshake and hangs up. It creates no session and consumes no player slot, so
+refreshing the list is harmless.
+
+A reply proves something specific: the host process is running, is in a game,
+and has multiplayer listening right now. That is exactly the question worth
+asking before a player tries to join.
+
+The status column reads:
+
+| Shown | Meaning |
+|---|---|
+| `Checking...` | A probe is in flight. Shown rather than `Offline`, which would be a claim not yet checked. |
+| `Online` | Reached, and accepting players. Appends `- N connected` when others are in. |
+| `Online - not accepting players` | Reached, but the host has stopped admitting players. |
+| `Different version (x.y.z)` | Reached, but running another build. Reports their version. |
+| `Offline` | Nothing answered. Either not hosting, offline, or a network in between blocked it — indistinguishable from here. |
+| `Connected` | This player is in that session right now. Takes precedence over the above. |
+
+Probes re-run every 15 seconds while the screen is open, in parallel so a list
+of unreachable hosts still settles within one timeout rather than one per host.
+
+`Offline` deliberately does not distinguish "host closed the game" from "a
+router blocked it". With no server there is nothing to ask, and a more
+specific-sounding guess would send players after the wrong problem.

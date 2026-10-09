@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenFrontier.IP.Multiplayer;
@@ -76,6 +77,29 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			SavedHostStore.InvalidateCache();
 			ItemsList.Refresh();
 			RefreshItemData();
+
+			// Probe as soon as the screen opens rather than waiting out the
+			// first interval, so the list is useful immediately.
+			ProbeAllHosts();
+			nextProbeTime = Time.unscaledTime + ProbeIntervalSeconds;
+		}
+
+		/// <summary>
+		/// Re-probes on an interval while the screen is open.
+		/// </summary>
+		protected override void update()
+		{
+			base.update();
+
+			if (Time.unscaledTime < nextProbeTime)
+			{
+				return;
+			}
+
+			// Unscaled time, so a paused game still refreshes - a player
+			// checking whether a friend is up should not have to unpause.
+			nextProbeTime = Time.unscaledTime + ProbeIntervalSeconds;
+			ProbeAllHosts();
 		}
 
 		protected override void start()
@@ -316,6 +340,86 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			RefreshItemData();
 		}
 
+		// ---- probing for liveness -------------------------------------------
+
+		/// <summary>
+		/// How often the saved hosts are probed while this screen is open.
+		/// </summary>
+		/// <remarks>
+		/// Each probe is one short connection to the host, so this is a
+		/// deliberate cost: often enough that a host which has just come up is
+		/// noticed quickly, rare enough that a long session is not quietly
+		/// hammering someone else's machine.
+		/// </remarks>
+		private const float ProbeIntervalSeconds = 15f;
+
+		private float nextProbeTime;
+
+		/// <summary>
+		/// Asks every saved host whether it is up, concurrently.
+		/// </summary>
+		/// <remarks>
+		/// Sequential probing would cost the timeout per dead host, so a list of
+		/// ten offline hosts would take half a minute to settle. Probing in
+		/// parallel bounds the whole refresh to one timeout.
+		/// </remarks>
+		private void ProbeAllHosts()
+		{
+			IReadOnlyList<SavedHost> hosts = SavedHostStore.Hosts;
+
+			if (hosts.Count == 0)
+			{
+				return;
+			}
+
+			List<SessionCodeData> targets = new List<SessionCodeData>(hosts.Count);
+			Dictionary<string, SavedHost> byCode = new Dictionary<string, SavedHost>(hosts.Count);
+
+			foreach (SavedHost host in hosts)
+			{
+				SessionCodeParseResult parsed = SessionCode.TryParse(host.Code);
+
+				// A host whose code no longer parses cannot be probed; it keeps
+				// whatever it had, and joining it will explain the problem.
+				if (!parsed.Success)
+				{
+					continue;
+				}
+
+				targets.Add(parsed.Data);
+				byCode[host.Code] = host;
+			}
+
+			if (targets.Count == 0)
+			{
+				return;
+			}
+
+			HostProbe.ProbeAll(targets, (probed, result) =>
+			{
+				if (byCode.TryGetValue(ProbeKey(probed), out SavedHost host))
+				{
+					host.ProbeResult = result;
+
+					// Repaint the affected rows. Refresh() on the whole list is
+					// cheap at this size and avoids reaching into the list's
+					// internals to update one row.
+					ItemsList.Refresh();
+					RefreshItemData();
+				}
+			});
+		}
+
+		/// <summary>
+		/// A stable key for a probed code, so results can be matched back to the
+		/// entry they belong to.
+		/// </summary>
+		private static string ProbeKey(SessionCodeData data)
+		{
+			return data.Address + ":" + data.Port + ":"
+				+ Convert.ToBase64String(data.Secret ?? Array.Empty<byte>());
+		}
+
 		/// <summary>
 		/// Shows and hides the controls that only make sense for the current
 		/// selection, mirroring how LoadGameScreen does it.
@@ -339,7 +443,15 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			HostNameLabel.text = string.IsNullOrWhiteSpace(single.Name) ? single.Code : single.Name;
 			HostCodeLabel.text = single.Code;
 			HostAddedLabel.text = single.AddedUtc.ToLocalTime().ToString("dd-MMM-yyyy H:mm");
-			HostStatusLabel.text = single.IsConnected ? "Connected" : "Not connected";
+
+			if (single.IsConnected)
+			{
+				HostStatusLabel.text = "Connected";
+			}
+			else
+			{
+				HostStatusLabel.text = single.ProbeResult.Describe();
+			}
 		}
 
 		protected override void onDestroy()

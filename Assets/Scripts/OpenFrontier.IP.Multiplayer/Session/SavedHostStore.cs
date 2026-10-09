@@ -44,17 +44,25 @@ namespace OpenFrontier.IP.Multiplayer
 		}
 
 		/// <summary>
-		/// Whether this host looks reachable right now.
+		/// Whether a session with this host is currently connected.
 		/// </summary>
 		/// <remarks>
-		/// There is no server to ask, and probing the address on every refresh
-		/// would mean a connection attempt per entry per repaint. So this
-		/// reflects whether a session with this host is currently connected, not
-		/// a live ping. The label says "Connected" rather than "Online" for that
-		/// reason - claiming a host is online when we have not checked would be
-		/// worse than saying nothing.
+		/// Separate from <see cref="ProbeResult"/>: a probe says whether the host
+		/// could be reached, this says whether this player is in it. Both are
+		/// shown, because "the host is up but you are not connected to it" and
+		/// "the host is not up at all" call for different actions.
 		/// </remarks>
 		public bool IsConnected { get; set; }
+
+		/// <summary>
+		/// What the last liveness probe found.
+		/// </summary>
+		/// <remarks>
+		/// Not persisted: reachability is a property of right now, not of the
+		/// saved entry, and writing it out would leave the file claiming hosts
+		/// are online long after they stopped.
+		/// </remarks>
+		public HostProbeResult ProbeResult { get; set; }
 
 		public override string ToString()
 		{

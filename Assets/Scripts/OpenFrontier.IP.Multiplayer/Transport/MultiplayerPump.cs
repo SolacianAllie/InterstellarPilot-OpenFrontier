@@ -1,0 +1,77 @@
+using UnityEngine;
+
+namespace OpenFrontier.IP.Multiplayer
+{
+	/// <summary>
+	/// Drives the multiplayer update loop from Unity's frame callback.
+	///
+	/// Sockets read and write on background threads, so anything they hand over
+	/// is queued and must be moved onto the main thread before it touches the
+	/// simulation - Unity objects are not thread-safe. This component exists
+	/// solely to drain that queue once per frame; without it, no inbound message
+	/// would ever be processed and a session would connect and then sit silent.
+	///
+	/// Deliberately a scene object added at startup rather than something the
+	/// host and client have to remember to create: forgetting it would look
+	/// exactly like a networking failure.
+	/// </summary>
+	[DefaultExecutionOrder(-10000)]
+	public sealed class MultiplayerPump : MonoBehaviour
+	{
+		private const string ObjectName = "MultiplayerPump";
+
+		/// <summary>
+		/// Creates the pump if it is not already present.
+		/// </summary>
+		///
+		/// Called before the first scene loads, so the pump exists before any
+		/// session does. Uses HideFlags so it does not clutter the hierarchy, and
+		/// survives scene loads because it is created before any scene exists.
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+		private static void EnsureExists()
+		{
+			// Register the main thread while we are definitely on it, so
+			// IsMainThread is correct even if something queues work before the
+			// first Update.
+			MainThreadDispatcher.RegisterMainThread();
+
+			if (Instance != null)
+			{
+				return;
+			}
+
+			GameObject pump = new GameObject(ObjectName);
+			pump.hideFlags = HideFlags.HideAndDontSave;
+			pump.AddComponent<MultiplayerPump>();
+		}
+
+		private static MultiplayerPump Instance { get; set; }
+
+		private void Awake()
+		{
+			// Defensive: with Enter Play Mode Options the domain may not reload,
+			// so a stale reference could survive and skip creating the pump.
+			if (Instance != null && Instance != this)
+			{
+				Destroy(gameObject);
+				return;
+			}
+
+			Instance = this;
+			MainThreadDispatcher.RegisterMainThread();
+		}
+
+		private void Update()
+		{
+			MainThreadDispatcher.Drain();
+		}
+
+		private void OnDestroy()
+		{
+			if (Instance == this)
+			{
+				Instance = null;
+			}
+		}
+	}
+}
