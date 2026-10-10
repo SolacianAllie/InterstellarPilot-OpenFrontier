@@ -29,6 +29,14 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>The code to share, set once listening starts.</summary>
 		public string JoinCode { get; private set; }
 
+		/// <summary>The port actually in use.</summary>
+		/// <remarks>
+		/// Not the port that was asked for. The session lets the OS pick any
+		/// free port, so the requested value is zero and useless for
+		/// diagnosing a connection that will not open.
+		/// </remarks>
+		public int Port => listener.BoundPort;
+
 		/// <summary>Raised when a player has been admitted and identified.</summary>
 		public event Action<RemotePlayer> PlayerJoined;
 

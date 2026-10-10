@@ -50,6 +50,17 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Players already connected, when reported.</summary>
 		public int PlayerCount;
 
+		/// <summary>Why the probe failed, for the log.</summary>
+		/// <remarks>
+		/// Never shown to the player. The host list deliberately says only
+		/// "Offline", because from out here a closed game, a blocked router
+		/// and an out-of-date join code cannot be told apart, and guessing
+		/// between them would be worse than admitting it. They are perfectly
+		/// distinguishable from a log though, which is the difference between
+		/// a host being annoying and a host being debuggable.
+		/// </remarks>
+		public string Detail;
+
 		/// <summary>
 		/// Whether the host could be joined, which is what the list cares about.
 		/// </summary>
@@ -229,6 +240,72 @@ namespace OpenFrontier.IP.Multiplayer
 			MainThreadDispatcher.Post(() => onResult?.Invoke(captured));
 		}
 
+		/// <summary>
+		/// Last reason logged for each host, so a host that stays down does
+		/// not repeat itself on every poll.
+		/// </summary>
+		private static readonly System.Collections.Generic.Dictionary<string, string> LastLogged
+			= new System.Collections.Generic.Dictionary<string, string>();
+
+		private static readonly object LastLoggedLock = new object();
+
+		/// <summary>Reports a host unreachable, and says why in the log.</summary>
+		private static HostProbeResult Unreachable(SessionCodeData host, string reason)
+		{
+			HostProbeResult result = new HostProbeResult
+				{
+					Reachability = HostReachability.Unreachable,
+					Detail = reason
+				};
+
+			string key = host.Address + ":" + host.Port;
+
+			lock (LastLoggedLock)
+			{
+				if (LastLogged.TryGetValue(key, out string previous) && previous == reason)
+				{
+					// The list polls on a timer and a host that is down
+					// stays down. Once is enough; repeating it every few
+					// seconds would bury everything else in the log.
+					return result;
+				}
+
+				LastLogged[key] = reason;
+			}
+
+			// Queued: this runs on the probe's worker thread.
+			MainThreadDispatcher.Post(() => Debug.LogWarning(
+				"Multiplayer: host " + key + " is unreachable - " + reason));
+
+			return result;
+		}
+
+		/// <summary>Turns a socket error into something a player can act on.</summary>
+		private static string Describe(SocketException e)
+		{
+			switch (e.SocketErrorCode)
+			{
+				case SocketError.ConnectionRefused:
+					// The one that matters most: the machine answered,
+					// but nothing is listening on that port. Since a
+					// join code carries its own port, that almost always
+					// means the code is out of date, not the host off.
+					return "connection refused - nothing is listening there (is the code out of date?)";
+
+				case SocketError.HostUnreachable:
+					return "no route to that address";
+
+				case SocketError.NetworkUnreachable:
+					return "this device has no route to that network";
+
+				case SocketError.TimedOut:
+					return "the connection timed out";
+
+				default:
+					return e.SocketErrorCode + " (" + e.Message + ")";
+			}
+		}
+
 		private static HostProbeResult ProbeOnce(SessionCodeData host)
 		{
 			using (TcpClient client = new TcpClient())
@@ -239,16 +316,22 @@ namespace OpenFrontier.IP.Multiplayer
 
 				if (!pending.AsyncWaitHandle.WaitOne(Timeout))
 				{
-					return new HostProbeResult { Reachability = HostReachability.Unreachable };
+					// Nothing at all answered. A refused connection (below)
+					// means a stale code; silence here means something in
+					// between is dropping the packets - a different network,
+					// or a firewall.
+					return Unreachable(host, "no reply after "
+						+ (int)Timeout.TotalSeconds
+						+ "s - packets are being dropped, so the devices are probably on different networks");
 				}
 
 				try
 				{
 					client.EndConnect(pending);
 				}
-				catch (SocketException)
+				catch (SocketException e)
 				{
-					return new HostProbeResult { Reachability = HostReachability.Unreachable };
+					return Unreachable(host, Describe(e));
 				}
 				finally
 				{
@@ -274,7 +357,7 @@ namespace OpenFrontier.IP.Multiplayer
 
 					if (!ReadExactly(stream, replyHeader, 4))
 					{
-						return new HostProbeResult { Reachability = HostReachability.Unreachable };
+						return Unreachable(host, "connected, but the host never sent a reply");
 					}
 
 					int length = (replyHeader[0] << 24) | (replyHeader[1] << 16) | (replyHeader[2] << 8) | replyHeader[3];
@@ -283,37 +366,34 @@ namespace OpenFrontier.IP.Multiplayer
 					// allocate an arbitrary buffer.
 					if (length <= 0 || length > 4096)
 					{
-						return new HostProbeResult { Reachability = HostReachability.Unreachable };
+						return Unreachable(host, "the reply claimed an impossible length of " + length);
 					}
 
 					byte[] replyFramed = new byte[length];
 
 					if (!ReadExactly(stream, replyFramed, length))
 					{
-						return new HostProbeResult { Reachability = HostReachability.Unreachable };
+						return Unreachable(host, "the reply was cut short");
 					}
 
 					if (!FramedMessage.TrySplit(replyFramed, out int messageId, out byte[] body))
 					{
-						return new HostProbeResult { Reachability = HostReachability.Unreachable };
+						return Unreachable(host, "the reply was not a message this build understands");
 					}
 
 					if (messageId != ProtocolVersion.PongMessageId)
 					{
-						return new HostProbeResult { Reachability = HostReachability.Unreachable };
+						return Unreachable(host, "answered with message " + messageId + " instead of a PONG");
 					}
 
 					if (!PongMessage.TryFromBytes(body, out PongMessage pong, out string error))
 					{
-						// Queued rather than logged here: this runs on the probe's worker
-						// thread, and Debug.Log is a Unity API that expects the main
-						// thread. It works by luck on desktop and is exactly the sort
-						// of thing that behaves differently under IL2CPP or on a
-						// device - which is where a networking bug is least welcome.
-						// The result below is unaffected either way.
-						MainThreadDispatcher.Post(() =>
-							Debug.LogWarning("Multiplayer probe got an unreadable reply: " + error));
-						return new HostProbeResult { Reachability = HostReachability.Unreachable };
+						// A PONG this build cannot read means the host is running a
+						// different build. That is a real answer rather than a
+						// failure, but it is reported through here so it reaches
+						// the log, which is where someone stuck on "Offline"
+						// will end up looking.
+						return Unreachable(host, "answered with a PONG this build cannot read: " + error);
 					}
 
 					return Classify(pong);

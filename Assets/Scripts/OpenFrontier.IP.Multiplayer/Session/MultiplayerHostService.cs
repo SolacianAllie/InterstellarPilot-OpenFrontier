@@ -206,7 +206,10 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// never catches up with a code that is already there.
 			HostingStarted?.Invoke(Session.JoinCode);
 
-			Debug.Log("Multiplayer: hosting on " + address + ":" + port
+			// The bound port, not the requested one: the session asks the OS
+			// for any free port, so logging the request prints a port of zero -
+			// true, and useless when a join will not open.
+			Debug.Log("Multiplayer: hosting on " + address + ":" + Session.Port
 				+ ", code " + Session.JoinCode);
 		}
 
