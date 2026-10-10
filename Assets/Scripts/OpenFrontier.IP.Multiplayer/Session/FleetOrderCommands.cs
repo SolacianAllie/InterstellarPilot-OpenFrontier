@@ -110,7 +110,9 @@ namespace OpenFrontier.IP.Multiplayer
 				session.Send(ProtocolVersion.FleetOrderCommandMessageId, message.ToBytes());
 
 				Debug.Log("Multiplayer: asked the host for " + intent.Kind + " on "
-					+ fleetCount + " fleet(s) and " + looseCount + " loose ship(es)");
+					+ fleetCount + " fleet(s) and " + looseCount + " loose ship(es). "
+					+ "This copy selected: "
+					+ WhatThisCopyThinksItSelected(message.FleetIds, message.LooseUnitIds));
 
 				return true;
 			}
@@ -129,6 +131,93 @@ namespace OpenFrontier.IP.Multiplayer
 			MultiplayerClientService.Instance == null
 				? null
 				: MultiplayerClientService.Instance.Session;
+
+		/// <summary>
+		/// Says what this copy believes it selected, in the same words the
+		/// host will use to check it.
+		/// </summary>
+		/// <remarks>
+		/// Written because the two sides were disagreeing and neither log said
+		/// what it thought. The host could see a fleet and say whose it was;
+		/// the client could see its own selection and say nothing about it.
+		/// So a refusal could be read but never checked.
+		///
+		/// With the faction each belongs to on THIS machine, because that is
+		/// the whole question: whether the two copies agree. If they do not,
+		/// the faction named here is not the one the host will find, and that
+		/// is the answer.
+		/// </remarks>
+		private static string WhatThisCopyThinksItSelected(int[] fleetIds, int[] looseUnitIds)
+		{
+			EngineASX engine = EngineASX.Instance;
+
+			if (engine == null)
+			{
+				return " (this copy cannot read its own world)";
+			}
+
+			System.Text.StringBuilder said = new System.Text.StringBuilder();
+
+			if (fleetIds != null)
+			{
+				for (int i = 0; i < fleetIds.Length; i++)
+				{
+					Fleet fleet = engine.GetFleetByid(fleetIds[i]);
+
+					if (fleet == null)
+					{
+						Said(said, "fleet " + fleetIds[i] + " (this copy has none)");
+					}
+					else
+					{
+						Said(said, "fleet " + fleet.UniqueId + " of "
+							+ Whose(fleet.Faction) + " holding " + fleet.Ships.Count + " ship(s)");
+					}
+				}
+			}
+
+			if (looseUnitIds != null)
+			{
+				for (int i = 0; i < looseUnitIds.Length; i++)
+				{
+					Unit ship = engine.GetUnitByid(looseUnitIds[i]);
+
+					if (ship == null)
+					{
+						Said(said, "ship " + looseUnitIds[i] + " (this copy has none)");
+					}
+					else
+					{
+						Fleet inOne = ship.GetFleet();
+
+						Said(said, "ship " + ship.UniqueId + " of " + Whose(ship.Faction)
+							+ ", in fleet " + (inOne == null ? "none" : inOne.UniqueId.ToString()));
+					}
+				}
+			}
+
+			return said.Length == 0 ? "nothing" : said.ToString();
+		}
+
+		private static void Said(System.Text.StringBuilder said, string what)
+		{
+			if (said.Length > 0)
+			{
+				said.Append("; ");
+			}
+
+			said.Append(what);
+		}
+
+		private static string Whose(Faction faction)
+		{
+			if (faction == null)
+			{
+				return "nobody in particular";
+			}
+
+			return "'" + faction.Name + "' (" + faction.UniqueId + ")";
+		}
 
 		/// <summary>Stops every ship in a fleet.</summary>
 		/// <remarks>
@@ -381,6 +470,14 @@ namespace OpenFrontier.IP.Multiplayer
 					+ (theirs == null ? "missing" : "'" + theirs.Name + "' ("
 						+ theirs.UniqueId + ")"));
 
+				// What the player does own, beside what they asked for. The
+				// refusal says what was wrong; this says what was available,
+				// which is the half that tells you whether the two copies
+				// disagree about the world or the player clicked the wrong
+				// thing.
+				Debug.LogWarning("Multiplayer: their own ships are "
+					+ TheirOwnShips(engine, theirs));
+
 				return false;
 			}
 
@@ -421,9 +518,61 @@ namespace OpenFrontier.IP.Multiplayer
 			return true;
 		}
 
-		/// <summary>Whether any ship in a fleet belongs to a faction.</summary>
-		private static bool HoldsAShipOf(Fleet fleet, Faction faction)
+		/// <summary>
+		/// Every ship of a faction on this machine, and the fleets they are in.
+		/// </summary>
+		/// <remarks>
+		/// The other half of a refusal. A refusal that names only the fleet
+		/// that was refused leaves two possibilities indistinguishable - the
+		/// player asked for the wrong thing, or the two copies disagree about
+		/// the world. This says which: if the player's ship is listed here in
+		/// a fleet the client also named, the copies agree and the click was
+		/// wrong. If the player's ship is in a fleet nobody named, the client
+		/// is looking at a different world.
+		/// </remarks>
+		private static string TheirOwnShips(EngineASX engine, Faction theirs)
 		{
+			if (theirs == null || engine == null)
+			{
+				return "unknown - this world has no faction for them";
+			}
+
+			System.Text.StringBuilder said = new System.Text.StringBuilder();
+			int counted = 0;
+
+			foreach (Unit ship in engine.UpdatableUnits)
+			{
+				if (ship == null || ship.IsDestroyed || ship.Faction != theirs)
+				{
+					continue;
+				}
+
+				if (counted >= 12)
+				{
+					Said(said, "and more");
+
+					break;
+				}
+
+				Fleet inOne = ship.GetFleet();
+
+				Said(said, ship.UniqueId + " in "
+					+ (inOne == null ? "no fleet" : "fleet " + inOne.UniqueId));
+
+				counted++;
+			}
+
+			if (counted == 0)
+			{
+				return "none - faction '" + theirs.Name + "' (" + theirs.UniqueId
+					+ ") has no ships here";
+			}
+
+			return said.ToString();
+		}
+
+		/// <summary>Whether any ship in a fleet belongs to a faction.</summary>
+		private static bool HoldsAShipOf(Fleet fleet, Faction faction)		{
 			if (fleet == null || faction == null)
 			{
 				return false;
