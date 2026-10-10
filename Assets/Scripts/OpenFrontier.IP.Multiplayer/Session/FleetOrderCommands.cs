@@ -340,6 +340,41 @@ namespace OpenFrontier.IP.Multiplayer
 					continue;
 				}
 
+				// Only take the stick if there is something to fly it with.
+				//
+				// Stop is the case that matters, and it is the one players use
+				// most. It clears the orders, so by the time the handover runs
+				// this fleet has nothing queued and nothing active. The handover
+				// was unconditional, so it took the ship away to fly it with
+				// nothing at all: the client released it, stopped simulating it,
+				// and stopped asking for it back.
+				//
+				// The subscription below is what gives a ship back - it waits for
+				// the fleet to run out of orders. This fleet already had. Stop
+				// raised AllObjectivesRemoved before the handover existed to hear
+				// it, and nothing after that changes the order again, so it never
+				// fires again for this handover.
+				//
+				// That is worse than a cancelled order that did not cancel. The
+				// ship belongs to the host for the rest of the session, the player
+				// has a dead stick and no way to get it back, and no amount of
+				// cancelling fixes it, because the only thing that returns a ship
+				// is an order completing and there is no order running. It did
+				// survive a relog, but only because the relog rebuilt the session
+				// from the save - not because anything gave it back.
+				//
+				// No work, no handover. The ship stays the player's, which is the
+				// whole meaning of cancelling.
+				if (fleet.ActiveOrder == null && fleet.OrderQueue.Count == 0)
+				{
+					Debug.Log("Multiplayer: leaving the ship with the player - "
+						+ (FleetOrderKind)command.Kind
+						+ " left fleet " + fleet.UniqueId
+						+ " with nothing to do");
+
+					continue;
+				}
+
 				List<int> ids = new List<int>();
 				List<string> owners = new List<string>();
 
@@ -387,9 +422,17 @@ namespace OpenFrontier.IP.Multiplayer
 				Debug.Log("Multiplayer: taking " + ids.Count + " ship(s) off the"
 					+ " player to fly them - they were given an order");
 
-				// What the host now has to work with, because a ship that is
-				// turned but does not thrust is a ship with a pilot and no
-				// engine, and nothing else reports which of those it is.
+				// What the host actually took over, on one line, because this is
+				// the whole of what the host has to work with and nothing else
+				// says it.
+				//
+				// It is what caught the order that was queued and never
+				// started: "NONE ACTIVE, queued 1" is a fleet that accepted an
+				// order, reported it as run, and never flew it. A ship in a
+				// fleet like that has a pilot and a throttle of zero, which is
+				// what a ship that steers and never thrusts looks like from
+				// outside. Two comparable things on adjacent lines: the host's
+				// report here, and the client watching a ship that will not move.
 				for (int i = 0; i < ids.Count; i++)
 				{
 					Unit ship = engine.GetUnitByid(ids[i]);
@@ -893,6 +936,34 @@ namespace OpenFrontier.IP.Multiplayer
 							+ " has no handler on this host, and was not carried out.");
 						break;
 				}
+			}
+
+			// Start it running, the way the order screen does.
+			//
+			// In singleplayer the thing that sets a stacked order going is the
+			// order screen's Ordered callback, which walks the fleets it just
+			// ordered and calls AssignNextOrderIfNoCurrentOrder on each. A
+			// stacked order is deliberately left in the queue by SetFleetOrder,
+			// because the player may want three things done in order rather than
+			// all at once - the screen is what turns the first one on.
+			//
+			// The host has no order screen. Nobody pressed a button, so nobody
+			// called that, and the order sat in the queue being "run".
+			//
+			// The fleet's own idle path does not cover the gap: UpdateIdleFleet
+			// only auto-assigns when AIGroupAutoObjectiveAssignEnabled is on,
+			// which is a debug setting and is off in an ordinary game. So the
+			// host took the ship, gave it a pilot, told the client it was flying
+			// it, reported the order as run - and left it parked. A ship that
+			// steers and never thrusts is exactly this: a full order queue, no
+			// active order, and nothing driving the engine.
+			//
+			// Same call, same place in the sequence as the screen: enqueued,
+			// then assigned. Nothing is decided here that the screen does not
+			// also decide.
+			for (int i = 0; i < fleets.Count; i++)
+			{
+				fleets[i].AssignNextOrderIfNoCurrentOrder();
 			}
 
 			Debug.Log("Multiplayer: ran " + kind + " for " + fleets.Count + " fleet(s)");
