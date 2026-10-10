@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using OpenFrontier.IP.Engine.Factions;
 using OpenFrontier.Unity.Utils;
 using UnityEngine;
 
@@ -123,6 +124,20 @@ namespace OpenFrontier.IP.Engine
 		{
 			if (Permissions.AllowSaving && GameController.Instance.GameSaveEnabled && Engine.LocalUnit != null && (!Engine.GameSettings.SaveOnlyWhenDocked || Engine.LocalUnit.GetRootUnit().IsStatic))
 			{
+				// What this save is about to record as the player's faction
+				// name. Said here because the creation autosave is the one
+				// that has no second chance - nothing has been played yet,
+				// so nothing will be saved over it.
+				Faction saving = Engine.LocalPlayer == null
+					? null
+					: Engine.LocalPlayer.Faction;
+
+				Debug.Log("DiagSave creation autosave capturing faction '"
+					+ (saving == null ? "<no faction>" : saving.Name)
+					+ "' generatedNameId="
+					+ (saving == null ? "n/a" : saving.GeneratedNameId.ToString())
+					+ " - if this says 'Player', the name is applied too late");
+
 				Engine.AutoSaveIfPossible();
 			}
 		}

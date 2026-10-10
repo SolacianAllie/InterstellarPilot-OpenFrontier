@@ -628,17 +628,6 @@ namespace OpenFrontier.IP.Engine
 				engine.ActiveSector.UpdateAllUnitsVisibility();
 			}
 			minCombatDifficultyIndex = GameController.Instance.CombatDifficultyLevelIndex;
-			if (!isLoadedGame)
-			{
-				if (GivePlayerDefaultTitleOnNewGame)
-				{
-					AutoAssignPlayerPersonTitle();
-				}
-				if (GivePlayerDefaultFactionNameOnNewGame)
-				{
-					ApplyDefaultPlayerFactionName();
-				}
-			}
 			AutoAssignShipNames();
 			Engine.NotifyWorldLoadedAndReady();
 			RandomizeTradeSearchStartTimes();
@@ -1502,6 +1491,28 @@ namespace OpenFrontier.IP.Engine
 			PowerupFactionStations();
 			RandomizeEmptyPilotNames();
 			CallFactionAIOnNewGame();
+
+			// Before OnNewGame, because that is where this autosaves.
+			//
+			// A new game writes a save the moment it is created, so
+			// anything not yet true at this point is not in that file.
+			// The default faction name used to be applied in Init, some
+			// two hundred lines further on and well after this save, which
+			// is why a player who started a game and then left - without
+			// saving by hand, because there was nothing to save yet - came
+			// back to the prefab's 'Player'. The name had been correct the
+			// whole time; it had simply been applied after the only copy
+			// that mattered had been written.
+			if (GivePlayerDefaultTitleOnNewGame)
+			{
+				AutoAssignPlayerPersonTitle();
+			}
+
+			if (GivePlayerDefaultFactionNameOnNewGame)
+			{
+				ApplyDefaultPlayerFactionName();
+			}
+
 			OnNewGame();
 			if (NewGame != null)
 			{
