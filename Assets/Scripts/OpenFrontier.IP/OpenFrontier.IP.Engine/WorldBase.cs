@@ -606,6 +606,11 @@ namespace OpenFrontier.IP.Engine
 			{
 				EngineASX.Instance.LocalFaction.CreateStatsIfNull();
 			}
+			if (isLoadedGame && GivePlayerDefaultFactionNameOnNewGame)
+			{
+				RepairPlaceholderPlayerFactionName();
+			}
+
 			OnInit();
 			if (Initialised != null)
 			{
@@ -646,6 +651,45 @@ namespace OpenFrontier.IP.Engine
 			TimeInitialized = 0f;
 			Debug.Log("Initialising World: Finished", this);
 		}
+
+		/// <summary>
+		/// Puts the player's chosen faction name back if the save has only
+		/// the placeholder.
+		/// </summary>
+		/// <remarks>
+		/// A repair rather than a fix. The cause is known - the creation
+		/// autosave is written before the name exists - and the name is now
+		/// applied before it, but a save written by an earlier build still
+		/// says 'Player', and a player who has one should not have to replay
+		/// a game to get their name back.
+		///
+		/// Matched on the placeholder alone, and not on the name being
+		/// generated or custom, because those do not distinguish a name that
+		/// was lost from one that was chosen. The cost is a player who
+		/// deliberately called their faction 'Player' gets the default
+		/// instead, which is a smaller mistake than the one being fixed and
+		/// is undone by renaming.
+		/// </remarks>
+		private void RepairPlaceholderPlayerFactionName()
+		{
+			Faction playerFaction = EngineASX.Instance.LocalFaction;
+
+			if (playerFaction == null
+				|| !string.Equals(playerFaction.Name, PlaceholderFactionName,
+					StringComparison.OrdinalIgnoreCase))
+			{
+				return;
+			}
+
+			Debug.Log("DiagRepair faction arrived named '" + playerFaction.Name
+				+ "' from a save, so the chosen name was lost - putting '"
+				+ GameController.Instance.DefaultFactionName + "' back");
+
+			ApplyDefaultPlayerFactionName();
+		}
+
+		/// <summary>The name a faction carries before the player has one.</summary>
+		private const string PlaceholderFactionName = "Player";
 
 		private void ApplyDefaultPlayerFactionName()
 		{
