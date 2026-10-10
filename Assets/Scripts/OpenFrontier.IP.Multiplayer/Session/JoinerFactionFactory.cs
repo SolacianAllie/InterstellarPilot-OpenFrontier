@@ -41,7 +41,7 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <param name="factionShortName">Their faction's short name.</param>
 		/// <param name="ship">The shuttle created, or null if one could not be.</param>
 		/// <returns>The faction, or null with a reason.</returns>
-		public static Faction Create(EngineASX engine, string pilotName, string pilotTitle,
+		public static Faction Create(EngineASX engine, string playerToken, string pilotName, string pilotTitle,
 			string factionName, string factionShortName, out Unit ship, out string error)
 		{
 			ship = null;
@@ -69,7 +69,12 @@ namespace OpenFrontier.IP.Multiplayer
 				return null;
 			}
 
-			faction.UniqueId = -1;
+			// Set BEFORE Init, which only assigns an id when there is none.
+			// After it would be overwritten by the engine's own counter.
+			int wanted = PlayerFactionIds.For(playerToken);
+
+			faction.UniqueId = wanted >= 0 && !IsTaken(engine, wanted) ? wanted : -1;
+
 			faction.Init();
 
 			// Init does NOT register a faction with the engine, and the save
@@ -150,6 +155,11 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 
 			return wanted;
+		}
+
+		private static bool IsTaken(EngineASX engine, int factionId)
+		{
+			return factionId >= 0 && engine != null && engine.ContainsFactionById(factionId);
 		}
 
 		private static bool NameIsTaken(EngineASX engine, string name)

@@ -247,7 +247,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 					controller.DefaultFactionName, controller.DefaultFactionShortName);
 
 				OpenFrontier.IP.Engine.Factions.Faction made = JoinerFactionFactory.Create(
-					engine, resolved[0], resolved[1], resolved[2], resolved[3],
+					engine, player.Identity, resolved[0], resolved[1], resolved[2], resolved[3],
 					out OpenFrontier.IP.Engine.Unit shuttle, out string makeError);
 
 				if (made == null)
