@@ -79,6 +79,15 @@ namespace OpenFrontier.IP.Multiplayer
 			// host's pilot. Which is exactly what it did.
 			engine.RegisterFaction(faction);
 
+			// Says so out loud, because a faction that is not in engine.Factions
+			// is not in the save, and the joiner then loads a world without
+			// it and quietly stays the host's pilot. That failure is invisible
+			// from the joiner's side: it loads successfully, it is just the
+			// wrong player.
+			Debug.Log("Multiplayer: registered faction " + faction.UniqueId
+				+ " (" + factionName + "); the engine now holds "
+				+ engine.Factions.Count + " factions");
+
 			// Assigned here rather than left to the prefab's own values, which
 			// would be the host's defaults and would name every joiner after
 			// the host.
