@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using OpenFrontier.IP.Engine;
+using OpenFrontier.IP.Engine.UnitComponents;
 using OpenFrontier.IP.Multiplayer.UI;
 using UnityEngine;
 
@@ -508,6 +509,7 @@ namespace OpenFrontier.IP.Multiplayer
 			// asking a unit in another sector for one is asking for a null.
 			Vector3 velocity = Vector3.zero;
 			float currentTurn = 0f;
+			float throttle = 0f;
 
 			ActiveUnit active = unit.ActiveUnit;
 
@@ -520,6 +522,15 @@ namespace OpenFrontier.IP.Multiplayer
 				{
 					velocity = unit.RBody.linearVelocity;
 				}
+			}
+
+			// Read through the holder, which already clamps it and answers zero
+			// for a ship with no engine - so a ship without an engine reports no
+			// throttle rather than a guess, and nothing here has to know what
+			// the clamp is or where the number lives.
+			if (unit.Components != null)
+			{
+				throttle = unit.Components.EngineThrottle;
 			}
 
 			return new UnitState
@@ -535,7 +546,8 @@ namespace OpenFrontier.IP.Multiplayer
 				VelocityX = velocity.x,
 				VelocityY = velocity.y,
 				VelocityZ = velocity.z,
-				CurrentTurn = currentTurn
+				CurrentTurn = currentTurn,
+				Throttle = throttle
 			};
 		}
 	}

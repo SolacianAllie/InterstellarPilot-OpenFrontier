@@ -11,6 +11,7 @@ namespace OpenFrontier.IP.Multiplayer
 		public Vector3 Position;
 		public Quaternion Rotation;
 		public Vector3 Velocity;
+		public float Throttle;
 	}
 
 	/// <summary>
@@ -202,7 +203,8 @@ namespace OpenFrontier.IP.Multiplayer
 					// Kept, and used below. The host has been sending this
 					// since the first version of the state message and
 					// nothing ever read it.
-					Velocity = new Vector3(state.VelocityX, state.VelocityY, state.VelocityZ)
+					Velocity = new Vector3(state.VelocityX, state.VelocityY, state.VelocityZ),
+					Throttle = state.Throttle
 				});
 
 				tracks[state.Id] = track;
@@ -275,6 +277,16 @@ namespace OpenFrontier.IP.Multiplayer
 
 				unit.transform.localPosition = PositionAt(track, renderTime);
 				unit.transform.localRotation = RotationAt(track, renderTime);
+
+				// Applied through the holder, which clamps it, so a client
+				// cannot be pushed outside the range the engine would have
+				// allowed - a number read off a socket is not a number to
+				// trust, and a plume scaled by thirty is a plume nobody wants
+				// to look at.
+				if (unit.Components != null)
+				{
+					unit.Components.EngineThrottle = ThrottleAt(track, renderTime);
+				}
 			}
 		}
 
@@ -365,6 +377,53 @@ namespace OpenFrontier.IP.Multiplayer
 		/// than sailed off.
 		/// </remarks>
 		private const float MaxExtrapolationSeconds = 0.2f;
+
+		/// <summary>
+		/// How hard the engines were being pushed at a moment between samples.
+		/// </summary>
+		/// <remarks>
+		/// Interpolated for the same reason the position is. Throttle arrives
+		/// with the rest of the sample, ten times a second at most, and a
+		/// plume that steps between those is the same artefact as a ship that
+		/// steps - it draws the eye to the gap rather than to the motion.
+		///
+		/// No extrapolation here, unlike position. A ship that has stopped
+		/// should show no flame at all, and carrying the last throttle forward
+		/// would show full flame on a ship that has been told to stop. It
+		/// eases to the newest value instead, which arrives within a fifth of
+		/// a second and looks like an engine being shut off.
+		/// </remarks>
+		private static float ThrottleAt(Track track, float when)
+		{
+			UnitSample newest = track.Newest;
+
+			if (when >= newest.Time)
+			{
+				return newest.Throttle;
+			}
+
+			for (int i = track.Count - 1; i > 0; i--)
+			{
+				UnitSample b = track.At(i);
+				UnitSample a = track.At(i - 1);
+
+				if (when < a.Time || when > b.Time)
+				{
+					continue;
+				}
+
+				float span = b.Time - a.Time;
+
+				if (span <= 0f)
+				{
+					return a.Throttle;
+				}
+
+				return Mathf.LerpUnclamped(a.Throttle, b.Throttle, (when - a.Time) / span);
+			}
+
+			return track.Oldest.Throttle;
+		}
 
 		private static Quaternion RotationAt(Track track, float when)
 		{

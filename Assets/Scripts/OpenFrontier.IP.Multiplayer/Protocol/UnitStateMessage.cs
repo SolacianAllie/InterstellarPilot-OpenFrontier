@@ -51,6 +51,30 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>Current turn rate, so a client can keep turning smoothly.</summary>
 		public float CurrentTurn;
+
+		/// <summary>
+		/// How hard the engines are being pushed, 0 to 1.
+		/// </summary>
+		/// <remarks>
+		/// Not motion - the position already says where the ship is. This says
+		/// what the ship is *trying* to do, and it is what a client cannot
+		/// work out from a position: a ship coasting and a ship at full
+		/// throttle with the throttle shut are in the same place at the same
+		/// time, and only this says which.
+		///
+		/// Without it every engine plume and every ion trail on a client's
+		/// copy is driven by whatever the last thing the renderer saw was,
+		/// which for a ship somebody else is flying is nothing at all. The
+		/// ships look dead, and the world looks frozen, while the positions
+		/// are perfectly correct.
+		///
+		/// Interpolated like everything else rather than applied as it arrives,
+		/// because a plume that steps is the same artefact as a ship that
+		/// steps - and interpolating a number is cheaper than interpolating a
+		/// ship's position, so there was never a reason to treat it as less
+		/// important.
+		/// </remarks>
+		public float Throttle;
 	}
 
 	/// <summary>A batch of unit states, sent as one write.</summary>
@@ -72,14 +96,16 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>
 		/// Bytes one unit costs: an int id, three floats of position, a
-		/// quaternion, three floats of velocity and a float of turn.
+		/// quaternion, three floats of velocity, a float of turn, and a float
+		/// of throttle.
 		/// </summary>
 		/// <remarks>
 		/// Spelled out rather than measured so the decoder can check the
 		/// payload length before it allocates, which it must: the count comes
-		/// off the network.
+		/// off the network. Adding a field means changing this, and the test
+		/// that checks the two agree is what catches it when it does not.
 		/// </remarks>
-		public const int UnitBytes = 4 + (3 * 4) + (4 * 4) + (3 * 4) + 4;
+		public const int UnitBytes = 4 + (3 * 4) + (4 * 4) + (3 * 4) + 4 + 4;
 
 		/// <summary>Units in this message.</summary>
 		public UnitState[] Units;
@@ -129,6 +155,7 @@ namespace OpenFrontier.IP.Multiplayer
 					writer.Write(unit.VelocityY);
 					writer.Write(unit.VelocityZ);
 					writer.Write(unit.CurrentTurn);
+					writer.Write(unit.Throttle);
 				}
 
 				writer.Flush();
@@ -189,7 +216,8 @@ namespace OpenFrontier.IP.Multiplayer
 							VelocityX = reader.ReadSingle(),
 							VelocityY = reader.ReadSingle(),
 							VelocityZ = reader.ReadSingle(),
-							CurrentTurn = reader.ReadSingle()
+							CurrentTurn = reader.ReadSingle(),
+							Throttle = reader.ReadSingle()
 						};
 					}
 
