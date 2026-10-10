@@ -283,6 +283,37 @@ namespace OpenFrontier.IP.Engine
 			return taken;
 		}
 
+		/// <summary>
+		/// Asks the host to dock a ship. Returns true if it was asked.
+		/// </summary>
+		/// <remarks>
+		/// A seam, in the same shape as <see cref="Provider"/> and for the same
+		/// reason: the game assembly cannot reference the multiplayer one, and
+		/// that dependency must not be created. So the engine asks here, the
+		/// multiplayer side answers, and nothing in between has to know which
+		/// of them exists.
+		///
+		/// False when nobody is listening, which is the whole singleplayer
+		/// game and every host. A caller treats it as "carry on and dock it
+		/// yourself", so the ordinary path is untouched and the relay is
+		/// additive rather than a branch everybody has to remember.
+		///
+		/// This is the general shape every remaining player action will take,
+		/// and the reason the command channel is one envelope rather than
+		/// forty message types: the engine needs one door, not forty.
+		/// </remarks>
+		public static System.Func<int, int, bool> DockRequest { get; set; }
+
+		/// <summary>
+		/// Asks the host to undock a ship. Returns true if it was asked.
+		/// </summary>
+		/// <remarks>
+		/// Only the host knows what is in the hangar, so only the host can
+		/// take a ship out of it - which is the mirror of DockRequest and
+		/// exists because a dock with no way back out is not a feature.
+		/// </remarks>
+		public static System.Func<int, bool> UndockRequest { get; set; }
+
 		/// <summary>Whether this copy simulates world-level things.</summary>
 		public static bool OwnsWorld()
 		{

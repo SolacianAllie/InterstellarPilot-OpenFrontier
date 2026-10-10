@@ -1734,6 +1734,27 @@ namespace OpenFrontier.IP.Engine
 
 		public bool TryDockInHangar(UnitHangar hangar)
 		{
+			return TryDockInHangar(hangar, -1);
+		}
+
+		/// <summary>
+		/// Docks into a named bay rather than the best free one.
+		/// </summary>
+		/// <remarks>
+		/// For a copy applying what the host already decided. Every copy picks
+		/// its own best unoccupied bay when a dock happens, and there is no
+		/// reason to believe two copies would pick the same one - so a client
+		/// told "docked in bay 2" and left to choose would usually be right
+		/// and sometimes not, which is the worst of both: a hangar that
+		/// disagrees with itself over time, with nothing to correct it.
+		///
+		/// The host is still the one that decides. If the named bay is gone,
+		/// occupied, or too small on this copy, it is refused rather than
+		/// quietly swapped for another - a disagreement the host could have
+		/// caused and this copy cannot fix is better visible than hidden.
+		/// </remarks>
+		public bool TryDockInHangar(UnitHangar hangar, int wantedBayId)
+		{
 			if (hangar != null)
 			{
 				if (unit.IsDestroyed)
@@ -1748,10 +1769,31 @@ namespace OpenFrontier.IP.Engine
 				{
 					return true;
 				}
-				UnitHangarBay bestUnoccupiedBay = hangar.GetBestUnoccupiedBay(this);
-				if (bestUnoccupiedBay != null)
+
+				UnitHangarBay bay;
+
+				if (wantedBayId >= 0)
 				{
-					DockedInHangarBay = bestUnoccupiedBay;
+					bay = hangar.GetBayById(wantedBayId);
+
+					if (bay == null)
+					{
+						return false;
+					}
+
+					if (bay.DockedUnit != null || !bay.CanUnitFit(this))
+					{
+						return false;
+					}
+				}
+				else
+				{
+					bay = hangar.GetBestUnoccupiedBay(this);
+				}
+
+				if (bay != null)
+				{
+					DockedInHangarBay = bay;
 					return true;
 				}
 			}
@@ -1760,14 +1802,6 @@ namespace OpenFrontier.IP.Engine
 
 		public bool TryDockInUnit(Unit unit)
 		{
-			if (Authority.Refused(
-				"docking at a station",
-				"moved ship " + (unit == null ? "?" : unit.UniqueId.ToString())
-					+ " inside a hangar the host does not know about"))
-			{
-				return false;
-			}
-
 			if (unit != null)
 			{
 				UnitHangar hangar = unit.GetHangar();
@@ -1815,22 +1849,20 @@ namespace OpenFrontier.IP.Engine
 
 		public bool UndockIfDocked()
 		{
-			// Docked-ness is not on the wire. UnitState carries a transform
-			// and nothing else, so there is no field for it and nothing to
-			// correct it with afterwards: a client that docked locally put its
-			// ship inside a hangar the host has never heard of, and the two
-			// copies' UnitHangar.Items stayed different for the rest of the
-			// session. It shows - the sector map filters on IsDocked, and the
-			// joiner factory skips docked ships when it takes a snapshot.
+			// Deliberately not gated on authority, and that is a correction.
 			//
-			// Undocking is refused for the same reason, and for one more:
-			// only the host knows what is in the hangar, so only the host can
-			// take a ship out of it.
-			if (Authority.Refused("undocking", "moved a ship out of a hangar"))
-			{
-				return false;
-			}
-
+			// This was refused on a client, on the grounds that docked-ness is
+			// not on the wire and the two copies' hangars would diverge. True,
+			// and the wrong place to answer it: this method is called by the
+			// AI (NpcPilot, three times), by Fleet, and by the world
+			// seeders. Refusing here meant a client could not undock an NPC,
+			// and could not load a world whose ships were saved docked - which
+			// is not a bug in multiplayer at all, it is the game failing to
+			// load.
+			//
+			// A player's own ship does not come through here. It comes through
+			// the dock command, which asks the host, and the host's answer is
+			// what every copy applies.
 			if (IsDocked)
 			{
 				DockedInHangarBay = null;

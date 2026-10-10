@@ -392,10 +392,31 @@ namespace OpenFrontier.IP.UI.Screens.Hud
 
 		public void TryDockAtTarget()
 		{
-			if (currentTarget != null && PlayerUnit != null && CanRequestDockAtUnit(PlayerUnit, currentTarget))
+			if (currentTarget == null || PlayerUnit == null
+				|| !CanRequestDockAtUnit(PlayerUnit, currentTarget))
 			{
-				RequestDockAtTarget(PlayerUnit, currentTarget);
+				return;
 			}
+
+			// Asked before anything is done locally.
+			//
+			// Which hangar a ship is in is world state - the sector map
+			// filters on it, and a joiner reads it when it takes a snapshot -
+			// so a client that docked its own ship put it in a hangar the host
+			// had never heard of, and the two copies stayed different for the
+			// rest of the session with nothing to reconcile them. And only the
+			// host knows what is in a hangar, so only the host can say whether
+			// there is room.
+			//
+			// Returns false on a host and in singleplayer, where the dock
+			// happens here as it always did.
+			if (Authority.DockRequest != null
+				&& Authority.DockRequest(PlayerUnit.UniqueId, currentTarget.UniqueId))
+			{
+				return;
+			}
+
+			RequestDockAtTarget(PlayerUnit, currentTarget);
 		}
 
 		public bool CanRequestDockAtUnit(Unit playerUnit, Unit targetUnit)

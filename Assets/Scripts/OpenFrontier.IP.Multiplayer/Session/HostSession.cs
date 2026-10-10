@@ -118,6 +118,14 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public event Action<RemotePlayer, byte[]> FleetOrderRequested;
 
+		/// <summary>A player asking the host to change something.</summary>
+		/// <remarks>
+		/// Raised and nothing more, for the same reason FleetOrderRequested is:
+		/// this file holds no engine types on purpose, so it can be reasoned
+		/// about - and tested - with nothing running.
+		/// </remarks>
+		public event Action<RemotePlayer, byte[]> PlayerCommandRequested;
+
 		/// <summary>Everyone currently connected.</summary>
 		public IReadOnlyList<RemotePlayer> Players => players;
 
@@ -271,6 +279,12 @@ namespace OpenFrontier.IP.Multiplayer
 				// fleet order to knowing how a session is handed over, and
 				// the two have no business being in the same file.
 				FleetOrderRequested?.Invoke(player, body);
+				return;
+			}
+
+			if (messageId == ProtocolVersion.PlayerCommandMessageId)
+			{
+				PlayerCommandRequested?.Invoke(player, body);
 				return;
 			}
 

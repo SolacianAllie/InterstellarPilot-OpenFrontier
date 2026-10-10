@@ -116,6 +116,9 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>The host has said what this player's faction owns.</summary>
 		public event System.Action<FactionStateMessage> FactionStateReceived;
 
+		/// <summary>The host saying which hangar a ship is in.</summary>
+		public event System.Action<DockedStateMessage> DockedStateReceived;
+
 		/// <summary>
 		/// Raised once connected, for the client to state who it is.
 		/// </summary>
@@ -284,6 +287,19 @@ namespace OpenFrontier.IP.Multiplayer
 				}
 
 				WorldDescriptorReceived?.Invoke(descriptor);
+				return;
+			}
+
+			if (messageId == ProtocolVersion.DockedStateMessageId)
+			{
+				if (!DockedStateMessage.TryFromBytes(payload,
+					out DockedStateMessage docked, out string dockedError))
+				{
+					Debug.LogWarning("Multiplayer: unreadable docked state - " + dockedError);
+					return;
+				}
+
+				DockedStateReceived?.Invoke(docked);
 				return;
 			}
 

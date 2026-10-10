@@ -394,6 +394,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// looks from the joiner's side exactly like a host that has gone
 			// quiet.
 			session.FleetOrderRequested += FleetOrderCommands.RunFor;
+			session.PlayerCommandRequested += PlayerCommands.RunFor;
 
 			session.PlayerJoined += player =>
 			{

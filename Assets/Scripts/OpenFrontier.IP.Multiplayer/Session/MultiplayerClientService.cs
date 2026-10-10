@@ -131,6 +131,13 @@ namespace OpenFrontier.IP.Multiplayer
 			// Safe to install on a host too, because Attach() subscribes only
 			// to a live ClientSession and a host has none.
 			host.AddComponent<FactionStateApplier>();
+
+			// And which hangars ships are in, which the host decides and every
+			// copy applies. Before this, docked-ness was on nothing: a client
+			// that docked put its ship in a hangar the host had never heard
+			// of, and the two copies' UnitHangar.Items stayed different for
+			// the rest of the session with nothing to reconcile them.
+			host.AddComponent<DockedStateApplier>();
 		}
 
 		private void Awake()

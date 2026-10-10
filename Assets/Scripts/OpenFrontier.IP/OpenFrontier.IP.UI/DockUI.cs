@@ -201,16 +201,29 @@ namespace OpenFrontier.IP.UI
 
 		public void UndockShip(UnitComponentHolder ship)
 		{
-			if (CanUndockShip(ship))
-			{
-				ship.PilotPerson = engine.LocalPlayer.Person;
-				ship.UndockIfDocked();
-				EngineASX.Instance.HudCamera.ResetOrientation();
-			}
-			else
+			if (!CanUndockShip(ship))
 			{
 				Debug.LogWarning("Dock button clicked but can't undock");
+				return;
 			}
+
+			// Asked before anything is done locally, for the same reason
+			// docking is. Only the host knows what is in a hangar, so only the
+			// host can take a ship out of one - and a client that undocked
+			// itself would be somewhere the host did not put it, which is a
+			// copy that can never be corrected because nothing says so.
+			//
+			// Returns false on a host and in singleplayer, where the ship
+			// undocks here as it always did.
+			if (Authority.UndockRequest != null
+				&& Authority.UndockRequest(ship.Unit.UniqueId))
+			{
+				return;
+			}
+
+			ship.PilotPerson = engine.LocalPlayer.Person;
+			ship.UndockIfDocked();
+			EngineASX.Instance.HudCamera.ResetOrientation();
 		}
 
 		public void NavigateToInitialScreen()

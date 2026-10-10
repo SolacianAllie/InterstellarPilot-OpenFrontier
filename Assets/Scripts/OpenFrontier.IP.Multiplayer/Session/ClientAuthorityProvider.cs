@@ -33,6 +33,11 @@ namespace OpenFrontier.IP.Multiplayer
 			// Same hook shape as the authority provider, for the same reason:
 			// the orders live in the game assembly and cannot reach across.
 			FleetOrderCommands.Install();
+
+			// The general channel, registered on every process. The host is
+			// the only one that runs the handlers, but a client needs the
+			// names too - it logs what it asked for by them.
+			PlayerCommands.Install();
 		}
 
 		/// <summary>The one provider, since there is one copy of the world per process.</summary>
