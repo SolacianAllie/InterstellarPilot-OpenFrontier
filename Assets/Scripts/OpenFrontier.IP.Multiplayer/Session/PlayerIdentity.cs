@@ -20,6 +20,8 @@ namespace OpenFrontier.IP.Multiplayer
 	/// </summary>
 	public static class PlayerIdentity
 	{
+		// Scoped by PlayerProfile, so two copies of the game on one machine can
+		// be two players. See PlayerProfile.
 		private const string PrefsKey = "of_multiplayer_player_token";
 
 		private const string SessionSecretPrefsKey = "of_multiplayer_session_secret";
@@ -60,18 +62,19 @@ namespace OpenFrontier.IP.Multiplayer
 		{
 			cachedToken = null;
 			cachedSecret = null;
+			PlayerProfile.InvalidateCache();
 		}
 
 		private static string LoadOrCreateToken()
 		{
-			string existing = PlayerPrefs.GetString(PrefsKey, string.Empty);
+			string existing = PlayerPrefs.GetString(PlayerProfile.Key(PrefsKey), string.Empty);
 			if (!string.IsNullOrEmpty(existing))
 			{
 				return existing;
 			}
 
 			string created = GenerateToken();
-			PlayerPrefs.SetString(PrefsKey, created);
+			PlayerPrefs.SetString(PlayerProfile.Key(PrefsKey), created);
 
 			// Persist immediately: losing this token means losing the ability to
 			// reclaim the faction, so it should survive a crash right after
@@ -134,7 +137,7 @@ namespace OpenFrontier.IP.Multiplayer
 		{
 			// Base64url, as for the token: PlayerPrefs is all strings, and
 			// "+" and "/" would have to be escaped.
-			string existing = PlayerPrefs.GetString(SessionSecretPrefsKey, string.Empty);
+			string existing = PlayerPrefs.GetString(PlayerProfile.Key(SessionSecretPrefsKey), string.Empty);
 
 			if (!string.IsNullOrEmpty(existing))
 			{
@@ -161,7 +164,7 @@ namespace OpenFrontier.IP.Multiplayer
 				rng.GetBytes(bytes);
 			}
 
-			PlayerPrefs.SetString(SessionSecretPrefsKey, ToBase64Url(bytes));
+			PlayerPrefs.SetString(PlayerProfile.Key(SessionSecretPrefsKey), ToBase64Url(bytes));
 
 			// Saved immediately for the same reason the token is: a code that
 			// has already been shared out should not stop working because the
@@ -241,7 +244,7 @@ namespace OpenFrontier.IP.Multiplayer
 			set
 			{
 				cachedMode = value;
-				PlayerPrefs.SetInt(PrefsKey, (int)value);
+				PlayerPrefs.SetInt(PlayerProfile.Key(PrefsKey), (int)value);
 				PlayerPrefs.Save();
 			}
 		}
@@ -259,12 +262,12 @@ namespace OpenFrontier.IP.Multiplayer
 		{
 			// Absent key means the player has never chosen, which is Off: joining
 			// a session should be a deliberate act, not a default.
-			if (!PlayerPrefs.HasKey(PrefsKey))
+			if (!PlayerPrefs.HasKey(PlayerProfile.Key(PrefsKey)))
 			{
 				return MultiplayerMode.Off;
 			}
 
-			int raw = PlayerPrefs.GetInt(PrefsKey, (int)MultiplayerMode.Off);
+			int raw = PlayerPrefs.GetInt(PlayerProfile.Key(PrefsKey), (int)MultiplayerMode.Off);
 
 			// Guard against a corrupted or stale value written by an older
 			// build rather than casting an arbitrary int to the enum.

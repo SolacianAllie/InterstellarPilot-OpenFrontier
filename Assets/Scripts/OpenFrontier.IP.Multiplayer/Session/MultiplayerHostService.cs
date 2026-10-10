@@ -278,7 +278,8 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// The advertised address and the endpoint it listens on are now two
 			// different things, so both are named: the address goes into the code,
 			// and 0.0.0.0 is what every interface is bound to.
-			Debug.Log("Multiplayer: hosting, code advertises " + advertisedAddress
+			Debug.Log("Multiplayer: hosting as " + PlayerProfile.Describe()
+				+ ", code advertises " + advertisedAddress
 				+ ", listening on every interface at " + Session.Endpoint
 				+ ", code " + Session.JoinCode);
 		}

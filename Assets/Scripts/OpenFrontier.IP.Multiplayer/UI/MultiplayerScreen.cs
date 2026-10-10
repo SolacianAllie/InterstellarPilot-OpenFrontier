@@ -926,7 +926,8 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// they are two different people, not to read sixty characters
 			// aloud.
 			string token = PlayerIdentity.Token ?? string.Empty;
-			Set(SessionIdentityLabel, token.Length <= 8 ? token : token.Substring(0, 8));
+			Set(SessionIdentityLabel, (token.Length <= 8 ? token : token.Substring(0, 8))
+				+ PlayerProfile.Describe());
 
 			Set(SessionRouterLabel, DescribePortMapping(MultiplayerHostService.PortMapping));
 

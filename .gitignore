@@ -117,3 +117,7 @@ InitTestScene*.unity*
 # (transient run info + its meta) - not source.
 /[Pp]erformanceTestRunInfo.json
 /[Pp]erformanceTestRunSettings.json
+# Ignore the local multiplayer test profile.
+# Naming a copy makes it a different player from every other copy on this
+# machine. Safe to delete; nothing depends on it existing.
+openfrontier-profile.txt
