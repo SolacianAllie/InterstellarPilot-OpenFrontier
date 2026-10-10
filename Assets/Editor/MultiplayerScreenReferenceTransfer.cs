@@ -783,6 +783,17 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 					}
 				}
 
+				// The wrapper around the input field is left in place, but it
+				// holds nothing visible now, and it was the flexible row - so it
+				// absorbed every spare pixel and left the code pinned to the top
+				// of the dialog in a 28pt box. The slack goes to the code label
+				// instead, which is centred within it: a dialog whose subject is
+				// a 32-character code should have that code in the middle of it,
+				// not hanging off the title.
+				SetFlexibleHeight(contents, "PaddingSmallContent", 0);
+				SetFlexibleHeight(contents, "LegacyTextSubTitle", 1);
+				SetAlignment(contents, "LegacyTextSubTitle", TextAnchor.MiddleCenter);
+
 				// The character counter becomes the "where do I turn this off"
 				// hint. It has to be lifted out of the input field first: it is
 				// a CHILD of LegacyInputField, so switching the field back on
@@ -843,6 +854,56 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			}
 
 			return report;
+		}
+
+		/// <summary>
+		/// Sets a layout row's flexible height, which is what decides who gets
+		/// the leftover space.
+		/// </summary>
+		private static void SetFlexibleHeight(GameObject root, string objectName, float value)
+		{
+			Transform found = root.transform.FindDeep(objectName);
+
+			if (found == null)
+			{
+				return;
+			}
+
+			LayoutElement element = found.GetComponent<LayoutElement>();
+
+			if (element == null)
+			{
+				return;
+			}
+
+			element.flexibleHeight = value;
+		}
+
+		/// <summary>Sets a legacy label's alignment.</summary>
+		private static void SetAlignment(GameObject root, string objectName, TextAnchor anchor)
+		{
+			Transform found = root.transform.FindDeep(objectName);
+
+			if (found == null)
+			{
+				return;
+			}
+
+			Text label = found.GetComponent<Text>();
+
+			if (label != null)
+			{
+				label.alignment = anchor;
+			}
+
+			// TMP carries the same idea under a different name, and the row may
+			// be either kind depending on which pass the font swap left it as.
+			TMPro.TextMeshProUGUI tmp = found.GetComponent<TMPro.TextMeshProUGUI>();
+
+			if (tmp != null)
+			{
+				tmp.alignment = (TMPro.TextAlignmentOptions)(int)anchor;
+			}
 		}
 
 		private static Button FindButton(GameObject root, string objectName)
