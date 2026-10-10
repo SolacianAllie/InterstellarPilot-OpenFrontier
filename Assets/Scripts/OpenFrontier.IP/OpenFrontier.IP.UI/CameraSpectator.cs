@@ -468,11 +468,28 @@ namespace OpenFrontier.IP.UI
 
 		private Vector3 GetTargetRootPosition()
 		{
-			if (targetUnit != null)
+			// Every step is checked, because a unit can outlive the GameObject it was
+			// destroyed with for a frame or two around a scene change, and
+			// Unity's own null is the only check that catches an object
+			// already torn down. Staying where it is for a frame is
+			// invisible; throwing every frame while the world is being
+			// swapped out is not.
+			if (TargetRootUnit != null)
 			{
-				return TargetRootUnit.transform.position;
+				Transform rootTransform = TargetRootUnit.transform;
+
+				if (rootTransform != null)
+				{
+					return rootTransform.position;
+				}
 			}
-			return target.transform.position;
+
+			if (target != null && target.transform != null)
+			{
+				return target.transform.position;
+			}
+
+			return transform.position;
 		}
 
 		private float CalculateOrbitDistance()
