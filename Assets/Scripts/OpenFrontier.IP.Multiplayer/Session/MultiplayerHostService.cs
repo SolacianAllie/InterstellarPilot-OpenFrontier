@@ -337,10 +337,9 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			LastProblem = null;
 
 			// The handshake cannot move ships itself, so it is told who can.
-			// Whether anyone is in the session or not. A player alone is still
-			// a player, and the question the id answers should not depend on
-			// whether a second copy of the game happens to be running.
-			PlayerFactionAdopter.EnsureInstalled();
+			// The faction adopter is installed at startup rather than here,
+			// because a player alone is still a player and their faction number
+			// must not depend on whether anyone has joined.
 
 			HostSession.ShipUploadHandler = HostShipUpload.Apply;
 			HostSession.ShipMayBeClaimed = HostShipUpload.MayBeClaimed;

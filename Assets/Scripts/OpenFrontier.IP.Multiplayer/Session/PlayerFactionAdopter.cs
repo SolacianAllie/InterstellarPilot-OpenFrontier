@@ -35,6 +35,28 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Raised once the faction has been moved, or not.</summary>
 		public static event System.Action<Faction> Adopted;
 
+		/// <summary>
+		/// Installed at startup, for every player, hosting or not.
+		/// </summary>
+		/// <remarks>
+		/// This used to be installed when hosting started, on the reasoning
+		/// that it only mattered with someone else in the session. That was
+		/// wrong, and visibly so: a player alone kept an engine-numbered
+		/// faction, and the first time they joined a session their faction
+		/// changed number under them. A player's faction number cannot depend
+		/// on whether a second copy of the game happens to be running.
+		///
+		/// A runtime initialize hook rather than a call from the host service,
+		/// because this has to happen in a game the player never opens the
+		/// multiplayer menu for, and because the engine cannot reference this
+		/// assembly to do it from the other side.
+		/// </remarks>
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+		private static void Install()
+		{
+			EnsureInstalled();
+		}
+
 		/// <summary>Installs the adopter if it is not already there.</summary>
 		public static void EnsureInstalled()
 		{
