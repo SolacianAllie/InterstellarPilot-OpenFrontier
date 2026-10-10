@@ -276,13 +276,21 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				}
 			}
 
-			// The code label is the flexible row, which is what centres its text
-			// in the space it is given. That is right once there is a code and
-			// nothing else wants the room - but while the switch is showing, the
-			// claim leaves the switch stranded a long way below the line telling
-			// the player to use it. Handing the slack back while the switch is
-			// up pulls the two together.
-			SetFlexibleHeight(hosting);
+			// Exactly one row takes the layout's leftover space, and which one
+			// depends on the state.
+			//
+			// With a code, that is the code itself: it centres in the panel and
+			// the buttons sit at the bottom. Without one, the code has nothing
+			// worth centring, and giving it the room left the whole block packed
+			// against the top with a band of dead space under the buttons. So
+			// the slack moves down to the button row, whose contents centre
+			// within it and so drop to where they belong.
+			//
+			// Handing it to both would split it between them and move the code
+			// off centre in the state where it is the thing being read.
+			SetFlexible(LabelElement(LegacyCodeLabel), hosting);
+			SetFlexible(LabelElement(CodeLabel), hosting);
+			SetFlexible(LabelElement(ButtonsElement), !hosting);
 
 			// With the switch gone there is nothing on screen saying where to
 			// turn multiplayer off, so the hint takes its place. Without this the
@@ -295,27 +303,77 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		}
 
 		/// <summary>
-		/// Gives the code label the layout's spare space, or takes it back.
+		/// The button row, which takes the layout's spare space when there is no
+		/// code to fill it.
 		/// </summary>
 		/// <remarks>
-		/// Drives the label's LayoutElement rather than anything on the transform,
-		/// because the vertical layout owns this row's position - setting
-		/// anchoredPosition here would be overwritten on the next layout pass.
-		///
-		/// The argument is "is flexible", not "is hosting". It was the other way
-		/// round for a while, which took the slack away from the code at exactly
-		/// the moment it had something to show: the whole block packed to the top
-		/// of the dialog with a large gap beneath the buttons.
+		/// Found by name rather than held as a serialized reference: it is an
+		/// arbitrary row of the dialog's layout, and wiring it in the prefab for
+		/// one number would be a reference that exists only to be read.
 		/// </remarks>
-		private void SetFlexibleHeight(bool flexible)
+		private LayoutElement ButtonsElement
 		{
-			if (LegacyCodeLabel == null)
+			get
 			{
-				return;
+				if (buttonsElement == null)
+				{
+					Transform found = FindDescendant(transform, "Buttons");
+
+					if (found != null)
+					{
+						buttonsElement = found.GetComponent<LayoutElement>();
+					}
+				}
+
+				return buttonsElement;
+			}
+		}
+
+		private LayoutElement buttonsElement;
+
+		/// <summary>
+		/// Finds a descendant by name at any depth.
+		/// </summary>
+		/// <remarks>
+		/// Transform.Find only searches direct children and the button row is
+		/// nested. The editor tool has its own copy of this, but that one lives
+		/// in the editor assembly and cannot be reached from here.
+		/// </remarks>
+		private static Transform FindDescendant(Transform root, string objectName)
+		{
+			if (root.name == objectName)
+			{
+				return root;
 			}
 
-			LayoutElement element = LegacyCodeLabel.GetComponent<LayoutElement>();
+			for (int i = 0; i < root.childCount; i++)
+			{
+				Transform match = FindDescendant(root.GetChild(i), objectName);
 
+				if (match != null)
+				{
+					return match;
+				}
+			}
+
+			return null;
+		}
+
+		private static LayoutElement LabelElement(Component component)
+		{
+			return component == null ? null : component.GetComponent<LayoutElement>();
+		}
+
+		/// <summary>
+		/// Gives a row the layout's spare space, or takes it back.
+		/// </summary>
+		/// <remarks>
+		/// Drives the LayoutElement rather than the transform, because the
+		/// vertical layout owns these rows' geometry - anything set on the
+		/// transform is overwritten on the next pass.
+		/// </remarks>
+		private static void SetFlexible(LayoutElement element, bool flexible)
+		{
 			if (element != null)
 			{
 				element.flexibleHeight = flexible ? 1f : 0f;
