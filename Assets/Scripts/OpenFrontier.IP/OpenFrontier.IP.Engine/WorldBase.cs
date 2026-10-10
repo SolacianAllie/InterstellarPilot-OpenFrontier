@@ -681,8 +681,8 @@ namespace OpenFrontier.IP.Engine
 				return;
 			}
 
-			Debug.Log("DiagRepair faction arrived named '" + playerFaction.Name
-				+ "' from a save, so the chosen name was lost - putting '"
+			Debug.Log("Faction: this player's faction was saved as '"
+				+ playerFaction.Name + "', so the chosen name was lost - putting '"
 				+ GameController.Instance.DefaultFactionName + "' back");
 
 			ApplyDefaultPlayerFactionName();
@@ -710,10 +710,6 @@ namespace OpenFrontier.IP.Engine
 				// the prefab's, which is why it looked like a reset to
 				// 'Player'.
 				playerFaction.ClearGeneratedName();
-
-				Debug.Log("DiagB applying default faction name '"
-					+ GameController.Instance.DefaultFactionName + "' over '"
-					+ playerFaction.Name + "' - marked custom, so it will be saved");
 
 				playerFaction.Name = GameController.Instance.DefaultFactionName;
 				playerFaction.ShortName = GameController.Instance.DefaultFactionShortName;

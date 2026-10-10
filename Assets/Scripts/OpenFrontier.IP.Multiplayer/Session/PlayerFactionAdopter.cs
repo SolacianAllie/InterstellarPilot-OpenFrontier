@@ -119,9 +119,6 @@ namespace OpenFrontier.IP.Multiplayer
 			Debug.Log("Multiplayer: this player's faction moved to the reserved band as "
 				+ wanted + " (was " + mine.UniqueId + ")");
 
-			Debug.Log("DiagC after band adoption id=" + mine.UniqueId
-				+ " name='" + mine.Name + "' generatedNameId=" + mine.GeneratedNameId);
-
 			Adopted?.Invoke(mine);
 		}
 	}
