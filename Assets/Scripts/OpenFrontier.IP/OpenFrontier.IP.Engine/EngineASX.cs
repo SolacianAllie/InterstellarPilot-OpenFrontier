@@ -4138,15 +4138,25 @@ namespace OpenFrontier.IP.Engine
 				}
 				Unit unit = updatableUnits[curInactiveUnitIndex];
 
+				// Counted before anything can skip this unit, so that a
+				// continue below cannot leave the loop spinning. This is
+				// written here rather than at the end of the body for that
+				// reason alone: the first version of this change put the skip
+				// in and lost the decrement with it, and a while loop whose
+				// condition nothing in its body ever changes does not compile
+				// to an error - it compiles to a hang, on every launch, in
+				// every build of the game.
+				num--;
+
 				// Watched sectors are skipped here and ticked in full by
 				// UpdateWatchedSectorUnits instead. Two reasons, and the
 				// second is the important one: spending the round-robin's
 				// budget on a unit that is about to be ticked anyway makes
-				// the genuinely unwatched sectors update less often for no
-				// reason, and ticking a watched unit from both paths would
-				// simulate it twice a frame - which is the kind of bug that
-				// makes ships in one sector move at double speed and looks
-				// like a cheat.
+				// the genuinely unwatched sectors update less once per pass
+				// for no reason, and ticking a watched unit from both paths
+				// would simulate it twice a frame - which is the kind of bug
+				// that makes ships in one sector move at double speed and
+				// looks like a cheat.
 				if (unit == null || unit.Sector == null
 					|| unit.Sector.IsActive || unit.Sector.SimulatesEveryFrame)
 				{

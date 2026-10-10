@@ -20,6 +20,15 @@ C# changes are verified outside the editor with a generated .NET harness:
   `dotnet build handshake-test/handshake-test.csproj` directly to see it.
   Add the new file to every test project that already lists a sibling of it,
   and add new test `.cs` files to `codec-test.csproj` explicitly too.
+- **The harness CANNOT catch a loop that never terminates.** `while (num > 0)`
+  with nothing in the body changing `num` is valid C# and compiles clean in
+  both `All.csproj` and the editor — it is a runtime hang, on every launch,
+  and it looks exactly like a crash. This happened on 2026-10-10: adding a
+  `continue` to `EngineASX.UpdateInactiveUnits` dropped the loop's `num--`
+  and froze editor and build before the main menu. **Rule: when editing a
+  loop, put the counter next to the read, before any `continue`/`break`, and
+  re-read the whole body afterwards.** `grep` the loop for its counter as a
+  check — the compiler will not do it.
 - Build: `cd /tmp/opencode/harness && dotnet build All.csproj -v q -nologo`
 
 **Known blind spot:** the harness compiles against a UnityEngine *reference stub*,
