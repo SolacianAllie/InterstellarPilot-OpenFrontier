@@ -151,6 +151,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 			client.WorldSnapshotChunkReceived += chunk => OnWorldChunk(chunk);
 
+			client.PreferencesWanted += () => SendPreferences(client);
+
 			client.OwnershipAssigned += assignment =>
 				OwnershipView.ApplyAssignment(assignment.UnitId, assignment.OwnerToken, client.Token);
 
@@ -174,6 +176,31 @@ namespace OpenFrontier.IP.Multiplayer
 		/// fly. Resending every frame would be a message per frame per ship
 		/// for no change, and the host would answer each one.
 		/// </remarks>
+		/// <summary>
+		/// Tells the host what this player wants to be called.
+		/// </summary>
+		/// <remarks>
+		/// Asked for rather than assumed, because those defaults are per
+		/// profile: two copies of the game on one machine have different
+		/// ones, and every player in a shared session wants their own. A host
+		/// that named joiners after itself would be technically correct and
+		/// obviously wrong.
+		/// </remarks>
+		private void SendPreferences(ClientSession client)
+		{
+			OpenFrontier.IP.Engine.GameController controller = OpenFrontier.IP.Engine.GameController.Instance;
+
+			var preferences = new JoinerPreferencesMessage
+			{
+				PilotName = controller.DefaultPilotName,
+				PilotTitle = controller.DefaultPilotTitle,
+				FactionName = controller.DefaultFactionName,
+				FactionShortName = controller.DefaultFactionShortName
+			};
+
+			client.Send(ProtocolVersion.JoinerPreferencesMessageId, preferences.ToBytes());
+		}
+
 		private void UpdateOwnership()
 		{
 			if (Session == null || Session.State != JoinState.Connected)
@@ -258,7 +285,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 			HasWorld = true;
 
-			ReceivedWorldLoader.Load(completed, reason =>
+			ReceivedWorldLoader.Load(completed,
+				HostWorld ?? default(WorldDescriptorMessage), reason =>
 			{
 				Debug.Log("Multiplayer: " + reason);
 				WorldReady?.Invoke(reason);

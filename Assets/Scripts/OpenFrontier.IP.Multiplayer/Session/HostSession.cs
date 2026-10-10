@@ -49,6 +49,18 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>The address and port together, as one thing to look at.</summary>
 		public string Endpoint => Address + ":" + Port;
 
+		/// <summary>
+		/// What each player wants to be called, keyed by token.
+		/// </summary>
+		/// <remarks>
+		/// Kept per player rather than applied on arrival, because the faction
+		/// is made when the world is exported and there may be several exports
+		/// before that happens. Arriving twice, or asking twice, must not make
+		/// two factions.
+		/// </remarks>
+		private readonly Dictionary<string, JoinerPreferencesMessage> preferences =
+			new Dictionary<string, JoinerPreferencesMessage>();
+
 		/// <summary>Who owns which ship. The host decides, and this is it.</summary>
 		public UnitOwnershipRegistry Ownership { get; } = new UnitOwnershipRegistry();
 
@@ -185,6 +197,12 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </summary>
 		private void OnPlayerMessage(RemotePlayer player, int messageId, byte[] body)
 		{
+			if (messageId == ProtocolVersion.JoinerPreferencesMessageId)
+			{
+				RememberPreferences(player, body);
+				return;
+			}
+
 			if (messageId == ProtocolVersion.UnitOwnershipMessageId)
 			{
 				AnswerOwnershipClaim(player, body);
@@ -246,6 +264,37 @@ namespace OpenFrontier.IP.Multiplayer
 		/// that it is. The peer is never admitted, and the connection is closed
 		/// immediately so a probe costs one short exchange and no session state.
 		/// </summary>
+		private void RememberPreferences(RemotePlayer player, byte[] body)
+		{
+			if (!player.Admitted)
+			{
+				// Before the handshake there is nobody to make a faction
+				// for, and nothing worth remembering.
+				return;
+			}
+
+			if (!JoinerPreferencesMessage.TryFromBytes(body, out JoinerPreferencesMessage message, out string error))
+			{
+				Log?.Invoke("Multiplayer: unreadable joiner preferences - " + error);
+				return;
+			}
+
+			preferences[player.Identity] = message;
+
+			Log?.Invoke("Multiplayer: " + Short(player.Identity) + " wants to be "
+				+ message.PilotName + " of " + message.FactionName);
+		}
+
+		/// <summary>
+		/// What a player asked to be called, or null if they never said.
+		/// </summary>
+		internal JoinerPreferencesMessage PreferencesFor(string token)
+		{
+			return token != null && preferences.TryGetValue(token, out JoinerPreferencesMessage message)
+				? message
+				: default(JoinerPreferencesMessage);
+		}
+
 		/// <summary>
 		/// Decides whether this player gets this ship, and tells everyone.
 		/// </summary>

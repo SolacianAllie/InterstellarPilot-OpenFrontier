@@ -38,7 +38,10 @@ namespace OpenFrontier.IP.Multiplayer
 		/// Writes the received world out and loads it.
 		/// </summary>
 		/// <param name="finished">Called with what happened, for the player to read.</param>
-		public static void Load(byte[] snapshot, Action<string> finished)
+		/// <param name="descriptor">
+		/// What the host said about itself, including which faction is ours.
+		/// </param>
+		public static void Load(byte[] snapshot, WorldDescriptorMessage descriptor, Action<string> finished)
 		{
 			if (snapshot == null)
 			{
@@ -87,9 +90,30 @@ namespace OpenFrontier.IP.Multiplayer
 
 				bool loaded = GameController.Instance.ScenarioLoader.TryLoadScenario(header);
 
-				finished?.Invoke(loaded
-					? "Joined."
-					: "The host's world could not be loaded.");
+				if (!loaded)
+				{
+					finished?.Invoke("The host's world could not be loaded.");
+					return;
+				}
+
+				// Only now, once the world is in, can this copy be about the
+				// joiner rather than the host. Doing it earlier would be
+				// pointing at factions that are not loaded yet.
+				if (JoinerIdentityAdopter.Adopt(descriptor.MyFactionId, descriptor.MyShipId, out string adopted))
+				{
+					Debug.Log("Multiplayer: joined as " + adopted);
+					finished?.Invoke("Joined as " + adopted + ".");
+				}
+				else
+				{
+					// Said plainly rather than left to be discovered: the
+					// player is otherwise the host's pilot, with no sign that
+					// anything went wrong.
+					Debug.LogWarning("Multiplayer: joined, but no faction of ours - " + adopted);
+
+					finished?.Invoke("Joined, but could not become your own "
+						+ "pilot: " + adopted + ".");
+				}
 			}
 			catch (Exception e)
 			{

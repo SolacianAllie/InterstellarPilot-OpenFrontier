@@ -118,5 +118,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>Claiming a ship, and the host saying who has it.</summary>
 		public const int UnitOwnershipMessageId = 8;
+
+		/// <summary>How a joining player wants their pilot and faction named.</summary>
+		public const int JoinerPreferencesMessageId = 9;
 	}
 }

@@ -29,8 +29,8 @@ namespace OpenFrontier.IP.Multiplayer
 	/// </remarks>
 	public struct WorldDescriptorMessage
 	{
-		/// <summary>Bytes before the length-prefixed name: three ints.</summary>
-		public const int HeaderBytes = 12;
+		/// <summary>Bytes before the strings: five ints.</summary>
+		public const int HeaderBytes = 20;
 
 		/// <summary>
 		/// Longest pilot name accepted, in characters.
@@ -60,6 +60,21 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>The host's pilot name. May be empty.</summary>
 		public string PilotName;
 
+		/// <summary>The faction made for the joiner, or -1.</summary>
+		/// <remarks>
+		/// Sent because the save models exactly one local player. The joiner
+		/// loads the host's world and comes out as the host's pilot; these
+		/// two say which of the world's factions is actually theirs, and are
+		/// the only way it can be told.
+		/// </remarks>
+		public int MyFactionId;
+
+		/// <summary>The shuttle made for the joiner, or -1.</summary>
+		public int MyShipId;
+
+		/// <summary>Whether a faction and ship were made for this client.</summary>
+		public bool HasJoiner => MyFactionId >= 0;
+
 		/// <summary>Whether the host could name the scenario it is playing.</summary>
 		public bool HasScenario => ScenarioInfoId >= 0;
 
@@ -79,6 +94,8 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				writer.Write(ScenarioInfoId);
 				writer.Write(GameTypeId);
+				writer.Write(MyFactionId);
+				writer.Write(MyShipId);
 				writer.Write(nameBytes.Length);
 				writer.Write(nameBytes);
 				writer.Flush();
@@ -105,6 +122,8 @@ namespace OpenFrontier.IP.Multiplayer
 				{
 					int scenarioInfoId = reader.ReadInt32();
 					int gameTypeId = reader.ReadInt32();
+					int myFactionId = reader.ReadInt32();
+					int myShipId = reader.ReadInt32();
 					int nameLength = reader.ReadInt32();
 
 					// Checked before anything is allocated for it: this is a
@@ -130,6 +149,8 @@ namespace OpenFrontier.IP.Multiplayer
 					{
 						ScenarioInfoId = scenarioInfoId,
 						GameTypeId = gameTypeId,
+						MyFactionId = myFactionId,
+						MyShipId = myShipId,
 						PilotName = pilotName
 					};
 

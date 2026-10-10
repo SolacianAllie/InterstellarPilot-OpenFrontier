@@ -114,6 +114,17 @@ namespace OpenFrontier.IP.Multiplayer
 		public event Action<UnitOwnershipMessage> OwnershipAssigned;
 
 		/// <summary>
+		/// Raised once connected, for the client to state who it is.
+		/// </summary>
+		/// <remarks>
+		/// Raised rather than sent from inside the handshake, because the
+		/// joiner's faction has to exist before the host takes its world
+		/// snapshot - and the snapshot happens after the handshake completes,
+		/// not during it.
+		/// </remarks>
+		public event Action PreferencesWanted;
+
+		/// <summary>
 		/// Attempts to join using a code the player typed.
 		/// </summary>
 		public void Join(string code)
@@ -281,6 +292,10 @@ namespace OpenFrontier.IP.Multiplayer
 
 			State = JoinState.Connected;
 			Connected?.Invoke();
+
+				// The world is about to be exported, and it must contain this
+				// player's faction before it is taken.
+				PreferencesWanted?.Invoke();
 		}
 
 		private void OnChannelClosed(string reason)

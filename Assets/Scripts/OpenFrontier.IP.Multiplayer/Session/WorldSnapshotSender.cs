@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using OpenFrontier.IP.Engine;
+using OpenFrontier.IP.Multiplayer.UI;
 using UnityEngine;
 
 namespace OpenFrontier.IP.Multiplayer.UI
@@ -46,6 +47,17 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// <summary>Which scenario the cached snapshot belongs to.</summary>
 		private string cachedKey;
 		private int nextTransferId = 1;
+
+		/// <summary>
+		/// Faction and shuttle already made for each player, by token.
+		/// </summary>
+		/// <remarks>
+		/// Remembered so a rejoining player gets their existing faction back
+		/// rather than a second one. Making a new faction on every join would
+		/// leave a trail of abandoned players in the world, each with a ship
+		/// nobody is flying.
+		/// </remarks>
+		private readonly Dictionary<string, int[]> madeFor = new Dictionary<string, int[]>();
 
 		private readonly Dictionary<RemotePlayer, Queue<byte[]>> inFlight =
 			new Dictionary<RemotePlayer, Queue<byte[]>>();
@@ -167,14 +179,15 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			}
 
 			EngineASX engine = EngineASX.Instance;
+			HostSession session = MultiplayerHostService.Session;
 
-			if (engine == null || engine.World == null)
+			if (engine == null || engine.World == null || session == null)
 			{
 				// Admitted from the menu, so there is nothing to arrive into.
 				// The descriptor still goes out, with no scenario, so the
 				// joiner is told rather than left waiting for bytes that will
 				// never come.
-				SendDescriptor(player, MultiplayerHostService.ScenarioId, string.Empty);
+				SendDescriptor(player, MultiplayerHostService.ScenarioId, -1, -1);
 
 				reason?.Invoke("no world to send - the host is not in a game");
 				return;
@@ -182,7 +195,56 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			int scenarioId = MultiplayerHostService.ScenarioId;
 
-			SendDescriptor(player, scenarioId, string.Empty);
+			// The faction is made BEFORE the export, not after. The save models
+			// exactly one local player, so a second player cannot appear by
+			// being loaded - it has to be in the snapshot. Making it here also
+			// means its ids come from the host's counter, so both copies
+			// number the shuttle the same way with nothing to reconcile.
+			int factionId = -1;
+			int shipId = -1;
+
+			if (!madeFor.TryGetValue(player.Identity, out int[] knownFor))
+			{
+				JoinerPreferencesMessage wanted = session.PreferencesFor(player.Identity);
+				OpenFrontier.IP.Engine.GameController controller = OpenFrontier.IP.Engine.GameController.Instance;
+
+				string[] resolved = wanted.Resolved(
+					controller.DefaultPilotName, controller.DefaultPilotTitle,
+					controller.DefaultFactionName, controller.DefaultFactionShortName);
+
+				OpenFrontier.IP.Engine.Factions.Faction made = JoinerFactionFactory.Create(
+					engine, resolved[0], resolved[1], resolved[2], resolved[3],
+					out OpenFrontier.IP.Engine.Unit shuttle, out string makeError);
+
+				if (made == null)
+				{
+					Debug.LogError("Multiplayer: no faction could be made for " + player.Identity + " - " + makeError);
+				}
+				else
+				{
+					factionId = made.UniqueId;
+					shipId = shuttle == null ? -1 : shuttle.UniqueId;
+					madeFor[player.Identity] = new int[] { factionId, shipId };
+
+					// The world just changed, so what was exported last time is
+					// no longer what this player should receive.
+					cachedSnapshot = null;
+					cachedKey = null;
+
+					Debug.Log("Multiplayer: made faction " + factionId + " ("
+						+ resolved[2] + ") with shuttle " + shipId + " for " + player.Identity);
+				}
+			}
+			else
+			{
+				// Already made for this player, from an earlier join. Handing
+				// back the same faction is what stops every rejoin leaving
+				// another abandoned ship behind.
+				factionId = knownFor[0];
+				shipId = knownFor[1];
+			}
+
+			SendDescriptor(player, scenarioId, factionId, shipId);
 
 			// Reuse the export only while it is still the world this session
 			// is playing. The key changes with the scenario, and the snapshot
@@ -222,13 +284,15 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				+ cachedSnapshot.Length + " bytes, transfer " + transferId + ")");
 		}
 
-		private void SendDescriptor(RemotePlayer player, int scenarioId, string pilotName)
+		private void SendDescriptor(RemotePlayer player, int scenarioId, int factionId, int shipId)
 		{
 			var descriptor = new WorldDescriptorMessage
 			{
 				ScenarioInfoId = scenarioId,
 				GameTypeId = (int)OpenFrontier.IP.Engine.UniverseGameType.Newcomer,
-				PilotName = pilotName ?? string.Empty
+				MyFactionId = factionId,
+				MyShipId = shipId,
+				PilotName = string.Empty
 			};
 
 			player.Channel.Send(FramedMessage.Create(
