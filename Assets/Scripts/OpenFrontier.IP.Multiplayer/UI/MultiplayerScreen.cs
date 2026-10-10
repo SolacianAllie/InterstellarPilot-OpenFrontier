@@ -100,6 +100,17 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 		public Text TitleLabel;
 
+		/// <summary>
+		/// Whether the multiplayer menu has been opened in this process.
+		/// </summary>
+		/// <remarks>
+		/// Read by the network log to decide which of its two files to write.
+		/// Crude, but it is the only signal available before a join has been
+		/// attempted, and a host that also joins being filed as a host is the
+		/// safer error: the host's file is always the one worth having.
+		/// </remarks>
+		public static bool MultiplayerScreenWasOpened { get; private set; }
+
 		private ClientSession client;
 
 		/// <summary>
@@ -134,6 +145,8 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		protected override void awake()
 		{
 			base.awake();
+
+			MultiplayerScreenWasOpened = true;
 
 			// Each control is wired as soon as it exists, rather than all or
 			// nothing. This prefab was cloned from LoadGameScreen, so while it is

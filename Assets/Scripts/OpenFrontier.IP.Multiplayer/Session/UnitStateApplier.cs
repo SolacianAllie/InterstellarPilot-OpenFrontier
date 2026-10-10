@@ -119,6 +119,9 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
+			NetLog.Write("applying - " + appliedLastUpdate + " applied, "
+				+ unknownLastUpdate + " unknown, of " + receivedTotal + " received");
+
 			Debug.Log("Multiplayer: applying - " + appliedLastUpdate + " applied, "
 				+ unknownLastUpdate + " named units this copy does not have, of "
 				+ receivedTotal + " received");
