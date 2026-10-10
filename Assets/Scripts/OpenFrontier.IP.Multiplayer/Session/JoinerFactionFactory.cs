@@ -73,6 +73,40 @@ namespace OpenFrontier.IP.Multiplayer
 			// After it would be overwritten by the engine's own counter.
 			int wanted = PlayerIdScheme.FactionIdFor(playerToken);
 
+			// A faction already sitting on this player's own number is this
+			// player's faction, left over from a session they played before.
+			//
+			// It used to be treated as a collision and stepped around, which
+			// gave the joiner an engine-numbered faction instead of a banded
+			// one - so the whole point of the bands, that anything a player
+			// made is identifiable by its number, quietly stopped being true
+			// for anybody who had ever joined before. And the old faction sat
+			// there for ever, because nobody ever came back for it.
+			//
+			// Taken over rather than duplicated. A player who comes back gets
+			// their own faction again, at their own number, which is also what
+			// "your faction is yours whether you host or join" needs to mean.
+			Faction returning = wanted >= 0 ? engine.GetFactionByid(wanted) : null;
+
+			if (returning != null)
+			{
+				Debug.Log("Multiplayer: " + playerToken + " already has faction "
+					+ wanted + " ('" + returning.Name + "') from an earlier session"
+					+ " - taking it back rather than making a second one");
+
+				AdoptExisting(engine, returning, factionName, playerToken);
+
+				ship = CreateShuttle(engine, returning, out string backError);
+
+				if (ship == null)
+				{
+					error = backError;
+					return null;
+				}
+
+				return returning;
+			}
+
 			faction.UniqueId = wanted >= 0 && !IsTaken(engine, wanted) ? wanted : -1;
 
 			faction.Init();
@@ -155,6 +189,35 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 
 			return wanted;
+		}
+
+		/// <summary>
+		/// Puts a returning player's own faction back the way they left it.
+		/// </summary>
+		/// <remarks>
+		/// The faction is the same object that was saved, so everything on it
+		/// is still true: its credits, its relations, its ships. Only the
+		/// things a join needs to be correct are set - the name the player
+		/// chose, and the pilot's own identity.
+		///
+		/// The name is only applied when the saved one is the host's default,
+		/// so that a player who renamed their faction finds it still renamed.
+		/// </remarks>
+		private static void AdoptExisting(
+			EngineASX engine, Faction existing, string factionName, string playerToken)
+		{
+			string wanted = factionName;
+
+			if (!string.IsNullOrEmpty(wanted) && !NameIsTaken(engine, wanted))
+			{
+				existing.Name = wanted;
+			}
+
+			engine.RegisterFaction(existing);
+
+			Debug.Log("Multiplayer: faction " + existing.UniqueId + " ('"
+				+ existing.Name + "') returned to " + playerToken + "; the engine"
+				+ " now holds " + engine.Factions.Count + " factions");
 		}
 
 		private static bool IsTaken(EngineASX engine, int factionId)
