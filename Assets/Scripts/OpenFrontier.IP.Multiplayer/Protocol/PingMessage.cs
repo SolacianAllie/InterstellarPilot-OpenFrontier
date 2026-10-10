@@ -98,6 +98,15 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>How many players are already connected.</summary>
 		public int PlayerCount;
 
+		/// <summary>Who is hosting, by the name they have chosen.</summary>
+		public string HostName;
+
+		/// <summary>What they are playing, so a slot says something useful.</summary>
+		public string ScenarioName;
+
+		/// <summary>Seconds this session has been up.</summary>
+		public int SessionSeconds;
+
 		public byte[] ToBytes()
 		{
 			using (MemoryStream stream = new MemoryStream())
@@ -117,10 +126,59 @@ namespace OpenFrontier.IP.Multiplayer
 					writer.Write(AcceptingPlayers);
 					writer.Write(InMainMenu);
 					writer.Write(PlayerCount);
+					writer.Write(SessionSeconds < 0 ? -1 : SessionSeconds);
+
+					WriteName(writer, HostName);
+					WriteName(writer, ScenarioName);
 				}
 
 				return stream.ToArray();
 			}
+		}
+
+		/// <summary>Longest name a host may send, in bytes.</summary>
+		public const int MaxNameBytes = 48;
+
+		private static void WriteName(BinaryWriter writer, string value)
+		{
+			byte[] bytes = string.IsNullOrEmpty(value)
+				? new byte[0]
+				: System.Text.Encoding.UTF8.GetBytes(value);
+
+			if (bytes.Length > MaxNameBytes)
+			{
+				byte[] cut = new byte[MaxNameBytes];
+				Array.Copy(bytes, cut, MaxNameBytes);
+				bytes = cut;
+			}
+
+			writer.Write(bytes.Length);
+			writer.Write(bytes);
+		}
+
+		private static string ReadName(BinaryReader reader, out bool ok)
+		{
+			ok = true;
+
+			int length = reader.ReadInt32();
+
+			// Checked before anything is reserved: this decides how much memory
+			// a message from another machine buys.
+			if (length < 0 || length > MaxNameBytes)
+			{
+				ok = false;
+				return string.Empty;
+			}
+
+			if (length > (reader.BaseStream.Length - reader.BaseStream.Position))
+			{
+				ok = false;
+				return string.Empty;
+			}
+
+			return length == 0
+				? string.Empty
+				: System.Text.Encoding.UTF8.GetString(reader.ReadBytes(length));
 		}
 
 		public static bool TryFromBytes(byte[] bytes, out PongMessage message, out string error)
@@ -130,7 +188,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 			// 4 protocol + 16 version + 1 accepting + 1 in-main-menu + 4 count
 			// = 26. BinaryWriter writes a bool as a single byte, not four.
-			if (bytes == null || bytes.Length < 26)
+			// 26 for the fixed part, plus two four-byte name lengths.
+			if (bytes == null || bytes.Length < 34)
 			{
 				error = "Reply was truncated.";
 				return false;
@@ -149,6 +208,16 @@ namespace OpenFrontier.IP.Multiplayer
 					bool accepting = reader.ReadBoolean();
 					bool inMainMenu = reader.ReadBoolean();
 					int playerCount = reader.ReadInt32();
+					int sessionSeconds = reader.ReadInt32();
+
+					string hostName = ReadName(reader, out bool hostNameOk);
+					string scenarioName = ReadName(reader, out bool scenarioNameOk);
+
+					if (!hostNameOk || !scenarioNameOk)
+					{
+						error = "Reply contained an implausible name.";
+						return false;
+					}
 
 					Version version = null;
 
@@ -171,7 +240,10 @@ namespace OpenFrontier.IP.Multiplayer
 						GameVersion = version,
 						AcceptingPlayers = accepting,
 						InMainMenu = inMainMenu,
-						PlayerCount = playerCount
+						PlayerCount = playerCount,
+						SessionSeconds = sessionSeconds,
+						HostName = hostName,
+						ScenarioName = scenarioName
 					};
 
 					return true;

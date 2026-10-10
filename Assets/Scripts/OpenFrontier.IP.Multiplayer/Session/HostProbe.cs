@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
@@ -64,6 +65,24 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Players already connected, when reported.</summary>
 		public int PlayerCount;
 
+		/// <summary>Round trip, in milliseconds, when a reply arrived.</summary>
+		/// <remarks>
+		/// The most informative number about a host nobody can see. Whether a
+		/// join will feel laggy or merely feels local is the first question a
+		/// player asks about a host they have not tried, and this answers it
+		/// without joining.
+		/// </remarks>
+		public int LatencyMs;
+
+		/// <summary>Who the host is, when one was reported.</summary>
+		public string HostName;
+
+		/// <summary>What they are playing, when they are playing anything.</summary>
+		public string ScenarioName;
+
+		/// <summary>How long their session has been up.</summary>
+		public int SessionSeconds;
+
 		/// <summary>Why the probe failed, for the log.</summary>
 		/// <remarks>
 		/// Never shown to the player. The host list deliberately says only
@@ -124,7 +143,7 @@ namespace OpenFrontier.IP.Multiplayer
 				case HostReachability.InMainMenu:
 					// Says what to do about it, not just what it is: the host is
 					// fine, they are just not in a game yet.
-					return "In the main menu";
+					return "In the main menu - no game loaded";
 
 				default:
 					// No reply. Either nothing is listening, or the host is
@@ -139,6 +158,41 @@ namespace OpenFrontier.IP.Multiplayer
 		public string Describe()
 		{
 			string state = DescribeState();
+
+			if (Reachability == HostReachability.Online || Reachability == HostReachability.InMainMenu)
+			{
+				var facts = new List<string>();
+
+				if (!string.IsNullOrWhiteSpace(ScenarioName))
+				{
+					facts.Add(ScenarioName);
+				}
+
+				if (PlayerCount > 0)
+				{
+					facts.Add(PlayerCount + (PlayerCount == 1 ? " player" : " players"));
+				}
+
+				if (LatencyMs > 0)
+				{
+					facts.Add(LatencyMs + " ms");
+				}
+
+				if (SessionSeconds > 60)
+				{
+					int minutes = SessionSeconds / 60;
+
+					facts.Add(minutes < 60
+						? minutes + (minutes == 1 ? " min up" : " mins up")
+						: (minutes / 60) + "h up");
+				}
+
+				// What to do, then anything worth knowing about who they are.
+				if (facts.Count > 0)
+				{
+					return state + " - " + string.Join(", ", facts.ToArray());
+				}
+			}
 
 			if (Reachability == HostReachability.VersionMismatch && HostVersion != null)
 			{
@@ -355,6 +409,12 @@ namespace OpenFrontier.IP.Multiplayer
 
 		private static HostProbeResult ProbeOnce(SessionCodeData host)
 		{
+			// Started before the connect rather than around the exchange, so
+			// the number includes the handshake - which is most of what a
+			// player experiences and none of what a send-to-reply timer would
+			// measure.
+			var clock = System.Diagnostics.Stopwatch.StartNew();
+
 			using (TcpClient client = new TcpClient())
 			{
 				client.NoDelay = true;
@@ -443,18 +503,22 @@ namespace OpenFrontier.IP.Multiplayer
 						return Unreachable(host, "answered with a PONG this build cannot read: " + error);
 					}
 
-					return Classify(pong);
+					return Classify(pong, (int)clock.ElapsedMilliseconds);
 				}
 			}
 		}
 
-		private static HostProbeResult Classify(PongMessage pong)
+		private static HostProbeResult Classify(PongMessage pong, int latencyMs)
 		{
 			HostProbeResult result = new HostProbeResult
 			{
 				HostVersion = pong.GameVersion,
 				AcceptingPlayers = pong.AcceptingPlayers,
-				PlayerCount = pong.PlayerCount
+				PlayerCount = pong.PlayerCount,
+				LatencyMs = latencyMs,
+				HostName = pong.HostName,
+				ScenarioName = pong.ScenarioName,
+				SessionSeconds = pong.SessionSeconds
 			};
 
 			if (pong.ProtocolVersion != ProtocolVersion.Current)

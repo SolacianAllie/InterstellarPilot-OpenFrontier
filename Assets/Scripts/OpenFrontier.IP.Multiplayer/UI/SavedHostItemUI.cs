@@ -92,7 +92,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			// Being in the session is the most useful thing to say, so it takes
 			// precedence over the probe result.
-			StatusLabel.text = Item.IsConnected ? "Connected" : probe.DescribeState();
+			StatusLabel.text = Item.IsConnected ? "Connected" : probe.Describe();
 
 			// Version: only worth showing when it explains a refusal. Showing
 			// "0.1.1" against every row that matches would be noise, so it
