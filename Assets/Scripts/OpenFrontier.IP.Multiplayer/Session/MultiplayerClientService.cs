@@ -51,6 +51,9 @@ namespace OpenFrontier.IP.Multiplayer
 
 		private SnapshotReassembler reassembler;
 
+		/// <summary>What this client believes about who owns what.</summary>
+		public ClientOwnershipView OwnershipView { get; } = new ClientOwnershipView();
+
 		public bool IsConnected => Session != null && Session.State == JoinState.Connected;
 
 		/// <summary>Installs the service before any scene loads.</summary>
@@ -148,8 +151,85 @@ namespace OpenFrontier.IP.Multiplayer
 
 			client.WorldSnapshotChunkReceived += chunk => OnWorldChunk(chunk);
 
+			client.OwnershipAssigned += assignment =>
+				OwnershipView.ApplyAssignment(assignment.UnitId, assignment.OwnerToken, client.Token);
+
 			Session = client;
 			client.Join(code);
+		}
+
+		/// <summary>
+		/// Keeps the host told about which ship this player is flying.
+		/// </summary>
+		/// <remarks>
+		/// Driven by what the player is doing rather than by hooking the
+		/// autopilot button, because the observable facts are unambiguous:
+		/// the unit in the engine is the ship being flown, and
+		/// PlayerUnitAutoPilotEnabled says whether the stick has been given
+		/// back. A hook would have to know about every way control can
+		/// change hands - docking, being boarded, a fleet taking over its
+		/// ships - and would still be wrong about at least one of them.
+		///
+		/// Claims are sent once, when the ship first becomes this client's to
+		/// fly. Resending every frame would be a message per frame per ship
+		/// for no change, and the host would answer each one.
+		/// </remarks>
+		private void UpdateOwnership()
+		{
+			if (Session == null || Session.State != JoinState.Connected)
+			{
+				return;
+			}
+
+			OpenFrontier.IP.Engine.EngineASX engine = OpenFrontier.IP.Engine.EngineASX.Instance;
+
+			if (engine == null)
+			{
+				return;
+			}
+
+			OpenFrontier.IP.Engine.Unit local = engine.LocalUnit;
+
+			if (local == null || local.IsDestroyed)
+			{
+				return;
+			}
+
+			int unitId = local.UniqueId;
+
+			if (engine.PlayerUnitAutoPilotEnabled)
+			{
+				// Onto autopilot: let it go, so the host flies it and starts
+				// broadcasting it back. Until the host says so this client
+				// keeps simulating, which looks exactly like the AI flying
+				// it - the same trick the other direction relies on.
+				if (OwnershipView.BelongsToMe(unitId))
+				{
+					OwnershipView.Release(unitId);
+					Session.Send(ProtocolVersion.UnitOwnershipMessageId,
+						UnitOwnershipMessage.Assign(unitId, null).ToBytes());
+				}
+
+				return;
+			}
+
+			if (OwnershipView.BelongsToMe(unitId))
+			{
+				return;
+			}
+
+			if (OwnershipView.Request(unitId))
+			{
+				// Asked, and the ship is already ours to fly: BelongsToMe is
+				// true from here on, so the player is never waiting on this.
+				Session.Send(ProtocolVersion.UnitOwnershipMessageId,
+					UnitOwnershipMessage.Request(unitId).ToBytes());
+			}
+		}
+
+		private void Update()
+		{
+			UpdateOwnership();
 		}
 
 		private void OnWorldChunk(byte[] chunk)
@@ -201,6 +281,7 @@ namespace OpenFrontier.IP.Multiplayer
 			reassembler?.Clear();
 			reassembler = null;
 			HasWorld = false;
+			OwnershipView.Clear();
 
 			leaving.Dispose();
 		}

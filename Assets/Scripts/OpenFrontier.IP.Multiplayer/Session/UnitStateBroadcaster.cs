@@ -30,6 +30,8 @@ namespace OpenFrontier.IP.Multiplayer
 		public const float UpdatesPerSecond = 10f;
 
 		private static readonly List<UnitState> scratch = new List<UnitState>(UnitStateMessage.MaxUnits * 4);
+		private static readonly List<UnitState> personal = new List<UnitState>(UnitStateMessage.MaxUnits * 4);
+		private static readonly List<int> sampledIds = new List<int>(UnitStateMessage.MaxUnits * 4);
 
 		private float nextUpdateTime;
 
@@ -73,7 +75,16 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
+			// Sampled once, then packed per recipient rather than once for
+			// everyone. The reason is ownership: a ship a player is flying
+			// must NOT come back to them, because they are already
+			// simulating it and applying the host's copy ten times a second
+			// would fight their own stick. Everyone else still needs it.
+			//
+			// So each player gets a slightly different set, and a single
+			// shared message list cannot express that.
 			scratch.Clear();
+			sampledIds.Clear();
 
 			for (int i = 0; i < ships.Count; i++)
 			{
@@ -89,6 +100,7 @@ namespace OpenFrontier.IP.Multiplayer
 				if (state.HasValue)
 				{
 					scratch.Add(state.Value);
+					sampledIds.Add(ship.UniqueId);
 				}
 			}
 
@@ -96,8 +108,6 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				return;
 			}
-
-			List<UnitStateMessage> messages = UnitStateBatch.Pack(scratch);
 
 			for (int p = 0; p < session.Players.Count; p++)
 			{
@@ -107,6 +117,25 @@ namespace OpenFrontier.IP.Multiplayer
 				{
 					continue;
 				}
+
+				personal.Clear();
+
+				for (int u = 0; u < scratch.Count; u++)
+				{
+					if (!session.Ownership.IsOwnedBy(sampledIds[u], player.Identity))
+					{
+						personal.Add(scratch[u]);
+					}
+				}
+
+				if (personal.Count == 0)
+				{
+					// This player is flying everything in view. Nothing to
+					// say to them.
+					continue;
+				}
+
+				List<UnitStateMessage> messages = UnitStateBatch.Pack(personal);
 
 				for (int m = 0; m < messages.Count; m++)
 				{

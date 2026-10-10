@@ -33,6 +33,16 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Whether this copy is a client in someone else's session.</summary>
 		public bool IsClient { get; set; }
 
+		/// <summary>
+		/// The record of what this client owns, or null on a host.
+		/// </summary>
+		/// <remarks>
+		/// Set rather than found, because there is one record per session and
+		/// two components independently reaching for it would be two chances
+		/// to disagree about who owns what.
+		/// </remarks>
+		public ClientOwnershipView Ownership { get; set; }
+
 		/// <summary>Units held still this frame, for the host's log to read.</summary>
 		public int SuppressedCount { get; private set; }
 
@@ -87,10 +97,18 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				Unit unit = units[i];
 
-				if (unit == null || unit.IsDestroyed || unit.IsActiveInEngine)
+				if (unit == null || unit.IsDestroyed)
 				{
-					// Active units are the ones being flown, and those are the
-					// ones this player owns.
+					continue;
+				}
+
+				// The record decides, not what this copy happens to think is
+				// being flown. The difference is between "this player is
+				// flying it" and "the host says this player owns it", and
+				// only the second survives another player claiming the same
+				// ship.
+				if (BelongsToMe(unit.UniqueId))
+				{
 					continue;
 				}
 
@@ -116,6 +134,16 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 
 			return unit.IsActiveInEngine && unit.Faction == engine.LocalFaction;
+		}
+
+		private bool BelongsToMe(int unitId)
+		{
+			// With no record there is nothing to check against, and assuming
+			// ownership of everything would leave a client simulating a whole
+			// world on its own. Holding everything is the safe direction to
+			// be wrong in: ships stop moving, which is visible, rather than
+			// moving wrongly, which is not.
+			return Ownership != null && Ownership.BelongsToMe(unitId);
 		}
 
 		private static void Hold(Unit unit)

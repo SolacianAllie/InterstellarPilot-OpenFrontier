@@ -101,7 +101,9 @@ namespace OpenFrontier.IP.Multiplayer
 				// Re-read rather than decided once: the applier goes in when a
 				// join starts, and this is what stops the client fighting its
 				// own copy of the world.
-				gate.IsClient = MultiplayerClientService.Instance != null;
+				MultiplayerClientService client = MultiplayerClientService.Instance;
+				gate.IsClient = client != null;
+				gate.Ownership = client == null ? null : client.OwnershipView;
 				gate.SuppressUnownedUnits();
 			}
 		}

@@ -46,6 +46,38 @@ namespace OpenFrontier.IP.Multiplayer
 		public string FailureReason { get; private set; }
 
 		/// <summary>
+		/// This client's own token, which is how it tells its ships from
+		/// everyone else's when the host answers.
+		/// </summary>
+		public string Token => PlayerIdentity.Token;
+
+		/// <summary>
+		/// Sends a message to the host, if still connected.
+		/// </summary>
+		/// <remarks>
+		/// Silent when not connected rather than throwing. This is called from
+		/// an Update, and a join that has just ended is the normal case to be
+		/// caught by, not an exceptional one worth breaking the frame for.
+		/// </remarks>
+		public void Send(int messageId, byte[] payload)
+		{
+			if (State != JoinState.Connected)
+			{
+				return;
+			}
+
+			try
+			{
+				channel.Send(FramedMessage.Create(messageId, payload));
+			}
+			catch (Exception)
+			{
+				// The channel notices a dead peer on its own close, which
+				// raises Disconnected. Nothing useful to do here.
+			}
+		}
+
+		/// <summary>
 		/// The host's reply, once one arrives. Includes the host's version so
 		/// a mismatch can be explained precisely.
 		/// </summary>
@@ -77,6 +109,9 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>One piece of the host's world. May arrive many times.</summary>
 		public event Action<byte[]> WorldSnapshotChunkReceived;
+
+		/// <summary>The host has said who owns a ship.</summary>
+		public event Action<UnitOwnershipMessage> OwnershipAssigned;
 
 		/// <summary>
 		/// Attempts to join using a code the player typed.
@@ -180,6 +215,22 @@ namespace OpenFrontier.IP.Multiplayer
 				}
 
 				UnitStateReceived?.Invoke(states);
+				return;
+			}
+
+			if (messageId == ProtocolVersion.UnitOwnershipMessageId)
+			{
+				if (!UnitOwnershipMessage.TryFromBytes(payload, out UnitOwnershipMessage ownership, out string ownershipError))
+				{
+					Debug.LogWarning("Multiplayer: unreadable ownership message - " + ownershipError);
+					return;
+				}
+
+				if (ownership.Kind == UnitOwnershipMessage.KindAssignment)
+				{
+					OwnershipAssigned?.Invoke(ownership);
+				}
+
 				return;
 			}
 

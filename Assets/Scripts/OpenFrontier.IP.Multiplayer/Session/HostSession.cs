@@ -49,8 +49,14 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>The address and port together, as one thing to look at.</summary>
 		public string Endpoint => Address + ":" + Port;
 
+		/// <summary>Who owns which ship. The host decides, and this is it.</summary>
+		public UnitOwnershipRegistry Ownership { get; } = new UnitOwnershipRegistry();
+
 		/// <summary>Raised when a player has been admitted and identified.</summary>
 		public event Action<RemotePlayer> PlayerJoined;
+
+		/// <summary>Raised when a ship's owner changes, so it can be told to everyone.</summary>
+		public event Action<int, string> OwnershipChanged;
 
 		/// <summary>Raised when a player leaves or is dropped.</summary>
 		public event Action<RemotePlayer, string> PlayerLeft;
@@ -179,6 +185,12 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </summary>
 		private void OnPlayerMessage(RemotePlayer player, int messageId, byte[] body)
 		{
+			if (messageId == ProtocolVersion.UnitOwnershipMessageId)
+			{
+				AnswerOwnershipClaim(player, body);
+				return;
+			}
+
 			// A liveness probe, answered without admitting a player. This runs
 			// before the handshake gate so a player browsing their host list does
 			// not create a session or occupy a slot.
@@ -234,6 +246,103 @@ namespace OpenFrontier.IP.Multiplayer
 		/// that it is. The peer is never admitted, and the connection is closed
 		/// immediately so a probe costs one short exchange and no session state.
 		/// </summary>
+		/// <summary>
+		/// Decides whether this player gets this ship, and tells everyone.
+		/// </summary>
+		/// <remarks>
+		/// The host can only ever take authority away, never grant it in a way
+		/// a client waits for. A client takes its ship the instant the player
+		/// grabs the stick and asks afterwards; this decides whether that
+		/// stands.
+		///
+		/// The answer goes to every player, not only the one who asked. A
+		/// client that knew only about its own ships would go on simulating
+		/// the others, so ownership the claimant is not aware of is ownership
+		/// that is not in force anywhere.
+		/// </remarks>
+		private void AnswerOwnershipClaim(RemotePlayer player, byte[] body)
+		{
+			if (!player.Admitted)
+			{
+				return;
+			}
+
+			if (!UnitOwnershipMessage.TryFromBytes(body, out UnitOwnershipMessage message, out string error))
+			{
+				Log?.Invoke("Multiplayer: unreadable ownership message - " + error);
+				return;
+			}
+
+			if (message.Kind != UnitOwnershipMessage.KindRequest)
+			{
+				// A client telling the host who owns what is not something to
+				// obey. This registry is the only writer.
+				return;
+			}
+
+			if (Ownership.TryClaim(message.UnitId, player.Identity, out string reason))
+			{
+				SendToEveryone(message.UnitId, player.Identity);
+
+				Log?.Invoke("Multiplayer: " + Short(player.Identity) + " took ship " + message.UnitId);
+				return;
+			}
+
+			// Refused, and the client is told who has it rather than left to
+			// work it out. A client that keeps simulating a ship the host has
+			// taken back gets it yanked away on every message, and from the
+			// player's side that is indistinguishable from a bad connection.
+			Log?.Invoke("Multiplayer: " + Short(player.Identity) + " refused ship "
+				+ message.UnitId + " - " + reason + ", held by " + Short(Ownership.OwnerOf(message.UnitId)));
+
+			SendTo(player, UnitOwnershipMessage.Assign(message.UnitId, Ownership.OwnerOf(message.UnitId)));
+		}
+
+		/// <summary>Tells every admitted player who owns a ship.</summary>
+		internal void SendToEveryone(int unitId, string ownerToken)
+		{
+			byte[] framed = FramedMessage.Create(ProtocolVersion.UnitOwnershipMessageId,
+				UnitOwnershipMessage.Assign(unitId, ownerToken).ToBytes());
+
+			for (int i = 0; i < players.Count; i++)
+			{
+				RemotePlayer player = players[i];
+
+				if (player == null || !player.Admitted)
+				{
+					continue;
+				}
+
+				try
+				{
+					player.Channel.Send(framed);
+				}
+				catch (Exception)
+				{
+					// Someone who has gone away is noticed on their own close.
+				}
+			}
+		}
+
+		/// <summary>Tells one player who owns a ship.</summary>
+		internal void SendTo(RemotePlayer player, UnitOwnershipMessage message)
+		{
+			if (player == null || !player.Admitted)
+			{
+				return;
+			}
+
+			try
+			{
+				player.Channel.Send(FramedMessage.Create(
+					ProtocolVersion.UnitOwnershipMessageId, message.ToBytes()));
+			}
+			catch (Exception)
+			{
+				// As above.
+			}
+		}
+
 		private void AnswerPing(RemotePlayer player)
 		{
 			PongMessage pong = new PongMessage

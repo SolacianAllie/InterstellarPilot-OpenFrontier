@@ -115,5 +115,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>What the host is playing, sent before the world.</summary>
 		public const int WorldDescriptorMessageId = 7;
+
+		/// <summary>Claiming a ship, and the host saying who has it.</summary>
+		public const int UnitOwnershipMessageId = 8;
 	}
 }
