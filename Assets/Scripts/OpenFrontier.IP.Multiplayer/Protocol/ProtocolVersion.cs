@@ -109,5 +109,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>Where a batch of units are. The first real game message.</summary>
 		public const int UnitStateMessageId = 5;
+
+		/// <summary>One piece of the host's world, on its way to a client.</summary>
+		public const int WorldSnapshotChunkMessageId = 6;
 	}
 }
