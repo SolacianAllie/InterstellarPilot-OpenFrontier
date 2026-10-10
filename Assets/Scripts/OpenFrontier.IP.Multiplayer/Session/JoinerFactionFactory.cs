@@ -416,7 +416,18 @@ namespace OpenFrontier.IP.Multiplayer
 
 				// The base class, when there is one, so every joiner gets the
 				// same ship rather than a variant chosen by prefab order.
-				if (best == null || string.IsNullOrEmpty(best.className))
+				//
+				// The test is on what we already have, not only on what we
+				// are looking at. As written it stopped the first time it
+				// found a class with a name, which is backwards: naming a
+				// variant is the reason to keep looking, so the first named
+				// candidate ended up keeping the slot forever and every
+				// joiner got Shuttle-A instead of a plain shuttle - with
+				// whatever weapons and modules that variant happens to carry.
+				bool bestIsBase = best != null && string.IsNullOrEmpty(best.className);
+				bool candidateIsBase = string.IsNullOrEmpty(candidate.className);
+
+				if (best == null || (candidateIsBase && !bestIsBase))
 				{
 					best = candidate;
 				}
@@ -428,9 +439,15 @@ namespace OpenFrontier.IP.Multiplayer
 			// component bug, when it is a class-choice one.
 			if (best != null)
 			{
+				bool isBase = string.IsNullOrEmpty(best.className);
+
 				Debug.Log("Multiplayer: joiners start in "
 					+ best.GetClassAndSeriesName()
-					+ " (class '" + best.className + "', type " + best.UnitType + ")");
+					+ " (class '" + best.className + "', type " + best.UnitType + ")"
+					+ (isBase
+						? string.Empty
+						: " - WARNING: this is a named VARIANT, not the base shuttle."
+							+ " Every joiner will get its weapons and modules."));
 			}
 
 			return best;
