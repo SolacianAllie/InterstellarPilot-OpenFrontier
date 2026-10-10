@@ -575,7 +575,8 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				return;
 			}
 
-			screen.TitleText = "Your join code";
+			// The title is not set here: it depends on whether a code exists,
+			// which only the dialog knows once refresh() has run.
 			screen.CodeText = OwnJoinCode;
 			screen.Explanation = MultiplayerHostService.LastProblem;
 

@@ -44,6 +44,17 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		public Toggle EnableMultiplayerToggle;
 
 		/// <summary>
+		/// A small line under the code, used for the "how to turn this off
+		/// again" note.
+		/// </summary>
+		/// <remarks>
+		/// The prompt's character counter, repurposed. It was hidden when the
+		/// input field was, and it is already a small single line under the
+		/// text area - which is exactly the shape this wants.
+		/// </remarks>
+		public Text HintLabel;
+
+		/// <summary>
 		/// The prompt's legacy label, kept only so its text can be replaced.
 		/// </summary>
 		/// <remarks>
@@ -92,20 +103,24 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			}
 		}
 
-		/// <summary>
-		/// What the player is told when there is no code to show.
-		/// </summary>
-		/// <remarks>
-		/// Says what to do, because the button is on the screen that manages
-		/// hosts and the reason it is empty is not obvious from there. Kept to
-		/// one short line: this sits in a dialog sized for a 32-character code,
-		/// and a paragraph spills out of the sides of it.
-		/// </remarks>
-		public const string NoSessionText =
-			"Multiplayer is off.\nTurn it on in Options, then try again.";
-
 		/// <summary>Raised after a successful copy, so the screen can confirm it.</summary>
 		public event Action Copied;
+
+		/// <summary>Title while there is no code yet.</summary>
+		public const string TitleOff = "Your join code - multiplayer is off";
+
+		/// <summary>Title once hosting.</summary>
+		public const string TitleOn = "Your join code - multiplayer is on";
+
+		/// <summary>Body while there is no code yet.</summary>
+		public const string NoSessionText = "Turn it on below.";
+
+		/// <summary>
+		/// Shown once hosting, because the switch is hidden at that point and
+		/// the player would otherwise have no idea where to turn it off.
+		/// </summary>
+		public const string HowToDisableText =
+			"To turn multiplayer off again, use your menu, Options, then General.";
 
 		/// <summary>Size for the code itself, matching the label as authored.</summary>
 		public const int CodeFontSize = 24;
@@ -206,9 +221,19 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				return;
 			}
 
-			string shown = string.IsNullOrWhiteSpace(CodeText)
-				? (string.IsNullOrWhiteSpace(Explanation) ? NoSessionText : Explanation)
-				: CodeText;
+			// One flag drives every part of the layout, so the title, the body,
+			// the switch and the hint can never disagree about which state they
+			// are in.
+			bool hosting = !string.IsNullOrWhiteSpace(CodeText);
+
+			// A specific failure reason replaces the generic prompt - "could not
+			// open a port" needs a different response from "you have not turned
+			// it on", and only the former is a problem to go and fix.
+			string body = hosting
+				? CodeText
+				: (string.IsNullOrWhiteSpace(Explanation) ? NoSessionText : Explanation);
+
+			TitleText = hosting ? TitleOn : TitleOff;
 
 			// The code is the thing to be read aloud and copied, so it gets the
 			// large size the label was authored for. An explanation is a
@@ -218,26 +243,24 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// SetFontSize rather than assigning fontSize directly: best-fit would
 			// otherwise override the size on the next layout pass and the two
 			// settings would fight, with whichever ran last winning.
-			int size = string.IsNullOrWhiteSpace(CodeText) ? ExplanationFontSize : CodeFontSize;
-
-			SetFontSize(CodeLabel, size);
-			SetFontSize(LegacyCodeLabel, size);
+			SetFontSize(CodeLabel, hosting ? CodeFontSize : ExplanationFontSize);
+			SetFontSize(LegacyCodeLabel, hosting ? CodeFontSize : ExplanationFontSize);
 
 			if (CodeLabel != null)
 			{
-				CodeLabel.text = shown;
+				CodeLabel.text = body;
 			}
 
 			if (LegacyCodeLabel != null)
 			{
-				LegacyCodeLabel.text = shown;
+				LegacyCodeLabel.text = body;
 			}
 
 			// Copying nothing would look like it worked. The button is disabled
 			// rather than hidden so the row does not reflow when it changes.
 			if (CopyButton != null)
 			{
-				CopyButton.interactable = !string.IsNullOrWhiteSpace(CodeText);
+				CopyButton.interactable = hosting;
 			}
 
 			// The switch is offered only while there is nothing to show. Once
@@ -245,15 +268,22 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// given to the code than to a control that would only turn it off.
 			if (EnableMultiplayerToggle != null)
 			{
-				bool off = string.IsNullOrWhiteSpace(CodeText);
+				EnableMultiplayerToggle.gameObject.SetActive(!hosting);
 
-				EnableMultiplayerToggle.gameObject.SetActive(off);
-
-				if (off && OpenFrontier.IP.Engine.GameController.Instance != null)
+				if (!hosting && OpenFrontier.IP.Engine.GameController.Instance != null)
 				{
 					EnableMultiplayerToggle.SetIsOnWithoutNotify(
 						OpenFrontier.IP.Engine.GameController.Instance.PlayerOptions.General_EnableMultiplayer);
 				}
+			}
+
+			// With the switch gone there is nothing on screen saying where to
+			// turn multiplayer off, so the hint takes its place. Without this the
+			// only way back is to go and find Options again.
+			if (HintLabel != null)
+			{
+				HintLabel.gameObject.SetActive(hosting);
+				HintLabel.text = HowToDisableText;
 			}
 		}
 

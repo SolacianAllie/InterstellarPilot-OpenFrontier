@@ -737,6 +737,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				target.OkButton = FindButton(contents, "ButtonIconOK");
 				target.CopyButton = FindButton(contents, "ButtonIconCancel");
 				target.EnableMultiplayerToggle = FindToggle(contents, "CheckboxEnableMultiplayer");
+				target.HintLabel = FindLegacyLabel(contents, "MaxCharsText");
 
 				List<string> unwired = new List<string>();
 
@@ -769,10 +770,15 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 					report.Note("JoinCodeScreen.prefab wired");
 				}
 
-				// The input field goes, along with the character-count caption
-				// that only means something while typing. Deactivated rather than
-				// deleted, so the dialog stays reversible.
-				foreach (string gone in new[] { "LegacyInputField", "Placeholder", "MaxCharsText" })
+				// The input field goes, along with its placeholder. Deactivated
+				// rather than deleted, so the dialog stays reversible.
+				//
+				// MaxCharsText is deliberately NOT in this list: it was the
+				// character counter, which meant nothing once there was nothing
+				// to type, and it is now the small line under the code that says
+				// where to turn multiplayer off again. Its text is replaced at
+				// runtime, so only the stale placeholder matters.
+				foreach (string gone in new[] { "LegacyInputField", "Placeholder" })
 				{
 					Transform found = contents.transform.FindDeep(gone);
 
@@ -781,6 +787,14 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 						found.gameObject.SetActive(false);
 						report.Note("hid " + gone);
 					}
+				}
+
+				Transform hint = contents.transform.FindDeep("MaxCharsText");
+
+				if (hint != null && !hint.gameObject.activeSelf)
+				{
+					hint.gameObject.SetActive(true);
+					report.Note("showed MaxCharsText as the hint line");
 				}
 
 				// The cancel button now copies, so it says so. Icon-only like

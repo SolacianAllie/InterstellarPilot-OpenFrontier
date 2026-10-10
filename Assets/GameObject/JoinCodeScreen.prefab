@@ -1337,7 +1337,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &6909900931408068591
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1395,7 +1395,7 @@ MonoBehaviour:
     m_Alignment: 1
     m_AlignByGeometry: 0
     m_RichText: 0
-    m_HorizontalOverflow: 1
+    m_HorizontalOverflow: 0
     m_VerticalOverflow: 1
     m_LineSpacing: 1
   m_Text: (Max 15 Chars)
@@ -2583,6 +2583,7 @@ MonoBehaviour:
   OkButton: {fileID: 7236629433137863387}
   CopyButton: {fileID: 4551299755945738284}
   EnableMultiplayerToggle: {fileID: 9218836094243085843}
+  HintLabel: {fileID: 2502707973822725275}
   LegacyCodeLabel: {fileID: 5508566932037906946}
 --- !u!1 &8738427881336010108
 GameObject:
