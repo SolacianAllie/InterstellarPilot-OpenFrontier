@@ -832,6 +832,14 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				SetLayoutSize(contents, "CheckboxEnableMultiplayer", "Text", 190f, -1f);
 				SetSpacing(contents, "VerticalLayout", 8f);
 
+				// The button row was the only one taking the layout's leftover
+				// slack, and how much is left over depends on the widest row - a
+				// 32-character code against three words. So the two states laid
+				// their buttons out at different widths, and the row did not line
+				// up with itself. Pinned to the panel's own inner width, measured
+				// here rather than typed, so it stays right if the form changes.
+				PinRowWidthToPanel(contents, "Buttons");
+
 				// The character counter becomes the "where do I turn this off"
 				// hint. It has to be lifted out of the input field first: it is
 				// a CHILD of LegacyInputField, so switching the field back on
@@ -1022,6 +1030,48 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			{
 				vertical.spacing = spacing;
 			}
+		}
+
+		/// <summary>
+		/// Pins a row to the panel's inner width so it does not depend on how
+		/// much slack the layout has left over.
+		/// </summary>
+		/// <remarks>
+		/// Measured from the Form and its padder rather than typed in, so the
+		/// row keeps matching the panel if either is resized. The slack it takes
+		/// is given up as well - a row that is both pinned and flexible is
+		/// flexible, which is the problem being fixed.
+		/// </remarks>
+		private static void PinRowWidthToPanel(GameObject root, string rowName)
+		{
+			RectTransform form = root.transform.FindDeep("Form") as RectTransform;
+			RectTransform padder = root.transform.FindDeep("FormPadder") as RectTransform;
+			Transform row = root.transform.FindDeep(rowName);
+
+			if (form == null || padder == null || row == null)
+			{
+				return;
+			}
+
+			float width = form.rect.width - Mathf.Abs(padder.sizeDelta.x);
+
+			if (width <= 0f)
+			{
+				return;
+			}
+
+			LayoutElement element = row.GetComponent<LayoutElement>();
+
+			if (element == null)
+			{
+				element = row.gameObject.AddComponent<LayoutElement>();
+			}
+
+			element.minWidth = width;
+			element.preferredWidth = width;
+			element.flexibleWidth = 0f;
+
+			Stretch(row as RectTransform);
 		}
 
 		private static Button FindButton(GameObject root, string objectName)
