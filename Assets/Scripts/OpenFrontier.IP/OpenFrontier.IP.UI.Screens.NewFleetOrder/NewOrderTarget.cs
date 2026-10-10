@@ -292,19 +292,41 @@ namespace OpenFrontier.IP.UI.Screens.NewFleetOrder
 			List<Fleet> list = new List<Fleet>();
 			list.AddRange(orderedFleets);
 
-			// A copy that does not own the world does not build fleets.
+			// A client builds fleets here, like everywhere else.
 			//
-			// It used to build them here, unconditionally, which is how a
-			// client came to hold a fleet the host had never heard of - the
-			// order that followed named it and was refused, and the world
-			// quietly carried a ship, an NPC and a fleet that existed in one
-			// place and nowhere else.
+			// It used not to, on the reasoning that a fleet built on a client
+			// is an id the host has never issued. That is true, and it is why
+			// the fleet is never SENT - but refusing to build one was the
+			// wrong cure, because the property screen, the cargo view and the
+			// orders screen are all built around a fleet. A client without
+			// one could not open its own ship's cargo, change its settings,
+			// or press New Order. The world stopped disagreeing at the price
+			// of the game not working.
 			//
-			// The ships are named instead, and the world that owns them builds
-			// the fleet when it carries the order out.
+			// So the fleet is built, the UI works, and the ships in it are
+			// named on the order instead of the fleet: OneFleet drops the
+			// fleet id on the way out and these go instead. The host resolves
+			// each ship against the world it actually owns.
+			//
+			// Nothing here simulates anything. These ships belong to this
+			// player's own faction, and the authority gate declines every
+			// ship a client is not flying - so no AI runs over any of it,
+			// here or anywhere else. This is a model of a fleet, not a
+			// fleet.
 			if (Authority.IsThisCopyAClient)
 			{
-				NoteLooseShipsWithoutFleets(list);
+				NoteEverySelectedShipForTheHost(list);
+
+				foreach (Unit item in unitsWithoutFleet)
+				{
+					Fleet fleet = item.GetFleet();
+
+					if (fleet == null)
+					{
+						fleet = OrdersHelper.FindOrCreateNpcAndFleetAndPilotShip(item);
+						list.Add(fleet);
+					}
+				}
 
 				return list;
 			}
@@ -322,36 +344,62 @@ namespace OpenFrontier.IP.UI.Screens.NewFleetOrder
 		}
 
 		/// <summary>
-		/// Hands over the selected ships that have no fleet, and clears them
-		/// from the selection so a second order does not carry them again.
+		/// Hands over every selected ship, not only the ones without a fleet.
 		/// </summary>
-		private void NoteLooseShipsWithoutFleets(List<Fleet> alreadyHave)
+		/// <remarks>
+		/// Every one, because on a client the fleet ids are being dropped on
+		/// the way out and the ships are all that is left to send. Handing
+		/// over only the fleet-less ones would leave an order naming nothing
+		/// - which the sender reads as 'the player selected nothing' and
+		/// discards in silence, so the order would vanish without a word.
+		///
+		/// Drawn from both halves of the selection, because a player can pick
+		/// a ship inside a fleet, a ship outside one, or several of each at
+		/// once, and the host is owed all of them.
+		/// </remarks>
+		private void NoteEverySelectedShipForTheHost(List<Fleet> alreadyHave)
 		{
-			List<int> loose = null;
+			List<int> ids = new List<int>();
 
-			foreach (Unit item in unitsWithoutFleet)
+			for (int i = 0; i < orderedFleets.Count; i++)
 			{
-				if (item == null || item.IsDestroyed || item.GetFleet() != null)
-				{
-					continue;
-				}
-
-				if (FleetContaining(alreadyHave, item) != null)
-				{
-					continue;
-				}
-
-				if (loose == null)
-				{
-					loose = new List<int>();
-				}
-
-				loose.Add(item.UniqueId);
+				NoteShipsOf(orderedFleets[i], ids);
 			}
 
-			FleetOrderIntents.NoteLooseUnits(loose);
+			for (int i = 0; i < unitsWithoutFleet.Count; i++)
+			{
+				Unit ship = unitsWithoutFleet[i];
 
+				if (ship != null && !ship.IsDestroyed)
+				{
+					ids.Add(ship.UniqueId);
+				}
+			}
+
+			FleetOrderIntents.NoteLooseUnits(ids);
+
+			// Cleared so a second order does not carry this selection's ships
+			// as well as its own. The fleets stay: they are what the UI is
+			// built on, and they were never sent.
 			unitsWithoutFleet.Clear();
+		}
+
+		private static void NoteShipsOf(Fleet fleet, List<int> into)
+		{
+			if (fleet == null)
+			{
+				return;
+			}
+
+			foreach (UnitComponentHolder holder in fleet.Ships)
+			{
+				Unit ship = holder == null ? null : holder.GetComponent<Unit>();
+
+				if (ship != null && !ship.IsDestroyed)
+				{
+					into.Add(ship.UniqueId);
+				}
+			}
 		}
 
 		/// <summary>

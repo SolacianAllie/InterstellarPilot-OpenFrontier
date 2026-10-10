@@ -56,6 +56,27 @@ namespace OpenFrontier.IP.UI.Screens
 
 		private static List<int> OneFleet(Fleet fleet)
 		{
+			// A client names ships, never fleets.
+			//
+			// A client builds fleets locally - it has to, or none of the game's
+			// UI works, because the property screen, the cargo view and the
+			// orders screen are all built around one. That fleet is a view of
+			// a thing the host owns, and its id means nothing to anybody but
+			// this machine.
+			//
+			// So the fleet is left out of the order and its ships go instead.
+			// The host looks each ship up, finds the fleet it is really in -
+			// building one if it is in none - and orders that. Which is what
+			// would have happened had the click been made on the host, and it
+			// cannot be wrong about fleet ids because it never used one.
+			//
+			// One place, so every one of the nineteen order kinds is covered
+			// by this one line rather than by nineteen careful ones.
+			if (Authority.IsThisCopyAClient)
+			{
+				return new List<int>(0);
+			}
+
 			var ids = new List<int>(1);
 
 			if (fleet != null)
