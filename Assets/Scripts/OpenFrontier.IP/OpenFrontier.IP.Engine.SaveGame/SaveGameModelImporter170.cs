@@ -2571,6 +2571,22 @@ namespace OpenFrontier.IP.Engine.SaveGame
 					faction.UpdateGeneratedName();
 				}
 			}
+			// Every faction that arrived with a name of its own, plus the one
+			// the player belongs to. A name is only stored when it is CUSTOM -
+			// when GeneratedNameId is negative - so if the only line here is
+			// the player's, nothing in this world has a name that survives a
+			// save.
+			bool isLocal = faction.UniqueId == engine.LocalFaction?.UniqueId;
+
+			if (isLocal || !string.IsNullOrWhiteSpace(modelFaction.CustomName))
+			{
+				Debug.Log("DiagA imported faction id=" + faction.UniqueId
+					+ (isLocal ? " THE-PLAYERS" : "")
+					+ " name='" + faction.Name + "'"
+					+ " generatedNameId=" + faction.GeneratedNameId
+					+ " customName='" + (modelFaction.CustomName ?? "<null>") + "'");
+			}
+
 			Sector sectorById = engine.GetSectorById(modelFaction.HomeSector?.Id ?? (-1));
 			faction.ChangeHomeSector(sectorById);
 			faction.HomeSectorPosition = modelFaction.HomeSectorPosition?.ToVector3();

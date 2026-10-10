@@ -662,6 +662,12 @@ namespace OpenFrontier.IP.Engine
 		{
 			if (!(EngineASX.Instance.LocalFaction == null) && (!(ScenarioInfo != null) || ScenarioInfo.UniqueId != 4000 || EngineASX.Instance.LocalFaction.UniqueId == 8000 || EngineASX.Instance.LocalFaction.UniqueId >= 100000))
 			{
+				Debug.Log("DiagB applying default faction name '"
+					+ GameController.Instance.DefaultFactionName + "' over '"
+					+ EngineASX.Instance.LocalFaction.Name + "' generatedNameId="
+					+ EngineASX.Instance.LocalFaction.GeneratedNameId
+					+ " - not cleared, so this name is not saved");
+
 				EngineASX.Instance.LocalFaction.Name = GameController.Instance.DefaultFactionName;
 				EngineASX.Instance.LocalFaction.ShortName = GameController.Instance.DefaultFactionShortName;
 			}
