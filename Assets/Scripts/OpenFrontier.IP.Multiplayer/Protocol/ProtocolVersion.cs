@@ -112,5 +112,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>One piece of the host's world, on its way to a client.</summary>
 		public const int WorldSnapshotChunkMessageId = 6;
+
+		/// <summary>What the host is playing, sent before the world.</summary>
+		public const int WorldDescriptorMessageId = 7;
 	}
 }
