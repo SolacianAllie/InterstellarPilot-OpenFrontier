@@ -71,6 +71,14 @@ namespace OpenFrontier.IP.Multiplayer
 			faction.UniqueId = -1;
 			faction.Init();
 
+			// Init does NOT register a faction with the engine, and the save
+			// exporter walks engine.Factions rather than the scene. Without
+			// this the faction exists as an object, the shuttle points at it,
+			// and neither appears in the snapshot - so the joiner's world
+			// arrives with no faction of its own and silently keeps being the
+			// host's pilot. Which is exactly what it did.
+			engine.RegisterFaction(faction);
+
 			// Assigned here rather than left to the prefab's own values, which
 			// would be the host's defaults and would name every joiner after
 			// the host.
