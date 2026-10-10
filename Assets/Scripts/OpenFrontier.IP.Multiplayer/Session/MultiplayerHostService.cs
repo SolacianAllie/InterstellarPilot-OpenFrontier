@@ -72,6 +72,22 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// </remarks>
 		public static int ScenarioId { get; private set; } = -1;
 
+		/// <summary>
+		/// The scenario being played RIGHT NOW, not the one at startup.
+		/// </summary>
+		/// <remarks>
+		/// Hosting outlives games. A host can start hosting in one game, go
+		/// back to the menu and start another, all without the listener ever
+		/// stopping - so the value captured when hosting began describes a
+		/// world that may not exist any more. It is used to key the snapshot
+		/// cache, and a stale key means the next joiner is handed the previous
+		/// player's galaxy while being told the new one's name.
+		/// </remarks>
+		public static int CurrentScenarioId()
+		{
+			return CaptureScenarioId();
+		}
+
 		private float nextAttemptTime;
 
 		/// <summary>Seconds between attempts while hosting is wanted but failing.</summary>

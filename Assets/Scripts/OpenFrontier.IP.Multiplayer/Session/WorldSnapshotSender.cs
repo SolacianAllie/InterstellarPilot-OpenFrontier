@@ -202,7 +202,10 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				return;
 			}
 
-			int scenarioId = MultiplayerHostService.ScenarioId;
+			// Read now, not from whatever was true when hosting started: the
+			// host may have gone back to the menu and begun a different game
+			// since, and this value keys the cache as well as the descriptor.
+			int scenarioId = MultiplayerHostService.CurrentScenarioId();
 
 			// The faction is made BEFORE the export, not after. The save models
 			// exactly one local player, so a second player cannot appear by
@@ -316,6 +319,16 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// is meaningless. The string form is because -1 and "no scenario" are
 		/// different answers and an int would quietly conflate them.
 		/// </remarks>
-		private static string Key(int scenarioId) => scenarioId.ToString();
+		private static string Key(int scenarioId)
+		{
+			// Paired with the world's own identity, so loading another save of
+			// the SAME scenario - which is the ordinary case of starting a new
+			// game - still invalidates the cache. The scenario id alone cannot
+			// tell those apart, and sending a joiner somebody else's galaxy
+			// because two worlds share a scenario is exactly the bug.
+			OpenFrontier.IP.Engine.WorldBase world = OpenFrontier.IP.Engine.EngineASX.Instance?.World;
+
+			return scenarioId + ":" + (world == null ? "none" : world.GetEntityId().ToString());
+		}
 	}
 }
