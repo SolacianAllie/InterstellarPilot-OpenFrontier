@@ -313,6 +313,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// different things, so both are named: the address goes into the code,
 			// and 0.0.0.0 is what every interface is bound to.
 			Debug.Log("Multiplayer: hosting as " + PlayerProfile.Describe()
+				+ " (pid " + System.Diagnostics.Process.GetCurrentProcess().Id + ")"
 				+ ", code advertises " + advertisedAddress
 				+ ", listening on every interface at " + Session.Endpoint
 				+ ", code " + Session.JoinCode);
