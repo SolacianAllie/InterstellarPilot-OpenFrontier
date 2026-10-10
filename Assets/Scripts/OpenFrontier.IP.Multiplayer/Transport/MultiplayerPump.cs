@@ -55,6 +55,19 @@ namespace OpenFrontier.IP.Multiplayer
 
 			GameObject pump = new GameObject(ObjectName);
 			pump.hideFlags = HideFlags.HideAndDontSave;
+
+			// The one line everything else that must outlive a menu also has,
+			// and its absence was the whole reason a joined game stopped
+			// receiving anything.
+			//
+			// Joining a host means loading their world, which is a scene
+			// change. Without this the pump is destroyed with the old scene,
+			// MainThreadDispatcher.Drain stops being called, and every message
+			// that arrives afterwards is queued and never delivered - so the
+			// join succeeds, the world loads, and the two copies then drift
+			// apart silently for the rest of the session.
+			DontDestroyOnLoad(pump);
+
 			pump.AddComponent<MultiplayerPump>();
 		}
 
