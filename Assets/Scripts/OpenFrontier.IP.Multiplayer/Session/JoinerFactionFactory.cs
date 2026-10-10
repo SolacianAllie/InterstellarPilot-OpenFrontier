@@ -294,6 +294,17 @@ namespace OpenFrontier.IP.Multiplayer
 				}
 			}
 
+			// Which class this actually landed on, said out loud. The Shuttle
+			// series holds variants that are not all ships, and one that is a
+			// station arrives with no weapons and no modules and looks like a
+			// component bug, when it is a class-choice one.
+			if (best != null)
+			{
+				Debug.Log("Multiplayer: joiners start in "
+					+ best.GetClassAndSeriesName()
+					+ " (class '" + best.className + "', type " + best.UnitType + ")");
+			}
+
 			return best;
 		}
 
