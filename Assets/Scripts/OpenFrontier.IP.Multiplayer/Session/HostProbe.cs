@@ -9,20 +9,34 @@ namespace OpenFrontier.IP.Multiplayer
 	/// <summary>What a probe found out about a host.</summary>
 	public enum HostReachability
 	{
-		/// <summary>No probe has completed yet.</summary>
-		Unknown = -1,
+		/// <summary>
+		/// No probe has completed yet.
+		/// </summary>
+		/// <remarks>
+		/// Zero, deliberately, and that is the whole reason it is first.
+		/// A struct's fields default to zero, so a freshly loaded host list
+		/// holds whatever this is called. With this at -1 and Unreachable at 0,
+		/// every host in a newly opened list read as "Offline" - a host
+		/// nobody had asked about yet, telling the player it was down - and
+		/// the sentinel did precisely the opposite of the job it existed for.
+		///
+		/// Only ever held in memory and shown to a player; nothing here is
+		/// written to a save or sent down a socket, so the numbering is
+		/// ours to arrange.
+		/// </remarks>
+		Unknown = 0,
 
 		/// <summary>Nothing answered in time.</summary>
-		Unreachable = 0,
+		Unreachable = 1,
 
 		/// <summary>A host answered.</summary>
-		Online = 1,
+		Online = 2,
 
 		/// <summary>A host answered, but is running a different build.</summary>
-		VersionMismatch = 2,
+		VersionMismatch = 3,
 
 		/// <summary>A host answered but has stopped accepting players.</summary>
-		NotAccepting = 3,
+		NotAccepting = 4,
 
 		/// <summary>
 		/// A host answered, and is in the main menu rather than in a game.
@@ -33,7 +47,7 @@ namespace OpenFrontier.IP.Multiplayer
 		/// fix. Folding it into NotAccepting would read as "this host is not
 		/// interested", which is not what is happening.
 		/// </remarks>
-		InMainMenu = 4
+		InMainMenu = 5
 	}
 
 	/// <summary>The result of probing one host.</summary>
@@ -237,6 +251,8 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 
 			HostProbeResult captured = result;
+			Report(host, captured);
+
 			MainThreadDispatcher.Post(() => onResult?.Invoke(captured));
 		}
 
@@ -248,6 +264,37 @@ namespace OpenFrontier.IP.Multiplayer
 			= new System.Collections.Generic.Dictionary<string, string>();
 
 		private static readonly object LastLoggedLock = new object();
+
+		/// <summary>
+		/// Logs a probe result, whatever it was.
+		/// </summary>
+		/// <remarks>
+		/// Successes included, and only when the answer changes. A log that
+		/// only records failures leaves "is the probe working at all?"
+		/// unanswerable - silence reads the same whether a host is answering
+		/// every time or the probe is never running, and those need opposite
+		/// fixes.
+		///
+		/// Reuses the failure log's memory so a host that stays up does not
+		/// repeat itself on every poll either.
+		/// </remarks>
+		private static void Report(SessionCodeData host, HostProbeResult result)
+		{
+			string key = host.Address + ":" + host.Port;
+			string line = key + " -> " + result.DescribeState();
+
+			lock (LastLoggedLock)
+			{
+				if (LastLogged.TryGetValue(key, out string previous) && previous == line)
+				{
+					return;
+				}
+
+				LastLogged[key] = line;
+			}
+
+			MainThreadDispatcher.Post(() => Debug.Log("Multiplayer: probe " + line));
+		}
 
 		/// <summary>Reports a host unreachable, and says why in the log.</summary>
 		private static HostProbeResult Unreachable(SessionCodeData host, string reason)
