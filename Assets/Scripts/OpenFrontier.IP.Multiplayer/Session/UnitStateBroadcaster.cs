@@ -56,6 +56,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 		private static float nextReportTime;
 
+		private static int sectorCount;
+
 		/// <summary>Players whose sends have already failed once.</summary>
 		private static readonly System.Collections.Generic.HashSet<string> failedPlayers =
 			new System.Collections.Generic.HashSet<string>();
@@ -110,11 +112,61 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
-			List<Unit> ships = sector.GetUnitsByType(UnitType.Ship);
+			// EVERY sector, not just the one the host happens to be looking
+			// at. A client sitting two jumps away was getting nothing at all,
+			// because the host was not in that sector to sample it - and the
+			// ships there are still being simulated by the engine, they simply
+			// were not on the wire.
+			//
+			// The whole galaxy at ten hertz is affordable at this world size
+			// and buys correctness; per-sector subscriptions are the
+			// optimisation to make afterwards if the bandwidth ever matters,
+			// and they are only worth building once sectors are actually
+			// synchronised between players.
+			scratch.Clear();
+			sampledIds.Clear();
+			sectorCount = 0;
 
-			if (ships == null || ships.Count == 0)
+			for (int sectorIndex = 0; sectorIndex < engine.Sectors.Count; sectorIndex++)
 			{
-				Debug.Log("Multiplayer: broadcasting nothing - " + sector.name + " has no ships in it");
+				Sector each = engine.Sectors[sectorIndex];
+
+				if (each == null)
+				{
+					continue;
+				}
+
+				sectorCount++;
+
+				List<Unit> inSector = each.GetUnitsByType(UnitType.Ship);
+
+				if (inSector == null)
+				{
+					continue;
+				}
+
+				for (int i = 0; i < inSector.Count; i++)
+				{
+					Unit ship = inSector[i];
+
+					if (ship == null || ship.IsDestroyed)
+					{
+						continue;
+					}
+
+					UnitState? state = Sample(ship);
+
+					if (state.HasValue)
+					{
+						scratch.Add(state.Value);
+						sampledIds.Add(ship.UniqueId);
+					}
+				}
+			}
+
+			if (scratch.Count == 0)
+			{
+				Debug.Log("Multiplayer: broadcasting nothing - no ships anywhere");
 				return;
 			}
 
@@ -122,13 +174,14 @@ namespace OpenFrontier.IP.Multiplayer
 				? 0
 				: MultiplayerHostService.Session.Players.Count;
 
-			NetLog.Host("broadcasting " + ships.Count + " ship(s) from " + sector.name
-				+ ", ids " + ships[0].UniqueId + " to " + ships[ships.Count - 1].UniqueId
+			NetLog.Host("broadcasting " + scratch.Count + " ship(s) across "
+				+ sectorCount + " sector(s), ids " + sampledIds[0]
+				+ " to " + sampledIds[sampledIds.Count - 1]
 				+ ", to " + players + " player(s)");
 
-			Debug.Log("Multiplayer: broadcasting " + ships.Count + " ship(s) from "
-				+ sector.name + ", ids " + ships[0].UniqueId
-				+ " to " + ships[ships.Count - 1].UniqueId
+			Debug.Log("Multiplayer: broadcasting " + scratch.Count + " ship(s) across "
+				+ sectorCount + " sector(s), ids " + sampledIds[0]
+				+ " to " + sampledIds[sampledIds.Count - 1]
 				+ ", to " + players + " player(s)");
 		}
 
@@ -148,42 +201,12 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
-			List<Unit> ships = sector.GetUnitsByType(UnitType.Ship);
-
-			if (ships == null || ships.Count == 0)
-			{
-				return;
-			}
-
-			// Sampled once, then packed per recipient rather than once for
-			// everyone. The reason is ownership: a ship a player is flying
-			// must NOT come back to them, because they are already
-			// simulating it and applying the host's copy ten times a second
-			// would fight their own stick. Everyone else still needs it.
-			//
-			// So each player gets a slightly different set, and a single
-			// shared message list cannot express that.
-			scratch.Clear();
-			sampledIds.Clear();
-
-			for (int i = 0; i < ships.Count; i++)
-			{
-				Unit ship = ships[i];
-
-				if (ship == null || ship.IsDestroyed)
-				{
-					continue;
-				}
-
-				UnitState? state = Sample(ship);
-
-				if (state.HasValue)
-				{
-					scratch.Add(state.Value);
-					sampledIds.Add(ship.UniqueId);
-				}
-			}
-
+			// Sampled above, across every sector. Packed per recipient rather
+			// than once for everyone: a ship a player is flying must NOT come
+			// back to them, because they are already simulating it and
+			// applying the host's copy would fight their own stick. Everyone
+			// else still needs it, so each player gets a slightly different
+			// set and one shared message list cannot express that.
 			if (scratch.Count == 0)
 			{
 				return;

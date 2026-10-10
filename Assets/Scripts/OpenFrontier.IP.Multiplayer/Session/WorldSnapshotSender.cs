@@ -59,6 +59,20 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// </remarks>
 		private readonly Dictionary<string, int[]> madeFor = new Dictionary<string, int[]>();
 
+		/// <summary>Which world those faction ids belong to.</summary>
+		/// <remarks>
+		/// They are ids into one world, and a new game is a different one with
+		/// entirely different things at those ids. Remembering them across a
+		/// world change handed a rejoining player somebody else's faction -
+		/// a named one, with its own ship already in it - and told them their
+		/// shuttle did not exist.
+		///
+		/// The sibling of the snapshot cache, which had exactly this bug and
+		/// was fixed a moment earlier. Fixing one stale cache and missing the
+		/// other standing right next to it is its own kind of lesson.
+		/// </remarks>
+		private System.Int64 madeForWorld;
+
 		private readonly Dictionary<RemotePlayer, Queue<byte[]>> inFlight =
 			new Dictionary<RemotePlayer, Queue<byte[]>>();
 
@@ -215,6 +229,14 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			int factionId = -1;
 			int shipId = -1;
 
+			long worldId = CurrentWorldId();
+
+			if (madeForWorld != worldId)
+			{
+				madeFor.Clear();
+				madeForWorld = worldId;
+			}
+
 			if (!madeFor.TryGetValue(player.Identity, out int[] knownFor))
 			{
 				JoinerPreferencesMessage wanted = session.PreferencesFor(player.Identity);
@@ -319,6 +341,13 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// is meaningless. The string form is because -1 and "no scenario" are
 		/// different answers and an int would quietly conflate them.
 		/// </remarks>
+		private static long CurrentWorldId()
+		{
+			OpenFrontier.IP.Engine.WorldBase world = OpenFrontier.IP.Engine.EngineASX.Instance?.World;
+
+			return world == null ? 0L : world.GetEntityId().GetHashCode();
+		}
+
 		private static string Key(int scenarioId)
 		{
 			// Paired with the world's own identity, so loading another save of
@@ -326,9 +355,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// game - still invalidates the cache. The scenario id alone cannot
 			// tell those apart, and sending a joiner somebody else's galaxy
 			// because two worlds share a scenario is exactly the bug.
-			OpenFrontier.IP.Engine.WorldBase world = OpenFrontier.IP.Engine.EngineASX.Instance?.World;
-
-			return scenarioId + ":" + (world == null ? "none" : world.GetEntityId().ToString());
+			return scenarioId + ":" + CurrentWorldId();
 		}
 	}
 }
