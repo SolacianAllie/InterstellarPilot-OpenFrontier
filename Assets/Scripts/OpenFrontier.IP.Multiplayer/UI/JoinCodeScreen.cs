@@ -55,6 +55,17 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// </remarks>
 		public string CodeText { get; set; }
 
+		/// <summary>
+		/// Why there is no code, when there is a specific reason to give.
+		/// </summary>
+		/// <remarks>
+		/// Separate from the "you are not hosting" default because "the listener
+		/// could not start" needs a different response from the player than "you
+		/// have not turned it on" - one is a problem to fix, the other is a
+		/// setting to change.
+		/// </remarks>
+		public string Explanation { get; set; }
+
 		public string TitleText
 		{
 			get
@@ -79,7 +90,8 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// reason it is empty is not obvious from there.
 		/// </remarks>
 		public const string NoSessionText =
-			"You are not hosting a game.\n\nStart hosting first, then come back for your join code.";
+			"Multiplayer is switched off.\n\nTurn on Enable Multiplayer in Options > General, "
+			+ "then come back for your join code.";
 
 		/// <summary>Raised after a successful copy, so the screen can confirm it.</summary>
 		public event Action Copied;
@@ -115,7 +127,9 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				return;
 			}
 
-			string shown = string.IsNullOrWhiteSpace(CodeText) ? NoSessionText : CodeText;
+			string shown = string.IsNullOrWhiteSpace(CodeText)
+				? (string.IsNullOrWhiteSpace(Explanation) ? NoSessionText : Explanation)
+				: CodeText;
 
 			if (CodeLabel != null)
 			{

@@ -14,6 +14,16 @@ namespace OpenFrontier.IP.Engine.Core
 
 		public bool General_AllowFireAtAllied;
 
+		/// <summary>
+		/// Whether this installation takes part in multiplayer at all.
+		/// </summary>
+		/// <remarks>
+		/// Off by default: hosting opens a port on the player's machine and
+		/// makes them reachable, which should be a deliberate act rather than
+		/// something a fresh install does on its own.
+		/// </remarks>
+		public bool General_EnableMultiplayer;
+
 		public bool Video_WormholeAnimationEnabled = true;
 
 		public bool General_CameraShakeOnShieldHit;

@@ -84,6 +84,17 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Whether the host will admit a player at the moment.</summary>
 		public bool AcceptingPlayers;
 
+		/// <summary>
+		/// Whether the host is sitting in the main menu rather than in a game.
+		/// </summary>
+		/// <remarks>
+		/// Distinct from simply not accepting. A host in the menu is up, healthy
+		/// and will take players shortly; one that has stopped accepting has
+		/// declined to. Telling a joiner the difference is the whole point -
+		/// otherwise both read as the same unhelpful "cannot join right now".
+		/// </remarks>
+		public bool InMainMenu;
+
 		/// <summary>How many players are already connected.</summary>
 		public int PlayerCount;
 
@@ -104,6 +115,7 @@ namespace OpenFrontier.IP.Multiplayer
 					writer.Write(GameVersion == null ? -1 : GameVersion.Revision);
 
 					writer.Write(AcceptingPlayers);
+					writer.Write(InMainMenu);
 					writer.Write(PlayerCount);
 				}
 
@@ -116,7 +128,9 @@ namespace OpenFrontier.IP.Multiplayer
 			message = default;
 			error = null;
 
-			if (bytes == null || bytes.Length < 24)
+			// 4 protocol + 16 version + 1 accepting + 1 in-main-menu + 4 count
+			// = 26. BinaryWriter writes a bool as a single byte, not four.
+			if (bytes == null || bytes.Length < 26)
 			{
 				error = "Reply was truncated.";
 				return false;
@@ -133,6 +147,7 @@ namespace OpenFrontier.IP.Multiplayer
 					int build = reader.ReadInt32();
 					int revision = reader.ReadInt32();
 					bool accepting = reader.ReadBoolean();
+					bool inMainMenu = reader.ReadBoolean();
 					int playerCount = reader.ReadInt32();
 
 					Version version = null;
@@ -155,6 +170,7 @@ namespace OpenFrontier.IP.Multiplayer
 						ProtocolVersion = protocolVersion,
 						GameVersion = version,
 						AcceptingPlayers = accepting,
+						InMainMenu = inMainMenu,
 						PlayerCount = playerCount
 					};
 

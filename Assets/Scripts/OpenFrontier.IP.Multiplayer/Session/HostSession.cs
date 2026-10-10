@@ -41,6 +41,18 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Whether the host is still accepting new players.</summary>
 		public bool AcceptingPlayers => accepting && !disposed;
 
+		/// <summary>
+		/// Whether this host is in the main menu rather than in a game.
+		/// </summary>
+		/// <remarks>
+		/// Set by <see cref="MultiplayerHostService"/> each frame; the session
+		/// itself has no opinion about where the game is, because it is a
+		/// networking object that should not need to know about menus. Default
+		/// false, so a session used without the service still reports a plain
+		/// "not accepting" rather than inventing a reason.
+		/// </remarks>
+		public bool IsInMainMenu { get; internal set; }
+
 		private HostSession(byte[] sessionSecret, NetListener listener)
 		{
 			this.sessionSecret = sessionSecret;
@@ -192,6 +204,11 @@ namespace OpenFrontier.IP.Multiplayer
 				// probe succeeding while the host has stopped accepting players
 				// would otherwise read as a healthy session.
 				AcceptingPlayers = AcceptingPlayers,
+
+				// Whether the refusal is "I am in the main menu" or "I have
+				// stopped taking players". A joiner needs the difference: the
+				// first is a few seconds away, the second is not happening.
+				InMainMenu = !AcceptingPlayers && IsInMainMenu,
 				PlayerCount = players.Count
 			};
 
@@ -337,6 +354,23 @@ namespace OpenFrontier.IP.Multiplayer
 		public void StopAcceptingPlayers()
 		{
 			accepting = false;
+		}
+
+		/// <summary>
+		/// Starts accepting players again.
+		/// </summary>
+		/// <remarks>
+		/// The counterpart to <see cref="StopAcceptingPlayers"/>, which is
+		/// called every frame while the host is somewhere players cannot be
+		/// admitted - the main menu. Without a way back, a host that once left
+		/// the menu could never take players again.
+		/// </remarks>
+		public void ResumeAcceptingPlayers()
+		{
+			if (!disposed)
+			{
+				accepting = true;
+			}
 		}
 
 		/// <summary>

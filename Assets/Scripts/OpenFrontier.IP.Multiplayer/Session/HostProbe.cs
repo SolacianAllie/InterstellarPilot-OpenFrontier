@@ -22,7 +22,18 @@ namespace OpenFrontier.IP.Multiplayer
 		VersionMismatch = 2,
 
 		/// <summary>A host answered but has stopped accepting players.</summary>
-		NotAccepting = 3
+		NotAccepting = 3,
+
+		/// <summary>
+		/// A host answered, and is in the main menu rather than in a game.
+		/// </summary>
+		/// <remarks>
+		/// Its own state because the player needs to know a join is worth
+		/// retrying in a moment rather than being something they have to go and
+		/// fix. Folding it into NotAccepting would read as "this host is not
+		/// interested", which is not what is happening.
+		/// </remarks>
+		InMainMenu = 4
 	}
 
 	/// <summary>The result of probing one host.</summary>
@@ -43,6 +54,12 @@ namespace OpenFrontier.IP.Multiplayer
 		/// Whether the host could be joined, which is what the list cares about.
 		/// </summary>
 		public bool CanJoin => Reachability == HostReachability.Online && AcceptingPlayers;
+
+		/// <summary>
+		/// Whether this host is up but in the main menu, so a join would be
+		/// refused until they start a game.
+		/// </summary>
+		public bool IsInMainMenu => Reachability == HostReachability.InMainMenu;
 
 		/// <summary>
 		/// Whether a probe has actually completed for this host yet.
@@ -78,6 +95,11 @@ namespace OpenFrontier.IP.Multiplayer
 
 				case HostReachability.NotAccepting:
 					return "Not accepting players";
+
+				case HostReachability.InMainMenu:
+					// Says what to do about it, not just what it is: the host is
+					// fine, they are just not in a game yet.
+					return "In the main menu";
 
 				default:
 					// No reply. Either nothing is listening, or the host is
@@ -317,8 +339,17 @@ namespace OpenFrontier.IP.Multiplayer
 				return result;
 			}
 
-			result.Reachability = pong.AcceptingPlayers
-				? HostReachability.Online
+			if (pong.AcceptingPlayers)
+			{
+				result.Reachability = HostReachability.Online;
+				return result;
+			}
+
+			// Up but refusing. The main menu is called out separately because it
+			// is temporary and expected, unlike a host that has chosen not to
+			// take players.
+			result.Reachability = pong.InMainMenu
+				? HostReachability.InMainMenu
 				: HostReachability.NotAccepting;
 
 			return result;

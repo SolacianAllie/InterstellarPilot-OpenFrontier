@@ -21,7 +21,11 @@ namespace OpenFrontier.IP.Multiplayer
 		/// Bump on ANY change to message layout, framing, or serialization.
 		/// Both peers must agree exactly; there is no compatibility range.
 		/// </summary>
-		public const int Current = 1;
+		/// <remarks>
+		/// 2: PongMessage gained InMainMenu, so a host in the menu can say so
+		/// rather than looking the same as one that has stopped taking players.
+		/// </remarks>
+		public const int Current = 2;
 
 		/// <summary>
 		/// First message a client sends. Kept tiny and fixed-layout so the host

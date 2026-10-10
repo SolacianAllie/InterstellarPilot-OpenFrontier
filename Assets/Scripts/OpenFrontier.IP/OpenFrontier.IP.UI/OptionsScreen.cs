@@ -23,6 +23,16 @@ namespace OpenFrontier.IP.UI
 
 		public Toggle General_AllowFireAtNeutralToggle;
 
+		/// <summary>
+		/// Whether this installation takes part in multiplayer.
+		/// </summary>
+		/// <remarks>
+		/// Turning it on makes the game host continuously, so it opens a port
+		/// and makes the machine reachable. Off by default, and the row's help
+		/// is on the object rather than here - see the README.
+		/// </remarks>
+		public Toggle EnableMultiplayerToggle;
+
 		public Toggle General_AllowFireAtAlliedToggle;
 
 		public Toggle ShowPointDefenceTurretsToggle;
@@ -132,6 +142,7 @@ namespace OpenFrontier.IP.UI
 			AutoHideShieldsToggle.onValueChanged.AddListener(AutoHideShieldsToggleValueChanged);
 			ShowPointDefenceTurretsToggle.onValueChanged.AddListener(ShowPointDefenceTurretsToggleValueChanged);
 			General_AllowFireAtNeutralToggle.onValueChanged.AddListener(General_AllowFireAtNeutralToggleValueChanged);
+			EnableMultiplayerToggle.onValueChanged.AddListener(EnableMultiplayerToggleValueChanged);
 			General_AllowFireAtAlliedToggle.onValueChanged.AddListener(General_General_AllowFireAtAlliedChanged);
 			ScreenSpaceShieldsToggle.onValueChanged.AddListener(ScreenSpaceShieldsToggleValueChanged);
 			WorldSpaceShieldsToggle.onValueChanged.AddListener(WorldSpaceShieldsToggleValueChanged);
@@ -421,6 +432,7 @@ namespace OpenFrontier.IP.UI
 				ShowPointDefenceTurretsToggle.isOn = GameController.Instance.PlayerOptions.UI_ShowPointDefenceTurrets;
 				General_AllowFireAtAlliedToggle.isOn = GameController.Instance.PlayerOptions.General_AllowFireAtAllied;
 				General_AllowFireAtNeutralToggle.isOn = GameController.Instance.PlayerOptions.General_AllowFireAtNeutral;
+				EnableMultiplayerToggle.isOn = GameController.Instance.PlayerOptions.General_EnableMultiplayer;
 				CameraShakeOnHullHitToggle.isOn = GameController.Instance.PlayerOptions.General_CameraShakeOnHullHit;
 				CameraShakeOnShieldHitToggle.isOn = GameController.Instance.PlayerOptions.General_CameraShakeOnShieldHit;
 				GraphicsQualitySlider.value = QualitySettings.GetQualityLevel();
@@ -718,6 +730,17 @@ namespace OpenFrontier.IP.UI
 		private void General_AllowFireAtNeutralToggleValueChanged(bool value)
 		{
 			GameController.Instance.PlayerOptions.General_AllowFireAtNeutral = value;
+		}
+
+		private void EnableMultiplayerToggleValueChanged(bool value)
+		{
+			GameController.Instance.PlayerOptions.General_EnableMultiplayer = value;
+
+			// Deliberately does NOT touch MultiplayerSettings here. That lives in
+			// OpenFrontier.IP.Multiplayer, which references this assembly - so
+			// naming it here would make the two reference each other and neither
+			// would compile. MultiplayerHostService does the translating instead,
+			// being on the side that can see both.
 		}
 
 		private void General_General_AllowFireAtAlliedChanged(bool value)

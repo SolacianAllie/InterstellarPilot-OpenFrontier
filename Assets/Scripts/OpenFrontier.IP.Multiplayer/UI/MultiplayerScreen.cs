@@ -541,6 +541,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			screen.TitleText = "Your join code";
 			screen.CodeText = OwnJoinCode;
+			screen.Explanation = MultiplayerHostService.LastProblem;
 
 			// A directly instantiated screen needs Awake called explicitly; the
 			// navigator only does that for screens it loads itself.
@@ -556,12 +557,12 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// This player's join code, or null when they are not hosting.
 		/// </summary>
 		/// <remarks>
-		/// Null until hosting exists: nothing starts a HostSession yet, so
-		/// there is never a code of one's own to show. The dialog handles that
-		/// state rather than pretending, and this is the one place that has to
-		/// change when hosting arrives.
+		/// Hosting runs whenever the option is on, so this is null only when the
+		/// player has switched multiplayer off or the listener could not start -
+		/// and in the second case <see cref="MultiplayerHostService.LastProblem"/>
+		/// says why, which is worth showing instead of the generic "not hosting".
 		/// </remarks>
-		private string OwnJoinCode => null;
+		private static string OwnJoinCode => MultiplayerHostService.JoinCode;
 
 		// ---- details panel --------------------------------------------------
 
