@@ -10,23 +10,22 @@ namespace OpenFrontier.IP.Multiplayer
 	/// The other half of <see cref="UnitStateBroadcaster"/>. Every unit state
 	/// that arrives is looked up by id and written onto the transform.
 	///
-	/// IMPORTANT, and the reason this does not yet look smooth: a client is
-	/// still simulating every unit in its copy of the world, including the
-	/// ones the host is telling it about. Applying a position on top of a
-	/// local simulation is two things writing the same field, so the result is
-	/// whichever ran last. Ships arrive in roughly the right place and then
-	/// swim.
+	/// Applies on top of <see cref="AuthorityGate"/>, which is what stops a
+	/// client simulating the units it does not own. Without the gate this
+	/// would be two things writing the same position, and the result would be
+	/// whichever ran last - ships would arrive roughly right and then swim.
 	///
-	/// That is deliberate sequencing, not an oversight: the fix is the
-	/// authority gate - the client stops simulating anything the host owns -
-	/// and shipping the message first means the gate has something to switch
-	/// off. It is the same reason the two halves are built in this order.
+	/// The ordering between them matters. The gate runs in LateUpdate, after
+	/// this has written the host's numbers for the frame, and a sleeping
+	/// rigidbody is not integrated by the physics step, so what this writes
+	/// is what stays.
 	/// </summary>
 	public sealed class UnitStateApplier : MonoBehaviour
 	{
 		private readonly Dictionary<int, float> lastAppliedAt = new Dictionary<int, float>();
 
 		private MultiplayerClientService service;
+		private AuthorityGate gate;
 		private int appliedLastUpdate;
 		private int unknownLastUpdate;
 
@@ -83,10 +82,28 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public int UnknownCount => unknownLastUpdate;
 
+		private void Awake()
+		{
+			// The gate belongs to this component rather than being installed on
+			// its own, because there is exactly one and it has to agree with
+			// who is applying the states - two independently installed halves
+			// would drift apart on a reconnect.
+			gate = gameObject.AddComponent<AuthorityGate>();
+		}
+
 		private void LateUpdate()
 		{
 			appliedLastUpdate = 0;
 			unknownLastUpdate = 0;
+
+			if (gate != null)
+			{
+				// Re-read rather than decided once: the applier goes in when a
+				// join starts, and this is what stops the client fighting its
+				// own copy of the world.
+				gate.IsClient = MultiplayerClientService.Instance != null;
+				gate.SuppressUnownedUnits();
+			}
 		}
 
 		/// <summary>Applies one batch, ignoring any unit this copy does not have.</summary>
@@ -144,6 +161,15 @@ namespace OpenFrontier.IP.Multiplayer
 			// the host rather than fighting it.
 			if (unit.RBody != null)
 			{
+				// Wake first. AuthorityGate puts unowned bodies to sleep so they
+				// stay where the host put them, and a sleeping rigidbody ignores
+				// a velocity change - so the first message after waking would be
+				// swallowed and the ship would sit still.
+				if (unit.RBody.IsSleeping())
+				{
+					unit.RBody.WakeUp();
+				}
+
 				unit.RBody.linearVelocity = new Vector3(
 					state.VelocityX, state.VelocityY, state.VelocityZ);
 			}
