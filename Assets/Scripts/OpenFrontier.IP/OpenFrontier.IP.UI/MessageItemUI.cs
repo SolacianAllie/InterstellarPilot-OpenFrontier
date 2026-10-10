@@ -55,8 +55,34 @@ namespace OpenFrontier.IP.UI
 		/// Written only when it is wrong, so a list that refreshes every frame
 		/// does not rebuild its text mesh every frame.
 		/// </remarks>
+		/// <summary>
+		/// Whether to force the wrapping at runtime rather than trusting the
+		/// prefab to carry it.
+		/// </summary>
+		/// <remarks>
+		/// Off, so the prefab can be tested on its own.
+		///
+		/// The runtime version was added because the prefab edit was correct
+		/// on disk and still had no effect - Unity had not reimported it, and
+		/// a build bakes it in. That was a reason to suspect the prefab route
+		/// does not work, not proof that it does not. Leaving both in place
+		/// means a run cannot tell which one fixed anything, and a fix that
+		/// cannot be attributed cannot be trusted to be the one that is
+		/// needed.
+		///
+		/// So: prefab only for now. If reimporting fixes it, the prefab was
+		/// always the right place and the runtime version is not needed. If
+		/// it does not, this is one line and the evidence is clean.
+		/// </remarks>
+		private const bool ForceWrappingInCode = false;
+
 		private void LetTheTextWrap()
 		{
+			if (!ForceWrappingInCode)
+			{
+				return;
+			}
+
 			Wrap(FromLabel);
 			Wrap(SubjectText);
 		}
