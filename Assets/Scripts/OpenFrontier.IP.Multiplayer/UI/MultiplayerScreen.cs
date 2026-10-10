@@ -412,6 +412,13 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			if (host == null)
 			{
+				// Said rather than returned from in silence. Every other
+				// reason this button does nothing is explained on screen, and
+				// a button that does nothing at all reads as a broken game
+				// rather than as "you have not picked anything yet".
+				UIController.Instance.ShowMessageBox(
+					"Choose a host from the list first, then join that one.",
+					MessageBoxButtons.Ok, null, MessageBoxIcon.Info);
 				return;
 			}
 
