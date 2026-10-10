@@ -688,6 +688,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				}
 
 				target.TitleLabel = FindAnyLabel(contents, "TextScreenTitle");
+				target.LegacyCodeLabel = FindLegacyLabel(contents, "LegacyTextSubTitle");
 				target.CodeLabel = FindAnyLabel(contents, "LegacyTextSubTitle");
 				target.OkButton = FindButton(contents, "ButtonIconOK");
 				target.CopyButton = FindButton(contents, "ButtonIconCancel");
@@ -695,7 +696,14 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				List<string> unwired = new List<string>();
 
 				if (target.TitleLabel == null) unwired.Add("TextScreenTitle (TitleLabel)");
-				if (target.CodeLabel == null) unwired.Add("LegacyTextSubTitle (CodeLabel)");
+
+				// Whichever kind the label turned out to be, one of these two must
+				// be set - the dialog has to be able to show the code somehow.
+				if (target.CodeLabel == null && target.LegacyCodeLabel == null)
+				{
+					unwired.Add("LegacyTextSubTitle (CodeLabel or LegacyCodeLabel)");
+				}
+
 				if (target.OkButton == null) unwired.Add("ButtonIconOK (OkButton)");
 				if (target.CopyButton == null) unwired.Add("ButtonIconCancel (CopyButton)");
 
@@ -744,12 +752,14 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		}
 
 		/// <summary>
-		/// Finds a label that is either a TextMeshPro or a legacy uGUI Text.
+		/// Finds a label, whichever of the three label kinds it turns out to be.
 		/// </summary>
 		/// <remarks>
-		/// The prefabs are a mix: the Noto Sans font pass moved most labels to
-		/// TMP but left some as uGUI Text, so which kind a given object carries
-		/// has to be read rather than assumed.
+		/// The prefabs are a genuine mix: the Noto Sans font pass moved most
+		/// labels to TMP, but some are still legacy uGUI Text (serialised with
+		/// m_FontData rather than m_fontAsset). Returns null for a legacy label,
+		/// which cannot be assigned to a TMP field - see FindLegacyLabel for
+		/// those, and the caller for why both are looked for.
 		/// </remarks>
 		private static TMPro.TMP_Text FindAnyLabel(GameObject root, string objectName)
 		{
@@ -760,9 +770,30 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				return null;
 			}
 
-			TMPro.TextMeshProUGUI tmp = found.GetComponent<TMPro.TextMeshProUGUI>();
+			TMPro.TextMeshProUGUI ugui = found.GetComponent<TMPro.TextMeshProUGUI>();
 
-			return tmp != null ? tmp : (TMPro.TMP_Text)found.GetComponent<TMPro.TextMeshPro>();
+			if (ugui != null)
+			{
+				return ugui;
+			}
+
+			TMPro.TextMeshPro world = found.GetComponent<TMPro.TextMeshPro>();
+
+			if (world != null)
+			{
+				return world;
+			}
+
+			return null;
+		}
+
+		/// <summary>
+		/// Finds a legacy uGUI Text, which cannot be assigned to a TMP field.
+		/// </summary>
+		private static Text FindLegacyLabel(GameObject root, string objectName)
+		{
+			Transform found = root.transform.FindDeep(objectName);
+			return found == null ? null : found.GetComponent<Text>();
 		}
 
 		/// <summary>
@@ -844,89 +875,89 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 			GameObject contents = PrefabUtility.LoadPrefabContents(itemPath);
 
-			try
+		try
+		{
+			LoadGameItemUI source = contents.GetComponent<LoadGameItemUI>();
+			OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI target =
+				contents.GetComponent<OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI>();
+
+			// Neither present is the expected state on a prefab that has
+			// already been through this once: the old script was destroyed
+			// and the replacement could not be added because Unity had no
+			// MonoScript for it. So this adds the component rather than
+			// reporting the prefab as unusable - which is what the previous
+			// version did, leaving the row permanently scriptless with no
+			// way for a re-run to fix it.
+			if (source != null)
 			{
-				LoadGameItemUI source = contents.GetComponent<LoadGameItemUI>();
-				OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI target =
-					contents.GetComponent<OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI>();
-
-				if (source == null && target == null)
-				{
-					report.Fail(itemPath + " carries neither row script");
-				}
-				else
-				{
-					if (source != null)
-					{
-						UnityEngine.Object.DestroyImmediate(source);
-					}
-
-					if (target == null)
-					{
-						target = contents.AddComponent<OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI>();
-					}
-
-					// AddComponent returns null when Unity has no MonoScript for
-					// the type - which it has not if the class shares a file with
-					// another MonoBehaviour, since Unity registers one per file,
-					// named after the file. That failure is silent: the
-					// component is not added, the prefab serialises a missing
-					// script, and the row renders blank forever. Caught here
-					// rather than leaving it to look like a wiring problem.
-					if (target == null)
-					{
-						report.Fail(itemPath + ": Unity would not add SavedHostItemUI. A "
-							+ "MonoBehaviour needs a file named after it - check that "
-							+ "SavedHostItemUI.cs exists and declares only that class.");
-						return report;
-					}
-
-					// Wired by object name, so the mapping survives a re-layout of
-					// the prefab.
-					target.NameLabel = FindLabel(contents, "TextHostSenario");
-					target.StatusLabel = FindLabel(contents, "TextConnection");
-					target.VersionLabel = FindLabel(contents, "TextHostVersion");
-					target.PlayerCountLabel = FindLabel(contents, "TextHostPlayerCount");
-
-					List<string> unwired = new List<string>();
-
-					if (target.NameLabel == null) unwired.Add("TextHostSenario (NameLabel)");
-					if (target.StatusLabel == null) unwired.Add("TextConnection (StatusLabel)");
-					if (target.VersionLabel == null) unwired.Add("TextHostVersion (VersionLabel)");
-					if (target.PlayerCountLabel == null) unwired.Add("TextHostPlayerCount (PlayerCountLabel)");
-
-					if (unwired.Count > 0)
-					{
-						report.Fail(itemPath + ": could not find " + string.Join(", ", unwired));
-					}
-					else
-					{
-						report.Note("MultiplayerGameItem.prefab wired");
-					}
-
-					// The permadeath chip came over from the save-game row. It is
-					// a plain white box with no meaning for a host, and the row
-					// now dims unreachable hosts instead of badging them, so it
-					// is switched off rather than left showing an empty chip.
-					// "Selected" is left alone - the list owns that one.
-					Transform chip = contents.transform.FindDeep("PermadeathImage");
-
-					if (chip != null && chip.gameObject.activeSelf)
-					{
-						chip.gameObject.SetActive(false);
-						report.Note("hid PermadeathImage");
-					}
-
-					PrefabUtility.SaveAsPrefabAsset(contents, itemPath);
-				}
-			}
-			finally
-			{
-				PrefabUtility.UnloadPrefabContents(contents);
+				UnityEngine.Object.DestroyImmediate(source);
 			}
 
-			return report;
+			if (target == null)
+			{
+				target = contents.AddComponent<OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI>();
+			}
+
+			// AddComponent returns null when Unity has no MonoScript for
+			// the type - which it has not if the class shares a file with
+			// another MonoBehaviour, since Unity registers one per file,
+			// named after the file. That failure is silent: the
+			// component is not added, the prefab serialises a missing
+			// script, and the row renders blank forever. Caught here
+			// rather than leaving it to look like a wiring problem.
+			if (target == null)
+			{
+				report.Fail(itemPath + ": Unity would not add SavedHostItemUI. A "
+					+ "MonoBehaviour needs a file named after it - check that "
+					+ "SavedHostItemUI.cs exists and declares only that class.");
+				return report;
+			}
+
+			// Wired by object name, so the mapping survives a re-layout of
+			// the prefab.
+			target.NameLabel = FindLabel(contents, "TextHostSenario");
+			target.StatusLabel = FindLabel(contents, "TextConnection");
+			target.VersionLabel = FindLabel(contents, "TextHostVersion");
+			target.PlayerCountLabel = FindLabel(contents, "TextHostPlayerCount");
+
+			List<string> unwired = new List<string>();
+
+			if (target.NameLabel == null) unwired.Add("TextHostSenario (NameLabel)");
+			if (target.StatusLabel == null) unwired.Add("TextConnection (StatusLabel)");
+			if (target.VersionLabel == null) unwired.Add("TextHostVersion (VersionLabel)");
+			if (target.PlayerCountLabel == null) unwired.Add("TextHostPlayerCount (PlayerCountLabel)");
+
+			if (unwired.Count > 0)
+			{
+				report.Fail(itemPath + ": could not find " + string.Join(", ", unwired));
+			}
+			else
+			{
+				report.Note("MultiplayerGameItem.prefab wired");
+			}
+
+			// The permadeath chip came over from the save-game row. It is
+			// a plain white box with no meaning for a host, and the row
+			// now dims unreachable hosts instead of badging them, so it
+			// is switched off rather than left showing an empty chip.
+			// "Selected" is left alone - the list owns that one.
+			Transform chip = contents.transform.FindDeep("PermadeathImage");
+
+			if (chip != null && chip.gameObject.activeSelf)
+			{
+				chip.gameObject.SetActive(false);
+				report.Note("hid PermadeathImage");
+			}
+
+			PrefabUtility.SaveAsPrefabAsset(contents, itemPath);
 		}
+		finally
+		{
+			PrefabUtility.UnloadPrefabContents(contents);
+		}
+
+		return report;
+	}
 
 		private static TMPro.TextMeshProUGUI FindLabel(GameObject root, string objectName)
 		{

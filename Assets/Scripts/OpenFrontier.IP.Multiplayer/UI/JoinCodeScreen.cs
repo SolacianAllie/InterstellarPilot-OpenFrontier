@@ -33,6 +33,19 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		public Button CopyButton;
 
 		/// <summary>
+		/// The prompt's legacy label, kept only so its text can be replaced.
+		/// </summary>
+		/// <remarks>
+		/// The source prefab mixes label types: TextScreenTitle is TextMeshPro,
+		/// but LegacyTextSubTitle - the line the code would go in - is a legacy
+		/// uGUI Text, which cannot be assigned to a TMP_Text field. Rather than
+		/// swap the whole dialog to legacy labels, the legacy one is held as a
+		/// plain Text and written to directly. Whichever kind is wired, the code
+		/// shows.
+		/// </remarks>
+		public Text LegacyCodeLabel;
+
+		/// <summary>
 		/// What to show and copy.
 		/// </summary>
 		/// <remarks>
@@ -93,12 +106,26 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		{
 			base.refresh();
 
-			if (CodeLabel == null)
+			if (CodeLabel == null && LegacyCodeLabel == null)
 			{
+				Debug.LogError(
+					"JoinCodeScreen has neither a TextMeshPro nor a legacy label for the code, so "
+						+ "there is nowhere to show it. Re-run Tools > Multiplayer > "
+						+ "Transfer Screen References.", this);
 				return;
 			}
 
-			CodeLabel.text = string.IsNullOrWhiteSpace(CodeText) ? NoSessionText : CodeText;
+			string shown = string.IsNullOrWhiteSpace(CodeText) ? NoSessionText : CodeText;
+
+			if (CodeLabel != null)
+			{
+				CodeLabel.text = shown;
+			}
+
+			if (LegacyCodeLabel != null)
+			{
+				LegacyCodeLabel.text = shown;
+			}
 
 			// Copying nothing would look like it worked. The button is disabled
 			// rather than hidden so the row does not reflow when it changes.
