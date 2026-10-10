@@ -106,6 +106,25 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		{
 			ApplyPreference();
 			UpdateAvailability();
+			ApplyWorldRestrictions();
+		}
+
+		/// <summary>
+		/// Tells the world which conveniences it has to do without.
+		/// </summary>
+		/// <remarks>
+		/// Follows the option rather than whether a listener happens to be up, so
+		/// switching multiplayer off mid-session gives the conveniences back
+		/// immediately rather than at the next scene load.
+		///
+		/// God mode and hypersleep are single-player conveniences: one player
+		/// using either in a world others are in would change the game for them
+		/// without them having done anything.
+		/// </remarks>
+		private static void ApplyWorldRestrictions()
+		{
+			OpenFrontier.IP.Engine.UniverseWorld.WorldPlayerPermissions.SharedSession =
+				MultiplayerSettings.Enabled;
 		}
 
 		private void OnDestroy()

@@ -17,6 +17,18 @@ namespace OpenFrontier.IP.Engine.Hypersleep
 		public static bool IsHypersleepAvailable(out string reason)
 		{
 			reason = null;
+
+			// Checked here as well as where the button is hidden. Hiding the
+			// control is only the first line: this is the check that actually
+			// stands between the player and a shared world being fast-forwarded
+			// underneath everyone else, and a screen already open would otherwise
+			// sail past it.
+			if (!ShouldShowHypersleepOption())
+			{
+				reason = "Hypersleep is not available in a multiplayer session";
+				return false;
+			}
+
 			Unit localRootUnit = EngineASX.Instance.LocalRootUnit;
 			if (localRootUnit.IsUnderAttack())
 			{

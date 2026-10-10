@@ -40,6 +40,7 @@ using OpenFrontier.IP.UI.Screens.FleetPicker;
 using OpenFrontier.IP.UI.Screens.FleetSettings;
 using OpenFrontier.IP.UI.Screens.Fleets;
 using OpenFrontier.IP.UI.Screens.Hypersleep;
+using OpenFrontier.IP.UI.Screens.MessageBox;
 using OpenFrontier.IP.UI.Screens.MultiCargoPicker;
 using OpenFrontier.IP.UI.Screens.NewFleetOrder;
 using OpenFrontier.IP.UI.Screens.Orders.PatrolOrderCreator;
@@ -543,6 +544,19 @@ namespace OpenFrontier.IP.UI
 
 		public static void ToggleGodModeScreen(this ScreenNavigator screenNavigator)
 		{
+			// The permission is checked here as well as where the log screen's
+			// button is hidden, because the G hotkey reaches god mode without
+			// going near that button. Hiding the control was only the first line,
+			// and without this a shared session could still be god-moded by a
+			// single keypress.
+			if (!CanUseGodMode())
+			{
+				UIController.Instance.ShowMessageBox(
+					"God mode is not available in a multiplayer session.",
+					MessageBoxButtons.Ok, null, MessageBoxIcon.Warning);
+				return;
+			}
+
 			if (screenNavigator.CurrentScreen is GodModeScreen godModeScreen)
 			{
 				godModeScreen.NavigateBack();
@@ -551,6 +565,18 @@ namespace OpenFrontier.IP.UI
 			{
 				screenNavigator.ShowGodModeScreen();
 			}
+		}
+
+		/// <summary>
+		/// Whether this world permits god mode.
+		/// </summary>
+		private static bool CanUseGodMode()
+		{
+			EngineASX engine = EngineASX.Instance;
+
+			return engine == null
+				|| engine.World == null
+				|| engine.World.Permissions.AllowGodMode;
 		}
 
 		public static void ShowMessagesScreen(this ScreenNavigator uiController)
