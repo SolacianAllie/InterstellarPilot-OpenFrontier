@@ -50,12 +50,39 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Whether the host has confirmed the claim.</summary>
 		public bool IsConfirmed(int unitId) => confirmed.Contains(unitId);
 
+		/// <summary>Ships the host has said it is flying.</summary>
+		/// <remarks>
+		/// Kept apart from 'not mine' on purpose, because the two mean
+		/// different things to this client and only one of them should stop it
+		/// asking.
+		///
+		/// 'Not mine' after a claim means the claim was refused, and asking
+		/// again is reasonable. 'The host is flying it' means the host has
+		/// taken the ship for an order, and asking again would be two pilots
+		/// pulling - which is exactly the thing this handover exists to stop.
+		///
+		/// Without this distinction the client re-asks every frame, because
+		/// the host's answer and a refusal look identical in the assignment.
+		/// </remarks>
+		private readonly HashSet<int> hostHeld = new HashSet<int>();
+
+		/// <summary>Whether the host has told us it is flying this ship.</summary>
+		public bool IsHeldByHost(int unitId) => hostHeld.Contains(unitId);
+
 		/// <summary>
 		/// Asks for a ship.
 		/// </summary>
 		/// <returns>True the first time only, so the caller sends once.</returns>
 		public bool Request(int unitId)
 		{
+			// Never ask for a ship the host has taken. It would be refused,
+			// and asking again every frame would spend a message a frame on a
+			// question whose answer cannot change until the order is done.
+			if (hostHeld.Contains(unitId))
+			{
+				return false;
+			}
+
 			return requested.Add(unitId);
 		}
 
@@ -74,11 +101,26 @@ namespace OpenFrontier.IP.Multiplayer
 			if (!string.IsNullOrEmpty(ownerToken) && ownerToken == myToken)
 			{
 				confirmed.Add(unitId);
+				hostHeld.Remove(unitId);
+
 				return;
 			}
 
 			requested.Remove(unitId);
 			confirmed.Remove(unitId);
+
+			// Empty is the host saying 'this is my ship'. So is any token
+			// that is not ours but is somebody else's - but only the host's
+			// own ships are ever worth asking for again, and a player being
+			// told a ship is another player's's needs no bookkeeping.
+			if (string.IsNullOrEmpty(ownerToken))
+			{
+				hostHeld.Add(unitId);
+			}
+			else
+			{
+				hostHeld.Remove(unitId);
+			}
 		}
 
 		/// <summary>Gives a ship back, because it went onto autopilot.</summary>
@@ -86,6 +128,7 @@ namespace OpenFrontier.IP.Multiplayer
 		{
 			requested.Remove(unitId);
 			confirmed.Remove(unitId);
+			hostHeld.Remove(unitId);
 		}
 
 		/// <summary>Forgets everything, for when a join ends.</summary>

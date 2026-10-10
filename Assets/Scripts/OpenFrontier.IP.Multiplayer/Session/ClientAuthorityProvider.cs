@@ -71,7 +71,32 @@ namespace OpenFrontier.IP.Multiplayer
 			// a world with other people in it belongs to the host like
 			// everything else, and it is where an earlier version of this was
 			// far too generous.
-			return unit.IsPlayerCurrentUnit;
+			if (!unit.IsPlayerCurrentUnit)
+			{
+				return false;
+			}
+
+			// Unless the host has taken it.
+			//
+			// This is the override. Being the player's current unit says who
+			// the ship belongs to; it says nothing about who is flying it right
+			// now, and when a player gives their own ship an order the answer
+			// changes to the host.
+			//
+			// It was not asked. It answered yes for as long as the ship was
+			// the one under the stick, so the client kept simulating a ship
+			// the host's fleet was already flying, uploaded the result over
+			// the top of it, and the ship was thrown about violently on both
+			// machines with nothing in either log to explain it.
+			MultiplayerClientService client = MultiplayerClientService.Instance;
+
+			if (client != null && client.IsConnected
+				&& client.OwnershipView.IsHeldByHost(unit.UniqueId))
+			{
+				return false;
+			}
+
+			return true;
 		}
 
 		public bool OwnsFaction(Faction faction)

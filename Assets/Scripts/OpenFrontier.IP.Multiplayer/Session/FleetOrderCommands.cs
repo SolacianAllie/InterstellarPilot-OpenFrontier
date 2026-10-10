@@ -109,8 +109,6 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				session.Send(ProtocolVersion.FleetOrderCommandMessageId, message.ToBytes());
 
-				NoteIfThisIsTheShipUnderTheStick(looseCount);
-
 				Debug.Log("Multiplayer: asked the host for " + intent.Kind + " on "
 					+ fleetCount + " fleet(s) and " + looseCount + " loose ship(es). "
 					+ "This copy selected: "
@@ -127,48 +125,6 @@ namespace OpenFrontier.IP.Multiplayer
 					+ e.Message + ". Nothing changed.");
 				return true;
 			}
-		}
-
-		/// <summary>
-		/// Notes a handover when the order is for the ship this copy is flying.
-		/// </summary>
-		/// <remarks>
-		/// Giving the ship under the stick an order is putting it on autopilot,
-		/// and autopilot is the host's to fly. The client has to let go, or
-		/// three things write to one transform: the host's fleet flies it,
-		/// this copy simulates it, and this copy uploads what it simulated over
-		/// the top. That is the ship being thrown about violently, seen from
-		/// both machines, with neither able to say why.
-		///
-		/// Only for loose ships, because those are the only ones this copy
-		/// can name. An order naming a fleet the host knows about belongs to
-		/// the host's fleet, and the host's fleet was never this copy's to fly.
-		///
-		/// The host gives the ship back when that fleet runs out of orders,
-		/// which is what clears this.
-		/// </remarks>
-		private static void NoteIfThisIsTheShipUnderTheStick(int looseCount)
-		{
-			if (looseCount <= 0)
-			{
-				return;
-			}
-
-			EngineASX engine = EngineASX.Instance;
-
-			if (engine == null)
-			{
-				return;
-			}
-
-			Unit mine = engine.LocalUnit;
-
-			if (mine == null || mine.IsDestroyed || !Authority.OwnsUnit(mine))
-			{
-				return;
-			}
-
-			MultiplayerClientService.NoteShipHandedOver(mine.UniqueId);
 		}
 
 		private static ClientSession Session =>
@@ -398,17 +354,38 @@ namespace OpenFrontier.IP.Multiplayer
 
 					string owner = session.Ownership.OwnerOf(ship.UniqueId);
 
-					if (!string.IsNullOrEmpty(owner))
+					if (string.IsNullOrEmpty(owner))
 					{
-						ids.Add(ship.UniqueId);
-						owners.Add(owner);
+						continue;
 					}
+
+					ids.Add(ship.UniqueId);
+					owners.Add(owner);
+
+					// "Autopilot, sorry - I'm taking over."
+					//
+					// Named as the host's own, which is what an empty owner
+					// means everywhere else in this protocol, and is why the
+					// client stops simulating it, stops uploading it, and stops
+					// asking for it back until this fleet is finished.
+					//
+					// Said after the order was carried out rather than before,
+					// so the client only lets go of a ship the host is really
+					// flying. A client that handed over on sending would be
+					// stranded if the order were refused, and the player would
+					// be watching a ship nobody was flying with no way to take
+					// it back.
+					session.Ownership.Release(ship.UniqueId);
+					session.SendToEveryone(ship.UniqueId, string.Empty);
 				}
 
 				if (ids.Count == 0)
 				{
 					continue;
 				}
+
+				Debug.Log("Multiplayer: taking " + ids.Count + " ship(s) off the"
+					+ " player to fly them - they were given an order");
 
 				List<int> ships = ids;
 				List<string> tokens = owners;
