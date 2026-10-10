@@ -130,19 +130,53 @@ namespace OpenFrontier.IP.UI
 				return "<null>";
 			}
 
+			// Forced, not waited for.
+			//
+			// Reading textInfo measures whether TMP has happened to rebuild
+			// this component's mesh yet, which is a question about timing and
+			// answers nothing about the label. Forcing the update asks TMP
+			// the actual question - given this text, this font and this rect,
+			// how many characters do you draw - and answers it now.
+			//
+			// Two calls on this bug were wrong because the difference between
+			// a label that renders and one that does not was read as a
+			// property of the label rather than a question for it.
+			label.ForceMeshUpdate();
+
 			var info = label.textInfo;
+
+			string wants = "?";
+			string has = "?";
+
+			try
+			{
+				wants = label.GetPreferredValues(
+					label.text,
+					label.rectTransform.rect.width,
+					label.rectTransform.rect.height).ToString();
+			}
+			catch (System.Exception e)
+			{
+				wants = "threw: " + e.GetType().Name;
+			}
+
+			has = info == null || info.lineInfo == null
+				? "none"
+				: info.lineInfo.Length + " line(s)";
 
 			return (label.name + " '" + label.text + "'")
 				+ " chars=" + (info == null ? "?" : info.characterCount.ToString())
+				+ " mesh=" + has
+				+ " active=" + label.gameObject.activeInHierarchy
 				+ " wrap=" + label.textWrappingMode
 				+ " overflow=" + label.overflowMode
+				+ " align=" + label.alignment
 				+ " rect=" + (label.rectTransform == null
 					? "?"
 					: label.rectTransform.rect.width.ToString("0") + "x"
 						+ label.rectTransform.rect.height.ToString("0"))
-				+ " lines=" + (info == null || info.lineInfo == null
-					? "?"
-					: info.lineInfo.Length.ToString());
+				+ " wants=" + wants
+				+ " fontSize=" + label.fontSize;
 		}
 
 		protected override void OnButtonClick()
