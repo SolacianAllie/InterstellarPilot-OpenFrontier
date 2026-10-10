@@ -451,8 +451,11 @@ namespace OpenFrontier.IP.Multiplayer
 		{
 			if (!ProtocolMatches)
 			{
+				// Both numbers are in terms of the version now, so the message
+				// is about the version and says so - a player who has one code
+				// and one game does not care that two fields disagreed.
 				reason = "That code is from a different version of Open Frontier ("
-					+ ProtocolVersion + " vs " + OpenFrontier.IP.Multiplayer.ProtocolVersion.Current + ").";
+					+ GameVersion + " vs " + Versioning.Version + ").";
 				return false;
 			}
 

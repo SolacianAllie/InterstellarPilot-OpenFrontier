@@ -307,9 +307,12 @@ namespace OpenFrontier.IP.Multiplayer
 					return null;
 
 				case HandshakeResult.ProtocolMismatch:
-					return "That host is running a different multiplayer protocol ("
-						+ HostProtocolVersion + " vs " + ProtocolVersion.Current
-						+ "). Both players need the same build.";
+					// Both numbers now come from the version, so saying
+					// "protocol" would name something the player has never
+					// heard of. The version is the thing they can act on.
+					return "That host is running Open Frontier " + HostGameVersion
+						+ ", and you're running " + Versioning.Version
+						+ ". Players must match versions exactly.";
 
 				case HandshakeResult.VersionMismatch:
 					return "That host is running Open Frontier " + HostGameVersion
