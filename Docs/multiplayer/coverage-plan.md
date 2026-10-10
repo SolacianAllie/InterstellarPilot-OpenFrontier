@@ -38,10 +38,24 @@ compiled.
 | B7 | Not done — needs E3. Hull/shield/capacitor are not on the wire. |
 | B8 | Partly done — the README's DONE claim is corrected and points at the coverage plan. |
 
+### Stream C — command channel: **STARTED**
+
+| | |
+|---|---|
+| C1 | `PlayerCommandMessage` (id 14) — one envelope, `int[]` + `string[]`. Codec tested against lying headers. |
+| C2 | `PlayerCommands` — registry, host dispatch via `HostSession.PlayerCommandRequested`, handlers validate through the ownership registry before mutating. |
+| C3 | `Authority.DockRequest` / `Authority.UndockRequest` — the engine's door. Return false when nobody is listening, so host and singleplayer are untouched. |
+
+### Stream D — empire: **1 of 12, and it unblocks the station**
+
+| | |
+|---|---|
+| D2 | **Docking and undocking — DONE.** Host-authoritative, `DockedStateMessage` (id 15) broadcasts hangar *and* bay, applied on every copy by `DockedStateApplier`. Un-gates the whole station interface. |
+
 ### Not started
 
-C command channel · D empire · E combat · F remaining orders · G legibility ·
-H comms · I public release · J audit
+D except docking · E combat · F remaining orders · G legibility · H comms ·
+I public release · J audit
 
 ### What to check in the next session
 
@@ -62,6 +76,31 @@ Multiplayer: refused - firing weapons. Nothing changed. It would have damaged sh
 
 Both are new. Neither was possible before — the log could not distinguish a
 refusal from a success.
+
+On the **client**, dock at a station and undock:
+
+```
+Multiplayer: asked the host to dock ship 800000000 at 100506
+Multiplayer: ship 800000000 is docked at station 100506, bay 2
+```
+
+On the **host**, the same moment:
+
+```
+Multiplayer: docked ship 800000000 at station 100506, bay 2
+```
+
+And on **every** copy, including other players, the applied line — that it
+goes to everyone rather than only the asker is the thing to confirm, since two
+players watching the same ship must see it in the same hangar.
+
+If a dock fails on the host, every copy is told the ship is *not* docked, and
+the host says why:
+
+```
+Multiplayer: could not dock ship 800000000 at 100506 - it does not fit, or the hangar is full.
+Multiplayer: ship 800000000 is out of its hangar
+```
 
 On the **host**, after any client order:
 
