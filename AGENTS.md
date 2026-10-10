@@ -154,6 +154,15 @@ exit 198) — the user performs all editor actions.
   (`ShadowQualitySync` was bitten by this). The Core RP assembly
   (`Unity.RenderPipelines.Core.Runtime`, home of `Volume`/`VolumeProfile`)
   is referenced separately — `PostProcessingQualitySync` needed it added.
+- **Never `ShowMessageBox` from a `RenameConfirmed` (or any
+  `ScreenBase`-event) callback.** `RenameUnitScreen.OkButtonClick` fires
+  `RenameConfirmed` and *then* calls `NavigateBack()`. A message box becomes
+  `ScreenNavigator.CurrentScreen`, so `NavigateBack()` sees
+  `IsCurrentScreen == false` and refuses — logging
+  `Only current panel MessageBoxScreen(Clone) can navigate back` and leaving
+  the player stuck on the entry screen, pressing OK to get nowhere. Stash the
+  message on the calling screen and raise it from `refresh()`, which runs when
+  that screen becomes current again (`RefreshOnEnable: 1`).
 - **uGUI positions on ScreenSpace-Overlay canvases are in screen pixels**;
   any hit-test radius authored in "pixels" must be multiplied by
   `Canvas.scaleFactor` or it shrinks physically on high-DPI screens (see

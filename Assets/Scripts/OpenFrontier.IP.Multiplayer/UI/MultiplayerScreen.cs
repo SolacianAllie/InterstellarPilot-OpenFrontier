@@ -95,6 +95,12 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		{
 			base.refresh();
 
+			// Reported here rather than from the callback that stashed it,
+			// because refresh() is what runs once this screen is current again -
+			// the point at which a message box can be shown without stealing the
+			// navigation away from whatever is trying to close.
+			ReportPendingAddError();
+
 			// An unwired prefab would otherwise touch a null list here and throw
 			// on every refresh, burying the one message that explains why.
 			if (ItemsList == null)
@@ -189,9 +195,22 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		}
 
 		/// <summary>
-		/// Validates a typed code and saves it, reporting anything wrong with it.
+		/// Validates a typed code and saves it, stashing anything wrong with it
+		/// to be reported once this screen is current again.
 		/// </summary>
 		/// <returns>The saved entry, or null if nothing was saved.</returns>
+		/// <remarks>
+		/// Deliberately does not show a message box. This runs inside the rename
+		/// screen's RenameConfirmed callback, which fires immediately before that
+		/// screen calls NavigateBack - and a message box becomes the current
+		/// screen, at which point NavigateBack refuses ("Only current panel ...
+		/// can navigate back"). The player is then left sitting on the entry
+		/// screen with an error over it, pressing OK to get nowhere.
+		///
+		/// Letting the rename screen close first and reporting here means the
+		/// navigation always completes and the message lands somewhere the
+		/// player can act on it.
+		/// </remarks>
 		private SavedHost AddHostFromCode(string enteredCode)
 		{
 			if (string.IsNullOrWhiteSpace(enteredCode))
@@ -205,8 +224,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			if (!parsed.Success)
 			{
-				UIController.Instance.ShowMessageBox(
-					parsed.Error, MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
+				pendingAddError = parsed.Error;
 				return null;
 			}
 
@@ -215,6 +233,24 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// from a different version later and be told why, rather than having
 			// the entry silently rejected at add time.
 			return SavedHostStore.AddOrUpdate(null, enteredCode);
+		}
+
+		/// <summary>An add-host failure waiting for this screen to be current again.</summary>
+		private string pendingAddError;
+
+		/// <summary>Reports a stashed add-host failure, once it is safe to.</summary>
+		private void ReportPendingAddError()
+		{
+			if (string.IsNullOrEmpty(pendingAddError))
+			{
+				return;
+			}
+
+			string message = pendingAddError;
+			pendingAddError = null;
+
+			UIController.Instance.ShowMessageBox(
+				message, MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
 		}
 
 		/// <summary>
