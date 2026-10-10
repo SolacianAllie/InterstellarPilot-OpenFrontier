@@ -184,7 +184,9 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 
 			// A close before the handshake completes is a failure; after it, the
-			// session simply ended.
+			// session simply ended. Either way it happens once - a socket
+			// closing can raise this more than once, and reporting a join as
+			// ending two or three times would be its own confusion.
 			if (State == JoinState.Connected)
 			{
 				State = JoinState.Failed;
@@ -195,8 +197,29 @@ namespace OpenFrontier.IP.Multiplayer
 			Abort(reason);
 		}
 
+		/// <summary>
+		/// Fails the join, once.
+		/// </summary>
+		/// <remarks>
+		/// Once only, because a rejection is always followed by the host
+		/// hanging up - it sends the reason and then closes, and both arrive
+		/// here in order. Without the guard the close overwrites the reason
+		/// the host actually gave, and the player is told "the other player
+		/// disconnected" a moment after being told "the host is in the main
+		/// menu". The second message is the one they remember, and it is the
+		/// one they can do nothing with.
+		///
+		/// It also fires a second message box over the first, which is its own
+		/// problem: a box becomes the navigator's current screen, so anything
+		/// that navigates afterwards is refused.
+		/// </remarks>
 		private void Abort(string reason)
 		{
+			if (disposed || State == JoinState.Failed || State == JoinState.Connected)
+			{
+				return;
+			}
+
 			FailureReason = reason;
 			State = JoinState.Failed;
 
