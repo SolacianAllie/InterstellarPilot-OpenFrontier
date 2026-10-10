@@ -1701,6 +1701,53 @@ namespace OpenFrontier.IP.Engine
 			return factionIdMap.ContainsKey(id);
 		}
 
+		/// <summary>
+		/// Moves a registered faction to a different id.
+		/// </summary>
+		/// <remarks>
+		/// The map is private, so a caller that wants a faction numbered from
+		/// somewhere of its own choosing - the reserved bands multiplayer uses
+		/// for anything a player made - would otherwise have to reach in by
+		/// reflection. Better as an operation the engine offers, because it
+		/// has to keep three things in step: the map, the faction's own id,
+		/// and the counter that would otherwise hand the old number out again
+		/// to something else.
+		///
+		/// Everything referring to the faction still does, because those hold
+		/// the faction rather than its id. Only code that stored the id
+		/// separately is affected, and there is none that matters: saves
+		/// record ids, which is the case this exists for and the reason a
+		/// world saved before it may load with a faction at the old number.
+		/// </remarks>
+		/// <returns>False when the new id is already taken.</returns>
+		public bool ReassignFactionId(Faction faction, int newId)
+		{
+			if (faction == null)
+			{
+				return false;
+			}
+
+			if (factionIdMap.ContainsKey(newId))
+			{
+				return false;
+			}
+
+			// The old id goes first so the same faction can be re-keyed onto a
+			// number it already holds.
+			factionIdMap.Remove(faction.UniqueId);
+
+			faction.UniqueId = newId;
+			factionIdMap[newId] = faction;
+
+			// Past the new number, so nothing else is ever handed it.
+			if (newId >= FactionIdCounter)
+			{
+				FactionIdCounter = newId + 1;
+			}
+
+			return true;
+		}
+
 		public CargoClass GetCargoClassById(int id)
 		{
 			CargoClass value = null;
