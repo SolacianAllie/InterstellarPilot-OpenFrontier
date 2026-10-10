@@ -134,8 +134,48 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			}
 		}
 
+		private bool hadAWorld;
+
+		/// <summary>
+		/// Tells everybody to go home, once, when this host stops playing.
+		/// </summary>
+		/// <remarks>
+		/// Once, because the main menu is also where a host waits between
+		/// games and this runs every frame - without the flag they would be
+		/// told to leave a session they had already left, over and over.
+		///
+		/// Sent before the socket closes, which is the only moment it can
+		/// be. A host whose machine dies says nothing, and that is exactly
+		/// the case a client reads as a lost connection instead.
+		/// </remarks>
+		private void SayGoodbyeIfLeaving()
+		{
+			OpenFrontier.IP.Engine.EngineASX engine = OpenFrontier.IP.Engine.EngineASX.Instance;
+			bool inAWorld = engine != null && engine.World != null;
+
+			if (inAWorld)
+			{
+				hadAWorld = true;
+				return;
+			}
+
+			if (!hadAWorld || Session == null || Session.Players.Count == 0)
+			{
+				return;
+			}
+
+			hadAWorld = false;
+
+			Session.Broadcast(ProtocolVersion.HostFarewellMessageId,
+				new HostFarewellMessage { Reason = "The host has left the game." }.ToBytes());
+
+			Debug.Log("Multiplayer: told " + Session.Players.Count
+				+ " player(s) this host is leaving");
+		}
+
 		private void Update()
 		{
+			SayGoodbyeIfLeaving();
 			ApplyPreference();
 			UpdateAvailability();
 			ApplyWorldRestrictions();

@@ -59,6 +59,28 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public event Action<string> Disconnected;
 
+		/// <summary>Why the session ended, in words meant for the player.</summary>
+		public enum Ending
+		{
+			/// <summary>Nothing has gone wrong.</summary>
+			None,
+
+			/// <summary>The host said goodbye and left on purpose.</summary>
+			HostLeft,
+
+			/// <summary>The host's machine stopped answering.</summary>
+			Lost,
+
+			/// <summary>This copy left the game.</summary>
+			LeftGame,
+
+			/// <summary>The join was refused or could not be made.</summary>
+			Refused
+		}
+
+		/// <summary>How the last session ended.</summary>
+		public Ending LastEnding { get; private set; } = Ending.None;
+
 		/// <summary>Whether the host's world has finished arriving.</summary>
 		public bool HasWorld { get; private set; }
 
@@ -134,8 +156,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 			client.Failed += reason =>
 			{
-				Debug.LogWarning("Multiplayer: join failed - " + reason);
-				Failed?.Invoke(reason);
+				Debug.LogWarning("Multiplayer: session ended - " + reason);
+				EndSession(Ending.Refused, reason);
 			};
 
 			client.Disconnected += reason =>
@@ -182,6 +204,16 @@ namespace OpenFrontier.IP.Multiplayer
 			client.WorldSnapshotChunkReceived += chunk => OnWorldChunk(chunk);
 
 			client.PreferencesWanted += () => SendPreferences(client);
+
+			client.HostLeft += reason =>
+			{
+				// Said before the socket closes, so this is the one ending
+				// that can be told apart from a dead connection. "Go and
+				// find them" and "try again" are different advice and a
+				// client cannot tell them apart from a closed socket alone.
+				EndSession(Ending.HostLeft,
+					string.IsNullOrEmpty(reason) ? "The host has left the game." : reason);
+			};
 
 			client.OwnershipAssigned += assignment =>
 				OwnershipView.ApplyAssignment(assignment.UnitId, assignment.OwnerToken, client.Token);
@@ -239,6 +271,50 @@ namespace OpenFrontier.IP.Multiplayer
 		/// that "connected" means the same thing to every part of the client,
 		/// which is the distinction that froze a host's own ships earlier.
 		/// </remarks>
+		/// <summary>
+		/// Ends the session with a reason, and says so where a player sees it.
+		/// </summary>
+		/// <remarks>
+		/// The popup is the point. A session that ends while the player is
+		/// out in a world - which is where it ends, since that is what they
+		/// were doing - otherwise produces no visible event at all: the ships
+		/// simply stop moving, and the UI has nothing to say about why.
+		/// </remarks>
+		private void EndSession(Ending ending, string reason)
+		{
+			LastEnding = ending;
+
+			Debug.Log("Multiplayer: session ended (" + ending + ") - " + reason);
+
+			Failed?.Invoke(reason);
+			Disconnected?.Invoke(reason);
+
+			TellThePlayer(ending, reason);
+		}
+
+		private static void TellThePlayer(Ending ending, string reason)
+		{
+			if (string.IsNullOrEmpty(reason))
+			{
+				return;
+			}
+
+			try
+			{
+				OpenFrontier.IP.UI.UIController.Instance?.ShowMessageBox(
+					reason, OpenFrontier.IP.UI.Screens.MessageBoxButtons.Ok, null,
+					ending == Ending.HostLeft
+						? OpenFrontier.IP.UI.Screens.MessageBox.MessageBoxIcon.Warning
+						: OpenFrontier.IP.UI.Screens.MessageBox.MessageBoxIcon.Error);
+			}
+			catch (System.Exception e)
+			{
+				// The UI is not always up - it may be a scene change, or a
+				// headless probe. Losing the popup is not worth a crash.
+				Debug.LogWarning("Multiplayer: could not show the session-ended message - " + e.Message);
+			}
+		}
+
 		private void UpdateOwnership()
 		{
 			EnsureUploader();
@@ -342,12 +418,7 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
-			Debug.Log("Multiplayer: this world is gone, so the session is over");
-
-			const string reason = "You left the game, so the session ended.";
-
-			Failed?.Invoke(reason);
-			Disconnected?.Invoke(reason);
+			EndSession(Ending.LeftGame, "You left the game, so the session ended.");
 
 			Disconnect();
 			hasHadAWorld = false;

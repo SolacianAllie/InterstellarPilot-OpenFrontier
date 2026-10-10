@@ -416,6 +416,38 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 		}
 
+		/// <summary>
+		/// Sends one message to every admitted player.
+		/// </summary>
+		/// <remarks>
+		/// For messages that are not about any one player - a farewell, a
+		/// scene change - where the per-recipient filtering the ownership
+		/// broadcast needs would make no difference.
+		/// </remarks>
+		public void Broadcast(int messageId, byte[] payload)
+		{
+			byte[] framed = FramedMessage.Create(messageId, payload);
+
+			for (int i = 0; i < players.Count; i++)
+			{
+				RemotePlayer player = players[i];
+
+				if (player == null || !player.Admitted)
+				{
+					continue;
+				}
+
+				try
+				{
+					player.Channel.Send(framed);
+				}
+				catch (Exception)
+				{
+					// Someone who has gone away is noticed on their own close.
+				}
+			}
+		}
+
 		private void AnswerPing(RemotePlayer player)
 		{
 			PongMessage pong = new PongMessage

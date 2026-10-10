@@ -121,5 +121,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>How a joining player wants their pilot and faction named.</summary>
 		public const int JoinerPreferencesMessageId = 9;
+
+		/// <summary>The host leaving on purpose.</summary>
+		public const int HostFarewellMessageId = 10;
 	}
 }

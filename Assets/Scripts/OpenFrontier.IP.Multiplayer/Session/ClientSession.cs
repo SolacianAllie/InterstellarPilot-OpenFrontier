@@ -124,6 +124,9 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public event Action PreferencesWanted;
 
+		/// <summary>The host has said goodbye on purpose.</summary>
+		public event Action<string> HostLeft;
+
 		/// <summary>
 		/// Attempts to join using a code the player typed.
 		/// </summary>
@@ -217,6 +220,21 @@ namespace OpenFrontier.IP.Multiplayer
 			// handshake, so handling it before the reply check keeps the
 			// handshake logic from being the thing that has to know the full
 			// set of message types.
+			if (messageId == ProtocolVersion.HostFarewellMessageId)
+			{
+				if (HostFarewellMessage.TryFromBytes(payload, out HostFarewellMessage farewell, out string farewellError))
+				{
+					HostLeft?.Invoke(farewell.Reason);
+				}
+				else
+				{
+					Debug.LogWarning("Multiplayer: unreadable farewell - " + farewellError);
+					HostLeft?.Invoke(string.Empty);
+				}
+
+				return;
+			}
+
 			if (messageId == ProtocolVersion.UnitStateMessageId)
 			{
 				if (!UnitStateMessage.TryFromBytes(payload, out UnitStateMessage states, out string stateError))
