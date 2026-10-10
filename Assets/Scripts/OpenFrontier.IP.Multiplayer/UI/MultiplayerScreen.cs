@@ -103,6 +103,24 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		private ClientSession client;
 
 		/// <summary>
+		/// The session this screen actually joins through.
+		/// </summary>
+		/// <remarks>
+		/// This used to be a ClientSession of its own, created here and
+		/// disposed with the screen. That worked for the handshake and
+		/// nothing else: MultiplayerClientService is a separate object, and
+		/// it is the one that listens for the descriptor and the world
+		/// transfer, reassembles them and loads the result. A session
+		/// belonging to the screen therefore completed the join, received
+		/// two megabytes from the host, and discarded all of it.
+		///
+		/// Nothing said so. The host logged a perfectly good join, the screen
+		/// showed the host as connected, and the player got no world and no
+		/// error - which is what "it does nothing" turned out to mean.
+		/// </remarks>
+		private MultiplayerClientService Service => MultiplayerClientService.Instance;
+
+		/// <summary>
 		/// The code of the host this copy is joining, or connected to.
 		/// </summary>
 		/// <remarks>
@@ -461,10 +479,11 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			joiningCode = host.Code;
 			SetJoining(host.Code, true);
 
-			client = new ClientSession();
-			client.Failed += OnJoinFailed;
-			client.Connected += () => MarkConnected(host, true);
-			client.Disconnected += reason =>
+			MultiplayerClientService service = Service;
+
+			service.Failed += OnJoinFailed;
+			service.Connected += () => MarkConnected(host, true);
+			service.Disconnected += reason =>
 			{
 				MarkConnected(host, false);
 
@@ -477,7 +496,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				Refresh();
 			};
 
-			client.Join(host.Code);
+			service.Join(host.Code);
 		}
 
 		private void OnJoinFailed(string reason)
@@ -567,13 +586,18 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				joiningCode = null;
 			}
 
-			if (client == null)
+			// Unsubscribe rather than dispose. The session outlives this
+			// screen on purpose - it is a DontDestroyOnLoad object, because
+			// what it is for happens in a game and not in a menu - so
+			// disposing it here would end the session the moment the player
+			// left the multiplayer menu, which is exactly when they are
+			// trying to get to it.
+			if (client != null)
 			{
-				return;
+				client = null;
 			}
 
-			client.Dispose();
-			client = null;
+			Service?.Disconnect();
 		}
 
 		/// <summary>

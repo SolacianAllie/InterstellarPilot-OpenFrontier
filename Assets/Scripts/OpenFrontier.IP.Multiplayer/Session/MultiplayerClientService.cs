@@ -46,6 +46,18 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Raised with a sentence for the player when joining resolves.</summary>
 		public event Action<string> WorldReady;
 
+		/// <summary>
+		/// Raised when the session ends, whether or not anyone asked for it.
+		/// </summary>
+		/// <remarks>
+		/// The same event as Failed, on purpose. A drop is not a different
+		/// thing from a refusal as far as the screen is concerned: both mean
+		/// the join is over and the row should stop saying connected. Two
+		/// events for one outcome is how a screen ends up subscribing to
+		/// only one of them and quietly going stale.
+		/// </remarks>
+		public event Action<string> Disconnected;
+
 		/// <summary>Whether the host's world has finished arriving.</summary>
 		public bool HasWorld { get; private set; }
 
@@ -125,7 +137,11 @@ namespace OpenFrontier.IP.Multiplayer
 				Failed?.Invoke(reason);
 			};
 
-			client.Disconnected += reason => Failed?.Invoke(reason);
+			client.Disconnected += reason =>
+			{
+				Failed?.Invoke(reason);
+				Disconnected?.Invoke(reason);
+			};
 
 			client.UnitStateReceived += states =>
 			{
