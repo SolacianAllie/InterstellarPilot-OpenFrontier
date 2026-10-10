@@ -53,6 +53,7 @@ namespace OpenFrontier.IP.Multiplayer
 		{
 			try
 			{
+				PrepareForBinding();
 				listener.Start();
 				IsListening = true;
 
@@ -69,6 +70,42 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				Failed?.Invoke(DescribeBindFailure(e));
 				return false;
+			}
+		}
+
+		/// <summary>
+		/// Sets the one socket option a fixed port actually needs.
+		/// </summary>
+		/// <remarks>
+		/// A host that stops and starts again does so within seconds, and a
+		/// connection closed gracefully leaves its port in TIME_WAIT for about
+		/// a minute afterwards. Binding back into that is refused with "address
+		/// already in use". Measured on this machine rather than assumed -
+		/// four binds after a graceful close, four refused without this option
+		/// and four accepted with it - and it matters more now that the port is
+		/// fixed instead of left to the OS, since it is no longer a different
+		/// number every session that saves us.
+		///
+		/// The two platforms spell the fix differently, and using the wrong
+		/// one is worse than doing nothing. On Unix SO_REUSEADDR means "ignore
+		/// my own TIME_WAIT entries". On Windows it means "let another socket
+		/// take this port too", which is how a second copy of anything steals
+		/// your connections. Windows' own answer is SO_EXCLUSIVEADDRUSE, so
+		/// that is what Windows gets.
+		/// </remarks>
+		private void PrepareForBinding()
+		{
+			Socket socket = listener.Server;
+
+			if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+			{
+				socket.SetSocketOption(SocketOptionLevel.Socket,
+					SocketOptionName.ExclusiveAddressUse, true);
+			}
+			else
+			{
+				socket.SetSocketOption(SocketOptionLevel.Socket,
+					SocketOptionName.ReuseAddress, true);
 			}
 		}
 

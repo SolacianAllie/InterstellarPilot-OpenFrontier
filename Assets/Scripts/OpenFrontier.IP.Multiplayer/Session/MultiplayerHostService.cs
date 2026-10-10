@@ -201,23 +201,44 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				return;
 			}
 
-			// The preferred port first, so the join code is the same one every
-			// session and a saved host entry keeps working. Anything else is
-			// last resort: hosting on a random port beats not hosting, but it
-			// cannot be forwarded and its code goes stale on the next restart.
-			HostSession session = HostSession.Start(bindAddress, advertisedAddress, reason =>
+			// The preferred ports in order, so the join code is the same one
+			// session after session and a saved host entry keeps working. A
+			// range rather than a single port: anything else on the machine
+			// holding one number should cost a number, not the session.
+			//
+			// Port 0 is the last resort - any free port - because hosting on a
+			// random one beats not hosting, even though it cannot be forwarded
+			// and its code goes stale on the next restart.
+			int[] preferredPorts = IPAddressSelection.PreferredPorts();
+
+			HostSession session = null;
+
+			// The reason each attempt failed is captured rather than logged:
+			// eight failures in a row would bury the one that matters, and the
+			// only interesting outcome is whether the whole range was refused.
+			string lastPortFailure = null;
+
+			foreach (int candidate in preferredPorts)
 			{
-				LastProblem = reason;
-				Debug.LogWarning("Multiplayer: " + reason);
-			});
+				session = HostSession.Start(bindAddress, advertisedAddress, candidate, reason =>
+				{
+					lastPortFailure = reason;
+				});
+
+				if (session != null)
+				{
+					break;
+				}
+			}
 
 			if (session == null)
 			{
-				LastProblem = null;
+				if (lastPortFailure != null)
+				{
+					Debug.LogWarning("Multiplayer: every preferred port was taken (" + lastPortFailure + ")");
+				}
 
-				// Probably the preferred port: something else on this machine has it.
-				// Take any free port and carry on without a forward.
-				session = HostSession.Start(bindAddress, advertisedAddress, reason =>
+				session = HostSession.Start(bindAddress, advertisedAddress, 0, reason =>
 				{
 					LastProblem = reason;
 					Debug.LogWarning("Multiplayer: " + reason);
@@ -225,10 +246,10 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 				if (session != null)
 				{
-					Debug.LogWarning("Multiplayer: port " + IPAddressSelection.PreferredPort
-						+ " was taken, so this session is on an arbitrary port. It will not "
-						+ "be reachable from outside this network, and its code changes "
-						+ "whenever the game restarts.");
+					Debug.LogWarning(
+						"Multiplayer: hosting on " + session.Port + " instead. It will not be "
+						+ "reachable from outside this network, and its code changes whenever "
+						+ "the game restarts.");
 				}
 			}
 

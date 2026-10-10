@@ -98,6 +98,7 @@ namespace OpenFrontier.IP.Multiplayer
 		public static HostSession Start(
 			IPAddress bindAddress,
 			IPAddress advertisedAddress,
+			int port,
 			Action<string> onError)
 		{
 			if (!MultiplayerSettings.CanHost)
@@ -113,8 +114,9 @@ namespace OpenFrontier.IP.Multiplayer
 			// 7-byte code secret against a 20-byte generated one can never
 			// match, and would refuse every joiner.
 			//
-			// Port 0: the OS picks a free one, and the code carries it.
-			var listener = new NetListener(0, bindAddress);
+			// Port 0 means "any free one", which is the fallback when every
+			// preferred port is taken. The code carries whichever we get.
+			var listener = new NetListener(port, bindAddress);
 
 			if (!listener.Start())
 			{

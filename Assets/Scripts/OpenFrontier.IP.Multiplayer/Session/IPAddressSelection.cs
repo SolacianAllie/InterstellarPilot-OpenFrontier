@@ -40,8 +40,57 @@ namespace OpenFrontier.IP.Multiplayer
 		/// the OS is not already using it. If it is taken - a second copy of the game,
 		/// or another program - hosting falls back to any free port and goes without a
 		/// forward, which beats refusing to host at all.
+		/// </summary>
+		/// <remarks>
+		/// A small range rather than one number, tried in order. A single port is
+		/// a single point of failure: anything else on the machine holding it
+		/// stops the host, and the only fallback is an OS-assigned port whose
+		/// code goes stale on the next restart. A range means a second copy of
+		/// the game - or a leftover process - costs one number instead of the
+		/// session. Factorio takes the same approach.
+		///
+		/// Where the range sits, and why:
+		///
+		/// Above 1024 so nothing needs privileges. Below 32768 because that is
+		/// where Linux and Android hand out ports for outbound connections
+		/// (32768-60999), and every one of those sits in TIME_WAIT for a minute
+		/// after use - so a listening port up there spends its life being
+		/// refused. Windows and macOS start at 49152, so this is clear of them
+		/// too.
+		///
+		/// Unregistered in the IANA service registry. IANA asks that user ports
+		/// be registered before use; only about 11% of 1024-49151 is taken, so
+		/// finding free ones is easy, but free is not the same as unclaimed by
+		/// convention - so this block was also checked against the ports games
+		/// actually bind (7777, 25565, 27015, 3074, 3659, 2302-2404, 3478-3480,
+		/// 10999, 19132, 34197 and the Steam ranges among them).
+		///
+		/// If every port in the range is taken, hosting falls back to any free
+		/// port and simply goes without a forward, which beats refusing to host.
 		/// </remarks>
-		public const int PreferredPort = 24890;
+		public const int FirstPreferredPort = 24890;
+
+		/// <summary>How many ports the host will try before giving up on them.</summary>
+		public const int PreferredPortCount = 8;
+
+		/// <summary>
+		/// The ports to try, in order, before falling back to any free one.
+		/// </summary>
+		/// <remarks>
+		/// An array rather than a sequence so the result cannot be enumerated
+		/// twice with the host making a different choice each time.
+		/// </remarks>
+		public static int[] PreferredPorts()
+		{
+			int[] ports = new int[PreferredPortCount];
+
+			for (int i = 0; i < ports.Length; i++)
+			{
+				ports[i] = FirstPreferredPort + i;
+			}
+
+			return ports;
+		}
 
 		/// <summary>
 		/// Chooses where to listen, and which address goes into a join code.
