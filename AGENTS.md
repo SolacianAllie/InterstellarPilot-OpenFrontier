@@ -9,6 +9,17 @@ C# changes are verified outside the editor with a generated .NET harness:
 
 - Regenerate: `python3 /tmp/opencode/gen_harness2.py` (rebuilds csprojs against live `Assets/Scripts`)
 - **New `.cs` files are INVISIBLE to the harness until regen** — a stale csproj silently skips them, so their errors only surface in the editor (`MainMenuWorldController.cs` hid three missing-using bugs this way). Always regen after creating files.
+- **`gen.sh --regen` ONLY rebuilds `All.csproj`.** The three test projects
+  (`handshake-test`, `probe-test`, `codec-test`) keep hand-maintained
+  `<Compile Include>` lists, and they pull in *different* subsets — so a new
+  protocol message that `All.csproj` compiles fine can still break
+  `handshake-test`, which links `ClientSession.cs` and therefore needs the
+  message type too. Symptom: `ALL CHECKS FAILED` with **no `error CS`
+  anywhere in `check.sh` output** and `codec tests / handshake tests /
+  probe tests` reporting only "The build failed". Run
+  `dotnet build handshake-test/handshake-test.csproj` directly to see it.
+  Add the new file to every test project that already lists a sibling of it,
+  and add new test `.cs` files to `codec-test.csproj` explicitly too.
 - Build: `cd /tmp/opencode/harness && dotnet build All.csproj -v q -nologo`
 
 **Known blind spot:** the harness compiles against a UnityEngine *reference stub*,

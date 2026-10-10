@@ -28,6 +28,7 @@ player owns.
 | Unit transforms host → client at 10 Hz, interpolated between updates | ✅ |
 | The joiner's ship state client → host, accepted as authority | ✅ |
 | Ownership arbitration: one ship, one player | ✅ |
+| Credits and the ship's hold, host → client on change | ✅ |
 | Quit, host-left and lost-connection all reported distinctly | ✅ |
 | Saved-host slots showing latency, scenario, players, uptime | ✅ |
 
@@ -53,17 +54,26 @@ they are the same problem seen from two directions.
 
 ## What is left, and how to build it
 
-### 1. Faction state, pushed host → client
+### 1. Faction state, pushed host → client — DONE
 
-Credits (`Faction.Credits`, an int) and cargo (the `Cargo` list on a unit's
-cargo bay) are the two that matter first. Without these a client sees a
-price it already paid, and a balance it has already spent.
+`FactionStateMessage` carries the faction id, its credits, and the contents
+of the player's current ship's hold. `FactionStatePusher` sends it per player
+whenever any of those differ from what that player was last told;
+`FactionStateApplier` puts it on the client.
 
-Push them whenever they change, not on a timer: a host that tells a client
-its balance changed is correct immediately, and one that polls is wrong for
-up to the poll interval after every purchase.
+Two decisions worth keeping:
 
-Size: small. One message, one applier, one trigger.
+- **Compared, not event-driven.** A few integer comparisons per player per
+  frame, rather than subscribing to change events that one code path will
+  eventually not raise. A missed event is silent: the client is wrong and
+  nothing says why.
+- **Rebuilt, not adjusted.** Cargo is emptied and refilled rather than moved
+  toward the target. A delta compounds - one missed message leaves the client
+  permanently out by one purchase, and no later message can say which one.
+
+The faction id is derived from the player's token rather than stored, which is
+the reason a player's faction number is a hash of who they are. The ship is
+found through the ownership registry.
 
 ### 2. Commands, client → host
 
@@ -107,14 +117,21 @@ rather than when there is time left.
 
 ## Known gaps
 
-- **The joiner's shuttle has no components.** It is created outside the
-  normal unit flow, so the component setup that a normally-spawned ship gets
-  is not reached.
+- **The joiner's shuttle may be incomplete.** It is created outside the
+  normal unit flow, so it may not get the component setup a normally-spawned
+  ship gets. `UnitDiagnostics.Describe` prints the joiner's ship next to a
+  known-good one — the host's own ship, or the ship the joiner was already
+  flying — under the `DiagS` marker. Read against each other, a difference
+  names itself.
 - **Ownership is keyed on player token, not faction**, which is what makes
   two players sharing one faction a change to one test rather than a
   rewrite. The host-ships-are-not-claimable check is the one place that
   assumes otherwise.
-- **Only the host's active sector is broadcast.** Sector changes are not
-  synchronised at all.
+- **A player owning more than one ship** is answered by lowest-id-wins in
+  `FactionStatePusher`. A client flies one ship at a time; the rest are
+  scenery to that message.
+- **Sector changes are not synchronised.** Every sector's ships are
+  broadcast, but *which* sector a player is in is not sent — the client
+  arrives in the host's active sector and stays there.
 - **No interpolation for the joiner's own ship**, only for everyone else's;
   it is extrapolated from the host instead.
