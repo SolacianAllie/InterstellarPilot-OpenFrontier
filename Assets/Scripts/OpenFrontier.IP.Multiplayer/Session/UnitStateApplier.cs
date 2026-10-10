@@ -119,7 +119,7 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
-			NetLog.Write("applying - " + appliedLastUpdate + " applied, "
+			NetLog.Client("applying - " + appliedLastUpdate + " applied, "
 				+ unknownLastUpdate + " unknown, of " + receivedTotal + " received");
 
 			Debug.Log("Multiplayer: applying - " + appliedLastUpdate + " applied, "

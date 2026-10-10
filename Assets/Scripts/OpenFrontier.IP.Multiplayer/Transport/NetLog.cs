@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -28,17 +29,38 @@ namespace OpenFrontier.IP.Multiplayer
 		private const string HostPath = "/tmp/openfrontier-net-host.log";
 		private const string ClientPath = "/tmp/openfrontier-net-client.log";
 
-		private static StreamWriter writer;
+		private static Dictionary<string, StreamWriter> writers;
 
 		/// <summary>Whether the file is being written at all.</summary>
-		public static bool Working => writer != null;
+		public static bool Working => writers != null && writers.Count > 0;
 
-		/// <summary>Appends a line to whichever file this side uses.</summary>
-		public static void Write(string message)
+		/// <summary>Appends a line to the host's file.</summary>
+		public static void Host(string message) => Write(HostPath, "host", message);
+
+		/// <summary>Appends a line to the client's file.</summary>
+		public static void Client(string message) => Write(ClientPath, "client", message);
+
+		private static void Write(string path, string role, string message)
 		{
-			if (writer == null && !Open())
+			if (writers == null)
 			{
-				return;
+				writers = new Dictionary<string, StreamWriter>();
+			}
+
+			if (!writers.TryGetValue(path, out StreamWriter writer) || writer == null)
+			{
+				try
+				{
+					writer = new StreamWriter(new FileStream(path, FileMode.Append, FileAccess.Write));
+					writer.WriteLine("--- " + role + " session started at " + DateTime.Now + " ---");
+					writer.Flush();
+					writers[path] = writer;
+				}
+				catch (Exception e)
+				{
+					Debug.LogWarning("Multiplayer: could not open " + path + " - " + e.Message);
+					return;
+				}
 			}
 
 			try
@@ -52,40 +74,5 @@ namespace OpenFrontier.IP.Multiplayer
 				writer = null;
 			}
 		}
-
-		private static bool Open()
-		{
-			try
-			{
-				string path = IsClientSide ? ClientPath : HostPath;
-
-				writer = new StreamWriter(new FileStream(path, FileMode.Append, FileAccess.Write))
-				{
-					AutoFlush = false
-				};
-
-				writer.WriteLine("--- session started at " + DateTime.Now + " ---");
-				writer.Flush();
-
-				return true;
-			}
-			catch (Exception e)
-			{
-				Debug.LogWarning("Multiplayer: could not open the network log - " + e.Message);
-				return false;
-			}
-		}
-
-		/// <summary>
-		/// Whether this process is the joining side.
-		/// </summary>
-		/// <remarks>
-		/// Decided by whether the multiplayer menu has been opened in this
-		/// process at all, which is the only signal available before a join
-		/// has been attempted. A host that also joins would be filed as a
-		/// host, which is the safer of the two to get wrong: the host's file
-		/// is the one that is always worth having.
-		/// </remarks>
-		private static bool IsClientSide => UI.MultiplayerScreen.MultiplayerScreenWasOpened;
 	}
 }

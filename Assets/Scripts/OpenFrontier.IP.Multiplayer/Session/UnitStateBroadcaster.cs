@@ -122,7 +122,7 @@ namespace OpenFrontier.IP.Multiplayer
 				? 0
 				: MultiplayerHostService.Session.Players.Count;
 
-			NetLog.Write("broadcasting " + ships.Count + " ship(s) from " + sector.name
+			NetLog.Host("broadcasting " + ships.Count + " ship(s) from " + sector.name
 				+ ", ids " + ships[0].UniqueId + " to " + ships[ships.Count - 1].UniqueId
 				+ ", to " + players + " player(s)");
 
