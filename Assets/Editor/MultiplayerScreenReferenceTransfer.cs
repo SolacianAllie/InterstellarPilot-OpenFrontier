@@ -881,13 +881,25 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI target =
 				contents.GetComponent<OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI>();
 
-			// Neither present is the expected state on a prefab that has
-			// already been through this once: the old script was destroyed
-			// and the replacement could not be added because Unity had no
-			// MonoScript for it. So this adds the component rather than
-			// reporting the prefab as unusable - which is what the previous
-			// version did, leaving the row permanently scriptless with no
-			// way for a re-run to fix it.
+			// A missing-script component left behind by an earlier run has to
+			// go before anything else. It is not reachable by type - its script
+			// is gone - so neither GetComponent nor DestroyImmediate can see it,
+			// and Unity refuses to save a prefab that carries one ("You are
+			// trying to save a Prefab with a missing script"). Found by walking
+			// the components instead, which is the only way to see these.
+			int orphans = RemoveMissingScripts(contents);
+
+			if (orphans > 0)
+			{
+				// Re-read afterwards: the orphan counted as the row's script, so
+				// anything resolved before this point may have been looking at
+				// the wrong component.
+				source = contents.GetComponent<LoadGameItemUI>();
+				target = contents.GetComponent<OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI>();
+
+				report.Note("removed " + orphans + " missing-script component(s) from " + itemPath);
+			}
+
 			if (source != null)
 			{
 				UnityEngine.Object.DestroyImmediate(source);
@@ -958,6 +970,37 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 		return report;
 	}
+
+		/// <summary>
+		/// Deletes every component whose script is missing, and returns how many.
+		/// </summary>
+		/// <remarks>
+		/// These are invisible to the ordinary APIs on purpose: a component whose
+		/// MonoScript is gone compares equal to null for GetComponent, so asking
+		/// for it by type returns null whether or not it is there, and
+		/// DestroyImmediate on a null does nothing. Walking GetComponents by
+		/// type does not surface them either, so nothing but this API reaches
+		/// one.
+		///
+		/// Unity refuses to save a prefab carrying one ("You are trying to save a
+		/// Prefab with a missing script"), which is what made an earlier run of
+		/// this leave a prefab that no number of re-runs could fix: the orphan
+		/// survived every attempt to destroy it, and then blocked the save that
+		/// would have recorded the repair.
+		/// </remarks>
+		private static int RemoveMissingScripts(GameObject root)
+		{
+			// GameObjectUtility.RemoveMonoBehavioursWithMissingScript is the API
+			// for this. Its companions - ComponentUtility.RemoveComponentAtIndex
+			// and DestroyImmediateImmediate - do not exist in this Unity version
+			// (checked by reflection against 6000.6.4f1), so this is not a
+			// stylistic choice but the only one available.
+			//
+			// It recurses, which is what a screen needs: the orphan can be on any
+			// descendant, not just the root. It returns a count rather than a
+			// bool, despite the name reading like a question.
+			return GameObjectUtility.RemoveMonoBehavioursWithMissingScript(root);
+		}
 
 		private static TMPro.TextMeshProUGUI FindLabel(GameObject root, string objectName)
 		{

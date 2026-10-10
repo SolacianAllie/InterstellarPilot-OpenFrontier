@@ -2123,6 +2123,7 @@ MonoBehaviour:
   CodeLabel: {fileID: 0}
   OkButton: {fileID: 7236629433137863387}
   CopyButton: {fileID: 4551299755945738284}
+  LegacyCodeLabel: {fileID: 5508566932037906946}
 --- !u!1 &8738427881336010108
 GameObject:
   m_ObjectHideFlags: 0
