@@ -96,6 +96,24 @@ namespace OpenFrontier.IP.Multiplayer
 
 				AdoptExisting(engine, returning, factionName, playerToken);
 
+				// Their ship, if they still have one.
+				//
+				// This made a new shuttle every time, which is right for
+				// somebody arriving for the first time and wrong for somebody
+				// who left a fleet in this save: they would come back to a
+				// second hull next to their first, and the first would sit
+				// there under nobody's control because only one ship per
+				// player can be claimed.
+				ship = ShipTheyAlreadyHave(returning);
+
+				if (ship != null)
+				{
+					Debug.Log("Multiplayer: " + playerToken + " is taking ship "
+						+ ship.UniqueId + " back rather than being given a new one");
+
+					return returning;
+				}
+
 				ship = CreateShuttle(engine, returning, out string backError);
 
 				if (ship == null)
@@ -189,6 +207,53 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 
 			return wanted;
+		}
+
+		/// <summary>
+		/// The first ship a returning player's faction still has, if it has one
+		/// worth flying.
+		/// </summary>
+		/// <remarks>
+		/// Lowest id, so the same ship is chosen every time a player rejoins
+		/// rather than a different one each session.
+		///
+		/// Docked ships are skipped. A ship sitting inside a station is not
+		/// somewhere a player can start, and taking it would need the station
+		/// undocked - which is a decision about somebody else's station, and
+		/// this is not the place to make it.
+		///
+		/// Null is the ordinary answer for a first-time joiner and for a
+		/// player who left with nothing, and both fall through to a shuttle.
+		/// </remarks>
+		private static Unit ShipTheyAlreadyHave(Faction faction)
+		{
+			if (faction == null)
+			{
+				return null;
+			}
+
+			Unit best = null;
+
+			foreach (Unit unit in faction.Units)
+			{
+				if (unit == null || unit.IsDestroyed
+					|| unit.UnitType != UnitType.Ship)
+				{
+					continue;
+				}
+
+				if (unit.Components != null && unit.Components.IsDocked)
+				{
+					continue;
+				}
+
+				if (best == null || unit.UniqueId < best.UniqueId)
+				{
+					best = unit;
+				}
+			}
+
+			return best;
 		}
 
 		/// <summary>

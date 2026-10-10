@@ -1,4 +1,5 @@
 using OpenFrontier.IP.Engine;
+using OpenFrontier.IP.Engine.Factions;
 using UnityEngine;
 
 namespace OpenFrontier.IP.Multiplayer
@@ -254,7 +255,27 @@ namespace OpenFrontier.IP.Multiplayer
 				return true;
 			}
 
-			return unit.Faction != engine.LocalFaction;
+			if (unit.Faction != engine.LocalFaction)
+			{
+				return true;
+			}
+
+			// Said with what it compared, because "it belongs to the host" on
+			// its own is a conclusion and this is the check that reached it.
+			// The refusal that started this was correct - the ship's faction
+			// really was the host's - and there was no way to tell that from
+			// a player clicking on somebody else's ship, which would need no
+			// fix at all. Those two are identical from the log and opposite
+			// to act on.
+			Faction host = engine.LocalFaction;
+
+			Debug.LogWarning("Multiplayer: ship " + unitId + " is in faction "
+				+ host.UniqueId + " ('" + host.Name + "'), which is this host's own"
+				+ " faction, so it cannot be claimed by a player."
+				+ " The ship was made in the wrong faction - the two are the same"
+				+ " object, not merely the same number.");
+
+			return false;
 		}
 
 		private static void Write(Unit unit, UnitState state)

@@ -339,7 +339,10 @@ namespace OpenFrontier.IP.Multiplayer.UI
 					cachedKey = null;
 
 					Debug.Log("Multiplayer: made faction " + factionId + " ("
-						+ resolved[2] + ") with shuttle " + shipId + " for " + player.Identity);
+						+ made.Name + ", asked for '" + resolved[2] + "') with shuttle "
+						+ shipId + " for " + player.Identity
+						+ "; its own banded id is "
+						+ PlayerIdScheme.FactionIdFor(player.Identity));
 				}
 			}
 			else

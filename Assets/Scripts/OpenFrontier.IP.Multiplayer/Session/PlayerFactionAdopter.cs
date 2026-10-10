@@ -97,17 +97,60 @@ namespace OpenFrontier.IP.Multiplayer
 
 			Faction mine = engine.LocalFaction;
 
-			if (mine == null || PlayerIdScheme.IsPlayerMade(mine.UniqueId))
+			if (mine == null)
 			{
-				// Either there is no faction yet or it is already ours, and in
-				// both cases there is nothing to do on any later frame.
 				return;
 			}
 
 			int wanted = PlayerIdScheme.FactionIdFor(PlayerIdentity.Token);
 
-			if (wanted < 0 || engine.ContainsFactionById(wanted))
+			if (wanted < 0)
 			{
+				return;
+			}
+
+			if (mine.UniqueId == wanted)
+			{
+				// Already ours, by the only test that means ours.
+				return;
+			}
+
+			if (PlayerIdScheme.IsPlayerMadeFaction(mine.UniqueId))
+			{
+				// In the band, and not ours.
+				//
+				// It used to return here, on the reading that a banded id
+				// means "already ours". It does not - the band means "some
+				// player made this", and two different players can both have
+				// factions in it.
+				//
+				// That is not hypothetical. A save made while the editor was
+				// hosting carries the editor's player faction at its own
+				// banded id. Load it in the build, which is a different player
+				// with a different token, and the build adopts that faction as
+				// its own because it was already in the band. Then a second
+				// player joins with the editor's old token, is handed that same
+				// faction - correctly, it IS theirs - and their shuttle is
+				// created inside the host's own faction. Every claim on it is
+				// then refused as somebody else's ship, and nothing syncs.
+				//
+				// Two players, one faction, and no error anywhere: the join
+				// succeeded, the faction was found, and the ship was made.
+				Debug.LogWarning("Multiplayer: this player's faction is at "
+					+ mine.UniqueId + ", which is in the player band but belongs to a"
+					+ " different player. Moving it to " + wanted
+					+ " so the two do not share a faction.");
+			}
+
+			if (engine.ContainsFactionById(wanted))
+			{
+				// Their own id is taken by something else. Said, because
+				// returning quietly here is the shape of the bug above: the
+				// faction stays wrong and nothing says why.
+				Debug.LogWarning("Multiplayer: cannot move this player's faction to "
+					+ wanted + " - this world already has a faction with that id."
+					+ " Left at " + mine.UniqueId + ", which will not be theirs.");
+
 				return;
 			}
 
