@@ -260,6 +260,19 @@ namespace OpenFrontier.IP.Multiplayer
 
 				unit.SetUniqueId(id);
 
+				// The joiner's shuttle, and the ship the host is flying right
+				// now, described on adjacent lines. Both were made by the same
+				// code from the same prefabs; if they read differently, the
+				// difference is the bug and there is no need to guess which
+				// part of it matters.
+				Debug.Log("DiagS " + UnitDiagnostics.Describe(unit, "joiner's shuttle"));
+
+				Unit hostShip = engine.LocalPlayer == null
+					? null
+					: engine.LocalPlayer.Person.CurrentUnit;
+
+				Debug.Log("DiagS " + UnitDiagnostics.Describe(hostShip, "host's own ship"));
+
 				return unit;
 			}
 			catch (System.Exception e)

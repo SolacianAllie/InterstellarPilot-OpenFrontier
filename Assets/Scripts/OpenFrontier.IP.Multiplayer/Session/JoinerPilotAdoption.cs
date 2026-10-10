@@ -59,7 +59,26 @@ namespace OpenFrontier.IP.Multiplayer
 					// too.
 					yield return null;
 
+					// What the joiner was flying before, and what they are
+					// flying now. The before is a control that needs no
+					// theory to interpret: a ship this game made, described
+					// in the same run and the same format as the one being
+					// questioned.
+					Unit previous = EngineASX.Instance.LocalPlayer == null
+						? null
+						: EngineASX.Instance.LocalPlayer.Person.CurrentUnit;
+
+					Debug.Log("DiagS "
+						+ UnitDiagnostics.Describe(previous, "joiner's previous ship"));
+
 					string result = JoinerIdentityAdopter.Adopt(factionId, descriptor.MyShipId);
+
+					Unit adopted = EngineASX.Instance.LocalPlayer == null
+						? null
+						: EngineASX.Instance.LocalPlayer.Person.CurrentUnit;
+
+					Debug.Log("DiagS "
+						+ UnitDiagnostics.Describe(adopted, "joiner's new ship"));
 
 					Debug.Log("Multiplayer: join finished - " + result);
 					Finished?.Invoke(result);
