@@ -39,8 +39,9 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		{
 			if (!EditorUtility.DisplayDialog(
 					"Multiplayer screen",
-					"Transfers the LoadGameScreen references on MultiplayerScreen.prefab across to "
-						+ "MultiplayerScreen, removes the import button and hides the save-only labels.",
+					"Finishes wiring MultiplayerScreen.prefab: assigns the host list, "
+						+ "puts SavedHostItemUI on the row prefab and points the list at it. "
+						+ "Safe to re-run.",
 					"Continue",
 					"Cancel"))
 			{
@@ -129,16 +130,6 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		{
 			Report report = new Report();
 
-			// The source is the LoadGameScreen component still sitting on the
-			// prefab, holding every reference the clone inherited.
-			LoadGameScreen source = contents.GetComponent<LoadGameScreen>();
-
-			if (source == null)
-			{
-				report.Fail("no LoadGameScreen component on the prefab - add one, or restore the prefab");
-				return report;
-			}
-
 			OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen target =
 				contents.GetComponent<OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen>();
 
@@ -148,6 +139,168 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				return report;
 			}
 
+			// The source is the LoadGameScreen component still sitting on the
+			// prefab, holding every reference the clone inherited.
+			//
+			// It only ever existed to carry those references across, so its
+			// absence is the finished state rather than a fault: everything it
+			// provided is already transferred, and the work that cannot be
+			// inherited - the list component and the row prefab - still has to
+			// run. Treating a missing source as fatal would leave the tool
+			// permanently unusable exactly once it was no longer needed.
+			LoadGameScreen source = contents.GetComponent<LoadGameScreen>();
+
+			if (source == null)
+			{
+				report.Note("LoadGameScreen already removed - nothing left to inherit");
+			}
+			else
+			{
+				TransferReferences(contents, source, target, report);
+			}
+
+			AssignItemsList(contents, target, report);
+
+			Report itemReport = TransferItemPrefab();
+
+			foreach (string note in itemReport.Done)
+			{
+				report.Note(note);
+			}
+
+			foreach (string problem in itemReport.Problems)
+			{
+				report.Fail(problem);
+			}
+
+			foreach (string note in itemReport.Manual)
+			{
+				report.Manual_(note);
+			}
+
+			// Set here rather than inside TransferItemPrefab: this component is
+			// part of the open prefab contents, which the caller saves.
+			AssignItemPrefab(target, report);
+
+			return report;
+		}
+
+		/// <summary>
+		/// Points the list at the host row prefab, once there is a list to point.
+		/// </summary>
+		private static void AssignItemPrefab(
+			OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen target,
+			Report report)
+		{
+			const string itemPath = "Assets/GameObject/MultiplayerGameItem.prefab";
+			GameObject rowPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(itemPath);
+
+			if (rowPrefab == null)
+			{
+				report.Fail("could not load " + itemPath);
+				return;
+			}
+
+			if (target.ItemsList == null)
+			{
+				report.Manual_("ItemsList is still unassigned, so ItemPrefab cannot be set");
+				return;
+			}
+
+			if (target.ItemsList.ItemPrefab != rowPrefab)
+			{
+				target.ItemsList.ItemPrefab = rowPrefab;
+				report.Note("list ItemPrefab set to MultiplayerGameItem");
+			}
+			else
+			{
+				report.Note("list ItemPrefab already set");
+			}
+		}
+
+		/// <summary>
+		/// Points the screen at its host list, and gives the list the empty-state
+		/// label the save-game list had.
+		/// </summary>
+		/// <remarks>
+		/// ItemsList cannot be inherited from LoadGameScreen: the field is typed
+		/// SavedHostItemsUI and the object carried LoadGameItemsUI. Those are
+		/// different classes - both derive from ScrollList, but of different item
+		/// types - so the reference cannot cross and the component has to be
+		/// swapped in the inspector. Once it has been, the component itself is
+		/// found here rather than asked for again.
+		/// </remarks>
+		private static void AssignItemsList(
+			GameObject contents,
+			OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen target,
+			Report report)
+		{
+			OpenFrontier.IP.Multiplayer.UI.SavedHostItemsUI[] lists =
+				contents.GetComponentsInChildren<OpenFrontier.IP.Multiplayer.UI.SavedHostItemsUI>(true);
+
+			if (lists.Length == 0)
+			{
+				report.Manual_("no SavedHostItemsUI on the prefab - swap LoadGameItemsUI for "
+					+ "SavedHostItemsUI on ScrollRectGameList, then re-run");
+				return;
+			}
+
+			if (lists.Length > 1)
+			{
+				report.Fail("found " + lists.Length + " SavedHostItemsUI components; expected exactly one");
+				return;
+			}
+
+			OpenFrontier.IP.Multiplayer.UI.SavedHostItemsUI list = lists[0];
+
+			if (target.ItemsList != list)
+			{
+				target.ItemsList = list;
+				report.Note("ItemsList assigned to " + list.gameObject.name);
+			}
+			else
+			{
+				report.Note("ItemsList already assigned");
+			}
+
+			// The empty-state label is dropped along with any other data when the
+			// component type is swapped in the inspector, so it is re-found by
+			// name rather than inherited.
+			if (list.NoItemsLabel == null)
+			{
+				Transform found = contents.transform.FindDeep("TextNoItems");
+
+				if (found != null)
+				{
+					Text label = found.GetComponent<Text>();
+
+					if (label != null)
+					{
+						list.NoItemsLabel = label;
+						report.Note("NoItemsLabel assigned");
+					}
+					else
+					{
+						report.Manual_("TextNoItems has no Text component - assign NoItemsLabel by hand");
+					}
+				}
+				else
+				{
+					report.Manual_("could not find TextNoItems - assign NoItemsLabel by hand");
+				}
+			}
+			else
+			{
+				report.Note("NoItemsLabel already assigned");
+			}
+		}
+
+		private static void TransferReferences(
+			GameObject contents,
+			LoadGameScreen source,
+			OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen target,
+			Report report)
+		{
 			// ---- controls: reuse the existing buttons -------------------
 			// The clone's buttons become join / rename / delete, and a new
 			// Add Host button is created beside them.
@@ -169,24 +322,9 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			Assign(target, nameof(target.MultipleItemsSelectedRoot), source.MultipleItemsSelectedRoot, report,
 				"MultipleItemsSelectedRoot <- MultiSelectRoot");
 
-			// ItemsList cannot be transferred: the field is typed SavedHostItemsUI and
-			// the object carries LoadGameItemsUI. Those are different classes -
-			// both derive from ScrollList, but of different item types - so the
-			// reference cannot be assigned across. The component has to be
-			// swapped in the inspector, and the field re-assigned afterwards.
-			//
-			// Reported rather than silently skipped, because leaving it is what
-			// stops the screen working, but it is a manual step rather than a
-			// fault with this prefab.
-			if (target.ItemsList == null)
-			{
-				report.Manual_("ItemsList still needs SavedHostItemsUI - swap the component on "
-					+ "ScrollRectGameList, then re-run to assign it");
-			}
-			else
-			{
-				report.Note("ItemsList already assigned");
-			}
+			// ItemsList is assigned by AssignItemsList, which finds the component
+			// on the prefab: it cannot be inherited from here, because the field
+			// is typed SavedHostItemsUI and this object carries LoadGameItemsUI.
 
 			// ---- detail labels -------------------------------------------
 			// The info panel's save-specific rows are hidden rather than
@@ -332,26 +470,9 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			}
 
 			// ---- the row prefab ---------------------------------------
-			// The list instantiates ItemPrefab once per row, so it needs its own
-			// prefab carrying SavedHostItemUI. Cloned from LoadGameItem.prefab,
-			// which already has the right shape - two text labels and a
-			// disabled indicator - so only the script and the field names change.
-			Report itemReport = TransferItemPrefab();
-
-			foreach (string note in itemReport.Done)
-			{
-				report.Note(note);
-			}
-
-			foreach (string problem in itemReport.Problems)
-			{
-				report.Fail(problem);
-			}
-
-			foreach (string note in itemReport.Manual)
-			{
-				report.Manual_(note);
-			}
+			// Handled by Transfer() rather than here: the row prefab has to be
+			// built whether or not the source component is still around, because
+			// it cannot be inherited from it either way.
 
 			SetText(contents, "TextNoItems",
 				"No hosts yet. Use Add Host to enter a join code.", report);
@@ -397,8 +518,6 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				report.Manual_("LoadGameScreen left on the prefab - remove it once the "
 					+ "problems above are fixed, or its awake() will throw on every open");
 			}
-
-			return report;
 		}
 
 		/// <summary>
@@ -446,18 +565,25 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		}
 
 		/// <summary>
-		/// Builds SavedHostItem.prefab from LoadGameItem.prefab and points the
-		/// list's ItemPrefab at it.
+		/// Puts SavedHostItemUI on MultiplayerGameItem.prefab, wires its labels,
+		/// and points the list's ItemPrefab at it.
 		/// </summary>
 		///
-		/// The two row scripts line up closely - LoadGameItemUI shows a name, a
-		/// date and a disabled indicator, and SavedHostItemUI shows a name, a
-		/// status and an offline indicator - so the existing prefab is the right
-		/// starting point. What changes is the script and three field names.
+		/// The list instantiates ItemPrefab once per row, so it needs a prefab
+		/// carrying the row script. There is no multiplayer equivalent to
+		/// LoadGameItem.prefab, which is the template the save-game list clones.
 		///
-		/// The fields are renamed rather than rewired by position because that
-		/// survives a re-layout of the prefab; the two graphics that have no
-		/// equivalent are deactivated.
+		/// MultiplayerGameItem.prefab is already that prefab - a copy of the save
+		/// row with the labels renamed for a host - so all that is left is the
+		/// script and the field assignments.
+		///
+		/// Labels are matched by object name rather than by position, so the
+		/// wiring survives a re-layout of the prefab.
+		///
+		/// Deliberately does not touch the screen prefab: its contents are already
+		/// open when this runs, and saving the asset underneath an open
+		/// LoadPrefabContents would be overwritten - or would fail - when the
+		/// caller saves. Pointing ItemPrefab at the result is the caller's job.
 		private static Report TransferItemPrefab()
 		{
 			Report report = new Report();
@@ -466,7 +592,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 			if (AssetDatabase.LoadAssetAtPath<GameObject>(itemPath) != null)
 			{
-				report.Note("SavedHostItem.prefab already exists");
+				report.Note("MultiplayerGameItem.prefab already exists");
 			}
 			else if (AssetDatabase.LoadAssetAtPath<GameObject>(sourcePath) == null)
 			{
@@ -551,29 +677,6 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			finally
 			{
 				PrefabUtility.UnloadPrefabContents(contents);
-			}
-
-			// Point the list at it.
-			GameObject screen = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
-
-			if (screen != null)
-			{
-				OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen component =
-					screen.GetComponent<OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen>();
-
-				if (component != null && component.ItemsList != null)
-				{
-					component.ItemsList.ItemPrefab =
-						AssetDatabase.LoadAssetAtPath<GameObject>(itemPath);
-
-					PrefabUtility.SaveAsPrefabAsset(screen, PrefabPath);
-					report.Note("list ItemPrefab set to MultiplayerGameItem");
-				}
-				else
-				{
-					report.Manual_("ItemsList is still unassigned - swap LoadGameItemsUI for "
-						+ "SavedHostItemsUI on ScrollRectGameList, then re-run");
-				}
 			}
 
 			return report;

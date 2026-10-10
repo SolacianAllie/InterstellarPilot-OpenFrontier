@@ -8,13 +8,12 @@ type and what the primary button does are different.
 
 ## What still needs doing in the editor
 
-One thing: **run `Tools > Multiplayer > Transfer Screen References`.**
+**Run `Tools > Multiplayer > Transfer Screen References`** if you have not
+since the list component was swapped.
 
-It moves every reference from the `LoadGameScreen` component (which the clone
-still carries, holding correct references under the old field names) across to
-`MultiplayerScreen`, retitles the screen, relabels the visible text, hides the
-save-only detail rows, and wires the row prefab. It reports what it did,
-refuses to save if anything is missing, and is safe to re-run.
+It assigns the host list, puts `SavedHostItemUI` on the row prefab, wires its
+labels and points the list at it. It reports what it did, refuses to save if
+anything is missing, and is safe to re-run.
 
 The buttons are already in the prefab and already wired - it is a copy of
 LoadGameScreen, so nothing needs adding, and `ButtonIconLoad` plus the
@@ -30,7 +29,11 @@ nothing to export, and an import has the same problem.
 
 ### The mapping it applies
 
-| `MultiplayerScreen` | From | Clone object |
+The references came from the clone's own `LoadGameScreen` component, which held
+everything correctly wired under the old names. It is now removed, so the table
+is a record rather than a set of instructions:
+
+| `MultiplayerScreen` | Was | Clone object |
 |---|---|---|
 | `JoinButton` | `LoadGameButton` | `ButtonIconLoad` |
 | `AddHostButton` | `ExportFileButton` | `ButtonIconAddHost` |
@@ -47,6 +50,9 @@ nothing to export, and an import has the same problem.
 `HostStatusLabel` has no natural counterpart - the save panel has no "is this
 reachable" row - so it borrows `TextFileSizeValue`, and that row's own "File
 size" caption is hidden so the status is not mislabelled.
+
+The screen heading lives in `TextScreenTitle`, not on the button: the button row
+is icon-only throughout, like the rest.
 
 ### The row prefab
 
@@ -71,18 +77,24 @@ instead. `Selected` is left alone - the list owns that one.
 
 ### Still manual
 
-**The list script.** `ScrollRectGameList` carries `LoadGameItemsUI`; it needs
-`SavedHostItemsUI`. This one cannot be automated: the two are unrelated classes,
-so no reference can cross between them and a component swap drops its
-serialized data. Add `SavedHostItemsUI` in the inspector, remove
-`LoadGameItemsUI`, then re-run the tool - it sets `ItemPrefab` only once
-`ItemsList` is assigned, so running it before the swap reports the remaining
-step rather than appearing to succeed.
+Nothing, as of the last run. What was left by hand:
 
-**The main menu's screen reference.** `MainMenuScreen.MultiplayerScreenPrefab`
-in `MenuScreenScene.unity` points at a prefab that was deleted when this screen
-was rebuilt, so the reference is dead. Select `MainMenuScreen` and drag
-`MultiplayerScreen.prefab` into it.
+- **`ScrollRectGameList`: `LoadGameItemsUI` → `SavedHostItemsUI`.** Unrelated
+  classes — both derive from `ScrollList`, but of different item types — so no
+  reference can cross and a component swap drops its serialized data. The tool
+  assigns `ItemsList` and restores `NoItemsLabel` afterwards, so it has to run
+  *after* this step.
+- **`MainMenuScreen.MultiplayerScreenPrefab`** in `MenuScreenScene.unity` —
+  drag `MultiplayerScreen.prefab` into it.
+
+### Re-running after LoadGameScreen is gone
+
+The tool inherited its references from the `LoadGameScreen` component sitting
+on the clone, and removed that component once they were across. A run with it
+already gone is normal and not a fault: the tool reports that there was nothing
+left to inherit and goes straight to the work that could not be inherited
+either way — assigning the list, building the row prefab, and pointing the list
+at it. It is safe to run repeatedly.
 
 ## Why the screen looks the way it does
 
