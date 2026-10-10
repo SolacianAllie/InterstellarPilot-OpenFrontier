@@ -124,5 +124,15 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>The host leaving on purpose.</summary>
 		public const int HostFarewellMessageId = 10;
+
+		/// <summary>What a player's faction owns, pushed host to client.</summary>
+		/// <remarks>
+		/// Added after the others rather than numbered alongside them, so no
+		/// id already in flight is renumbered. Builds compare a version on
+		/// connect and these are compared per message, and renumbering one
+		/// would let two builds that both claim the same version silently
+		/// disagree about what message 6 is.
+		/// </remarks>
+		public const int FactionStateMessageId = 11;
 	}
 }

@@ -113,6 +113,9 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>The host has said who owns a ship.</summary>
 		public event Action<UnitOwnershipMessage> OwnershipAssigned;
 
+		/// <summary>The host has said what this player's faction owns.</summary>
+		public event System.Action<FactionStateMessage> FactionStateReceived;
+
 		/// <summary>
 		/// Raised once connected, for the client to state who it is.
 		/// </summary>
@@ -281,6 +284,19 @@ namespace OpenFrontier.IP.Multiplayer
 				}
 
 				WorldDescriptorReceived?.Invoke(descriptor);
+				return;
+			}
+
+			if (messageId == ProtocolVersion.FactionStateMessageId)
+			{
+				if (!FactionStateMessage.TryFromBytes(payload,
+					out FactionStateMessage state, out string stateError))
+				{
+					Debug.LogWarning("Multiplayer: unreadable faction state - " + stateError);
+					return;
+				}
+
+				FactionStateReceived?.Invoke(state);
 				return;
 			}
 

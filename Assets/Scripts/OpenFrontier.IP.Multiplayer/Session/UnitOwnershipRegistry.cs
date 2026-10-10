@@ -41,6 +41,42 @@ namespace OpenFrontier.IP.Multiplayer
 		}
 
 		/// <summary>
+		/// Every ship that player holds, lowest id first.
+		/// </summary>
+		/// <remarks>
+		/// Ordered rather than unordered because callers ask this to find
+		/// "the ship this player is flying", and a dictionary's own order is
+		/// an implementation detail that can change between runs - which
+		/// would make a client that shipped a second ship from a different
+		/// yard than its friend, for no reason anyone could explain.
+		///
+		/// One list per call, deliberately. This is asked a few times a
+		/// second for a handful of players, and a cached list would be a
+		/// second thing to keep correct when ownership changes.
+		/// </remarks>
+		public List<int> UnitsOwnedBy(string token)
+		{
+			List<int> ids = new List<int>();
+
+			if (string.IsNullOrEmpty(token))
+			{
+				return ids;
+			}
+
+			foreach (KeyValuePair<int, string> entry in owners)
+			{
+				if (entry.Value == token)
+				{
+					ids.Add(entry.Key);
+				}
+			}
+
+			ids.Sort();
+
+			return ids;
+		}
+
+		/// <summary>
 		/// Asks for a ship on behalf of a player.
 		/// </summary>
 		/// <param name="reason">Why it was refused, or null if it was granted.</param>

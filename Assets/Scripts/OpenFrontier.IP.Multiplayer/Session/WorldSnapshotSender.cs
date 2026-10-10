@@ -125,6 +125,11 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// "the sync does not work" rather than as "the sender was never
 			// switched on".
 			host.AddComponent<UnitStateBroadcaster>();
+
+			// Same object, same reason. A joiner's credits and hold come
+			// from the host too, and without this the client shows a balance
+			// it has already spent for as long as the session lasts.
+			host.AddComponent<FactionStatePusher>();
 		}
 
 		private void Awake()
