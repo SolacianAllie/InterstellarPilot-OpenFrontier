@@ -104,7 +104,39 @@ namespace OpenFrontier.IP.UI.Screens
 
 		private void ClearOrdersButtonClick()
 		{
+			// Through OrdersHelper, not straight to the fleet.
+			//
+			// This called orderedFleet.ClearOrders() itself, which on a client
+			// emptied a queue nobody was reading: the orders being run are the
+			// host's, in the host's fleet. The screen went empty, the ship
+			// carried on being flown by the host, and because the host only
+			// hands a ship back when its fleet runs out of orders, cancelling
+			// locally meant the player never got the ship back at all.
+			//
+			// OrderStop sends a Stop, the host stops the fleet, that clears
+			// its orders, and that is what returns the ship.
+			if (orderedFleet == null)
+			{
+				return;
+			}
+
+			Unit leader = orderedFleet.LeaderUnit;
+
+			if (leader == null || leader.IsDestroyed)
+			{
+				// No ship to name. The host cannot be told what to stop, so
+				// saying so beats clearing a local queue that was never the
+				// one running.
+				Debug.LogWarning("OrdersScreen: cannot cancel - this fleet has no"
+					+ " ship to tell the host about. Nothing was cancelled.");
+
+				return;
+			}
+
+			OrdersHelper.OrderStop(leader);
+
 			orderedFleet.ClearOrders();
+
 			Refresh();
 		}
 

@@ -988,6 +988,46 @@ namespace OpenFrontier.IP.UI.Screens
 
 		public static void OrderStop(Unit unit)
 		{
+			// A client cannot stop its own ship.
+			//
+			// The host has it, because an order was given and the handover
+			// completed. The order being run is the HOST's, in the host's
+			// fleet, and stopping it here stops a copy of nothing: the player
+			// presses stop, the local queue empties, and the ship carries on
+			// being flown by somebody else while the UI says it has stopped.
+			//
+			// Worse than that: the host only gives the ship back when its
+			// fleet runs out of orders, so a cancel that never arrives means
+			// the player never gets the ship back either. It stays host-held
+			// for the rest of the session, with their own stick dead.
+			//
+			// Stop is already a kind, and the host already handles it by
+			// stopping every ship in the fleet - which clears the orders,
+			// which is what hands the ship back.
+			if (Authority.IsThisCopyAClient && unit != null && !unit.IsDestroyed)
+			{
+				FleetOrderIntents.NoteLooseUnits(new[] { unit.UniqueId });
+
+				if (FleetOrderIntents.TrySend(
+					Intent(FleetOrderKind.Stop, null, targetUnit: Id(unit))))
+				{
+					// Locally too, so the orders screen empties at once
+					// instead of showing an order the player has just
+					// cancelled. The host's answer is the truth; this is the
+					// screen keeping up with the player.
+					StopUnit(unit);
+
+					Fleet local = FindFleetFromUnit(unit);
+
+					if (local != null)
+					{
+						local.ClearOrders();
+					}
+
+					return;
+				}
+			}
+
 			StopUnit(unit);
 			Fleet fleet = FindFleetFromUnit(unit);
 			if (!(fleet != null))

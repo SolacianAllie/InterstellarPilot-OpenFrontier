@@ -387,6 +387,33 @@ namespace OpenFrontier.IP.Multiplayer
 				Debug.Log("Multiplayer: taking " + ids.Count + " ship(s) off the"
 					+ " player to fly them - they were given an order");
 
+				// What the host now has to work with, because a ship that is
+				// turned but does not thrust is a ship with a pilot and no
+				// engine, and nothing else reports which of those it is.
+				for (int i = 0; i < ids.Count; i++)
+				{
+					Unit ship = engine.GetUnitByid(ids[i]);
+
+					if (ship == null)
+					{
+						continue;
+					}
+
+					NpcPilot pilot = ship.NpcPilot;
+
+					Debug.Log("DiagShip: taking ship " + ship.UniqueId + " ("
+						+ (ship.UnitClass == null ? "?" : ship.UnitClass.GetSeriesName())
+						+ "): fleet " + fleet.UniqueId
+						+ " with " + fleet.Ships.Count + " ship(s)"
+						+ ", fleet order " + (fleet.ActiveOrder == null
+							? "NONE ACTIVE"
+							: fleet.ActiveOrder.FleetOrder.OrderType.ToString())
+						+ ", queued " + fleet.OrderQueue.Count
+						+ ", ship throttle " + ship.Components.EngineThrottle
+						+ ", ship pilot " + (pilot == null ? "NONE" : "yes")
+						+ ", nav target " + (fleet.NavTarget.IsActive ? "set" : "CLEAR"));
+				}
+
 				List<int> ships = ids;
 				List<string> tokens = owners;
 				Fleet watched = fleet;
