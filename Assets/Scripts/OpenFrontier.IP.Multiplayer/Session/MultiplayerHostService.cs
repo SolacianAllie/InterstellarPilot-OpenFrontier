@@ -223,7 +223,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				session = HostSession.Start(bindAddress, advertisedAddress, candidate, reason =>
 				{
 					lastPortFailure = reason;
-				});
+				}, line => Debug.Log(line));
 
 				if (session != null)
 				{
@@ -242,7 +242,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				{
 					LastProblem = reason;
 					Debug.LogWarning("Multiplayer: " + reason);
-				});
+				}, line => Debug.Log(line));
 
 				if (session != null)
 				{

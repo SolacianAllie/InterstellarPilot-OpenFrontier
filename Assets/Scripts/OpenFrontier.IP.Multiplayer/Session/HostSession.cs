@@ -99,7 +99,8 @@ namespace OpenFrontier.IP.Multiplayer
 			IPAddress bindAddress,
 			IPAddress advertisedAddress,
 			int port,
-			Action<string> onError)
+			Action<string> onError,
+			Action<string> onLog = null)
 		{
 			if (!MultiplayerSettings.CanHost)
 			{
@@ -127,7 +128,10 @@ namespace OpenFrontier.IP.Multiplayer
 				return null;
 			}
 
-			var session = new HostSession(advertisedAddress, secret, listener);
+			var session = new HostSession(advertisedAddress, secret, listener)
+			{
+				Log = onLog
+			};
 
 			// The advertised address, not the bind address: the bind is
 			// always 0.0.0.0, which nobody can dial.
@@ -339,6 +343,19 @@ namespace OpenFrontier.IP.Multiplayer
 		{
 			HandshakeResult result = Evaluate(hello);
 
+			// Every attempt is reported, accepted or not. A host that silently
+			// swallows them makes "the joiner says the code is wrong" a
+			// question with no answer anywhere: the joiner only knows what the
+			// host told it, and the host says nothing at all. That is exactly
+			// the shape of problem that gets blamed on the wrong side.
+			Log?.Invoke("Multiplayer: join attempt from " + Short(hello.PlayerToken)
+				+ " - protocol " + hello.ProtocolVersion
+				+ ", version " + hello.GameVersion
+				+ ", secret " + (IsSecretValid(hello.SessionSecret) ? "matches" : "DOES NOT MATCH")
+				+ (AcceptingPlayers ? string.Empty : ", not accepting players")
+				+ (IsInMainMenu ? " (in the main menu)" : string.Empty)
+				+ " -> " + result);
+
 			bool returning = false;
 
 			if (result == HandshakeResult.Accepted)
@@ -358,9 +375,13 @@ namespace OpenFrontier.IP.Multiplayer
 			if (result != HandshakeResult.Accepted)
 			{
 				// Refused: the peer reads its answer, then the socket closes.
+				Log?.Invoke("Multiplayer: refused " + Short(hello.PlayerToken) + " - " + result);
 				player.CloseAfterSend();
 				return;
 			}
+
+			Log?.Invoke("Multiplayer: admitted " + Short(hello.PlayerToken)
+				+ (returning ? " (returning player)" : string.Empty));
 
 			PlayerJoined?.Invoke(player);
 		}
@@ -372,6 +393,19 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </summary>
 		private readonly HashSet<string> knownIdentities = new HashSet<string>();
 
+		/// <summary>Where to report what happens to join attempts.</summary>
+		internal Action<string> Log { get; set; }
+
+		/// <summary>Enough of a token to tell two players apart in a log line.</summary>
+		private static string Short(string token)
+		{
+			if (string.IsNullOrEmpty(token))
+			{
+				return "(no token)";
+			}
+
+			return token.Length <= 8 ? token : token.Substring(0, 8);
+		}
 		/// <summary>Records a token as belonging to a live player.</summary>
 		internal void RememberIdentity(string token)
 		{
