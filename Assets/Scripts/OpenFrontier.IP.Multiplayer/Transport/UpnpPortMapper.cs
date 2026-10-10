@@ -307,11 +307,122 @@ namespace OpenFrontier.IP.Multiplayer
 		}
 
 		/// <summary>
+		/// Where to send the search.
+		/// </summary>
+		/// <remarks>
+		/// The multicast group is the protocol's own path, and the one that
+		/// finds a gateway that is not the default route.
+		///
+		/// Each gateway is also asked directly, and that is not belt and
+		/// braces - it is the only path that works on a network where
+		/// multicast is filtered. Measured on one: UPnP enabled and working,
+		/// the gateway answering a unicast search perfectly, and every
+		/// multicast packet being dropped before it left the machine, so a
+		/// search that only used the group would report a gateway that was
+		/// sitting right there. Sending both costs one extra datagram and
+		/// makes the difference between working and not.
+		/// </remarks>
+		private static List<IPAddress> SsdpTargets()
+		{
+			return SsdpTargets(Gateways());
+		}
+
+		/// <summary>
+		/// Decides where to send the search, given the gateways already found.
+		/// </summary>
+		/// <remarks>
+		/// Split from the lookup so the decision can be checked without a
+		/// network, a socket, or a router - the part that was wrong is a list
+		/// of addresses, and it is testable as exactly that.
+		/// </remarks>
+		public static List<IPAddress> SsdpTargets(IReadOnlyList<IPAddress> gateways)
+		{
+			List<IPAddress> targets = new List<IPAddress>();
+
+			try
+			{
+				targets.Add(IPAddress.Parse(SsdpAddress));
+			}
+			catch (Exception)
+			{
+				// A malformed constant; the gateways are still worth asking.
+			}
+
+			if (gateways != null)
+			{
+				foreach (IPAddress gateway in gateways)
+				{
+					if (gateway == null || targets.Contains(gateway))
+					{
+						continue;
+					}
+
+					targets.Add(gateway);
+				}
+			}
+
+			return targets;
+		}
+
+		/// <summary>Every gateway on a usable interface, without repeats.</summary>
+		private static List<IPAddress> Gateways()
+		{
+			List<IPAddress> gateways = new List<IPAddress>();
+
+			try
+			{
+				foreach (NetworkInterface adapter in NetworkInterface.GetAllNetworkInterfaces())
+				{
+					if (adapter.OperationalStatus != OperationalStatus.Up
+						|| adapter.NetworkInterfaceType == NetworkInterfaceType.Loopback)
+					{
+						continue;
+					}
+
+					// Through IPInterfaceProperties, and with var rather than the
+					// element type named: NetworkInterface.GatewayAddresses is
+					// newer than the profile Unity compiles against, and the
+					// GatewayAddress type is not in it at all. Naming either
+					// fails to compile in the editor while looking perfectly
+					// reasonable.
+					foreach (var gateway in adapter.GetIPProperties().GatewayAddresses)
+					{
+						IPAddress address = gateway.Address;
+
+						if (address == null
+							|| address.AddressFamily != AddressFamily.InterNetwork
+							|| address.Equals(IPAddress.Any)
+							|| address.Equals(IPAddress.Loopback)
+							|| gateways.Contains(address))
+						{
+							continue;
+						}
+
+						gateways.Add(address);
+					}
+				}
+			}
+			catch (Exception)
+			{
+				// Cannot enumerate. Discovery will fall back to the group.
+			}
+
+			return gateways;
+		}
+
+		/// <summary>
 		/// Asks every gateway on the network to identify itself.
 		/// </summary>
 		private static string Discover(Action<string> onLog)
 		{
 			UdpClient client = null;
+
+			List<IPAddress> targets = SsdpTargets();
+
+			if (targets.Count == 0)
+			{
+				return null;
+			}
 
 			try
 			{
@@ -320,17 +431,18 @@ namespace OpenFrontier.IP.Multiplayer
 				client.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
 				client.Client.ReceiveTimeout = 500;
 
-				IPEndPoint group = new IPEndPoint(IPAddress.Parse(SsdpAddress), SsdpPort);
-
 				byte[] search = Encoding.ASCII.GetBytes(BuildSearch());
 
 				// Repeated, because the first datagram of an SSDP search is
 				// reliably lost often enough to matter.
-				for (int i = 0; i < 3; i++)
+				for (int round = 0; round < 3; round++)
 				{
-					client.Send(search, search.Length, group);
+					foreach (IPAddress target in targets)
+					{
+						client.Send(search, search.Length, new IPEndPoint(target, SsdpPort));
+					}
 
-					if (i < 2)
+					if (round < 2)
 					{
 						Thread.Sleep(500);
 					}
@@ -349,7 +461,13 @@ namespace OpenFrontier.IP.Multiplayer
 
 						if (!string.IsNullOrEmpty(location))
 						{
-							onLog?.Invoke("UPnP: " + from.Address + " answered discovery");
+							// Worth naming which route the answer came back by:
+							// a unicast reply means multicast is being filtered on
+							// this network, which is worth knowing when diagnosing.
+							bool byMulticast = from.Address.Equals(IPAddress.Parse(SsdpAddress));
+
+							onLog?.Invoke("UPnP: " + from.Address + " answered discovery"
+								+ (byMulticast ? " by multicast" : " by unicast"));
 							return location;
 						}
 					}
@@ -695,40 +813,11 @@ namespace OpenFrontier.IP.Multiplayer
 
 		private static bool HasDefaultRoute()
 		{
-			try
-			{
-				foreach (NetworkInterface adapter in NetworkInterface.GetAllNetworkInterfaces())
-				{
-					if (adapter.OperationalStatus != OperationalStatus.Up
-						|| adapter.NetworkInterfaceType == NetworkInterfaceType.Loopback)
-					{
-						continue;
-					}
-
-					// Through IPInterfaceProperties, and with var rather than the
-					// element type named: NetworkInterface.GatewayAddresses is
-					// newer than the profile Unity compiles against, and the
-					// GatewayAddress type is not in it at all. Naming either
-					// fails to compile in the editor while looking perfectly
-					// reasonable.
-					foreach (var gateway in adapter.GetIPProperties().GatewayAddresses)
-					{
-						if (gateway.Address != null && !gateway.Address.Equals(IPAddress.Any))
-						{
-							return true;
-						}
-					}
-				}
-			}
-			catch (Exception)
-			{
-				// Cannot tell, so assume there is a route and let discovery
-				// decide. A false positive costs three seconds in the
-				// background; a false negative would leave a reachable host
-				// looking unreachable.
-			}
-
-			return false;
+			// An unknown answer is treated as "there probably is one": a false
+			// positive costs three seconds in the background, and a false
+			// negative would leave a perfectly reachable host looking
+			// unreachable.
+			return Gateways().Count > 0;
 		}
 
 		private static void Post(Action<UpnpResult> action, Action<UpnpResult> onResult, UpnpResult result = default(UpnpResult))
