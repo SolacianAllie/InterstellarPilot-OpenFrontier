@@ -1022,10 +1022,55 @@ namespace OpenFrontier.IP.Engine
 			return false;
 		}
 
+		/// <summary>
+		/// Recomputes how far this ship's sensors reach, once a second.
+		/// </summary>
+		/// <remarks>
+		/// Deliberately not behind the simulation gate. See the call in Tick.
+		///
+		/// Skipped for a ship that is not built or is gone, because the class
+		/// is what the range is measured from and a ship with none has no
+		/// range to report.
+		/// </remarks>
+		private void RefreshDetectionRadiusIfDue()
+		{
+			if (unit.IsDestroyed || !hasInit
+				|| constructionState != ConstructionState.Constructed)
+			{
+				return;
+			}
+
+			if (Time.time <= lastTimeDetectionRangeUpdated + 1f)
+			{
+				return;
+			}
+
+			unit.UpdateDetectionRadius();
+			lastTimeDetectionRangeUpdated = Time.time;
+
+			Authority.NoteDerivedValueRefreshed();
+		}
+
 		public void Tick()
 		{
 			if (!ShouldSimulateThisShip())
 			{
+				// A copy that is not flying this ship still knows how far its
+				// sensors reach.
+				//
+				// Detection range is arithmetic on the ship's own class, the
+				// gas cloud it is in, and its cloak, shields and power. None
+				// of that is a decision, and none of it is something the host
+				// would have to send - both copies hold the same class and the
+				// same components, so both compute the same number.
+				//
+				// It was inside the gated section, which left every ship this
+				// copy is not flying holding whatever the world happened to be
+				// loaded with. That value is derived, so it is not saved: a
+				// freshly loaded ship starts at zero, and a remote player's
+				// ship was seeing nothing at all.
+				RefreshDetectionRadiusIfDue();
+
 				return;
 			}
 
@@ -1066,13 +1111,8 @@ namespace OpenFrontier.IP.Engine
 					PerformScan();
 					nextScanTime = Time.time + (unit.IsInActiveSector ? GameController.Instance.GameSettings.IntelSettings.UnitScanWhenActiveFrequency : GameController.Instance.GameSettings.IntelSettings.UnitScanWhenInactiveFrequency);
 				}
-				if (Time.time > lastTimeDetectionRangeUpdated + 1f)
-				{
-					unit.UpdateDetectionRadius();
-					lastTimeDetectionRangeUpdated = Time.time;
-				}
-				if (!IsDocked && IsFullyDecloaked)
-				{
+				RefreshDetectionRadiusIfDue();
+				if (!IsDocked && IsFullyDecloaked)				{
 					if (autoTurretModule != null)
 					{
 						autoTurretModule.Update(num);

@@ -171,10 +171,19 @@ namespace OpenFrontier.IP.Multiplayer
 			// looks exactly like a host that is working.
 			int declined = Authority.TakeDeclinedSinceReport();
 
+			// The other half of the same question. A ship this copy is not
+			// flying is declined to simulate - which is correct - and must
+			// still be told how far its sensors reach, because both copies
+			// hold the same class and both must arrive at the same number. A
+			// non-zero count here is the test that a remote player's ship is
+			// not standing there seeing nothing.
+			int derived = Authority.TakeDerivedRefreshesSinceReport();
+
 			Debug.Log("Multiplayer: applying - " + applied + " applied, "
 				+ unknown + " named units this copy does not have, of "
 				+ receivedTotal + " received; declined to simulate "
-				+ declined + " ship update(s) this period");
+				+ declined + " ship update(s) this period, recomputed sensor range for "
+				+ derived);
 		}
 
 		private void LateUpdate()

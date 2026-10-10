@@ -196,6 +196,37 @@ namespace OpenFrontier.IP.Engine
 			return taken;
 		}
 
+		/// <summary>
+		/// Derived values recomputed on a copy that is not simulating.
+		/// </summary>
+		/// <remarks>
+		/// Not declines. A decline is a simulation this copy declined to run,
+		/// and the count is how a leak is spotted. This is the opposite: a
+		/// value a copy computed for itself because both copies hold the same
+		/// inputs and must reach the same answer.
+		///
+		/// Counted because "a remote ship sees nothing" and "a remote ship's
+		/// sensor range is right" look identical from the outside - a dark
+		/// screen either way - and only one of them is a bug. A number that
+		/// says how many ships had their range recomputed on a copy that is
+		/// not flying them is what tells the two apart.
+		/// </remarks>
+		public static int DerivedRefreshesSinceReport { get; private set; }
+
+		/// <summary>Notes a derived value computed off the simulation path.</summary>
+		public static void NoteDerivedValueRefreshed()
+		{
+			DerivedRefreshesSinceReport++;
+		}
+
+		/// <summary>Returns what has been recomputed and starts again.</summary>
+		public static int TakeDerivedRefreshesSinceReport()
+		{
+			int taken = DerivedRefreshesSinceReport;
+			DerivedRefreshesSinceReport = 0;
+			return taken;
+		}
+
 		/// <summary>Whether this copy simulates world-level things.</summary>
 		public static bool OwnsWorld()
 		{
