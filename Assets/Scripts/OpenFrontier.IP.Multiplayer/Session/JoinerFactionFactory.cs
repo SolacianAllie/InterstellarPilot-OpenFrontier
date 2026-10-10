@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using OpenFrontier.IP.Engine;
 using OpenFrontier.IP.Engine.Factions;
 using OpenFrontier.IP.Engine.SaveGame;
@@ -91,7 +92,14 @@ namespace OpenFrontier.IP.Multiplayer
 			// Assigned here rather than left to the prefab's own values, which
 			// would be the host's defaults and would name every joiner after
 			// the host.
-			faction.Name = factionName;
+			// Both copies of the game start their player faction with the
+			// same default name, so a joiner's faction arrives called
+			// "Frontier Corporation" alongside the host's own one called
+			// exactly that. Every list then shows two identical entries, or
+			// one, and neither can be told apart by anything a player can
+			// see - which is what made it look like the faction was never
+			// created at all.
+			faction.Name = MakeDistinct(factionName, engine);
 			faction.ShortName = factionShortName;
 
 			if (!string.IsNullOrWhiteSpace(pilotName))
@@ -112,6 +120,57 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 
 			return faction;
+		}
+
+		/// <summary>
+		/// The name, with a suffix if this world already has one like it.
+		/// </summary>
+		/// <remarks>
+		/// Suffix rather than replacement. The joiner asked for that name by
+		/// name - it is their own faction setting, and overriding it with
+		/// something invented would be worse than an ambiguous list. Two
+		/// factions called the same thing is a cosmetic problem; being called
+		/// something you did not choose is a different one.
+		/// </remarks>
+		private static string MakeDistinct(string wanted, EngineASX engine)
+		{
+			if (string.IsNullOrWhiteSpace(wanted) || engine == null)
+			{
+				return wanted;
+			}
+
+			for (int attempt = 2; attempt < 20; attempt++)
+			{
+				if (!NameIsTaken(engine, wanted))
+				{
+					return wanted;
+				}
+
+				wanted = wanted + " " + attempt;
+			}
+
+			return wanted;
+		}
+
+		private static bool NameIsTaken(EngineASX engine, string name)
+		{
+			IList<Faction> factions = engine.Factions;
+
+			if (factions == null)
+			{
+				return false;
+			}
+
+			for (int i = 0; i < factions.Count; i++)
+			{
+				if (factions[i] != null
+					&& string.Equals(factions[i].Name, name, System.StringComparison.OrdinalIgnoreCase))
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		private static Person CreateLeader(EngineASX engine, Faction faction, string pilotName, string pilotTitle)
