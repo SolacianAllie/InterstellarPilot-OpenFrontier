@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace OpenFrontier.IP.Multiplayer
@@ -18,6 +19,18 @@ namespace OpenFrontier.IP.Multiplayer
 	[DefaultExecutionOrder(-10000)]
 	public sealed class MultiplayerPump : MonoBehaviour
 	{
+		/// <summary>
+		/// Raised once the pump exists, for anything installed later.
+		/// </summary>
+		/// <remarks>
+		/// The pump is created before any scene loads, so most things
+		/// are installed after it and can simply find it. Something
+		/// that can be created first needs this: there is no way to
+		/// subscribe to an event on a component that does not exist
+		/// yet, and polling for it forever is worse than being told.
+		/// </remarks>
+		public static event Action AddedPumpTick;
+
 		private const string ObjectName = "MultiplayerPump";
 
 		/// <summary>
@@ -64,6 +77,14 @@ namespace OpenFrontier.IP.Multiplayer
 		private void Update()
 		{
 			MainThreadDispatcher.Drain();
+		}
+
+		private void Start()
+		{
+			// Once, on the first pump: a replacement pump would announce
+			// again and a listener that had already unsubscribed from the old
+			// one would simply be told a second time.
+			AddedPumpTick?.Invoke();
 		}
 
 		private void OnDestroy()

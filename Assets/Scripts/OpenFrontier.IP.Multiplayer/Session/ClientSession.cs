@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 using OpenFrontier.IP;
 
 namespace OpenFrontier.IP.Multiplayer
@@ -58,6 +59,18 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>Raised when an established session ends unexpectedly.</summary>
 		public event Action<string> Disconnected;
+
+		/// <summary>
+		/// A batch of unit states arrived from the host.
+		/// </summary>
+		/// <remarks>
+		/// Separate from <see cref="Connected"/> because this keeps arriving
+		/// for the whole time a session is joined, long after the menu screen
+		/// that started it has been destroyed. Anything that only lives on that
+		/// screen stops hearing about the world the moment a player enters a
+		/// game, which is exactly when it matters.
+		/// </remarks>
+		public event Action<UnitStateMessage> UnitStateReceived;
 
 		/// <summary>
 		/// Attempts to join using a code the player typed.
@@ -145,6 +158,22 @@ namespace OpenFrontier.IP.Multiplayer
 			if (!FramedMessage.TrySplit(framed, out int messageId, out byte[] payload))
 			{
 				Abort("The host sent a malformed reply.");
+				return;
+			}
+
+			// State first: it is the only message that arrives after the
+			// handshake, so handling it before the reply check keeps the
+			// handshake logic from being the thing that has to know the full
+			// set of message types.
+			if (messageId == ProtocolVersion.UnitStateMessageId)
+			{
+				if (!UnitStateMessage.TryFromBytes(payload, out UnitStateMessage states, out string stateError))
+				{
+					Debug.LogWarning("Multiplayer: unreadable unit state - " + stateError);
+					return;
+				}
+
+				UnitStateReceived?.Invoke(states);
 				return;
 			}
 
