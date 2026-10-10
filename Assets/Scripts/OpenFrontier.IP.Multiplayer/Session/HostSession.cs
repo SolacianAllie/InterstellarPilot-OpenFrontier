@@ -432,6 +432,9 @@ namespace OpenFrontier.IP.Multiplayer
 		{
 			if (hello.ProtocolVersion != ProtocolVersion.Current)
 			{
+				Log?.Invoke("Multiplayer: refused " + Short(hello.PlayerToken)
+					+ " - protocol " + hello.ProtocolVersion + ", ours " + ProtocolVersion.Current);
+
 				return HandshakeResult.ProtocolMismatch;
 			}
 

@@ -101,9 +101,16 @@ namespace OpenFrontier.IP.Multiplayer
 				// Re-read rather than decided once: the applier goes in when a
 				// join starts, and this is what stops the client fighting its
 				// own copy of the world.
+				// Connected, not merely present. This matters because a
+				// client service exists the moment anybody joins, and on one
+				// machine both copies host AND join: testing for the service
+				// alone made a host that had also joined treat its own world
+				// as somebody else's and stand every ship still.
 				MultiplayerClientService client = MultiplayerClientService.Instance;
-				gate.IsClient = client != null;
-				gate.Ownership = client == null ? null : client.OwnershipView;
+				bool joined = client != null && client.IsConnected;
+
+				gate.IsClient = joined;
+				gate.Ownership = joined ? client.OwnershipView : null;
 				gate.SuppressUnownedUnits();
 			}
 		}

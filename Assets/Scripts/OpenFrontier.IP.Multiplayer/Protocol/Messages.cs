@@ -307,12 +307,16 @@ namespace OpenFrontier.IP.Multiplayer
 					return null;
 
 				case HandshakeResult.ProtocolMismatch:
-					// Both numbers now come from the version, so saying
-					// "protocol" would name something the player has never
-					// heard of. The version is the thing they can act on.
-					return "That host is running Open Frontier " + HostGameVersion
-						+ ", and you're running " + Versioning.Version
-						+ ". Players must match versions exactly.";
+					// Nearly identical to the version case on purpose, because
+					// both numbers derive from the version and matching them
+					// is the fix either way. The protocol is named as well
+					// because leaving it out produced two different failures
+					// with one identical sentence, which is a message that
+					// cannot be acted on and cannot be diagnosed.
+					return "That host speaks a different wire format (protocol "
+						+ HostProtocolVersion + ", you have " + ProtocolVersion.Current
+						+ "). Both run Open Frontier " + Versioning.Version
+						+ ", so they should agree - one of you is likely out of date.";
 
 				case HandshakeResult.VersionMismatch:
 					return "That host is running Open Frontier " + HostGameVersion
