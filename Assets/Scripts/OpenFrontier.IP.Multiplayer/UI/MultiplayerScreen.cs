@@ -609,6 +609,16 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// <summary>
 		/// Re-reads the store and rebuilds the list.
 		/// </summary>
+		/// <remarks>
+		/// Guarded against a row prefab that cannot be instantiated. ScrollList
+		/// logs the mismatch and pools a null, then dereferences it during
+		/// Awake - which runs inside this call, and which for this screen runs
+		/// inside OnMadeCurrentScreen. The exception then unwinds out of the
+		/// navigator half way through making the screen current, leaving it
+		/// activated but not really shown, and the player cannot get back out
+		/// of it. Refusing to refresh leaves an empty list the player can leave,
+		/// with one message saying why.
+		/// </remarks>
 		private void RefreshHostList()
 		{
 			if (ItemsList == null)
@@ -616,8 +626,38 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				return;
 			}
 
+			if (!RowPrefabIsUsable())
+			{
+				return;
+			}
+
 			SavedHostStore.InvalidateCache();
 			ItemsList.Refresh();
+		}
+
+		/// <summary>
+		/// Whether the list's row prefab can actually produce a row.
+		/// </summary>
+		private bool RowPrefabIsUsable()
+		{
+			GameObject rowPrefab = ItemsList.ItemPrefab;
+
+			if (rowPrefab == null)
+			{
+				return false;
+			}
+
+			if (rowPrefab.GetComponent<ScrollListItem<SavedHost>>() != null)
+			{
+				return true;
+			}
+
+			Debug.LogError(
+				"The host list's row prefab '" + rowPrefab.name + "' has no SavedHostItemUI, so no "
+					+ "rows can be shown. Run Tools > Multiplayer > Transfer Screen References to put "
+					+ "it there - see Assets/GameObject/MultiplayerScreen.README.md.", this);
+
+			return false;
 		}
 
 		/// <summary>
@@ -715,6 +755,11 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 		protected override void onDestroy()
 		{
+			// Set before anything else so a probe that lands while the screen is
+			// being torn down sees the flag rather than reaching for a list that
+			// is going away underneath it.
+			isTornDown = true;
+
 			Disconnect();
 
 			base.onDestroy();
