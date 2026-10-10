@@ -109,7 +109,8 @@ namespace OpenFrontier.IP.Multiplayer
 				if (ship != null)
 				{
 					Debug.Log("Multiplayer: " + playerToken + " is taking ship "
-						+ ship.UniqueId + " back rather than being given a new one");
+						+ ship.UniqueId + " (" + ship.UnitClass.GetSeriesName()
+						+ ") back rather than being given a new one");
 
 					return returning;
 				}
@@ -210,20 +211,30 @@ namespace OpenFrontier.IP.Multiplayer
 		}
 
 		/// <summary>
-		/// The first ship a returning player's faction still has, if it has one
-		/// worth flying.
+		/// The ship a returning player left in, if it is still flyable.
 		/// </summary>
 		/// <remarks>
-		/// Lowest id, so the same ship is chosen every time a player rejoins
-		/// rather than a different one each session.
+		/// Asked of the faction's leader, because that is the ship they were
+		/// actually flying when they saved. It is the one question that has
+		/// the right answer rather than a rule about which answer to expect.
 		///
-		/// Docked ships are skipped. A ship sitting inside a station is not
-		/// somewhere a player can start, and taking it would need the station
-		/// undocked - which is a decision about somebody else's station, and
-		/// this is not the place to make it.
+		/// It started as lowest-id, on the reasoning that ids are handed out in
+		/// order and the oldest ship is the one they had longest. That is true
+		/// of the reserved band and false of the game: a ship bought from a
+		/// trader is created by the engine's own counter at around 100500,
+		/// while the shuttle they started in is at 800000001. So lowest-id
+		/// picked the new ship by accident - the right answer, arrived at for
+		/// the wrong reason, and wrong the moment a player owned two bought
+		/// ships and the older of them happened to be lower.
 		///
-		/// Null is the ordinary answer for a first-time joiner and for a
-		/// player who left with nothing, and both fall through to a shuttle.
+		/// Lowest-id remains the fallback for a faction whose leader has no
+		/// current unit, which is a first-time arrival that was handed a
+		/// faction by something else, or a save from before leaders were
+		/// recorded. Better a ship chosen by a rule than no ship at all.
+		///
+		/// Docked ships are skipped throughout. A ship inside a station is
+		/// not somewhere a player can start, and taking it means undocking
+		/// somebody else's station - a decision this is not the place to make.
 		/// </remarks>
 		private static Unit ShipTheyAlreadyHave(Faction faction)
 		{
@@ -232,17 +243,18 @@ namespace OpenFrontier.IP.Multiplayer
 				return null;
 			}
 
+			Person leader = faction.LeaderPerson;
+
+			if (leader != null && IsFlyable(leader.CurrentUnit))
+			{
+				return leader.CurrentUnit;
+			}
+
 			Unit best = null;
 
 			foreach (Unit unit in faction.Units)
 			{
-				if (unit == null || unit.IsDestroyed
-					|| unit.UnitType != UnitType.Ship)
-				{
-					continue;
-				}
-
-				if (unit.Components != null && unit.Components.IsDocked)
+				if (!IsFlyable(unit))
 				{
 					continue;
 				}
@@ -254,6 +266,15 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 
 			return best;
+		}
+
+		/// <summary>Whether this ship is one a player could be handed to fly.</summary>
+		private static bool IsFlyable(Unit unit)
+		{
+			return unit != null
+				&& !unit.IsDestroyed
+				&& unit.UnitType == UnitType.Ship
+				&& (unit.Components == null || !unit.Components.IsDocked);
 		}
 
 		/// <summary>
