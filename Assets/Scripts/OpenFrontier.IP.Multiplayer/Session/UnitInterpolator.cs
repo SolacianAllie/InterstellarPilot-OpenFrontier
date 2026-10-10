@@ -230,12 +230,19 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </summary>
 		private static float HostNow => Time.unscaledTime - clockOffset;
 
+		private int interpolatedLastReport;
+		private int carriedLastReport;
+		private int staleLastReport;
+		private float nextReportTime;
+
 		private void LateUpdate()
 		{
 			if (tracks.Count == 0 || !clockKnown)
 			{
 				return;
 			}
+
+			Report();
 
 			EngineASX engine = EngineASX.Instance;
 
@@ -245,6 +252,10 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 
 			float renderTime = HostNow - DelaySeconds;
+
+			int interpolated = 0;
+			int carried = 0;
+			int stale = 0;
 
 			// Copied, because a ship whose samples have all gone stale is
 			// dropped from the collection while this walks it.
@@ -275,6 +286,24 @@ namespace OpenFrontier.IP.Multiplayer
 					continue;
 				}
 
+				// Which of the three the draw came from, because "stuck" is
+				// three different faults that look identical: between samples
+				// (smooth), carried past the last message (nearly smooth), or
+				// held at it (a visible stop).
+				if (renderTime >= track.Newest.Time
+					&& renderTime - track.Newest.Time > MaxExtrapolationSeconds)
+				{
+					stale++;
+				}
+				else if (renderTime >= track.Newest.Time)
+				{
+					carried++;
+				}
+				else
+				{
+					interpolated++;
+				}
+
 				unit.transform.localPosition = PositionAt(track, renderTime);
 				unit.transform.localRotation = RotationAt(track, renderTime);
 
@@ -288,6 +317,51 @@ namespace OpenFrontier.IP.Multiplayer
 					unit.Components.EngineThrottle = ThrottleAt(track, renderTime);
 				}
 			}
+
+			drawnInterpolated += interpolated;
+			drawnCarried += carried;
+			drawnStale += stale;
+		}
+
+		private int drawnInterpolated;
+		private int drawnCarried;
+		private int drawnStale;
+
+		/// <summary>
+		/// Where every ship's position actually came from this period.
+		/// </summary>
+		/// <remarks>
+		/// Because "the ships stutter" has three causes and they need three
+		/// different fixes, and they cannot be told apart by watching. A high
+		/// held count means the host is sending too rarely for the window; a
+		/// high carried count means nearly all the motion is extrapolation and
+		/// the samples are too far apart to be worth having; a high
+		/// interpolated count means this is working.
+		/// </remarks>
+		private void Report()
+		{
+			if (Time.unscaledTime < nextReportTime)
+			{
+				return;
+			}
+
+			nextReportTime = Time.unscaledTime + 4f;
+
+			if (drawnInterpolated == 0 && drawnCarried == 0 && drawnStale == 0)
+			{
+				return;
+			}
+
+			NetLog.Client("drawing - " + drawnInterpolated + " between samples, "
+				+ drawnCarried + " carried past the last message, "
+				+ drawnStale + " held (per frame, over 4s)");
+
+			Debug.Log("Multiplayer: drawing " + drawnInterpolated + " between samples, "
+				+ drawnCarried + " carried, " + drawnStale + " held");
+
+			drawnInterpolated = 0;
+			drawnCarried = 0;
+			drawnStale = 0;
 		}
 
 		/// <summary>
@@ -371,12 +445,24 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>How far past its last message a ship may be carried.</summary>
 		/// <remarks>
-		/// About a fifth of a second, which is two broadcast intervals: enough
-		/// to carry a ship through the gap that change detection leaves, and
-		/// short enough that a ship told to stop has visibly stopped rather
-		/// than sailed off.
+		/// Set to cover the slowest ship rather than the average one.
+		///
+		/// The host only sends a ship that has moved a centimetre, so the gap
+		/// between two messages is however long that ship takes to travel a
+		/// centimetre. A ship doing a metre a second gets ten messages a
+		/// second. A ship doing a centimetre a second gets one message a
+		/// second - and a bound of a fifth of a second cannot bridge a
+		/// whole second, so it stopped dead for most of every gap and stood
+		/// still in the middle of a sector until the next message arrived.
+		///
+		/// Half a second covers a ship crawling at two centimetres a second,
+		/// which is slower than a ship with any throttle on. A ship that has
+		/// genuinely stopped has no velocity to carry it, so the longer bound
+		/// costs nothing for the case it was guarding against - and the case
+		/// it was guarding against is now handled by velocity rather than by
+		/// a shorter deadline.
 		/// </remarks>
-		private const float MaxExtrapolationSeconds = 0.2f;
+		private const float MaxExtrapolationSeconds = 0.5f;
 
 		/// <summary>
 		/// How hard the engines were being pushed at a moment between samples.

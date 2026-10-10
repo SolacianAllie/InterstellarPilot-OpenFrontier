@@ -297,7 +297,25 @@ namespace OpenFrontier.IP.Multiplayer
 
 			try
 			{
-				Unit unit = SaveGameUtilities.CreateUnit(engine, -1, shuttle.UniqueID, sector.UniqueId);
+				// The engine's own way of putting a ship into a world, which does
+				// three things the save loader deliberately does not: it
+				// installs the class's default components, gives it a ship name
+				// if it wants one, and adds the default cargo loadout.
+				//
+				// CreateUnit - used by the save importer - skips all three,
+				// because a save already carries them and installing defaults
+				// on top of a loaded ship would double them. That is correct
+				// there and exactly wrong here: a joiner's shuttle was arriving
+				// as a hull with no thrusters, no shields and an empty hold,
+				// which reads as a broken spawn and is a broken spawn.
+				Unit unit = WorldHelper.SpawnUnitAndInstallComponents(
+					shuttle.UnitPrefab, sector, addCargoLoadout: true);
+
+				if (unit == null)
+				{
+					error = "The shuttle prefab could not be spawned.";
+					return null;
+				}
 
 				if (unit == null)
 				{
@@ -305,7 +323,6 @@ namespace OpenFrontier.IP.Multiplayer
 					return null;
 				}
 
-				unit.transform.SetParent(sector.transform, false);
 				PlaceWhereTheScenarioWould(sector, unit);
 				unit.Faction = faction;
 
