@@ -84,16 +84,34 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Units in this message.</summary>
 		public UnitState[] Units;
 
+		/// <summary>
+		/// When the host took this sample, in seconds since it started.
+		/// </summary>
+		/// <remarks>
+		/// One clock for the whole batch rather than one per unit, because
+		/// they were all taken in the same frame and saying so sixteen times
+		/// is sixteen chances to be subtly wrong.
+		///
+		/// Sent rather than stamped on arrival, because arrival time is not
+		/// sampling time. Packets bunch up and spread out, and interpolating
+		/// between arrival times makes ships change speed with the network
+		/// instead of with their engines - which looks like the network
+		/// having opinions about the game. The client keeps an offset
+		/// between the two clocks and draws against the host's.
+		/// </remarks>
+		public float Time;
+
 		public int Count => Units?.Length ?? 0;
 
 		public byte[] ToBytes()
 		{
 			int count = Math.Min(Count, MaxUnits);
 
-			using (MemoryStream stream = new MemoryStream(4 + (count * UnitBytes)))
+			using (MemoryStream stream = new MemoryStream(8 + (count * UnitBytes)))
 			using (BinaryWriter writer = new BinaryWriter(stream))
 			{
 				writer.Write(count);
+				writer.Write(Time);
 
 				for (int i = 0; i < count; i++)
 				{
@@ -135,6 +153,7 @@ namespace OpenFrontier.IP.Multiplayer
 				using (BinaryReader reader = new BinaryReader(stream))
 				{
 					int count = reader.ReadInt32();
+					float time = reader.ReadSingle();
 
 					// Bounded before allocating, from a number that arrived
 					// over a socket. A peer claiming a million units gets a
@@ -145,10 +164,10 @@ namespace OpenFrontier.IP.Multiplayer
 						return false;
 					}
 
-					if (stream.Length < 4L + ((long)count * UnitBytes))
+					if (stream.Length < 8L + ((long)count * UnitBytes))
 					{
 						error = "Payload holds " + stream.Length
-							+ " bytes, short of the " + (4L + ((long)count * UnitBytes))
+							+ " bytes, short of the " + (8L + ((long)count * UnitBytes))
 							+ " that " + count + " units need.";
 						return false;
 					}
@@ -174,7 +193,7 @@ namespace OpenFrontier.IP.Multiplayer
 						};
 					}
 
-					message = new UnitStateMessage { Units = units };
+					message = new UnitStateMessage { Units = units, Time = time };
 					return true;
 				}
 			}

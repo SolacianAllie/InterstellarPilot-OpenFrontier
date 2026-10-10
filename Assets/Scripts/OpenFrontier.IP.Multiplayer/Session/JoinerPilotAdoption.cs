@@ -73,6 +73,13 @@ namespace OpenFrontier.IP.Multiplayer
 
 					string result = JoinerIdentityAdopter.Adopt(factionId, descriptor.MyShipId);
 
+					// Samples taken against the world that was just replaced
+					// describe units that may not exist any more, at times on a
+					// clock that no longer means anything. Kept, they would
+					// have the joiner's new ship drawn from another world's
+					// history for the first fraction of a second.
+					UnitInterpolator.Forget();
+
 					Unit adopted = EngineASX.Instance.LocalPlayer == null
 						? null
 						: EngineASX.Instance.LocalPlayer.Person.CurrentUnit;

@@ -104,6 +104,12 @@ namespace OpenFrontier.IP.Multiplayer
 			// who is applying the states - two independently installed halves
 			// would drift apart on a reconnect.
 			gate = gameObject.AddComponent<AuthorityGate>();
+
+			// So does the interpolator, for the same reason and the opposite
+			// reason: the gate decides which ships this copy may not move, and
+			// the interpolator moves everything else. Installed apart from
+			// each other they would disagree about who owns what.
+			gameObject.AddComponent<UnitInterpolator>();
 		}
 
 		private float nextReportTime;
@@ -194,6 +200,12 @@ namespace OpenFrontier.IP.Multiplayer
 
 			receivedTotal += message.Count;
 
+			// Taken before the walk below, so that a unit this copy does not
+			// have is dropped from the samples as well as counted. Keeping
+			// samples for a ship that does not exist would grow without
+			// anything ever reading them.
+			UnitInterpolator.Record(message);
+
 			EngineASX engine = EngineASX.Instance;
 
 			if (engine == null)
@@ -222,37 +234,25 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 		}
 
+		/// <summary>
+		/// Takes one sample. The drawing is somebody else's job.
+		/// </summary>
+		/// <remarks>
+		/// This used to write the position onto the transform and hand the
+		/// rigidbody a velocity, which is how a ship ended up jumping ten
+		/// times a second with a physics step carrying it somewhere between
+		/// the two most recent messages. Recording instead leaves the
+		/// interpolator free to draw a moment in the past, where it knows
+		/// where the ship is going as well as where it is.
+		///
+		/// The unit is still looked up, and still counted if it is missing,
+		/// because that number is how a divergence between the two worlds
+		/// gets noticed at all.
+		/// </remarks>
 		private void Apply(Unit unit, UnitState state)
 		{
-			Transform transform = unit.transform;
-
-			transform.localPosition = new Vector3(state.PositionX, state.PositionY, state.PositionZ);
-			transform.localRotation = new Quaternion(
-				state.RotationX, state.RotationY, state.RotationZ, state.RotationW);
-
 			lastAppliedAt[state.Id] = Time.unscaledTime;
 			appliedTotal++;
-
-			// Velocity is handed to the rigidbody rather than written onto the
-			// transform, because the next physics step will read it and carry
-			// the ship on its own. Setting linearVelocity directly is what the
-			// save importer does for the same field, and doing it this way
-			// means a client already simulating the ship ends up agreeing with
-			// the host rather than fighting it.
-			if (unit.RBody != null)
-			{
-				// Wake first. AuthorityGate puts unowned bodies to sleep so they
-				// stay where the host put them, and a sleeping rigidbody ignores
-				// a velocity change - so the first message after waking would be
-				// swallowed and the ship would sit still.
-				if (unit.RBody.IsSleeping())
-				{
-					unit.RBody.WakeUp();
-				}
-
-				unit.RBody.linearVelocity = new Vector3(
-					state.VelocityX, state.VelocityY, state.VelocityZ);
-			}
 		}
 	}
 }

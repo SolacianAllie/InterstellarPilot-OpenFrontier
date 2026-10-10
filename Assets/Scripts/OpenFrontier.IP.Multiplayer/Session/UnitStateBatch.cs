@@ -16,15 +16,25 @@ namespace OpenFrontier.IP.Multiplayer
 	public static class UnitStateBatch
 	{
 		/// <summary>
-		/// Packs states into as few messages as the ceiling allows.
+		/// Packs states into as few messages as the ceiling allows, all
+		/// stamped with the moment they were taken.
 		/// </summary>
+		/// <param name="states">The samples to send.</param>
+		/// <param name="time">
+		/// When they were taken, in seconds on the sender's clock. Passed in
+		/// rather than assigned afterwards because a List hands back a copy
+		/// from its indexer, so writing Time onto a packed message is a write
+		/// into a temporary that is then thrown away - which compiles, and
+		/// sends a time of zero to every client that then draws its ships
+		/// from a clock it believes is stopped.
+		/// </param>
 		/// <returns>
 		/// One message per <see cref="UnitStateMessage.MaxUnits"/> states,
 		/// last one short. Empty input gives an empty list rather than one
 		/// empty message - "nothing moved" and "I moved nothing" are the same
 		/// thing to the client, and sending the second wastes a write.
 		/// </returns>
-		public static List<UnitStateMessage> Pack(IReadOnlyList<UnitState> states)
+		public static List<UnitStateMessage> Pack(IReadOnlyList<UnitState> states, float time = 0f)
 		{
 			List<UnitStateMessage> messages = new List<UnitStateMessage>();
 
@@ -43,7 +53,7 @@ namespace OpenFrontier.IP.Multiplayer
 					batch[i] = states[offset + i];
 				}
 
-				messages.Add(new UnitStateMessage { Units = batch });
+				messages.Add(new UnitStateMessage { Units = batch, Time = time });
 			}
 
 			return messages;

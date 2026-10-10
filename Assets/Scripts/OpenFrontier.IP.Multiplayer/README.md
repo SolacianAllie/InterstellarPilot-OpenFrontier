@@ -26,6 +26,7 @@ player owns.
 | A faction and a shuttle made for each joiner, on the host | ✅ |
 | Joiner adopts them and is placed in the shuttle | ✅ |
 | Unit transforms host → client at 10 Hz, interpolated between updates | ✅ |
+| Host's clock on every batch, so clients draw on its timeline | ✅ |
 | The joiner's ship state client → host, accepted as authority | ✅ |
 | Ownership arbitration: one ship, one player | ✅ |
 | Credits and the ship's hold, host → client on change | ✅ |
@@ -133,5 +134,10 @@ rather than when there is time left.
 - **Sector changes are not synchronised.** Every sector's ships are
   broadcast, but *which* sector a player is in is not sent — the client
   arrives in the host's active sector and stays there.
-- **No interpolation for the joiner's own ship**, only for everyone else's;
-  it is extrapolated from the host instead.
+- **No interpolation for the joiner's own ship**, only for everyone else's —
+  it is simulated here instead, because a control that waits for a round trip
+  is not a control. Its own input is uploaded to the host.
+- **Interpolation draws a fixed 0.22 s behind the host.** Nothing corrects for
+  a stalled connection, so a client that stops receiving holds its ships
+  where they were rather than letting them run on. Extrapolating would look
+  better and be wrong within a second whenever a packet was merely late.

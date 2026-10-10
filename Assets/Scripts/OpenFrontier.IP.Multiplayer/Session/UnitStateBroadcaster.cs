@@ -238,7 +238,13 @@ namespace OpenFrontier.IP.Multiplayer
 					continue;
 				}
 
-				List<UnitStateMessage> messages = UnitStateBatch.Pack(personal);
+				// The host's own clock, read once so every message in this
+				// batch agrees about when it was taken. Anything monotonic
+				// will do: it never has to mean the same thing as the
+				// client's, because the client measures the difference.
+				float sampledAt = Time.unscaledTime;
+
+				List<UnitStateMessage> messages = UnitStateBatch.Pack(personal, sampledAt);
 
 				for (int m = 0; m < messages.Count; m++)
 				{

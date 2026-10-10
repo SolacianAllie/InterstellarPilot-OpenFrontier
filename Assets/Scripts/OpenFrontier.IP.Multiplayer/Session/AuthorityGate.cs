@@ -172,16 +172,25 @@ namespace OpenFrontier.IP.Multiplayer
 
 			if (unit.RBody != null)
 			{
-				// Same reasoning as the sleep below: a velocity the host
-				// handed us a moment ago is what carries this ship between
-				// updates, and zeroing it every frame would stop it just as
-				// effectively as putting it to sleep.
-				if (UnitStateApplier.SecondsSinceApplied(unit.UniqueId) > 0.3f)
-				{
-					unit.RBody.linearVelocity = Vector3.zero;
-					unit.RBody.angularVelocity = Vector3.zero;
-				}
+				// Zeroed unconditionally. It used to be left alone for a
+				// third of a second after a message arrived, on the reasoning
+				// that the host's velocity was what carried the ship between
+				// updates - which stopped being true the moment the
+				// interpolator took over drawing, because now nothing carries
+				// the ship and the transform is written directly each frame.
+				//
+				// What the exception actually bought was one physics step of
+				// movement in the host's direction, from a body that had just
+				// been given a position somewhere else. That is the ship
+				// drifting off and being pulled back.
+				unit.RBody.linearVelocity = Vector3.zero;
+				unit.RBody.angularVelocity = Vector3.zero;
 
+				// Asleep, so the physics step does not integrate it and the
+				// position the interpolator drew is the position that stays.
+				// Nothing here wakes it again - the applier stopped handing out
+				// velocities - which is why a woken body used to end up
+				// somewhere between two messages.
 				if (unit.RBody.IsSleeping() == false)
 				{
 					unit.RBody.Sleep();
