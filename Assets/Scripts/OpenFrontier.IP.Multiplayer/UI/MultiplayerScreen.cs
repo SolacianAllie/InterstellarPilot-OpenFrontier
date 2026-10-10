@@ -243,11 +243,35 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				return null;
 			}
 
+			// Caught here rather than at join time, so the mistake never reaches
+			// the host list at all. Refused locally rather than by connecting and
+			// failing: that would surface as a network error and say nothing
+			// about what actually went wrong.
+			if (IsOwnCode(parsed.Data))
+			{
+				pendingAddError = SelfJoinReplies.Pick();
+				return null;
+			}
+
 			// Save the code exactly as typed. The parsed form is only used for
 			// validation here - the player can still attempt to join a host
 			// from a different version later and be told why, rather than having
 			// the entry silently rejected at add time.
 			return SavedHostStore.AddOrUpdate(null, enteredCode);
+		}
+
+		/// <summary>
+		/// Whether a parsed code is the player's own.
+		/// </summary>
+		/// <remarks>
+		/// False when not hosting, because then there is no session for the code
+		/// to belong to - and a player with multiplayer off who pastes a code
+		/// they were given should be told about the version instead.
+		/// </remarks>
+		private static bool IsOwnCode(SessionCodeData data)
+		{
+			return MultiplayerHostService.Session != null
+				&& MultiplayerHostService.Session.IsOwnCode(data);
 		}
 
 		/// <summary>An add-host failure waiting for this screen to be current again.</summary>
@@ -305,7 +329,8 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		}
 
 		/// <summary>Probes one host and repaints the list when the answer lands.</summary>
-		private void ProbeHost(SavedHost host)		{
+		private void ProbeHost(SavedHost host)
+		{
 			if (host == null || ItemsList == null)
 			{
 				return;
@@ -350,6 +375,17 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				UIController.Instance.ShowMessageBox(
 					"This host's code is not readable: " + parsed.Error,
 					MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
+				return;
+			}
+
+			// Checked again here, not only when the host was added: a code saved
+			// hours ago can be this player's own by now, since the secret is
+			// regenerated each time hosting starts. Without this the join would
+			// be attempted and reported as a failure to connect.
+			if (IsOwnCode(parsed.Data))
+			{
+				UIController.Instance.ShowMessageBox(
+					SelfJoinReplies.Pick(), MessageBoxButtons.Ok, null, MessageBoxIcon.Warning);
 				return;
 			}
 

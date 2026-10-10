@@ -262,6 +262,43 @@ namespace OpenFrontier.IP.Multiplayer
 		}
 
 		/// <summary>
+		/// Whether a join code is this host's own.
+		/// </summary>
+		/// <remarks>
+		/// Both the secret AND the endpoint have to match. The secret alone is
+		/// unique per session, but a code also names an address and a port, and
+		/// a secret that matched while the address did not would mean two
+		/// different sessions had collided - which is worth refusing rather than
+		/// acting on.
+		///
+		/// Checked locally before any socket is opened. The alternative - letting
+		/// the connection be made and refused by the host - would report it as a
+		/// network failure, which tells the player nothing about what they did
+		/// wrong.
+		/// </remarks>
+		public bool IsOwnCode(SessionCodeData data)
+		{
+			if (data == null || disposed)
+			{
+				return false;
+			}
+
+			// Read through the listener rather than from a copy taken at Start:
+			// the listener is where the OS reports what it actually bound, which
+			// is the only thing a peer will ever connect to.
+			IPAddress bound = listener?.Address;
+
+			if (bound == null)
+			{
+				return false;
+			}
+
+			return data.Port == listener.BoundPort
+				&& bound.Equals(data.Address)
+				&& SessionCode.SecretsMatch(sessionSecret, data.Secret);
+		}
+
+		/// <summary>
 		/// Completes a handshake for a peer that has sent a valid Hello.
 		/// Called by <see cref="RemotePlayer"/> once its Hello parses.
 		/// </summary>
