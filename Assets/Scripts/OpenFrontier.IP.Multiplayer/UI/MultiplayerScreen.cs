@@ -39,6 +39,20 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// <summary>Adds a host by asking for a join code. Next to the join button.</summary>
 		public Button AddHostButton;
 
+		/// <summary>Shows this player's own join code, to share or copy.</summary>
+		public Button JoinCodeButton;
+
+		/// <summary>
+		/// The dialog showing that code.
+		/// </summary>
+		/// <remarks>
+		/// Typed as ScreenBase rather than JoinCodeScreen for the same reason
+		/// the main menu's reference to this screen is: the navigator looks
+		/// screens up by type, and naming the multiplayer type here would make
+		/// the two assemblies reference each other.
+		/// </remarks>
+		public ScreenBase JoinCodeScreenPrefab;
+
 		public Button DeleteHostButton;
 
 		public Button RenameHostButton;
@@ -70,6 +84,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// misleading thing to be looking at.
 			WireButton(JoinButton, JoinSelectedHost);
 			WireButton(AddHostButton, AddHostButtonClick);
+			WireButton(JoinCodeButton, JoinCodeButtonClick);
 			WireButton(DeleteHostButton, DeleteHostButtonClick);
 			WireButton(RenameHostButton, RenameHostButtonClick);
 
@@ -290,8 +305,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		}
 
 		/// <summary>Probes one host and repaints the list when the answer lands.</summary>
-		private void ProbeHost(SavedHost host)
-		{
+		private void ProbeHost(SavedHost host)		{
 			if (host == null || ItemsList == null)
 			{
 				return;
@@ -499,6 +513,56 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			RefreshItemData();
 		}
 
+		// ---- showing your own join code ---------------------------------------
+
+		/// <summary>
+		/// Opens the dialog showing this player's own join code.
+		/// </summary>
+		private void JoinCodeButtonClick()
+		{
+			if (JoinCodeScreenPrefab == null)
+			{
+				UIController.Instance.ShowMessageBox(
+					"The join code dialog is not set up yet. Run Tools > Multiplayer > "
+						+ "Transfer Screen References, then assign JoinCodeScreenPrefab.",
+					MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
+				return;
+			}
+
+			JoinCodeScreen screen = Instantiate(JoinCodeScreenPrefab) as JoinCodeScreen;
+
+			if (screen == null)
+			{
+				UIController.Instance.ShowMessageBox(
+					"The join code dialog could not be created.",
+					MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
+				return;
+			}
+
+			screen.TitleText = "Your join code";
+			screen.CodeText = OwnJoinCode;
+
+			// A directly instantiated screen needs Awake called explicitly; the
+			// navigator only does that for screens it loads itself.
+			screen.Awake();
+
+			screen.Copied += () => UIController.Instance.ShowMessageBox(
+				"Join code copied to the clipboard.", MessageBoxButtons.Ok, null, MessageBoxIcon.Info);
+
+			UIController.Instance.ScreenNavigator.NavigateToScreen(screen);
+		}
+
+		/// <summary>
+		/// This player's join code, or null when they are not hosting.
+		/// </summary>
+		/// <remarks>
+		/// Null until hosting exists: nothing starts a HostSession yet, so
+		/// there is never a code of one's own to show. The dialog handles that
+		/// state rather than pretending, and this is the one place that has to
+		/// change when hosting arrives.
+		/// </remarks>
+		private string OwnJoinCode => null;
+
 		// ---- details panel --------------------------------------------------
 
 		private SavedHost SingleSelectedHost =>
@@ -520,6 +584,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			if (ItemsList == null) missing.Add(nameof(ItemsList));
 			if (JoinButton == null) missing.Add(nameof(JoinButton));
 			if (AddHostButton == null) missing.Add(nameof(AddHostButton));
+			if (JoinCodeButton == null) missing.Add(nameof(JoinCodeButton));
 			if (DeleteHostButton == null) missing.Add(nameof(DeleteHostButton));
 			if (RenameHostButton == null) missing.Add(nameof(RenameHostButton));
 			if (HostInfoRoot == null) missing.Add(nameof(HostInfoRoot));
@@ -729,6 +794,8 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			// Add Host never depends on a selection, so it is left alone here.
 
+			PositionHostRowButtons();
+
 			if (single == null)
 			{
 				return;
@@ -754,6 +821,62 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				HostStatusLabel.text = single.IsConnected
 					? "Connected"
 					: single.ProbeResult.Describe();
+			}
+		}
+
+		/// <summary>
+		/// Right-anchored x position of the rightmost button in the row.
+		/// </summary>
+		private const float RowRightmostX = -52f;
+
+		/// <summary>
+		/// How far left each further button sits.
+		/// </summary>
+		/// <remarks>
+		/// The row is positioned by hand rather than by a layout group:
+		/// ImageForePanelDetails - the parent of all three - carries only a
+		/// LayoutElement, and the layout group is further up on LayoutHorizontal.
+		/// So hiding one button does not close the gap, it just leaves a hole in
+		/// the row, and the survivors have to be moved to keep the row looking
+		/// deliberate.
+		///
+		/// Spacing rather than three fixed positions per state, so the row stays
+		/// right-aligned and a fourth button would slot in without new numbers.
+		/// </remarks>
+		private const float RowSpacingX = -108f;
+
+		/// <summary>
+		/// Re-positions the host row's buttons for whichever of them are showing.
+		/// </summary>
+		private void PositionHostRowButtons()
+		{
+			bool joinVisible = JoinButton != null && JoinButton.gameObject.activeSelf;
+
+			// Join, when it is showing, takes the rightmost slot. Otherwise Add
+			// Host takes it and everything else shifts in by one.
+			SetAnchoredX(joinVisible ? JoinButton : AddHostButton, RowRightmostX);
+
+			if (joinVisible)
+			{
+				SetAnchoredX(AddHostButton, RowRightmostX + RowSpacingX);
+				SetAnchoredX(JoinCodeButton, RowRightmostX + (2 * RowSpacingX));
+			}
+			else
+			{
+				SetAnchoredX(JoinCodeButton, RowRightmostX + RowSpacingX);
+			}
+		}
+
+		/// <summary>
+		/// Moves a control along the row, keeping its y where it was.
+		/// </summary>
+		private static void SetAnchoredX(Component component, float x)
+		{
+			RectTransform rect = component == null ? null : component.transform as RectTransform;
+
+			if (rect != null)
+			{
+				rect.anchoredPosition = new Vector2(x, rect.anchoredPosition.y);
 			}
 		}
 

@@ -182,7 +182,70 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			// part of the open prefab contents, which the caller saves.
 			AssignItemPrefab(target, report);
 
+			Report joinCodeReport = TransferJoinCodeScreen();
+
+			foreach (string note in joinCodeReport.Done)
+			{
+				report.Note(note);
+			}
+
+			foreach (string problem in joinCodeReport.Problems)
+			{
+				report.Fail(problem);
+			}
+
+			foreach (string note in joinCodeReport.Manual)
+			{
+				report.Manual_(note);
+			}
+
+			AssignJoinCodeScreenPrefab(contents, target, report);
+
 			return report;
+		}
+
+		/// <summary>
+		/// Points the screen at the join code dialog.
+		/// </summary>
+		/// <remarks>
+		/// The dialog lives in the multiplayer assembly, which the navigator
+		/// cannot look up by type - it keys its screen table on types from the
+		/// UI assembly, and naming the multiplayer type there would make the two
+		/// assemblies reference each other. So the prefab is referenced
+		/// directly and instantiated on demand.
+		/// </remarks>
+		private static void AssignJoinCodeScreenPrefab(
+			GameObject contents,
+			OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen target,
+			Report report)
+		{
+			const string screenPath = "Assets/GameObject/JoinCodeScreen.prefab";
+			GameObject dialog = AssetDatabase.LoadAssetAtPath<GameObject>(screenPath);
+
+			if (dialog == null)
+			{
+				report.Fail("could not load " + screenPath);
+				return;
+			}
+
+			OpenFrontier.IP.Multiplayer.UI.JoinCodeScreen component =
+				dialog.GetComponent<OpenFrontier.IP.Multiplayer.UI.JoinCodeScreen>();
+
+			if (component == null)
+			{
+				report.Fail(screenPath + " has no JoinCodeScreen component");
+				return;
+			}
+
+			if (target.JoinCodeScreenPrefab != component)
+			{
+				target.JoinCodeScreenPrefab = component;
+				report.Note("JoinCodeScreenPrefab assigned");
+			}
+			else
+			{
+				report.Note("JoinCodeScreenPrefab already assigned");
+			}
 		}
 
 		/// <summary>
@@ -562,6 +625,174 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 			match.text = replacement;
 			report.Note("\"" + currentText + "\" relabelled to \"" + replacement + "\"");
+		}
+
+		/// <summary>
+		/// Builds JoinCodeScreen.prefab from the rename prompt.
+		/// </summary>
+		///
+		/// The rename prompt is the right starting point: same shape of dialog -
+		/// a title, a line of text, two buttons - and the left button becomes Copy
+		/// rather than Cancel, so nothing is lost by dismissing with the wrong
+		/// one. What changes is that the input field goes away: this dialog
+		/// displays a code, it does not accept one.
+		private static Report TransferJoinCodeScreen()
+		{
+			Report report = new Report();
+			const string screenPath = "Assets/GameObject/JoinCodeScreen.prefab";
+			const string sourcePath = "Assets/GameObject/RenameUnitScene.prefab";
+
+			if (AssetDatabase.LoadAssetAtPath<GameObject>(screenPath) == null)
+			{
+				if (AssetDatabase.LoadAssetAtPath<GameObject>(sourcePath) == null)
+				{
+					report.Fail("could not find " + sourcePath + " to build the join code dialog from");
+					return report;
+				}
+
+				GameObject clone = UnityEngine.Object.Instantiate(
+					AssetDatabase.LoadAssetAtPath<GameObject>(sourcePath));
+				PrefabUtility.SaveAsPrefabAsset(clone, screenPath);
+				UnityEngine.Object.DestroyImmediate(clone);
+
+				report.Note("cloned " + sourcePath + " to " + screenPath);
+			}
+
+			GameObject contents = PrefabUtility.LoadPrefabContents(screenPath);
+
+			try
+			{
+				OpenFrontier.IP.UI.Screens.RenameUnit.RenameUnitScreen source =
+					contents.GetComponent<OpenFrontier.IP.UI.Screens.RenameUnit.RenameUnitScreen>();
+
+				if (source != null)
+				{
+					UnityEngine.Object.DestroyImmediate(source);
+				}
+
+				OpenFrontier.IP.Multiplayer.UI.JoinCodeScreen target =
+					contents.GetComponent<OpenFrontier.IP.Multiplayer.UI.JoinCodeScreen>();
+
+				if (target == null)
+				{
+					target = contents.AddComponent<OpenFrontier.IP.Multiplayer.UI.JoinCodeScreen>();
+				}
+
+				// See TransferItemPrefab: a null here means Unity had no
+				// MonoScript for the type, and that failure is silent.
+				if (target == null)
+				{
+					report.Fail(screenPath + ": Unity would not add JoinCodeScreen - check that "
+						+ "JoinCodeScreen.cs exists and declares only that class.");
+					return report;
+				}
+
+				target.TitleLabel = FindAnyLabel(contents, "TextScreenTitle");
+				target.CodeLabel = FindAnyLabel(contents, "LegacyTextSubTitle");
+				target.OkButton = FindButton(contents, "ButtonIconOK");
+				target.CopyButton = FindButton(contents, "ButtonIconCancel");
+
+				List<string> unwired = new List<string>();
+
+				if (target.TitleLabel == null) unwired.Add("TextScreenTitle (TitleLabel)");
+				if (target.CodeLabel == null) unwired.Add("LegacyTextSubTitle (CodeLabel)");
+				if (target.OkButton == null) unwired.Add("ButtonIconOK (OkButton)");
+				if (target.CopyButton == null) unwired.Add("ButtonIconCancel (CopyButton)");
+
+				if (unwired.Count > 0)
+				{
+					report.Fail(screenPath + ": could not find " + string.Join(", ", unwired));
+				}
+				else
+				{
+					report.Note("JoinCodeScreen.prefab wired");
+				}
+
+				// The input field goes, along with the character-count caption
+				// that only means something while typing. Deactivated rather than
+				// deleted, so the dialog stays reversible.
+				foreach (string gone in new[] { "LegacyInputField", "Placeholder", "MaxCharsText" })
+				{
+					Transform found = contents.transform.FindDeep(gone);
+
+					if (found != null && found.gameObject.activeSelf)
+					{
+						found.gameObject.SetActive(false);
+						report.Note("hid " + gone);
+					}
+				}
+
+				// The cancel button now copies, so it says so. Icon-only like
+				// the rest of the button row, which is why this matches on the
+				// label underneath rather than expecting text on the button.
+				SetButtonLabel(contents, "ButtonIconCancel", "Copy", report);
+
+				PrefabUtility.SaveAsPrefabAsset(contents, screenPath);
+			}
+			finally
+			{
+				PrefabUtility.UnloadPrefabContents(contents);
+			}
+
+			return report;
+		}
+
+		private static Button FindButton(GameObject root, string objectName)
+		{
+			Transform found = root.transform.FindDeep(objectName);
+			return found == null ? null : found.GetComponent<Button>();
+		}
+
+		/// <summary>
+		/// Finds a label that is either a TextMeshPro or a legacy uGUI Text.
+		/// </summary>
+		/// <remarks>
+		/// The prefabs are a mix: the Noto Sans font pass moved most labels to
+		/// TMP but left some as uGUI Text, so which kind a given object carries
+		/// has to be read rather than assumed.
+		/// </remarks>
+		private static TMPro.TMP_Text FindAnyLabel(GameObject root, string objectName)
+		{
+			Transform found = root.transform.FindDeep(objectName);
+
+			if (found == null)
+			{
+				return null;
+			}
+
+			TMPro.TextMeshProUGUI tmp = found.GetComponent<TMPro.TextMeshProUGUI>();
+
+			return tmp != null ? tmp : (TMPro.TMP_Text)found.GetComponent<TMPro.TextMeshPro>();
+		}
+
+		/// <summary>
+		/// Renames a button's caption, whichever kind of label it carries.
+		/// </summary>
+		private static void SetButtonLabel(GameObject root, string objectName, string label, Report report)
+		{
+			Transform found = root.transform.FindDeep(objectName);
+
+			if (found == null)
+			{
+				return;
+			}
+
+			TMPro.TextMeshProUGUI tmp = found.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+
+			if (tmp != null)
+			{
+				tmp.text = label;
+				report.Note(objectName + " labelled \"" + label + "\"");
+				return;
+			}
+
+			Text legacy = found.GetComponentInChildren<Text>(true);
+
+			if (legacy != null)
+			{
+				legacy.text = label;
+				report.Note(objectName + " labelled \"" + label + "\"");
+			}
 		}
 
 		/// <summary>
