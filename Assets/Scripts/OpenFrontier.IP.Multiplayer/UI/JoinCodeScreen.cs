@@ -85,16 +85,28 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// What the player is told when there is no code to show.
 		/// </summary>
 		/// <remarks>
-		/// Deliberately explains what to do rather than just saying there is
-		/// nothing - the button is on the screen that manages hosts, so the
-		/// reason it is empty is not obvious from there.
+		/// Says what to do, because the button is on the screen that manages
+		/// hosts and the reason it is empty is not obvious from there. Kept to
+		/// one short line: this sits in a dialog sized for a 32-character code,
+		/// and a paragraph spills out of the sides of it.
 		/// </remarks>
 		public const string NoSessionText =
-			"Multiplayer is switched off.\n\nTurn on Enable Multiplayer in Options > General, "
-			+ "then come back for your join code.";
+			"Multiplayer is off.\nTurn it on in Options, then try again.";
 
 		/// <summary>Raised after a successful copy, so the screen can confirm it.</summary>
 		public event Action Copied;
+
+		/// <summary>Size for the code itself, matching the label as authored.</summary>
+		public const int CodeFontSize = 24;
+
+		/// <summary>
+		/// Size for an explanation instead of a code.
+		/// </summary>
+		/// <remarks>
+		/// Smaller because it is prose rather than something to be transcribed,
+		/// and because a sentence at the code's size does not fit the panel.
+		/// </remarks>
+		public const int ExplanationFontSize = 16;
 
 		protected override void awake()
 		{
@@ -131,6 +143,19 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				? (string.IsNullOrWhiteSpace(Explanation) ? NoSessionText : Explanation)
 				: CodeText;
 
+			// The code is the thing to be read aloud and copied, so it gets the
+			// large size the label was authored for. An explanation is a
+			// paragraph and reads as a wall at the same size - and overflows the
+			// panel, which is exactly what it did before this.
+			//
+			// SetFontSize rather than assigning fontSize directly: best-fit would
+			// otherwise override the size on the next layout pass and the two
+			// settings would fight, with whichever ran last winning.
+			int size = string.IsNullOrWhiteSpace(CodeText) ? ExplanationFontSize : CodeFontSize;
+
+			SetFontSize(CodeLabel, size);
+			SetFontSize(LegacyCodeLabel, size);
+
 			if (CodeLabel != null)
 			{
 				CodeLabel.text = shown;
@@ -162,6 +187,33 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			GUIUtility.systemCopyBuffer = CodeText;
 
 			Copied?.Invoke();
+		}
+
+		/// <summary>
+		/// Sets a label's size, without best-fit overriding it.
+		/// </summary>
+		private static void SetFontSize(TMP_Text label, int size)
+		{
+			if (label == null)
+			{
+				return;
+			}
+
+			// A best-fit label recomputes its own size on every layout pass, so
+			// assigning fontSize to one is silently undone a moment later.
+			label.enableAutoSizing = false;
+			label.fontSize = size;
+		}
+
+		private static void SetFontSize(Text label, int size)
+		{
+			if (label == null)
+			{
+				return;
+			}
+
+			label.resizeTextForBestFit = false;
+			label.fontSize = size;
 		}
 
 		private void Dismiss()
