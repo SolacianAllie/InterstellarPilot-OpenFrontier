@@ -276,6 +276,14 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				}
 			}
 
+			// The code label is the flexible row, which is what centres its text
+			// in the space it is given. That is right once there is a code and
+			// nothing else wants the room - but while the switch is showing, the
+			// claim leaves the switch stranded a long way below the line telling
+			// the player to use it. Handing the slack back while the switch is
+			// up pulls the two together.
+			SetFlexibleHeight(!hosting);
+
 			// With the switch gone there is nothing on screen saying where to
 			// turn multiplayer off, so the hint takes its place. Without this the
 			// only way back is to go and find Options again.
@@ -283,6 +291,29 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			{
 				HintLabel.gameObject.SetActive(hosting);
 				HintLabel.text = HowToDisableText;
+			}
+		}
+
+		/// <summary>
+		/// Gives the code label the layout's spare space, or takes it back.
+		/// </summary>
+		/// <remarks>
+		/// Drives the label's LayoutElement rather than anything on the transform,
+		/// because the vertical layout owns this row's position - setting
+		/// anchoredPosition here would be overwritten on the next layout pass.
+		/// </remarks>
+		private void SetFlexibleHeight(bool flexible)
+		{
+			if (LegacyCodeLabel == null)
+			{
+				return;
+			}
+
+			LayoutElement element = LegacyCodeLabel.GetComponent<LayoutElement>();
+
+			if (element != null)
+			{
+				element.flexibleHeight = flexible ? 1f : 0f;
 			}
 		}
 

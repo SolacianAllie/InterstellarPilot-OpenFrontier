@@ -794,6 +794,19 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				SetFlexibleHeight(contents, "LegacyTextSubTitle", 1);
 				SetAlignment(contents, "LegacyTextSubTitle", TextAnchor.MiddleCenter);
 
+				// Title centred to match. The dialog has one subject and it sits
+				// under a heading, so the two reading off opposite edges looks
+				// accidental rather than laid out.
+				//
+				// TMP alignment is a flags value rather than an enum, so it is
+				// assigned by value: 1 is Left and 2 is Centre.
+				TMPro.TMP_Text title = FindAnyLabel(contents, "TextScreenTitle");
+
+				if (title != null)
+				{
+					title.alignment = (TMPro.TextAlignmentOptions)2;
+				}
+
 				// The character counter becomes the "where do I turn this off"
 				// hint. It has to be lifted out of the input field first: it is
 				// a CHILD of LegacyInputField, so switching the field back on
