@@ -61,6 +61,24 @@ namespace OpenFrontier.IP.Multiplayer
 		private readonly Dictionary<string, JoinerPreferencesMessage> preferences =
 			new Dictionary<string, JoinerPreferencesMessage>();
 
+		/// <summary>
+		/// Set by whatever can actually touch the world, to handle a player's
+		/// ship upload.
+		/// </summary>
+		/// <remarks>
+		/// Injected rather than called directly because this class is the
+		/// handshake, and the handshake is the one part of this system that
+		/// can be tested without a running engine. Naming HostShipUpload here
+		/// would put engine types back into it for the sake of one line, and
+		/// taking that ability away is a bad trade for every future change.
+		///
+		/// Returning the number of units written is used for nothing today
+		/// and is here because the natural next thing is to log a client
+		/// uploading ships it does not own, and adding the plumbing later
+		/// would mean threading it through two assemblies.
+		/// </remarks>
+		public static Func<HostSession, string, byte[], int> ShipUploadHandler { get; set; }
+
 		/// <summary>Who owns which ship. The host decides, and this is it.</summary>
 		public UnitOwnershipRegistry Ownership { get; } = new UnitOwnershipRegistry();
 
@@ -197,6 +215,12 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </summary>
 		private void OnPlayerMessage(RemotePlayer player, int messageId, byte[] body)
 		{
+			if (messageId == ProtocolVersion.UnitStateMessageId)
+			{
+				ShipUploadHandler?.Invoke(this, player.Identity, body);
+				return;
+			}
+
 			if (messageId == ProtocolVersion.JoinerPreferencesMessageId)
 			{
 				RememberPreferences(player, body);

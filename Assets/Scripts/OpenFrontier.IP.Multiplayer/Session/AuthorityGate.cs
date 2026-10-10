@@ -8,10 +8,21 @@ namespace OpenFrontier.IP.Multiplayer
 	/// Decides who is allowed to move a ship on this copy of the world.
 	/// </summary>
 	/// <remarks>
-	/// Host-authoritative, with one exception, and the exception is the whole
-	/// point: a player flies their own ship. Everything else - the rest of
-	/// their fleet, every other faction, the AI - belongs to the host, because
-	/// the host is the one running it.
+	/// One ship in this copy is simulated locally: the one this player is
+	/// flying. Everything else is held still and written from what the host
+	/// says.
+	///
+	/// The asymmetry is the whole design, and both halves are needed. A
+	/// client that simulated nothing would put a round trip between moving
+	/// the stick and seeing the ship move, which is the one thing a control
+	/// must never do. A client that simulated everything would have two
+	/// copies integrating the same rigidbody from their own inputs, and they
+	/// would disagree every frame.
+	///
+	/// So the client flies its own ship and uploads where it got to, and
+	/// the host takes that as the authority - indistinguishable, from the
+	/// host's side, from the AI having flown it. One hull, one integrator,
+	/// and the player still feels the stick.
 	///
 	/// That is decided by whether the client keeps simulating a unit at all.
 	/// Two things writing a position is the failure this exists to prevent:
@@ -102,11 +113,11 @@ namespace OpenFrontier.IP.Multiplayer
 					continue;
 				}
 
-				// The record decides, not what this copy happens to think is
-				// being flown. The difference is between "this player is
-				// flying it" and "the host says this player owns it", and
-				// only the second survives another player claiming the same
-				// ship.
+				// The one exception: the ship this player is flying is
+				// simulated here, because a control that waits for a round
+				// trip is not a control. It is uploaded to the host, which
+				// takes it as authoritative, so only one copy ever
+				// integrates it in a way that matters.
 				if (BelongsToMe(unit.UniqueId))
 				{
 					continue;
@@ -139,10 +150,10 @@ namespace OpenFrontier.IP.Multiplayer
 		private bool BelongsToMe(int unitId)
 		{
 			// With no record there is nothing to check against, and assuming
-			// ownership of everything would leave a client simulating a whole
-			// world on its own. Holding everything is the safe direction to
-			// be wrong in: ships stop moving, which is visible, rather than
-			// moving wrongly, which is not.
+			// ownership of everything would leave the client simulating a
+			// whole world on its own. Holding everything is the safe
+			// direction to be wrong in: ships stop moving, which is visible,
+			// rather than moving wrongly, which is not.
 			return Ownership != null && Ownership.BelongsToMe(unitId);
 		}
 

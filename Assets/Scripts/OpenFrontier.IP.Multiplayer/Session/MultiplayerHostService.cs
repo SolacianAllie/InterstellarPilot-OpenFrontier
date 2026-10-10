@@ -280,6 +280,10 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			Session = session;
 			LastProblem = null;
 
+			// The handshake cannot move ships itself, so it is told who can.
+			HostSession.ShipUploadHandler = HostShipUpload.Apply;
+
+
 			// Re-read every time hosting starts, not cached once: a host can
 			// stop, load a different scenario and start again, and a stale id
 			// would send a joiner to a scenario nobody is playing.

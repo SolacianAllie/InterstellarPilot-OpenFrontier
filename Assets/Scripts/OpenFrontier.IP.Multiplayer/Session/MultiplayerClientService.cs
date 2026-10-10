@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace OpenFrontier.IP.Multiplayer
@@ -230,8 +231,18 @@ namespace OpenFrontier.IP.Multiplayer
 			client.Send(ProtocolVersion.JoinerPreferencesMessageId, preferences.ToBytes());
 		}
 
+		/// <summary>
+		/// Sends ship state to the host, and installs the uploader.
+		/// </summary>
+		/// <remarks>
+		/// The uploader lives here rather than being installed on its own so
+		/// that "connected" means the same thing to every part of the client,
+		/// which is the distinction that froze a host's own ships earlier.
+		/// </remarks>
 		private void UpdateOwnership()
 		{
+			EnsureUploader();
+
 			if (Session == null || Session.State != JoinState.Connected)
 			{
 				return;
@@ -283,6 +294,18 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 		}
 
+		private ClientShipUploader uploader;
+
+		private void EnsureUploader()
+		{
+			if (uploader != null)
+			{
+				return;
+			}
+
+			uploader = gameObject.AddComponent<ClientShipUploader>();
+		}
+
 		private void Update()
 		{
 			UpdateOwnership();
@@ -326,6 +349,20 @@ namespace OpenFrontier.IP.Multiplayer
 				Debug.Log("Multiplayer: join finished - " + reason);
 				WorldReady?.Invoke(reason);
 			});
+		}
+
+		/// <summary>Sends this copy's own ship state to the host.</summary>
+		public void SendUnitStates(List<UnitStateMessage> messages)
+		{
+			if (Session == null || Session.State != JoinState.Connected || messages == null)
+			{
+				return;
+			}
+
+			for (int i = 0; i < messages.Count; i++)
+			{
+				Session.Send(ProtocolVersion.UnitStateMessageId, messages[i].ToBytes());
+			}
 		}
 
 		/// <summary>Leaves the session, if there is one.</summary>
