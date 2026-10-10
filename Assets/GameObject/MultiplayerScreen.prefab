@@ -1445,7 +1445,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 'Created Version:'
+  m_Text: 'Game version:'
 --- !u!114 &114510800835404288
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2514,7 +2514,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &224696792502030561
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3188,7 +3188,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &224344618938641724
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3250,7 +3250,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 'Save Version:'
+  m_Text: 'Protocol:'
 --- !u!114 &114413603344295461
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3763,7 +3763,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &224502609866597578
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3825,7 +3825,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 'Scenario author:'
+  m_Text: 'Listening on:'
 --- !u!114 &114372353275341440
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4128,7 +4128,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 'Sector:'
+  m_Text: 'Player:'
 --- !u!114 &114616761771223058
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4169,7 +4169,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &224370081907136253
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4510,7 +4510,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &224556043395114336
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4982,7 +4982,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &224904400124545405
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5044,7 +5044,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 'Authoring tool:'
+  m_Text: 'Mode:'
 --- !u!114 &114722550256369544
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5697,7 +5697,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &224952320105404285
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5759,7 +5759,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 'Code:'
+  m_Text: 'Join code:'
 --- !u!114 &114222568209840903
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6697,12 +6697,18 @@ MonoBehaviour:
   JoinCodeScreenPrefab: {fileID: 7555229609022815988, guid: d80ba48200d23db4cbb7976a3b8b7992, type: 3}
   DeleteHostButton: {fileID: 114667785438668446}
   RenameHostButton: {fileID: 114536148047902537}
-  HostInfoRoot: {fileID: 1371939378208658}
+  SessionPanelRoot: {fileID: 1371939378208658}
+  SessionTitleLabel: {fileID: 114965908813272002}
+  SessionCodeLabel: {fileID: 114869737159367836}
+  SessionHostingLabel: {fileID: 114785416887765914}
+  SessionAddressLabel: {fileID: 114583788928901705}
+  SessionModeLabel: {fileID: 114894352506636257}
+  SessionVersionLabel: {fileID: 114544837802452058}
+  SessionProtocolLabel: {fileID: 114507522976744791}
+  SessionPlayersLabel: {fileID: 114382656168358062}
+  SessionIdentityLabel: {fileID: 114291547872775986}
+  SessionProblemLabel: {fileID: 114232415838589296}
   MultipleItemsSelectedRoot: {fileID: 224739268104783211}
-  HostNameLabel: {fileID: 114965908813272002}
-  HostCodeLabel: {fileID: 114869737159367836}
-  HostAddedLabel: {fileID: 114232415838589296}
-  HostStatusLabel: {fileID: 114785416887765914}
   TitleLabel: {fileID: 0}
 --- !u!1 &1709867586078768
 GameObject:
@@ -7113,7 +7119,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &224410049401584812
 RectTransform:
   m_ObjectHideFlags: 0
@@ -7175,7 +7181,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 'Status:'
+  m_Text: 'Hosting:'
 --- !u!114 &114041608817324026
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8061,7 +8067,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &224173644300073267
 RectTransform:
   m_ObjectHideFlags: 0
@@ -8583,7 +8589,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &224825818419884204
 RectTransform:
   m_ObjectHideFlags: 0
@@ -8835,7 +8841,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &224559203567323380
 RectTransform:
   m_ObjectHideFlags: 0
@@ -8897,7 +8903,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: 'Net Worth:'
+  m_Text: 'Players:'
 --- !u!114 &114364392939154294
 MonoBehaviour:
   m_ObjectHideFlags: 0

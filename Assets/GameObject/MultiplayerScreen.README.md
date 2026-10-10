@@ -39,17 +39,40 @@ is a record rather than a set of instructions:
 | `AddHostButton` | `ExportFileButton` | `ButtonIconAddHost` |
 | `RenameHostButton` | `RenameFileButton` | `ButtonIconRename` |
 | `DeleteHostButton` | `DeleteGameConfirmButton` | `ButtonIconDelete` |
-| `HostInfoRoot` | `GameInfoRoot` | - |
+| `SessionPanelRoot` | `GameInfoRoot` | `SelectedGameRoot` |
 | `MultipleItemsSelectedRoot` | `MultipleItemsSelectedRoot` | `MultiSelectRoot` |
 | `ItemsList` | `ItemsList` | `ScrollRectGameList` |
-| `HostNameLabel` | `SaveGameNameLabel` | `LegacyTextSubTitle` |
-| `HostCodeLabel` | `SaveGameFilename` | `TextFilenameValue` |
-| `HostAddedLabel` | `SaveGameDateLabel` | `TextDate` |
-| `HostStatusLabel` | `SaveGameFilesize` | `TextFileSizeValue` |
+| `SessionTitleLabel` | `SaveGameNameLabel` | `LegacyTextSubTitle` |
+| `SessionProblemLabel` | `SaveGameDateLabel` | `TextDate` |
 
-`HostStatusLabel` has no natural counterpart - the save panel has no "is this
-reachable" row - so it borrows `TextFileSizeValue`, and that row's own "File
-size" caption is hidden so the status is not mislabelled.
+### The session panel
+
+The right-hand panel reports **this player's own session**, not the selected
+host. It exists because "is multiplayer even working?" previously had its
+answer only in a log file on a developer's machine, and every line on it is
+something a failed join traces back to.
+
+The save panel's spare rows are reused rather than new objects being added, so
+each is relabelled to say what it now holds. The tool does this after hiding
+the save-only rows, which is why the captions here differ from the clone's.
+
+| `MultiplayerScreen` | Row reused | Caption |
+|---|---|---|
+| `SessionCodeLabel` | `TextFileName` | `Join code:` |
+| `SessionHostingLabel` | `TextFileSize` | `Hosting:` |
+| `SessionAddressLabel` | `TextScenarioAuthor` | `Listening on:` |
+| `SessionModeLabel` | `TextScenarioAuthoringTool` | `Mode:` |
+| `SessionVersionLabel` | `TextCreatedVersion` | `Game version:` |
+| `SessionProtocolLabel` | `TextSaveVersion` | `Protocol:` |
+| `SessionPlayersLabel` | `TextNetWorth` | `Players:` |
+| `SessionIdentityLabel` | `TextSector` | `Player:` |
+
+`SessionCodeLabel` and `SessionHostingLabel` keep the two references the clone
+already carried (`TextFilenameValue` and `TextFileSizeValue`), so only their
+captions changed.
+
+The panel gives way to `MultiSelectRoot` when more than one row is selected -
+the two share the same space and would otherwise be drawn on top of each other.
 
 The screen heading lives in `TextScreenTitle`, not on the button: the button row
 is icon-only throughout, like the rest.

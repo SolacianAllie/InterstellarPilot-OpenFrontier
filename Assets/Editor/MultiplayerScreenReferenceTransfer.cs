@@ -423,8 +423,8 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 			// ---- panels --------------------------------------------------
 
-			Assign(target, nameof(target.HostInfoRoot), source.GameInfoRoot, report,
-				"HostInfoRoot <- GameInfoRoot");
+			Assign(target, nameof(target.SessionPanelRoot), source.GameInfoRoot, report,
+				"SessionPanelRoot <- GameInfoRoot");
 
 			Assign(target, nameof(target.MultipleItemsSelectedRoot), source.MultipleItemsSelectedRoot, report,
 				"MultipleItemsSelectedRoot <- MultiSelectRoot");
@@ -444,20 +444,20 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			// reads as nonsense. TextFileSizeValue itself is the repurposed
 			// object and must not be hidden.
 
-			Assign(target, nameof(target.HostNameLabel), source.SaveGameNameLabel, report,
-				"HostNameLabel <- SaveGameNameLabel");
+			Assign(target, nameof(target.SessionTitleLabel), source.SaveGameNameLabel, report,
+				"SessionTitleLabel <- SaveGameNameLabel");
 
-			Assign(target, nameof(target.HostCodeLabel), source.SaveGameFilename, report,
-				"HostCodeLabel <- SaveGameFilename");
+			Assign(target, nameof(target.SessionCodeLabel), source.SaveGameFilename, report,
+				"SessionCodeLabel <- SaveGameFilename");
 
-			Assign(target, nameof(target.HostAddedLabel), source.SaveGameDateLabel, report,
-				"HostAddedLabel <- SaveGameDate");
+			Assign(target, nameof(target.SessionProblemLabel), source.SaveGameDateLabel, report,
+				"SessionProblemLabel <- SaveGameDate");
 
 			// HostStatusLabel has no natural counterpart - the save panel has
-			// no "is this reachable" row. Reuse a row that is being hidden
-			// anyway rather than asking the user to add a new object.
-			Assign(target, nameof(target.HostStatusLabel), source.SaveGameFilesize, report,
-				"HostStatusLabel <- SaveGameFilesize (repurposed)");
+			// has no "is this reachable" row. Reuse a row that is being
+			// hidden anyway rather than asking the user to add a new object.
+			Assign(target, nameof(target.SessionHostingLabel), source.SaveGameFilesize, report,
+				"SessionHostingLabel <- SaveGameFilesize (repurposed)");
 
 			// ---- hide the save-only rows ---------------------------------
 
@@ -533,6 +533,76 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			if (hidden > 0)
 			{
 				report.Note("hid " + hidden + " save-only detail rows");
+
+			/// // ---- the session panel ----------------------------------------
+			/// //
+			/// // The panel reports this player's own multiplayer session rather
+			/// // than the selected host, so its rows come from the save panel's
+			/// // spare rows and are relabelled to say what they now hold. Same
+			/// // objects, new captions - which is why this runs AFTER the hiding
+			/// // above rather than before it.
+			/// //
+			/// // Each entry is the row, the value on its right, the caption it
+			/// // should now carry, and the field the value is wired to. The two
+			/// // value names that do not simply append "Value" are inherited
+			/// // from LoadGameScreen, where they were named for what they showed.
+			var sessionRows = new[]
+			{
+				new { Row = "TextFileName", Value = "TextFilenameValue", Caption = "Join code:", Field = nameof(target.SessionCodeLabel) },
+				new { Row = "TextFileSize", Value = "TextFileSizeValue", Caption = "Hosting:", Field = nameof(target.SessionHostingLabel) },
+				new { Row = "TextScenarioAuthor", Value = "TextScenarioAuthorValue", Caption = "Listening on:", Field = nameof(target.SessionAddressLabel) },
+				new { Row = "TextScenarioAuthoringTool", Value = "TextScenarioAuthoringToolValue", Caption = "Mode:", Field = nameof(target.SessionModeLabel) },
+				new { Row = "TextCreatedVersion", Value = "TextSaveCreatedVersionValue", Caption = "Game version:", Field = nameof(target.SessionVersionLabel) },
+				new { Row = "TextSaveVersion", Value = "TextSaveVersionValue", Caption = "Protocol:", Field = nameof(target.SessionProtocolLabel) },
+				new { Row = "TextNetWorth", Value = "TextNetWorthValue", Caption = "Players:", Field = nameof(target.SessionPlayersLabel) },
+				new { Row = "TextSector", Value = "TextSectorValue", Caption = "Player:", Field = nameof(target.SessionIdentityLabel) }
+			};
+
+			int sessionRowsWired = 0;
+
+			foreach (var sessionRow in sessionRows)
+			{
+				Transform rowTransform = contents.transform.FindDeep(sessionRow.Row);
+
+				if (rowTransform == null)
+				{
+					report.Fail("session row " + sessionRow.Row + " was not found in the clone");
+					continue;
+				}
+
+				rowTransform.gameObject.SetActive(true);
+
+				// The caption is the row's own object rather than a child of it:
+				// LoadGameScreen gives each row a left-hand label and a
+				// right-hand value, and the label is the row itself.
+				Text caption = rowTransform.GetComponent<Text>();
+
+				if (caption == null)
+				{
+					report.Fail("session row " + sessionRow.Row + " has no caption text component");
+				}
+				else
+				{
+					caption.text = sessionRow.Caption;
+				}
+
+				Transform valueTransform = contents.transform.FindDeep(sessionRow.Value);
+
+				if (valueTransform == null)
+				{
+					report.Fail("session value " + sessionRow.Value + " was not found in the clone");
+					continue;
+				}
+
+				valueTransform.gameObject.SetActive(true);
+
+				Assign(target, sessionRow.Field, valueTransform.GetComponent<Text>(), report,
+					sessionRow.Field + " <- " + sessionRow.Value);
+
+				sessionRowsWired++;
+			}
+
+			report.Note("wired " + sessionRowsWired + " session panel rows");
 			}
 			else
 			{

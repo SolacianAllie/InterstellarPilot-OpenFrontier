@@ -37,6 +37,18 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public int Port => listener.BoundPort;
 
+		/// <summary>The local address players are being told to reach.</summary>
+		/// <remarks>
+		/// Kept rather than read back off the listener, because this is the
+		/// address that was chosen as reachable and written into every join
+		/// code. Shown on the session panel so a player can see the address
+		/// their friends are actually dialling.
+		/// </remarks>
+		public IPAddress Address { get; private set; }
+
+		/// <summary>The address and port together, as one thing to look at.</summary>
+		public string Endpoint => Address + ":" + Port;
+
 		/// <summary>Raised when a player has been admitted and identified.</summary>
 		public event Action<RemotePlayer> PlayerJoined;
 
@@ -61,8 +73,9 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public bool IsInMainMenu { get; internal set; }
 
-		private HostSession(byte[] sessionSecret, NetListener listener)
+		private HostSession(IPAddress address, byte[] sessionSecret, NetListener listener)
 		{
+			Address = address;
 			this.sessionSecret = sessionSecret;
 			this.listener = listener;
 		}
@@ -100,7 +113,7 @@ namespace OpenFrontier.IP.Multiplayer
 				return null;
 			}
 
-			var session = new HostSession(secret, listener);
+			var session = new HostSession(address, secret, listener);
 
 			string code = SessionCode.Create(address, listener.BoundPort, secret);
 			session.JoinCode = SessionCode.Format(code);

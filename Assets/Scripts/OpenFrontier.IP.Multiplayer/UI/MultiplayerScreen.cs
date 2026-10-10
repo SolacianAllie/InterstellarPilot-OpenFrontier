@@ -57,17 +57,43 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 		public Button RenameHostButton;
 
-		public GameObject HostInfoRoot;
+		public GameObject SessionPanelRoot;
 
 		public Transform MultipleItemsSelectedRoot;
 
-		public Text HostNameLabel;
+		/// <summary>The panel's heading.</summary>
+		public Text SessionTitleLabel;
 
-		public Text HostCodeLabel;
+		/// <summary>This player's own join code.</summary>
+		public Text SessionCodeLabel;
 
-		public Text HostAddedLabel;
+		/// <summary>Whether this player is hosting.</summary>
+		public Text SessionHostingLabel;
 
-		public Text HostStatusLabel;
+		/// <summary>The address and port written into every join code.</summary>
+		public Text SessionAddressLabel;
+
+		/// <summary>The host or join setting, in words.</summary>
+		public Text SessionModeLabel;
+
+		/// <summary>The game build this player is running.</summary>
+		public Text SessionVersionLabel;
+
+		/// <summary>The wire protocol, which is what a join actually checks.</summary>
+		public Text SessionProtocolLabel;
+
+		/// <summary>How many players are connected.</summary>
+		public Text SessionPlayersLabel;
+
+		/// <summary>This player's identity, short enough to compare out loud.</summary>
+		public Text SessionIdentityLabel;
+
+		/// <summary>Anything that went wrong, or empty.</summary>
+		/// <remarks>
+		/// Left empty rather than filled with a dash, so the line does not sit
+		/// there saying nothing for as long as nothing is wrong.
+		/// </remarks>
+		public Text SessionProblemLabel;
 
 		public Text TitleLabel;
 
@@ -138,6 +164,13 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		protected override void update()
 		{
 			base.update();
+
+			// Refreshed every frame rather than on the probe interval: the
+			// host service retries on a timer of its own and may start or
+			// fail long after this screen was drawn, and this panel exists
+			// to report exactly that. Waiting for the probes would leave it
+			// lying about the state of the thing it is describing.
+			RefreshSessionPanel();
 
 			if (ItemsList == null || Time.unscaledTime < nextProbeTime)
 			{
@@ -625,12 +658,18 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			if (JoinCodeButton == null) missing.Add(nameof(JoinCodeButton));
 			if (DeleteHostButton == null) missing.Add(nameof(DeleteHostButton));
 			if (RenameHostButton == null) missing.Add(nameof(RenameHostButton));
-			if (HostInfoRoot == null) missing.Add(nameof(HostInfoRoot));
+			if (SessionPanelRoot == null) missing.Add(nameof(SessionPanelRoot));
 			if (MultipleItemsSelectedRoot == null) missing.Add(nameof(MultipleItemsSelectedRoot));
-			if (HostNameLabel == null) missing.Add(nameof(HostNameLabel));
-			if (HostCodeLabel == null) missing.Add(nameof(HostCodeLabel));
-			if (HostAddedLabel == null) missing.Add(nameof(HostAddedLabel));
-			if (HostStatusLabel == null) missing.Add(nameof(HostStatusLabel));
+			if (SessionTitleLabel == null) missing.Add(nameof(SessionTitleLabel));
+			if (SessionCodeLabel == null) missing.Add(nameof(SessionCodeLabel));
+			if (SessionHostingLabel == null) missing.Add(nameof(SessionHostingLabel));
+			if (SessionAddressLabel == null) missing.Add(nameof(SessionAddressLabel));
+			if (SessionModeLabel == null) missing.Add(nameof(SessionModeLabel));
+			if (SessionVersionLabel == null) missing.Add(nameof(SessionVersionLabel));
+			if (SessionProtocolLabel == null) missing.Add(nameof(SessionProtocolLabel));
+			if (SessionPlayersLabel == null) missing.Add(nameof(SessionPlayersLabel));
+			if (SessionIdentityLabel == null) missing.Add(nameof(SessionIdentityLabel));
+			if (SessionProblemLabel == null) missing.Add(nameof(SessionProblemLabel));
 
 			if (missing.Count == 0)
 			{
@@ -823,8 +862,14 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			int selectedCount = ItemsList == null ? 0 : ItemsList.SelectedItemCount;
 			SavedHost single = SingleSelectedHost;
 
-			SetActive(HostInfoRoot, single != null);
-			SetActive(MultipleItemsSelectedRoot, selectedCount > 1);
+			// The panel reports this player's own session rather than the
+			// selected host, so it has nothing to do with the selection.
+			// The one exception is the multi-select prompt, which shares
+			// the same space and would otherwise be drawn on top of it.
+			bool severalSelected = selectedCount > 1;
+
+			SetActive(SessionPanelRoot, !severalSelected);
+			SetActive(MultipleItemsSelectedRoot, severalSelected);
 
 			SetActive(JoinButton, single != null && !single.IsConnected);
 			SetActive(DeleteHostButton, selectedCount > 0);
@@ -834,31 +879,79 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			PositionHostRowButtons();
 
-			if (single == null)
-			{
-				return;
-			}
+			RefreshSessionPanel();
+		}
 
-			if (HostNameLabel != null)
-			{
-				HostNameLabel.text = string.IsNullOrWhiteSpace(single.Name) ? single.Code : single.Name;
-			}
+		/// <summary>
+		/// Reports this player's own multiplayer session: whether hosting is
+		/// working, on what address and port, and what to do about it if not.
+		/// </summary>
+		/// <remarks>
+		/// This panel is the answer to "is multiplayer even working?", which
+		/// until now could only be had from a log file on a developer's
+		/// machine. Every line is something a failed join traces back to: a
+		/// code that has to be copied exactly, an address that has to be
+		/// reachable, a port that is different on every restart, and two
+		/// builds that have to match exactly.
+		/// 
+		/// Stuck to plain facts on purpose. Nothing here guesses at why a join
+		/// failed, because from inside the game a stale code and a firewall
+		/// look identical, and a confident wrong answer costs a player more
+		/// than an honest one.
+		/// </remarks>
+		private void RefreshSessionPanel()
+		{
+			HostSession session = MultiplayerHostService.Session;
 
-			if (HostCodeLabel != null)
-			{
-				HostCodeLabel.text = single.Code;
-			}
+			Set(SessionTitleLabel, "Your multiplayer session");
+			Set(SessionModeLabel, DescribeMode(MultiplayerSettings.Mode));
+			Set(SessionVersionLabel, Versioning.Version == null
+				? "unknown"
+				: Versioning.Version.ToString());
+			Set(SessionProtocolLabel, ProtocolVersion.Current.ToString());
+			Set(SessionPlayersLabel, session == null ? "0" : session.Players.Count.ToString());
+			Set(SessionHostingLabel, session != null ? "Yes" : "No");
+			Set(SessionAddressLabel, session == null ? "Not listening" : session.Endpoint);
+			Set(SessionCodeLabel, string.IsNullOrEmpty(OwnJoinCode) ? "None" : OwnJoinCode);
 
-			if (HostAddedLabel != null)
-			{
-				HostAddedLabel.text = single.AddedUtc.ToLocalTime().ToString("dd-MMM-yyyy H:mm");
-			}
+			// Short enough to read out and compare. The whole token is there
+			// for a developer; a player checking two devices want to know
+			// they are two different people, not to read sixty characters
+			// aloud.
+			string token = PlayerIdentity.Token ?? string.Empty;
+			Set(SessionIdentityLabel, token.Length <= 8 ? token : token.Substring(0, 8));
 
-			if (HostStatusLabel != null)
+			Set(SessionProblemLabel, MultiplayerHostService.LastProblem);
+		}
+
+		/// <summary>Sets a label, tolerating it not being there.</summary>
+		/// <remarks>
+		/// Every line on this panel is optional. A prefab cloned before the
+		/// panel existed would otherwise throw on the first missing reference
+		/// and take the whole screen down with it, which is a worse outcome
+		/// than a panel missing a row.
+		/// </remarks>
+		private static void Set(Text label, string value)
+		{
+			if (label != null)
 			{
-				HostStatusLabel.text = single.IsConnected
-					? "Connected"
-					: single.ProbeResult.Describe();
+				label.text = value ?? string.Empty;
+			}
+		}
+
+		/// <summary>Turns the setting into something a player can act on.</summary>
+		private static string DescribeMode(MultiplayerMode mode)
+		{
+			switch (mode)
+			{
+				case MultiplayerMode.HostOrJoin:
+					return "Host or join";
+
+				case MultiplayerMode.JoinOnly:
+					return "Join only";
+
+				default:
+					return "Off";
 			}
 		}
 
