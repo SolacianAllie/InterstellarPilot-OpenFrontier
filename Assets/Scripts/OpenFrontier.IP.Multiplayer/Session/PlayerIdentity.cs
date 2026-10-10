@@ -22,11 +22,15 @@ namespace OpenFrontier.IP.Multiplayer
 	{
 		private const string PrefsKey = "of_multiplayer_player_token";
 
+		private const string SessionSecretPrefsKey = "of_multiplayer_session_secret";
+
 		// Enough bytes that two identities colliding is not a practical concern,
 		// and short enough to sit comfortably in the handshake.
 		private const int TokenBytes = 16;
 
 		private static string cachedToken;
+
+		private static byte[] cachedSecret;
 
 		/// <summary>
 		/// This device's token, generated on first use and then reused.
@@ -49,12 +53,13 @@ namespace OpenFrontier.IP.Multiplayer
 		}
 
 		/// <summary>
-		/// Discards the cached token so the next read comes from storage again.
+		/// Discards everything cached so the next read comes from storage again.
 		/// Used after a settings reset; not part of normal play.
 		/// </summary>
 		public static void InvalidateCache()
 		{
 			cachedToken = null;
+			cachedSecret = null;
 		}
 
 		private static string LoadOrCreateToken()
@@ -84,19 +89,71 @@ namespace OpenFrontier.IP.Multiplayer
 				rng.GetBytes(bytes);
 			}
 
-			return Convert.ToBase64String(bytes)
-				.Replace("+", "-")
-				.Replace("/", "_")
-				.TrimEnd('=');
+			return ToBase64Url(bytes);
 		}
 
 		/// <summary>
-		/// A fresh session secret for a newly hosted game. Not persisted: the
-		/// host's own code is regenerated each time it starts hosting, and an
-		/// old session's secret should not keep working.
+		/// This installation's session secret, generated on first use and then
+		/// reused for every session it hosts.
 		/// </summary>
-		public static byte[] CreateSessionSecret()
+		/// <remarks>
+		/// Persisted, which reverses an earlier decision to draw a new secret
+		/// every time hosting started. That decision was defensible on its own
+		/// terms - an old session's secret should not keep working - but it is
+		/// incompatible with a saved host list, because a join code carries
+		/// part of this secret and every code a player had already saved would
+		/// be dead the moment the host restarted.
+		///
+		/// Making the port fixed was only half of that fix and this is the
+		/// other half. Together they are what a saved code needs to survive a
+		/// restart; with only the port fixed it still died here, and the host
+		/// refused a code it had issued minutes earlier with "that join code
+		/// isn't valid for this session".
+		///
+		/// Reusing it costs very little safety. The secret travels in the
+		/// clear inside a join code that is already copied around by hand, and
+		/// what it protects is the right to open a session the host could have
+		/// closed at any moment anyway. The self-join check is unaffected -
+		/// it compares the secret AND the endpoint, and both still identify
+		/// exactly this machine's current session.
+		/// </remarks>
+		public static byte[] SessionSecret
 		{
+			get
+			{
+				if (cachedSecret == null)
+				{
+					cachedSecret = LoadOrCreateSessionSecret();
+				}
+
+				return cachedSecret;
+			}
+		}
+
+		private static byte[] LoadOrCreateSessionSecret()
+		{
+			// Base64url, as for the token: PlayerPrefs is all strings, and
+			// "+" and "/" would have to be escaped.
+			string existing = PlayerPrefs.GetString(SessionSecretPrefsKey, string.Empty);
+
+			if (!string.IsNullOrEmpty(existing))
+			{
+				try
+				{
+					byte[] stored = FromBase64Url(existing);
+
+					if (stored.Length == SessionCode.PayloadSize)
+					{
+						return stored;
+					}
+				}
+				catch (FormatException)
+				{
+					// Corrupted, or written by a build that meant something
+					// else. Fall through and make a new one.
+				}
+			}
+
 			byte[] bytes = new byte[SessionCode.PayloadSize];
 
 			using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
@@ -104,7 +161,40 @@ namespace OpenFrontier.IP.Multiplayer
 				rng.GetBytes(bytes);
 			}
 
+			PlayerPrefs.SetString(SessionSecretPrefsKey, ToBase64Url(bytes));
+
+			// Saved immediately for the same reason the token is: a code that
+			// has already been shared out should not stop working because the
+			// machine lost power a second later.
+			PlayerPrefs.Save();
+
 			return bytes;
+		}
+
+		private static string ToBase64Url(byte[] bytes)
+		{
+			return Convert.ToBase64String(bytes)
+				.Replace("+", "-")
+				.Replace("/", "_")
+				.TrimEnd('=');
+		}
+
+		private static byte[] FromBase64Url(string value)
+		{
+			string padded = value.Replace('-', '+').Replace('_', '/');
+
+			switch (padded.Length % 4)
+			{
+				case 2:
+					padded += "==";
+					break;
+
+				case 3:
+					padded += "=";
+					break;
+			}
+
+			return Convert.FromBase64String(padded);
 		}
 	}
 

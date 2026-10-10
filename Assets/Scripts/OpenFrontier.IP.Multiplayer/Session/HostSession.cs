@@ -107,7 +107,7 @@ namespace OpenFrontier.IP.Multiplayer
 				return null;
 			}
 
-			byte[] secret = PlayerIdentity.CreateSessionSecret();
+			byte[] secret = PlayerIdentity.SessionSecret;
 
 			// The join code carries a fixed 7 bytes of secret. Compare against
 			// exactly that prefix, not the whole generated value - comparing a
