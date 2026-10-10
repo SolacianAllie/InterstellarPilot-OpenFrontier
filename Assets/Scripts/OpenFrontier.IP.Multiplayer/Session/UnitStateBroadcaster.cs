@@ -56,6 +56,16 @@ namespace OpenFrontier.IP.Multiplayer
 
 		private static float nextReportTime;
 
+		/// <summary>Players whose sends have already failed once.</summary>
+		private static readonly System.Collections.Generic.HashSet<string> failedPlayers =
+			new System.Collections.Generic.HashSet<string>();
+
+		private static string Short(RemotePlayer player)
+		{
+			string identity = player.DisplayName ?? player.Identity;
+			return string.IsNullOrEmpty(identity) ? "a player" : identity;
+		}
+
 		/// <summary>
 		/// What is going out, every couple of seconds.
 		/// </summary>
@@ -210,12 +220,24 @@ namespace OpenFrontier.IP.Multiplayer
 						player.Channel.Send(
 							FramedMessage.Create(ProtocolVersion.UnitStateMessageId, messages[m].ToBytes()));
 					}
-					catch (System.Exception)
+					catch (System.Exception e)
 					{
 						// A player who has gone away mid-send is not this loop's
 						// problem: they will be noticed on their own close, and
 						// abandoning the rest of the batch over one bad socket
 						// would starve everyone else.
+						//
+						// Said once per player, because swallowing this
+						// silently is what made an entire session impossible
+						// to diagnose: the host reported broadcasting sixty
+						// ships and the client reported receiving none, and
+						// the gap between those two facts had no name.
+						if (!failedPlayers.Contains(player.Identity ?? string.Empty))
+						{
+							failedPlayers.Add(player.Identity ?? string.Empty);
+							Debug.LogWarning("Multiplayer: a send to " + Short(player)
+								+ " failed and will not be retried - " + e.Message);
+						}
 					}
 				}
 			}
