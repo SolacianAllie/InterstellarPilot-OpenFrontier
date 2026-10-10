@@ -305,7 +305,14 @@ namespace OpenFrontier.IP.Multiplayer
 
 					if (!PongMessage.TryFromBytes(body, out PongMessage pong, out string error))
 					{
-						Debug.LogWarning("Multiplayer probe got an unreadable reply: " + error);
+						// Queued rather than logged here: this runs on the probe's worker
+						// thread, and Debug.Log is a Unity API that expects the main
+						// thread. It works by luck on desktop and is exactly the sort
+						// of thing that behaves differently under IL2CPP or on a
+						// device - which is where a networking bug is least welcome.
+						// The result below is unaffected either way.
+						MainThreadDispatcher.Post(() =>
+							Debug.LogWarning("Multiplayer probe got an unreadable reply: " + error));
 						return new HostProbeResult { Reachability = HostReachability.Unreachable };
 					}
 
