@@ -228,6 +228,77 @@ namespace OpenFrontier.IP.Multiplayer
 			return isEditor ? EditorSlot : DefaultSlot;
 		}
 
+		/// <summary>
+		/// Where in the range of preferred ports this slot starts looking.
+		/// </summary>
+		/// <remarks>
+		/// This is the part that makes two copies on one machine able to talk
+		/// to each other at all, and it is not about identity - the slot
+		/// already handles that. It is about addressing.
+		///
+		/// A join code carries an address and a port, and two processes on one
+		/// machine have the same address. If they also had the same port then
+		/// a code for one of them would connect to whichever happened to be
+		/// listening, and the other would be told its code was not valid. That
+		/// is not a bug to be worked around in the joiner; it is the code
+		/// being unable to say which process it meant.
+		///
+		/// So each slot starts somewhere different in the range. The plain
+		/// slot keeps the very first port, because that is what a player gets
+		/// and it should not depend on anything; every other slot lands
+		/// somewhere else, chosen from its name so it is stable across
+		/// restarts. Two slots can still land on the same offset, and then the
+		/// range absorbs it - the second one takes the next port along - so a
+		/// collision costs a number rather than the session.
+		/// </remarks>
+		public static int PortOffset(int portCount)
+		{
+			return PortOffsetFor(Slot, portCount);
+		}
+
+		/// <summary>The same choice, for a given slot rather than this one.</summary>
+		/// <remarks>
+		/// Separate so it can be checked without being whatever slot the test
+		/// machine happens to be.
+		/// </remarks>
+		public static int PortOffsetFor(string slot, int portCount)
+		{
+			if (portCount <= 1 || string.IsNullOrEmpty(slot) || slot == DefaultSlot)
+			{
+				return 0;
+			}
+
+			// Never zero: the plain slot owns the first port, and a slot that
+			// also started there would make the commonest pairing - a build and
+			// the editor - the one pairing that fails.
+			return 1 + (StableHash(Sanitize(slot)) % (portCount - 1));
+		}
+
+		/// <summary>
+		/// A hash that gives the same answer on every platform and every run.
+		/// </summary>
+		/// <remarks>
+		/// Not <see cref="string.GetHashCode"/>, which is randomised per
+		/// process on some runtimes: a slot that landed on a different port
+		/// each launch would defeat the entire point of the port being stable.
+		/// </remarks>
+		private static int StableHash(string value)
+		{
+			// FNV-1a, same as the digest above and for the same reason.
+			const uint offset = 2166136261;
+			const uint prime = 16777619;
+
+			uint hash = offset;
+
+			foreach (char character in value)
+			{
+				hash ^= character;
+				hash *= prime;
+			}
+
+			return (int)(hash & 0x7FFFFFFF);
+		}
+
 		private static string Resolve()
 		{
 			string fromCommandLine = FromCommandLine();

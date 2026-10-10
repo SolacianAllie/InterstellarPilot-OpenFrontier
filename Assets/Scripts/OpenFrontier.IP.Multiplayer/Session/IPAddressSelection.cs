@@ -79,14 +79,24 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <remarks>
 		/// An array rather than a sequence so the result cannot be enumerated
 		/// twice with the host making a different choice each time.
+		///
+		/// The order starts where the current slot points rather than always
+		/// at the first port, and that is not tidiness - it is what makes two
+		/// copies on one machine work at all. A join code names an address and
+		/// a port, and two processes on one machine share both, so a code for
+		/// the build and a code for the editor are indistinguishable from the
+		/// other side: whichever happens to hold the port answers for both.
+		/// Each slot taking a different port is the only thing that makes a
+		/// code mean one player rather than "something on this machine".
 		/// </remarks>
 		public static int[] PreferredPorts()
 		{
 			int[] ports = new int[PreferredPortCount];
+			int start = PlayerProfile.PortOffset(PreferredPortCount);
 
 			for (int i = 0; i < ports.Length; i++)
 			{
-				ports[i] = FirstPreferredPort + i;
+				ports[i] = FirstPreferredPort + ((start + i) % PreferredPortCount);
 			}
 
 			return ports;

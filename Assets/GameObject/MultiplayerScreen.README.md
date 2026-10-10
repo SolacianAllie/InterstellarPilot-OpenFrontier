@@ -141,6 +141,18 @@ The file path is the neat part: a build reads it from its own folder, the
 editor from the project root - already different places, so only one of them
 needs a file.
 
+A slot also chooses a **port**. This is the half that identity does not cover
+and the half that actually broke: two processes on one machine share an
+address, so if they shared a port as well then a code for the build would
+connect to the editor, and the editor would be told the code was not valid.
+Seen exactly that way - the editor joining itself, carrying its own token and
+a secret from a session it was not part of.
+
+Each slot starts somewhere different in the preferred port block, chosen from
+its name so it is stable. The plain slot keeps the very first port. Two slots
+can still land on the same one, and then the second takes the next port along,
+so a collision costs a number rather than the session.
+
 The slot is stable. Same slot, same code, across restarts, which is what
 keeps repeated connections working. The panel and the hosting log line both
 show it, so it is never a mystery which copy produced a code.
