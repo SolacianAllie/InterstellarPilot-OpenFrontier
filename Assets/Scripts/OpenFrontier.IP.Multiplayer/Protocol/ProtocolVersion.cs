@@ -134,5 +134,8 @@ namespace OpenFrontier.IP.Multiplayer
 		/// disagree about what message 6 is.
 		/// </remarks>
 		public const int FactionStateMessageId = 11;
+
+		/// <summary>A joiner saying it has arrived and can be sent to.</summary>
+		public const int JoinerReadyMessageId = 12;
 	}
 }

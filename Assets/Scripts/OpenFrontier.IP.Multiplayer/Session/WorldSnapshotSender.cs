@@ -195,6 +195,57 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		}
 
 		/// <summary>
+		/// Tells a joiner why they are not getting a world, then closes the
+		/// connection.
+		/// </summary>
+		/// <remarks>
+		/// Without this a failed join is silent from the joiner's side: the
+		/// handshake succeeded, so they believe they are in, and they sit
+		/// looking at an empty world that will never arrive. The message
+		/// names the cause; the close stops them waiting forever for it.
+		/// </remarks>
+		private static void SendFailure(RemotePlayer player, string reason)
+		{
+			try
+			{
+				player.Channel.Send(FramedMessage.Create(
+					ProtocolVersion.HostFarewellMessageId,
+					new HostFarewellMessage
+					{
+						Reason = "the host could not send you its world - " + reason
+					}.ToBytes()));
+			}
+			catch (System.Exception)
+			{
+				// The socket is the thing most likely to be broken here.
+				// Swallowed, because the log line beside it already says what
+				// went wrong and a second failure to report it adds nothing.
+			}
+		}
+
+		private static void GiveUp(RemotePlayer player)
+		{
+			if (player == null)
+			{
+				return;
+			}
+
+			try
+			{
+				// The same path every other disconnect takes, so the player is
+				// removed from the session by the same code that removes a
+				// player who walked away rather than by a second mechanism
+				// that has to be kept in step with it.
+				player.CloseWithReason("the host could not send you its world");
+			}
+			catch (System.Exception e)
+			{
+				Debug.LogWarning("Multiplayer: could not let go of a player who"
+					+ " could not be served - " + e.Message);
+			}
+		}
+
+		/// <summary>
 		/// Sends the current world to one freshly admitted player.
 		/// </summary>
 		/// <param name="reason">What happened, for the host's log to read.</param>
@@ -297,6 +348,21 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				if (!WorldSnapshotBuilder.TryBuild(engine, out byte[] snapshot, out string error))
 				{
 					reason?.Invoke("could not export the world: " + error);
+
+					// Told, and then let go.
+					//
+					// The joiner is already admitted at this point - the
+					// handshake finished before this ran - so leaving them
+					// here keeps a connected player who will never receive a
+					// world. They are broadcast to ten times a second
+					// forever, and the session's player list grows by one
+					// per attempt, which is how a host ends up sending to
+					// nineteen players who are not playing.
+					//
+					// Said before closing so the host's log has it, since
+					// after this there is nobody left to ask.
+					SendFailure(player, error);
+					GiveUp(player);
 					return;
 				}
 

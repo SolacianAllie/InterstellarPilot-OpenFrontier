@@ -90,7 +90,7 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				RemotePlayer player = session.Players[p];
 
-				if (player == null || !player.Admitted)
+				if (player == null || !player.Admitted || !player.Ready)
 				{
 					continue;
 				}

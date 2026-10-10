@@ -30,6 +30,8 @@ player owns.
 | Per-recipient sectors: each client is sent only the ships in their own sector | ✅ |
 | Only ships that moved are sent; background sectors stream at the engine's own slow tick | ✅ |
 | Sectors holding a player are simulated every frame, not once per 3 s | ✅ |
+| Player-unit ids already in a loaded save are never handed out twice | ✅ |
+| Nothing is streamed until a joiner says it has arrived | ✅ |
 | The joiner's ship state client → host, accepted as authority | ✅ |
 | Ownership arbitration: one ship, one player | ✅ |
 | Credits and the ship's hold, host → client on change | ✅ |

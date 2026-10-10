@@ -44,6 +44,22 @@ namespace OpenFrontier.IP.Multiplayer
 		public bool Admitted { get; internal set; }
 
 		/// <summary>
+		/// Whether this peer has said it has the world and is standing in it.
+		/// </summary>
+		/// <remarks>
+		/// Admitted means the handshake finished. Ready means the snapshot
+		/// they were sent has been loaded and their pilot adopted, which is
+		/// the first moment anything the host sends can be applied to
+		/// anything.
+		///
+		/// The two are separate because the gap between them is where a
+		/// client cannot use a single thing it is sent: the world is being
+		/// written to disk by the host and reassembled by the client, and in
+		/// that window every unit state arrives to be thrown away.
+		/// </remarks>
+		public bool Ready { get; internal set; }
+
+		/// <summary>
 		/// Player-facing name, once known. Used for display only.
 		/// </summary>
 		public string DisplayName { get; internal set; }

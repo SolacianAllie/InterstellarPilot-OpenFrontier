@@ -268,7 +268,11 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				RemotePlayer player = session.Players[p];
 
-				if (player == null || !player.Admitted)
+				// Admitted is not the same as arrived. A joiner that has
+				// completed the handshake but has not yet finished loading
+				// the snapshot cannot apply any of this, so sending to it
+				// spends bandwidth on nothing.
+				if (player == null || !player.Admitted || !player.Ready)
 				{
 					continue;
 				}

@@ -82,6 +82,45 @@ namespace OpenFrontier.IP.Multiplayer
 		/// owns many ships and every one of them needs its own id. Only the
 		/// host allocates, so the two copies agree without any negotiation.
 		/// </remarks>
+		/// <summary>
+		/// Marks an id as taken, for a unit that already exists.
+		/// </summary>
+		/// <remarks>
+		/// Needed because the reserved set only knows what this session
+		/// handed out, and a loaded save knows nothing about it. A save made
+		/// while somebody was connected contains the shuttle that was made
+		/// for them, sitting on the first id in the band; the next session
+		/// starts with an empty set, hands that same id to the next joiner,
+		/// and the world ends up with two units of one id. The exporter keys
+		/// units by id and throws on the duplicate, so the host cannot send
+		/// its world and the joiner waits for a snapshot that will never
+		/// come - which is indistinguishable, from the joiner's side, from
+		/// the host being unreachable.
+		///
+		/// Kept separate from NextUnitId rather than folded into it, so that
+		/// this stays a pure function of a set and can still be tested without
+		/// an engine.
+		/// </remarks>
+		public static void Reserve(int id)
+		{
+			if (IsPlayerMadeUnit(id))
+			{
+				Reserved.Add(id);
+			}
+		}
+
+		/// <summary>Whether this id is in the band player units are given.</summary>
+		public static bool IsPlayerMadeUnit(int id)
+		{
+			return id >= UnitIdBase && id < UnitIdBase + UnitIdBand;
+		}
+
+		/// <summary>Forgets every id handed out. For a new world.</summary>
+		public static void ForgetUnitIds()
+		{
+			Reserved.Clear();
+		}
+
 		public static int NextUnitId()
 		{
 			for (int i = UnitIdBase; i < UnitIdBase + UnitIdBand; i++)

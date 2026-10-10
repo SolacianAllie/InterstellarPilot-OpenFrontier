@@ -248,6 +248,12 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
+			if (messageId == ProtocolVersion.JoinerReadyMessageId)
+			{
+				AcceptReadiness(player, body);
+				return;
+			}
+
 			// A liveness probe, answered without admitting a player. This runs
 			// before the handshake gate so a player browsing their host list does
 			// not create a session or occupy a slot.
@@ -303,6 +309,60 @@ namespace OpenFrontier.IP.Multiplayer
 		/// that it is. The peer is never admitted, and the connection is closed
 		/// immediately so a probe costs one short exchange and no session state.
 		/// </summary>
+		/// <summary>
+		/// A joiner saying it has loaded the world and is standing in it.
+		/// </summary>
+		/// <remarks>
+		/// Checked against the faction the host made rather than taken at
+		/// face value. The ids are the only thing tying this message to the
+		/// join it belongs to, and accepting a bare marker would let any
+		/// admitted peer - including the host's own other session - claim to
+		/// be a player who has arrived.
+		///
+		/// Until this lands the broadcaster and the faction-state pusher send
+		/// this player nothing. Not because it would be rude to, but because
+		/// a client with no world cannot apply a unit state: one join was
+		/// measured receiving over twelve thousand of them during the load and
+		/// applying none.
+		/// </remarks>
+		private void AcceptReadiness(RemotePlayer player, byte[] body)
+		{
+			if (player == null || !player.Admitted)
+			{
+				return;
+			}
+
+			if (!JoinerReadyMessage.TryFromBytes(body,
+				out JoinerReadyMessage ready, out string error))
+			{
+				NetLog.Host("WARNING: unreadable readiness from "
+					+ (player.DisplayName ?? player.Identity) + " - " + error);
+				return;
+			}
+
+			// The faction id is derived from the player's token, so the host
+			// can work out whose faction this should be without having been
+			// told - and can tell a player claiming to be somebody else.
+			int expected = PlayerIdScheme.FactionIdFor(player.Identity);
+
+			if (expected >= 0 && ready.FactionId != expected)
+			{
+				NetLog.Host("WARNING: " + (player.DisplayName ?? player.Identity)
+					+ " says it is faction " + ready.FactionId
+					+ ", which is not theirs (" + expected
+					+ "). It will not be sent anything.");
+
+				player.CloseWithReason("that is not your faction");
+				return;
+			}
+
+			player.Ready = true;
+
+			NetLog.Host((player.DisplayName ?? player.Identity)
+				+ " has arrived - faction " + ready.FactionId + ", ship " + ready.ShipId
+				+ " - and will be sent the world from now on");
+		}
+
 		private void RememberPreferences(RemotePlayer player, byte[] body)
 		{
 			if (!player.Admitted)

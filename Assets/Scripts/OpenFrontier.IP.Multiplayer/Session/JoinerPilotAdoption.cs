@@ -80,6 +80,11 @@ namespace OpenFrontier.IP.Multiplayer
 					// history for the first fraction of a second.
 					UnitInterpolator.Forget();
 
+					// Only now is there anything the host could usefully
+					// send. Until this arrives it is streaming unit states
+					// into a client that has no world to put them in.
+					AnnounceReadiness(descriptor);
+
 					Unit adopted = EngineASX.Instance.LocalPlayer == null
 						? null
 						: EngineASX.Instance.LocalPlayer.Person.CurrentUnit;
@@ -105,6 +110,47 @@ namespace OpenFrontier.IP.Multiplayer
 				+ "pilot - " + failure + ".");
 
 			Finished?.Invoke("Joined, but could not become your own pilot: " + failure + ".");
+		}
+
+		/// <summary>
+		/// Tells the host this joiner has landed and can be sent to.
+		/// </summary>
+		/// <remarks>
+		/// Sent after adoption rather than after the snapshot is reassembled,
+		/// because adoption is the point at which the client is genuinely
+		/// standing in the world as the pilot the host made. Announcing
+		/// earlier would start the stream during the last few frames of
+		/// loading, which is the situation this exists to avoid.
+		/// </remarks>
+		private static void AnnounceReadiness(WorldDescriptorMessage descriptor)
+		{
+			MultiplayerClientService client = MultiplayerClientService.Instance;
+
+			if (client == null || !client.IsConnected)
+			{
+				return;
+			}
+
+			try
+			{
+				client.Session.Send(ProtocolVersion.JoinerReadyMessageId,
+					new JoinerReadyMessage
+					{
+						FactionId = descriptor.MyFactionId,
+						ShipId = descriptor.MyShipId
+					}.ToBytes());
+
+				Debug.Log("Multiplayer: told the host we have arrived - faction "
+					+ descriptor.MyFactionId + ", ship " + descriptor.MyShipId);
+			}
+			catch (System.Exception e)
+			{
+				// Worth saying out loud: without this the join looks perfect
+				// from here and produces a world that never moves, because
+				// nothing arrives to move it.
+				Debug.LogWarning("Multiplayer: could not tell the host we have"
+					+ " arrived, so it will not send us the world - " + e.Message);
+			}
 		}
 
 		private static Faction FindFaction(int factionId)
