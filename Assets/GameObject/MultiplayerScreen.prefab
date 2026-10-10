@@ -6693,7 +6693,7 @@ MonoBehaviour:
   ItemsList: {fileID: 7395656860771036125}
   JoinButton: {fileID: 114426252596376205}
   AddHostButton: {fileID: 8564213908661088107}
-  JoinCodeButton: {fileID: 0}
+  JoinCodeButton: {fileID: 1025397629862282481}
   JoinCodeScreenPrefab: {fileID: 7555229609022815988, guid: d80ba48200d23db4cbb7976a3b8b7992, type: 3}
   DeleteHostButton: {fileID: 114667785438668446}
   RenameHostButton: {fileID: 114536148047902537}

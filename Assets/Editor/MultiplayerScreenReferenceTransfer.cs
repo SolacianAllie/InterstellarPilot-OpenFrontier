@@ -200,6 +200,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			}
 
 			AssignJoinCodeScreenPrefab(contents, target, report);
+			AssignJoinCodeButton(contents, target, report);
 
 			return report;
 		}
@@ -214,6 +215,49 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		/// assemblies reference each other. So the prefab is referenced
 		/// directly and instantiated on demand.
 		/// </remarks>
+		/// <summary>
+		/// Points the screen at the Join Code button.
+		/// </summary>
+		/// <remarks>
+		/// Found by object name because it is hand-added, not inherited: the
+		/// clone was made before the button existed, so there is no source
+		/// component to read a reference from. Left unassigned it is simply
+		/// inert - the screen's own wiring skips a null button without
+		/// complaint, so the button looks present and does nothing.
+		/// </remarks>
+		private static void AssignJoinCodeButton(
+			GameObject contents,
+			OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen target,
+			Report report)
+		{
+			Transform found = contents.transform.FindDeep("ButtonIconJoinCode");
+
+			if (found == null)
+			{
+				report.Manual_("no ButtonIconJoinCode in the prefab - add it beside Add Host, "
+					+ "then re-run");
+				return;
+			}
+
+			Button button = found.GetComponent<Button>();
+
+			if (button == null)
+			{
+				report.Manual_("ButtonIconJoinCode has no Button component");
+				return;
+			}
+
+			if (target.JoinCodeButton != button)
+			{
+				target.JoinCodeButton = button;
+				report.Note("JoinCodeButton assigned");
+			}
+			else
+			{
+				report.Note("JoinCodeButton already assigned");
+			}
+		}
+
 		private static void AssignJoinCodeScreenPrefab(
 			GameObject contents,
 			OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen target,
