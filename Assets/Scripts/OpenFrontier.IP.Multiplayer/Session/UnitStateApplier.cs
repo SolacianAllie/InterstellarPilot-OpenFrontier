@@ -22,7 +22,24 @@ namespace OpenFrontier.IP.Multiplayer
 	/// </summary>
 	public sealed class UnitStateApplier : MonoBehaviour
 	{
-		private readonly Dictionary<int, float> lastAppliedAt = new Dictionary<int, float>();
+		private static readonly Dictionary<int, float> lastAppliedAt = new Dictionary<int, float>();
+
+		/// <summary>
+		/// Seconds since this ship was last written, or a large number.
+		/// </summary>
+		/// <remarks>
+		/// Asked by the authority gate, which would otherwise put the body
+		/// straight back to sleep on the very next frame after the applier
+		/// woke it and gave it a velocity. The two were cancelling each other
+		/// out ten times a second, so the velocity was never acted on and
+		/// ships moved in visible ten-hertz steps.
+		/// </remarks>
+		public static float SecondsSinceApplied(int unitId)
+		{
+			return lastAppliedAt.TryGetValue(unitId, out float when)
+				? Time.unscaledTime - when
+				: float.MaxValue;
+		}
 
 		private MultiplayerClientService service;
 		private AuthorityGate gate;
