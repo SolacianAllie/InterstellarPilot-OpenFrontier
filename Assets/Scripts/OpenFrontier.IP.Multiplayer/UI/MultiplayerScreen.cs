@@ -610,7 +610,19 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				client = null;
 			}
 
-			Service?.Disconnect();
+			// NOT Service.Disconnect() here, which is what this used to call.
+			//
+			// This screen is a menu screen, and joining loads the host's
+			// world - a scene change - which destroys it. So its OnDisable
+			// runs at the exact moment the join succeeds, and disconnecting
+			// there tore the session down a heartbeat after it was
+			// established: the world arrived, because the snapshot had
+			// already come through, and then nothing else ever did. The
+			// comment above the call said the session outlives this screen on
+			// purpose, and then called the method that ends it.
+			//
+			// Leaving is the player's decision, made from wherever they are,
+			// not a side effect of a screen being closed.
 		}
 
 		/// <summary>
