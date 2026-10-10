@@ -1072,14 +1072,51 @@ namespace OpenFrontier.IP.Engine.Factions
 
 		private void Update()
 		{
-			if (engine != null && GameController.Instance.GameSettings.DebugSettings.FactionAIUpdateEnabled)
+			if (engine == null || !GameController.Instance.GameSettings.DebugSettings.FactionAIUpdateEnabled)
 			{
-				UpdateLight();
-				if (Time.time > faction.NextFactionAIUpdate)
-				{
-					UpdateHeavy();
-					faction.NextFactionAIUpdate = Time.time + GameController.Instance.GameSettings.PerformanceSettings.FactionAIUpdateInterval;
-				}
+				return;
+			}
+
+			// Whether this copy is allowed to have opinions about this faction.
+			//
+			// Authority.OwnsFaction was written to answer exactly this and
+			// asked by nothing. The answer was going to be "no" anyway -
+			// ClientAuthorityProvider returns false for every faction, and says
+			// why: a client does not run an economy, a reputation drift, or an
+			// expansion search. So the whole of UpdateHeavy was running on
+			// every machine in the session: sector expansion, station upgrades,
+			// revenge bounties, and UpgradeStations spending a copy of the
+			// faction's credits that the host was also spending.
+			//
+			// Not "the client's view drifts a little". A second, independent
+			// simulation of the economy of an entire galaxy, on every client,
+			// reaching nobody. And it is the reason the faction-state push
+			// needed a receipt at all: the host's number and the client's
+			// number were both being written, continuously, by different code.
+			//
+			// Not even the player's own faction is excepted, which is the part
+			// worth arguing about. Repair, rearm and defending its ships look
+			// harmless, but the host owns those ships too and does the same
+			// work on the authoritative copy - so letting a client repeat it
+			// only produces a second opinion about a hull that the client is
+			// never told about anyway (condition is not on the wire; that is a
+			// separate piece of work). A repair the client performs for itself
+			// would be a thing it invented, and would have to be undone later.
+			//
+			// The host, and a game with nobody else in it, are untouched:
+			// OwnsFaction returns true for everything when this copy is not a
+			// client.
+			if (!Authority.OwnsFaction(faction))
+			{
+				return;
+			}
+
+			UpdateLight();
+
+			if (Time.time > faction.NextFactionAIUpdate)
+			{
+				UpdateHeavy();
+				faction.NextFactionAIUpdate = Time.time + GameController.Instance.GameSettings.PerformanceSettings.FactionAIUpdateInterval;
 			}
 		}
 
