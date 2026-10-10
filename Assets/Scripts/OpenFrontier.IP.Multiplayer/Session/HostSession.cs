@@ -79,6 +79,21 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public static Func<HostSession, string, byte[], int> ShipUploadHandler { get; set; }
 
+		/// <summary>
+		/// Set by whatever can touch the world, to say whether a ship may be
+		/// claimed by a given player.
+		/// </summary>
+		/// <remarks>
+		/// Injected for the same reason as the upload handler. Answering this
+		/// needs the engine - it is a question about a ship's faction - and
+		/// putting that here would take the one part of this system that can
+		/// be tested without Unity and put it back out of reach. Failing open
+		/// is deliberate at the call site: an unset handler means no gate,
+		/// which is the state this code was in for hours and is survivable,
+		/// rather than a refusal that would break joining entirely.
+		/// </remarks>
+		public static Func<int, string, bool> ShipMayBeClaimed { get; set; }
+
 		/// <summary>Who owns which ship. The host decides, and this is it.</summary>
 		public UnitOwnershipRegistry Ownership { get; } = new UnitOwnershipRegistry();
 
@@ -350,6 +365,21 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				// A client telling the host who owns what is not something to
 				// obey. This registry is the only writer.
+				return;
+			}
+
+			if (!ShipMayBeClaimed?.Invoke(message.UnitId, player.Identity) ?? true)
+			{
+				// The registry refuses a ship another PLAYER holds. It had no
+				// answer for the host's own ships, which carry no owner entry,
+				// so a client that happened to be pointed at one could claim
+				// it - and then the host would apply that client's position to
+				// its own ship every frame. It was seen doing exactly that.
+				Log?.Invoke("Multiplayer: refused " + Short(player.Identity)
+					+ " ship " + message.UnitId + " - it belongs to the host");
+
+				SendTo(player, UnitOwnershipMessage.Assign(message.UnitId, string.Empty));
+
 				return;
 			}
 

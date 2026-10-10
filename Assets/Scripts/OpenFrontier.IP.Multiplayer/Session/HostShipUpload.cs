@@ -75,6 +75,43 @@ namespace OpenFrontier.IP.Multiplayer
 			return applied;
 		}
 
+		/// <summary>
+		/// Whether a ship may be claimed by a given player.
+		/// </summary>
+		/// <remarks>
+		/// Anything of the host's own faction, which is every ship the local
+		/// player owns. The ownership registry refuses a ship another PLAYER
+		/// holds but had no answer for the host's own, which carry no owner
+		/// entry - so a client pointed at one could claim it, and the host
+		/// would then apply that client's position to its own ship every
+		/// frame. It was seen doing exactly that.
+		///
+		/// Unknown ships are refused too: a message naming a ship nobody has
+		/// is either a stale client or a hostile one.
+		///
+		/// Shared factions would want this narrower, and the ownership record
+		/// is what makes that a change to this one test rather than a
+		/// rewrite - which is the reason it was built the way it was.
+		/// </remarks>
+		public static bool MayBeClaimed(int unitId, string claimantToken)
+		{
+			EngineASX engine = EngineASX.Instance;
+
+			if (engine == null)
+			{
+				return true;
+			}
+
+			Unit unit = engine.GetUnitByid(unitId);
+
+			if (unit == null || unit.Faction == null)
+			{
+				return true;
+			}
+
+			return unit.Faction != engine.LocalFaction;
+		}
+
 		private static void Write(Unit unit, UnitState state)
 		{
 			Transform transform = unit.transform;

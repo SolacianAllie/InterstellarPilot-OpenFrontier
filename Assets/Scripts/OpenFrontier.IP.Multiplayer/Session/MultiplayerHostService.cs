@@ -338,6 +338,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			// The handshake cannot move ships itself, so it is told who can.
 			HostSession.ShipUploadHandler = HostShipUpload.Apply;
+			HostSession.ShipMayBeClaimed = HostShipUpload.MayBeClaimed;
 
 
 			// Re-read every time hosting starts, not cached once: a host can
