@@ -172,8 +172,15 @@ namespace OpenFrontier.IP.Multiplayer
 
 			if (unit.RBody != null)
 			{
-				unit.RBody.linearVelocity = Vector3.zero;
-				unit.RBody.angularVelocity = Vector3.zero;
+				// Same reasoning as the sleep below: a velocity the host
+				// handed us a moment ago is what carries this ship between
+				// updates, and zeroing it every frame would stop it just as
+				// effectively as putting it to sleep.
+				if (UnitStateApplier.SecondsSinceApplied(unit.UniqueId) > 0.3f)
+				{
+					unit.RBody.linearVelocity = Vector3.zero;
+					unit.RBody.angularVelocity = Vector3.zero;
+				}
 
 				if (unit.RBody.IsSleeping() == false)
 				{
