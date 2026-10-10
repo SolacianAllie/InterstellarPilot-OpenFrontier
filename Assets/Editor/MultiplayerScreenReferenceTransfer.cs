@@ -635,6 +635,21 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 						target = contents.AddComponent<OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI>();
 					}
 
+					// AddComponent returns null when Unity has no MonoScript for
+					// the type - which it has not if the class shares a file with
+					// another MonoBehaviour, since Unity registers one per file,
+					// named after the file. That failure is silent: the
+					// component is not added, the prefab serialises a missing
+					// script, and the row renders blank forever. Caught here
+					// rather than leaving it to look like a wiring problem.
+					if (target == null)
+					{
+						report.Fail(itemPath + ": Unity would not add SavedHostItemUI. A "
+							+ "MonoBehaviour needs a file named after it - check that "
+							+ "SavedHostItemUI.cs exists and declares only that class.");
+						return report;
+					}
+
 					// Wired by object name, so the mapping survives a re-layout of
 					// the prefab.
 					target.NameLabel = FindLabel(contents, "TextHostSenario");

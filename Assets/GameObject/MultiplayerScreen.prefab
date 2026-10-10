@@ -5368,7 +5368,7 @@ MonoBehaviour:
   InitialPoolSize: 10
   ItemContainer: {fileID: 1372920208702427}
   ItemPrefab: {fileID: 1709254077376921, guid: d2facb4fb676054d7872a596c8bae73a, type: 3}
-  NoItemsLabel: {fileID: 0}
+  NoItemsLabel: {fileID: 114011164340880974}
   RefreshOnEnable: 0
   ResetScrollPositionOnEnable: 0
   scrollRect: {fileID: 0}
@@ -6689,7 +6689,7 @@ MonoBehaviour:
   PauseWhenShown: 0
   AllowTogglePause: 0
   AcceptButton: {fileID: 0}
-  ItemsList: {fileID: 0}
+  ItemsList: {fileID: 7395656860771036125}
   JoinButton: {fileID: 114426252596376205}
   AddHostButton: {fileID: 8564213908661088107}
   DeleteHostButton: {fileID: 114667785438668446}

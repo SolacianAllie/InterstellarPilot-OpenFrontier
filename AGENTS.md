@@ -79,6 +79,20 @@ exit 198) — the user performs all editor actions.
   (AssetRipper decompile scheme). Never regenerate .meta files; renaming
   namespaces/assemblies is safe because GUIDs live in the .meta files, but the
   scheme no longer matches names after the `Pixelfactor.*` → `OpenFrontier.*` rename.
+  Verified: none of six plausible formulas reproduce any existing GUID, so the
+  current set is effectively random — generate a fresh UUID hex for a new file.
+- **One MonoBehaviour per file, filename == class name, always.** Unity
+  registers exactly one MonoScript per `.cs` file, named after the file. A
+  `MonoBehaviour` declared in a file of a *different* name has NO MonoScript,
+  so `AddComponent<T>()` and the inspector both refuse it and it serialises as
+  `m_Script: {fileID: 0}` — a missing script on the prefab. It is perfectly
+  valid C# and compiles clean, so neither compile harness can see it; it only
+  fails once the component is actually put on a prefab, several steps from the
+  mistake. `SavedHostItemUI` was declared inside `SavedHostItemsUI.cs` (list and
+  row genuinely belong together) and the transfer tool silently produced an
+  empty row — no error, no exception, the tool reported success.
+  `monoscript-check.py` in the harness now fails on it, so **after adding any
+  `.cs` file run `check.sh`, not just the compile.**
 - **The starfield is pinned at the WORLD ORIGIN, not the camera:**
   `Imphenzia.SpaceForUnity.StaticStars.LateUpdate` force-pins its
   20000-unit-wide star-cube mesh to `Vector3.zero` every frame (DLL,

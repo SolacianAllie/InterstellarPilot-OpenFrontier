@@ -17,7 +17,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &224587397909062814
 RectTransform:
   m_ObjectHideFlags: 0
@@ -385,11 +385,11 @@ GameObject:
   - component: {fileID: 114587765826080250}
   - component: {fileID: 114709867586078768}
   - component: {fileID: 114044625135789424}
-  - component: {fileID: 114589667821646929}
   - component: {fileID: 114372920208702427}
   - component: {fileID: 114025901758691103}
   - component: {fileID: 114985305603660343}
   - component: {fileID: 114705390221481576}
+  - component: {fileID: 8945526269865832744}
   m_Layer: 5
   m_Name: MultiplayerGameItem
   m_TagString: Untagged
@@ -530,24 +530,6 @@ MonoBehaviour:
   m_LayoutPriority: 1
   m_MaxWidth: -1
   m_MaxHeight: -1
---- !u!114 &114589667821646929
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1709254077376921}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a9d6b031a704f80ea398e29915e0aa75, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  Toggle: {fileID: 0}
-  DateLabel: {fileID: 114642988549198181}
-  ScenarioNameLabel: {fileID: 114470112387431263}
-  DisabledIndicator: {fileID: 114918264173551851}
-  IsAutoSaveGraphic: {fileID: 114632457200066912}
-  PermadeathGraphic: {fileID: 114371939378208658}
 --- !u!114 &114372920208702427
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -599,7 +581,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ToggleTarget: {fileID: 114709867586078768}
-  Item: {fileID: 114589667821646929}
+  Item: {fileID: 0}
+--- !u!114 &8945526269865832744
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: 
+  m_EditorClassIdentifier: OpenFrontier.IP.Multiplayer::OpenFrontier.IP.Multiplayer.UI.SavedHostItemUI
+  Toggle: {fileID: 0}
+  NameLabel: {fileID: 114470112387431263}
+  StatusLabel: {fileID: 114642988549198181}
+  VersionLabel: {fileID: 114918264173551851}
+  PlayerCountLabel: {fileID: 114632457200066912}
+  OfflineAlpha: 0.45
 --- !u!1 &1724804207875695
 GameObject:
   m_ObjectHideFlags: 0
