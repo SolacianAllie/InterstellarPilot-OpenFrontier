@@ -25,7 +25,7 @@ namespace OpenFrontier.IP.Multiplayer
 		/// 2: PongMessage gained InMainMenu, so a host in the menu can say so
 		/// rather than looking the same as one that has stopped taking players.
 		/// </remarks>
-		public const int Current = 2;
+		public const int Current = 3;
 
 		/// <summary>
 		/// First message a client sends. Kept tiny and fixed-layout so the host
@@ -54,5 +54,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>The host's answer to a <see cref="PingMessageId"/>.</summary>
 		public const int PongMessageId = 4;
+
+		/// <summary>Where a batch of units are. The first real game message.</summary>
+		public const int UnitStateMessageId = 5;
 	}
 }
