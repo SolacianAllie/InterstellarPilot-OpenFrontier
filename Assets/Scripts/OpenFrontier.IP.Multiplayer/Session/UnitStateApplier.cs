@@ -26,8 +26,6 @@ namespace OpenFrontier.IP.Multiplayer
 
 		private MultiplayerClientService service;
 		private AuthorityGate gate;
-		private int appliedLastUpdate;
-		private int unknownLastUpdate;
 
 		private void OnEnable()
 		{
@@ -69,7 +67,7 @@ namespace OpenFrontier.IP.Multiplayer
 		}
 
 		/// <summary>How many unit states were written since the last frame.</summary>
-		public int AppliedCount => appliedLastUpdate;
+		public int AppliedCount => appliedTotal;
 
 		/// <summary>
 		/// How many arrived naming a unit this copy does not have.
@@ -80,7 +78,7 @@ namespace OpenFrontier.IP.Multiplayer
 		/// the host's. It is counted rather than ignored because the day that
 		/// number stops being large is the day the two worlds have agreed.
 		/// </remarks>
-		public int UnknownCount => unknownLastUpdate;
+		public int UnknownCount => unknownTotal;
 
 		private void Awake()
 		{
@@ -94,6 +92,10 @@ namespace OpenFrontier.IP.Multiplayer
 		private float nextReportTime;
 
 		private int receivedTotal;
+		private int appliedTotal;
+		private int unknownTotal;
+		private int reportedApplied;
+		private int reportedUnknown;
 
 		/// <summary>
 		/// What came in and what became of it.
@@ -119,19 +121,31 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
-			NetLog.Client("applying - " + appliedLastUpdate + " applied, "
-				+ unknownLastUpdate + " unknown, of " + receivedTotal + " received");
+			// Counted since the last report, not since the last frame.
+			//
+			// The network queue is drained in MultiplayerPump.Update, which
+			// runs AFTER LateUpdate, so a counter reset here is zeroed and
+			// then filled - and the report, reading it immediately, could
+			// only ever print zero. Which is exactly what it printed while
+			// several hundred messages a second came in. The sync may well
+			// have been working the whole time; the instrument could not see it.
+			int applied = appliedTotal - reportedApplied;
+			int unknown = unknownTotal - reportedUnknown;
 
-			Debug.Log("Multiplayer: applying - " + appliedLastUpdate + " applied, "
-				+ unknownLastUpdate + " named units this copy does not have, of "
+			reportedApplied = appliedTotal;
+			reportedUnknown = unknownTotal;
+
+			NetLog.Client("applying - " + applied + " applied, "
+				+ unknown + " unknown, of " + receivedTotal + " received (totals "
+				+ appliedTotal + "/" + unknownTotal + "/" + receivedTotal + ")");
+
+			Debug.Log("Multiplayer: applying - " + applied + " applied, "
+				+ unknown + " named units this copy does not have, of "
 				+ receivedTotal + " received");
 		}
 
 		private void LateUpdate()
 		{
-			appliedLastUpdate = 0;
-			unknownLastUpdate = 0;
-
 			Report();
 
 			if (gate != null)
@@ -183,7 +197,7 @@ namespace OpenFrontier.IP.Multiplayer
 					// rather than created: inventing one would need a prefab,
 					// a sector and a faction, and guessing would be worse than
 					// missing until the two worlds are actually the same.
-					unknownLastUpdate++;
+					unknownTotal++;
 					continue;
 				}
 
@@ -200,7 +214,7 @@ namespace OpenFrontier.IP.Multiplayer
 				state.RotationX, state.RotationY, state.RotationZ, state.RotationW);
 
 			lastAppliedAt[state.Id] = Time.unscaledTime;
-			appliedLastUpdate++;
+			appliedTotal++;
 
 			// Velocity is handed to the rigidbody rather than written onto the
 			// transform, because the next physics step will read it and carry
