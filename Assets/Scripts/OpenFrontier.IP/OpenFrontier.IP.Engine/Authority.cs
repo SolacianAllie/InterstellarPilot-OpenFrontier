@@ -109,7 +109,16 @@ namespace OpenFrontier.IP.Engine
 		{
 			IAuthorityProvider provider = Provider;
 
-			if (provider == null || unit == null)
+			// IsThisCopyAClient first, and not as an optimisation the caller
+			// is trusted to remember.
+			//
+			// It was left to the caller, and the one caller that did not - the
+			// report that says which mode this copy is in - was told by a host
+			// that it would decline every single ship in the galaxy. The
+			// simulation itself was fine, because the consult point does check
+			// first. Everything else that asked was one forgotten check away
+			// from the same wrong answer.
+			if (!IsThisCopyAClient || unit == null)
 			{
 				return true;
 			}
@@ -129,7 +138,7 @@ namespace OpenFrontier.IP.Engine
 		{
 			IAuthorityProvider provider = Provider;
 
-			if (provider == null || faction == null)
+			if (!IsThisCopyAClient || faction == null)
 			{
 				return true;
 			}
@@ -192,7 +201,7 @@ namespace OpenFrontier.IP.Engine
 		{
 			IAuthorityProvider provider = Provider;
 
-			if (provider == null)
+			if (!IsThisCopyAClient)
 			{
 				return true;
 			}
