@@ -209,6 +209,23 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </summary>
 		public bool ReturningPlayer;
 
+		/// <summary>
+		/// The host is in the main menu, so there is no world to arrive in.
+		/// </summary>
+		/// <remarks>
+		/// Separate from SessionClosed because the two are opposites from the
+		/// joiner's point of view and the same from the host's. A host in the
+		/// menu will be in a game in a minute; a host that has switched
+		/// multiplayer off will not. Telling the first one "has stopped
+		/// accepting players" is the sort of message that sends a player
+		/// looking for a setting that was never touched.
+		///
+		/// The host already knows this - it refuses such joins on purpose -
+		/// and already says so in its probe replies. It simply was not saying
+		/// it here, where it was needed.
+		/// </remarks>
+		public bool InMainMenu;
+
 		public byte[] ToBytes()
 		{
 			using (MemoryStream stream = new MemoryStream())
@@ -222,6 +239,7 @@ namespace OpenFrontier.IP.Multiplayer
 					writer.Write(HostGameVersion.Build);
 					writer.Write(HostGameVersion.Revision);
 					writer.Write(ReturningPlayer);
+					writer.Write(InMainMenu);
 				}
 
 				return stream.ToArray();
@@ -233,7 +251,7 @@ namespace OpenFrontier.IP.Multiplayer
 			message = default;
 			error = null;
 
-			if (bytes == null || bytes.Length < 6)
+			if (bytes == null || bytes.Length < 7)
 			{
 				error = "Host reply was truncated.";
 				return false;
@@ -262,6 +280,7 @@ namespace OpenFrontier.IP.Multiplayer
 					int build = reader.ReadInt32();
 					int revision = reader.ReadInt32();
 					bool returning = reader.ReadBoolean();
+				bool inMainMenu = reader.ReadBoolean();
 
 					// These come off the wire, so they can be arbitrary. Version
 					// rejects negative components and absurd magnitudes, so refuse
@@ -280,7 +299,8 @@ namespace OpenFrontier.IP.Multiplayer
 						Result = result,
 						HostProtocolVersion = protocolVersion,
 						HostGameVersion = version,
-						ReturningPlayer = returning
+						ReturningPlayer = returning,
+						InMainMenu = inMainMenu
 					};
 
 					return true;
@@ -327,7 +347,14 @@ namespace OpenFrontier.IP.Multiplayer
 					return "That join code isn't valid for this session.";
 
 				case HandshakeResult.SessionClosed:
-					return "The host has stopped accepting players.";
+					// The one refusal with two opposite causes. A host in the
+					// menu is about to be ready; a host that has switched
+					// multiplayer off is not, and no amount of waiting will
+					// change that.
+					return InMainMenu
+						? "The host is still in the main menu. They need to load "
+							+ "a game before anyone can join them."
+						: "The host has stopped accepting players.";
 
 				case HandshakeResult.HostFull:
 					return "The host can't accept another player right now.";

@@ -583,7 +583,8 @@ namespace OpenFrontier.IP.Multiplayer
 				Result = result,
 				HostProtocolVersion = ProtocolVersion.Current,
 				HostGameVersion = hostVersion,
-				ReturningPlayer = returning
+				ReturningPlayer = returning,
+				InMainMenu = IsInMainMenu
 			};
 
 			try
