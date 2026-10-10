@@ -276,21 +276,19 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				}
 			}
 
-			// Exactly one row takes the layout's leftover space, and which one
-			// depends on the state.
+			// The code label is the flexible row, and stays that way in both
+			// states. It is what centres the text in the panel and holds the
+			// buttons at the bottom, so it has to be filling the space whether
+			// the text is a code or a line of instruction - otherwise the off
+			// state packs against the top with a band of dead space beneath the
+			// buttons, and the two states stop looking like the same dialog.
 			//
-			// With a code, that is the code itself: it centres in the panel and
-			// the buttons sit at the bottom. Without one, the code has nothing
-			// worth centring, and giving it the room left the whole block packed
-			// against the top with a band of dead space under the buttons. So
-			// the slack moves down to the button row, whose contents centre
-			// within it and so drop to where they belong.
-			//
-			// Handing it to both would split it between them and move the code
-			// off centre in the state where it is the thing being read.
-			SetFlexible(LabelElement(LegacyCodeLabel), hosting);
-			SetFlexible(LabelElement(CodeLabel), hosting);
-			SetFlexible(LabelElement(ButtonsElement), !hosting);
+			// Deliberately not switched at runtime. An earlier version handed the
+			// slack to the button row instead, to pull the switch up towards its
+			// own prompt - which just made the buttons grow into the space they
+			// were given. Both rows being flexible splits it between them, and
+			// the code ends up off centre in the one state where it is the thing
+			// being read.
 
 			// With the switch gone there is nothing on screen saying where to
 			// turn multiplayer off, so the hint takes its place. Without this the
@@ -303,83 +301,6 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		}
 
 		/// <summary>
-		/// The button row, which takes the layout's spare space when there is no
-		/// code to fill it.
-		/// </summary>
-		/// <remarks>
-		/// Found by name rather than held as a serialized reference: it is an
-		/// arbitrary row of the dialog's layout, and wiring it in the prefab for
-		/// one number would be a reference that exists only to be read.
-		/// </remarks>
-		private LayoutElement ButtonsElement
-		{
-			get
-			{
-				if (buttonsElement == null)
-				{
-					Transform found = FindDescendant(transform, "Buttons");
-
-					if (found != null)
-					{
-						buttonsElement = found.GetComponent<LayoutElement>();
-					}
-				}
-
-				return buttonsElement;
-			}
-		}
-
-		private LayoutElement buttonsElement;
-
-		/// <summary>
-		/// Finds a descendant by name at any depth.
-		/// </summary>
-		/// <remarks>
-		/// Transform.Find only searches direct children and the button row is
-		/// nested. The editor tool has its own copy of this, but that one lives
-		/// in the editor assembly and cannot be reached from here.
-		/// </remarks>
-		private static Transform FindDescendant(Transform root, string objectName)
-		{
-			if (root.name == objectName)
-			{
-				return root;
-			}
-
-			for (int i = 0; i < root.childCount; i++)
-			{
-				Transform match = FindDescendant(root.GetChild(i), objectName);
-
-				if (match != null)
-				{
-					return match;
-				}
-			}
-
-			return null;
-		}
-
-		private static LayoutElement LabelElement(Component component)
-		{
-			return component == null ? null : component.GetComponent<LayoutElement>();
-		}
-
-		/// <summary>
-		/// Gives a row the layout's spare space, or takes it back.
-		/// </summary>
-		/// <remarks>
-		/// Drives the LayoutElement rather than the transform, because the
-		/// vertical layout owns these rows' geometry - anything set on the
-		/// transform is overwritten on the next pass.
-		/// </remarks>
-		private static void SetFlexible(LayoutElement element, bool flexible)
-		{
-			if (element != null)
-			{
-				element.flexibleHeight = flexible ? 1f : 0f;
-			}
-		}
-
 		private void CopyToClipboard()
 		{
 			if (string.IsNullOrWhiteSpace(CodeText))
