@@ -537,7 +537,22 @@ namespace OpenFrontier.IP.UI.Screens
 			{
 				return controller.Fleet;
 			}
+
 			Fleet fleet = CreateAndInitPlayerFleet(unit.Faction, unit.Sector, unit.SectorPosition, EngineASX.Instance.PlayerFleetPrefab);
+
+			// Null means this copy may not build fleets, which is a client.
+			// Returning it unchanged rather than dereferencing it - which is
+			// what killed the orders menu: the menu builds a fleet purely to
+			// have something to show, and a client answering "I may not" with
+			// an exception reads as a button that does nothing.
+			//
+			// The caller carries on with a null fleet, which the order path
+			// already understands: it hands the ships over instead.
+			if (fleet == null)
+			{
+				return null;
+			}
+
 			fleet.transform.localRotation = unit.transform.localRotation;
 			controller.Fleet = fleet;
 			if (unit.IsOwnedByPlayer)

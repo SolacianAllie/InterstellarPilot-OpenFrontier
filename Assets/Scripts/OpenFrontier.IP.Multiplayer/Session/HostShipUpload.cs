@@ -301,6 +301,23 @@ namespace OpenFrontier.IP.Multiplayer
 				unit.RBody.linearVelocity = new Vector3(
 					state.VelocityX, state.VelocityY, state.VelocityZ);
 			}
+
+			// The throttle, which the client sends and this used to drop.
+			//
+			// Position, rotation and velocity all said where the ship is and
+			// how it is moving, and none of them said whether the engines were
+			// lit. So a remote player's ship arrived at the host gliding with
+			// its thrusters cold, on a straight line, at whatever velocity the
+			// last physics step produced - a ship being flown, visibly not.
+			//
+			// This copy simulates that ship, so its throttle is the client's
+			// to give, exactly as its position is. The host's own physics will
+			// overwrite it next step, and that is fine: the client's number is
+			// the one that came from the stick.
+			if (unit.Components != null)
+			{
+				unit.Components.EngineThrottle = state.Throttle;
+			}
 		}
 	}
 }

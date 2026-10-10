@@ -198,6 +198,30 @@ namespace OpenFrontier.IP.UI.Screens
 		protected override void update()
 		{
 			base.update();
+
+			// A client with no fleet is not lost contact with a target.
+			//
+			// This used to navigate back out of the screen, which is how a
+			// client lost the orders menu entirely: the menu builds a fleet
+			// only so it has something to show, a client is not allowed to
+			// build one, and the screen read the result as its target having
+			// gone away. The ship was right there. The menu was refusing to
+			// open for a reason that was true and irrelevant.
+			//
+			// So it stays open, says why there is nothing to show, and lets
+			// the player give an order - which goes to the host, which is
+			// where it was always going.
+			if (orderedFleet == null && Authority.IsThisCopyAClient)
+			{
+				if (Time.time > nextUpdateOrdersButtonAndText)
+				{
+					ShowNoLocalFleet();
+					nextUpdateOrdersButtonAndText = Time.time + ordersButtonAndTextUpdateFrequency;
+				}
+
+				return;
+			}
+
 			if (NavigateBackWhenFleetInvalid && !OrderedFleetIsValid && GetBackTarget() != null)
 			{
 				if (Eng.PlayerUnit != null && Eng.PlayerUnit.IsValidAndNotDestroyed)
@@ -220,6 +244,36 @@ namespace OpenFrontier.IP.UI.Screens
 				OrdersScreenShipList.TickVisibleItems();
 			}
 		}
+
+		private void ShowNoLocalFleet()
+		{
+			ClearOrdersButton.interactable = false;
+			NewOrderButton.interactable = Eng.PlayerUnit != null
+				&& Eng.PlayerUnit.IsValidAndNotDestroyed;
+
+			FleetActiveOrderListItem.gameObject.SetActive(false);
+
+			for (int i = 0; i < fleetOrderListItems.Count; i++)
+			{
+				fleetOrderListItems[i].gameObject.SetActive(false);
+			}
+
+			NoOrdersText.gameObject.SetActive(true);
+
+			// Said once per opening rather than every refresh, because this
+			// text is the screen's explanation and a log line per frame is not
+			// an explanation to anybody.
+			if (!saidNoLocalFleet)
+			{
+				saidNoLocalFleet = true;
+
+				Debug.Log("Multiplayer: orders are held by the host for this ship."
+					+ " An order given here is sent to it, and what it decides comes"
+					+ " back to be shown.");
+			}
+		}
+
+		private bool saidNoLocalFleet;
 
 		private void RefreshFleetNameText()
 		{
