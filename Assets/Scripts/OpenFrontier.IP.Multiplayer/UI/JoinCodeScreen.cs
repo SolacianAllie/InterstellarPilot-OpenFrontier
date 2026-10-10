@@ -157,34 +157,34 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			{
 				EnableMultiplayerToggle.onValueChanged.AddListener(EnableMultiplayerChanged);
 			}
+
+			// Subscribed rather than polled from update(). ScreenBase only calls
+			// update() for the current screen while it is in the navigation
+			// stack and not fading out, so a poll there silently stops running
+			// in several perfectly ordinary situations - and does so without a
+			// word, leaving a dialog showing "off" while a code sits right
+			// there waiting to be shown.
+			MultiplayerHostService.HostingStarted += OnHostingStarted;
 		}
 
-		/// <summary>
-		/// Watches for the host coming up once the switch is flipped.
-		/// </summary>
-		/// <remarks>
-		/// Hosting does not start here. It is MultiplayerHostService's job, and
-		/// it happens on the next frame - the service reads the same option, so
-		/// there is one path into it and this dialog is not a second one that
-		/// could fall out of step.
-		///
-		/// So all that is needed here is to notice when a code has appeared and
-		/// repaint. Polling a null check is cheaper than wiring an event across
-		/// assemblies for something that happens once.
-		/// </remarks>
-		protected override void update()
+		private void OnHostingStarted(string joinCode)
 		{
-			base.update();
+			// Only while there is nothing to show. A code arriving while one is
+			// already displayed means hosting restarted underneath us, and the
+			// new one is the one that is actually current.
+			CodeText = joinCode;
 
-			if (EnableMultiplayerToggle != null
-				&& EnableMultiplayerToggle.gameObject.activeSelf
-				&& EnableMultiplayerToggle.isOn
-				&& string.IsNullOrWhiteSpace(CodeText)
-				&& !string.IsNullOrWhiteSpace(MultiplayerHostService.JoinCode))
-			{
-				CodeText = MultiplayerHostService.JoinCode;
-				refresh();
-			}
+			refresh();
+		}
+
+		protected override void onDestroy()
+		{
+			// The service outlives this screen, so leaving the subscription
+			// behind would keep this object alive and refresh a dialog nobody
+			// can see.
+			MultiplayerHostService.HostingStarted -= OnHostingStarted;
+
+			base.onDestroy();
 		}
 
 		private void EnableMultiplayerChanged(bool value)
@@ -202,9 +202,8 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				OpenFrontier.IP.Engine.GameController.Instance.PlayerOptions.General_EnableMultiplayer = value;
 			}
 
-			// Nothing to show yet either way; the update() above waits for the
-			// service to bring a code up, and this shows the "still working on
-			// it" state in the meantime.
+			// Nothing to show yet either way: hosting starts on the service's
+			// next frame, and OnHostingStarted brings the code in when it does.
 			refresh();
 		}
 

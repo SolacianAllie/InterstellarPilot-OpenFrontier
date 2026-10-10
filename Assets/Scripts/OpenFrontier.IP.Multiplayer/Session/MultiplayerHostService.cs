@@ -83,6 +83,17 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// <summary>The live service, or null before it has installed.</summary>
 		public static MultiplayerHostService Instance { get; private set; }
 
+		/// <summary>
+		/// Raised with the new join code each time hosting starts.
+		/// </summary>
+		/// <remarks>
+		/// Static, because the party interested is the join code dialog, which
+		/// does not own this component and should not have to find it.
+		///
+		/// Subscribers must unsubscribe: this outlives any single screen.
+		/// </remarks>
+		public static event Action<string> HostingStarted;
+
 		private void OnEnable()
 		{
 			if (Instance == null)
@@ -168,6 +179,13 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			Session = session;
 			LastProblem = null;
+
+			// Raised rather than left for listeners to poll for. Hosting starts
+			// from this component's Update, and a listener waiting on its own
+			// update depends on frame order and on its screen still being the
+			// current one - both of which fail silently, showing a dialog that
+			// never catches up with a code that is already there.
+			HostingStarted?.Invoke(Session.JoinCode);
 
 			Debug.Log("Multiplayer: hosting on " + address + ":" + port
 				+ ", code " + Session.JoinCode);
