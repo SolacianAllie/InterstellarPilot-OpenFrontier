@@ -102,6 +102,15 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			host.hideFlags = HideFlags.HideAndDontSave;
 			DontDestroyOnLoad(host);
 			instance = host.AddComponent<WorldSnapshotSender>();
+
+			// The broadcaster goes on the same object. It used to be nobody's
+			// job: the class existed, the applier on the other end expected
+			// it, and nothing in the codebase ever added it to a GameObject.
+			// So the host never sent a single unit state and every joiner
+			// watched a world standing completely still - which reads as
+			// "the sync does not work" rather than as "the sender was never
+			// switched on".
+			host.AddComponent<UnitStateBroadcaster>();
 		}
 
 		private void Awake()

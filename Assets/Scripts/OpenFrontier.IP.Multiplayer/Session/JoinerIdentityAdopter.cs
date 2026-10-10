@@ -70,9 +70,19 @@ namespace OpenFrontier.IP.Multiplayer
 				ship.Faction = mine;
 			}
 
-			return ship == null
-				? "faction " + factionId + " (" + mine.Name + "), but no shuttle found"
-				: "faction " + factionId + " (" + mine.Name + ") flying shuttle " + shipId;
+			if (ship == null)
+			{
+				return "faction " + factionId + " (" + mine.Name + "), but no shuttle found";
+			}
+
+			// Sit in it. Changing who owns the shuttle is not the same as
+			// flying it: LocalUnit is the local player's CurrentUnit, and
+			// after loading a save that is still the ship the save was taken
+			// with - the host's. So the joiner kept flying the host's ship and
+			// only changed its paint, which is exactly what it looked like.
+			player.Person.CurrentUnit = ship;
+
+			return "faction " + factionId + " (" + mine.Name + ") flying shuttle " + shipId;
 		}
 
 		private static Faction FindFaction(int factionId)
