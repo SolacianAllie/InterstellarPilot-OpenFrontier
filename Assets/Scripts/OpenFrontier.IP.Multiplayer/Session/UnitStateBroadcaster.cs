@@ -247,6 +247,22 @@ namespace OpenFrontier.IP.Multiplayer
 
 			nextReportTime = Time.unscaledTime + 2f;
 
+			// Cleared whatever happens, and the count below is about the
+			// session rather than about a counter.
+			//
+			// It used to be cleared only at the very bottom, after every early
+			// return - so a host sitting in the menu, or one whose world had
+			// not finished loading, carried the totals from every frame of
+			// that time forward and added to them. A session with one player
+			// in it was reported as having nineteen, and the number was
+			// believed for hours, because it was the only number there was.
+			int sent = lastSent;
+			int sampled = lastSampled;
+
+			lastSampled = 0;
+			lastSent = 0;
+			lastPlayers = 0;
+
 			if (engine == null)
 			{
 				Debug.Log("Multiplayer: broadcasting nothing - no engine yet");
@@ -265,17 +281,63 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
-			NetLog.Host("sent " + lastSent + " of " + lastSampled + " sampled ship(s) to "
-				+ lastPlayers + " player(s) - " + lastSampled
-				+ (lastSampled > 0 ? ", " : "") + Percent(lastSent, lastSampled)
-				+ " was motion");
+			// The session's own composition, asked of the session. A counter
+			// that increments once per player per tick cannot be wrong by
+			// adding up wrong; this can only be wrong if the list is.
+			string who = DescribeTheSession();
 
-			Debug.Log("Multiplayer: sent " + lastSent + " of " + lastSampled
-				+ " sampled ship(s) to " + lastPlayers + " player(s) over 2s");
+			NetLog.Host("sent " + sent + " of " + sampled + " sampled ship(s) - "
+				+ Percent(sent, sampled) + " was motion; " + who);
 
-			lastSampled = 0;
-			lastSent = 0;
-			lastPlayers = 0;
+			Debug.Log("Multiplayer: sent " + sent + " of " + sampled
+				+ " sampled ship(s) over 2s; " + who);
+		}
+
+		/// <summary>
+		/// Who is actually in this session, asked of the session.
+		/// </summary>
+		/// <remarks>
+		/// Three numbers, because "how many players" has three answers and
+		/// they are not the same number: connected peers, peers that finished
+		/// the handshake, and peers that have said they have arrived and are
+		/// therefore being sent the world. A gap between them is the thing
+		/// worth seeing - it is where joins go to die.
+		/// </remarks>
+		private static string DescribeTheSession()
+		{
+			HostSession session = MultiplayerHostService.Session;
+
+			if (session == null || session.Players == null)
+			{
+				return "no session";
+			}
+
+			int connected = session.Players.Count;
+			int admitted = 0;
+			int arrived = 0;
+
+			for (int i = 0; i < session.Players.Count; i++)
+			{
+				RemotePlayer player = session.Players[i];
+
+				if (player == null)
+				{
+					continue;
+				}
+
+				if (player.Admitted)
+				{
+					admitted++;
+				}
+
+				if (player.Ready)
+				{
+					arrived++;
+				}
+			}
+
+			return arrived + " receiving (" + admitted + " admitted, "
+				+ connected + " connected)";
 		}
 
 		private static string Percent(int part, int whole)
