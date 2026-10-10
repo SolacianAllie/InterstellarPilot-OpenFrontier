@@ -180,15 +180,26 @@ namespace OpenFrontier.IP.UI.Screens
 			{
 			case FleetPickerItemType.CreateNew:
 			{
-				Sector commonSector = (from e in selectedUnits
-					group e by e.Sector into e
-					orderby e.Count() descending
-					select e).First().Key;
-				Unit unit = (from e in selectedUnits
-					where e.Sector == commonSector
-					orderby e.UnitClass.CombatRating descending
-					select e).FirstOrDefault();
-				Fleet fleet = OrdersHelper.CreateAndInitPlayerFleet(EngineASX.Instance.LocalFaction, unit.Sector, unit.SectorPosition, EngineASX.Instance.PlayerFleetPrefab);
+				// A client cannot make a fleet here. CreateAndInitPlayerFleet
+				// says so and returns null, and dereferencing it would be a
+				// NullReferenceException inside a screen click - swallowed,
+				// silent, and looking like the button did nothing.
+				//
+				// So the ships are handed over instead, which is what lets
+				// the host build the fleet when the order arrives.
+				Fleet fleet = OrdersHelper.CreateAndInitPlayerFleet(EngineASX.Instance.LocalFaction, selectedUnits[0].Sector, selectedUnits[0].SectorPosition, EngineASX.Instance.PlayerFleetPrefab);
+
+				if (fleet == null)
+				{
+					Debug.LogWarning("PropertyScreen: cannot make a fleet on this copy."
+						+ " The " + selectedUnits.Count + " selected ship(s) will be put in"
+						+ " one by the host when they are next given an order.");
+
+					OrdersHelper.NoteShipsForTheHost(selectedUnits);
+
+					break;
+				}
+
 				{
 					foreach (Unit selectedUnit in selectedUnits)
 					{

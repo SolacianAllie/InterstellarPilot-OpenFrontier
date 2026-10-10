@@ -1001,22 +1001,34 @@ namespace OpenFrontier.IP.UI.Screens
 
 		public static Fleet CreateAndInitPlayerFleet(Faction faction, Sector sector, Vector3 sectorPosition, Fleet fleetPrefab)
 		{
-			sectorPosition.y = 0f;
-			Fleet fleet = UnityObjectHelper.InstantiateAndGetComponent(fleetPrefab);
-			fleet.Init();
-			fleet.Faction = faction;
-			fleet.Sector = sector;
-			fleet.transform.localPosition = sectorPosition;
-			if (faction.PreferredFormationStyle != null)
-			{
-				fleet.FleetFormation = EngineASX.Instance.GetFleetFormationById(faction.PreferredFormationStyle.UniqueId);
-			}
-			if (faction.IsPlayerFaction)
-			{
-				EngineASX.Instance.OnPlayerFleetCreated(fleet);
-				EngineASX.Instance.CachedFleetSettingsController.ApplyDefaultSettingsToFleet(fleet);
-			}
-			return fleet;
+		// A copy that does not own the world does not make fleets.
+		//
+		// This is the only place a fleet is created - everything else comes
+		// through here - so it is the only place the rule has to be stated.
+		//
+		// A fleet made on a client is an id the host has never issued. The
+		// player then selects it, gives it an order, and the host refuses,
+		// because from the host's side that fleet genuinely does not exist:
+		//
+		//     client: This copy selected: fleet 100149 of 'Frontier Corp 2'
+		//     host:   named fleet 100149, which this world does not have
+		//
+		// Both halves true, and nothing anywhere said the client had built
+		// one. The refusal was correct; the bug was upstream of it, in a
+		// property screen's "create new fleet" that ran on both machines.
+		//
+		// Null rather than a local stand-in, because a stand-in is the same
+		// bug wearing a disguise. Callers are expected to cope, and the ones
+		// that cannot say so.
+		if (Authority.IsThisCopyAClient)
+		{
+			Debug.LogWarning("OrdersHelper: this copy cannot make a fleet - the world"
+				+ " that owns the ships has to make it. Nothing was created.");
+		}
+
+		Authority.Declined();
+
+		return null;
 		}
 
 		private static NpcPilot CreateNpcPilot(Unit unit)
@@ -1284,11 +1296,57 @@ namespace OpenFrontier.IP.UI.Screens
 		public static Fleet CreateFleetForUnits(Sector sector, Vector3 sectorPosition, IEnumerable<Unit> units)
 		{
 			Fleet fleet = CreateAndInitPlayerFleet(EngineASX.Instance.LocalFaction, sector, sectorPosition, EngineASX.Instance.PlayerFleetPrefab);
+
+			// Null means this copy may not make one, which is a client. Handing
+			// the ships over instead, rather than quietly dropping them, is
+			// what lets the host build the fleet when the order arrives.
+			if (fleet == null)
+			{
+				FleetOrderIntents.NoteLooseUnits(IdsOf(units));
+
+				return null;
+			}
+
 			foreach (Unit unit in units)
 			{
 				FindOrCreateNpc(unit).Fleet = fleet;
 			}
 			return fleet;
+		}
+
+		/// <summary>
+		/// Hands ships to whoever owns the world, to be put in a fleet there.
+		/// </summary>
+		/// <remarks>
+		/// For a copy that may not build fleets. The ships ride along with
+		/// the next order and the host builds one when it carries it out,
+		/// which is the same thing the host would have done had the click
+		/// happened on its machine.
+		/// </remarks>
+		public static void NoteShipsForTheHost(IEnumerable<Unit> units)
+		{
+			FleetOrderIntents.NoteLooseUnits(IdsOf(units));
+		}
+
+		/// <summary>The ids of some units, skipping the ones that are gone.</summary>
+		private static List<int> IdsOf(IEnumerable<Unit> units)
+		{
+			List<int> ids = new List<int>();
+
+			if (units == null)
+			{
+				return ids;
+			}
+
+			foreach (Unit unit in units)
+			{
+				if (unit != null && !unit.IsDestroyed)
+				{
+					ids.Add(unit.UniqueId);
+				}
+			}
+
+			return ids;
 		}
 	}
 }
