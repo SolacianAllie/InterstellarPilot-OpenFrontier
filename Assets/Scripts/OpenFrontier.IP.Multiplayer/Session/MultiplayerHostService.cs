@@ -285,6 +285,17 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// would send a joiner to a scenario nobody is playing.
 			ScenarioId = CaptureScenarioId();
 
+			// The join is only half finished until the joiner has been given
+			// a world to arrive in. Without this the handshake succeeds, the
+			// joiner sits connected, and nothing further ever arrives - which
+			// looks from the joiner's side exactly like a host that has gone
+			// quiet.
+			session.PlayerJoined += player =>
+			{
+				WorldSnapshotSender.Instance.SendTo(player, what =>
+					Debug.Log("Multiplayer: " + (player.DisplayName ?? player.Identity) + " - " + what));
+			};
+
 			// Raised rather than left for listeners to poll for. Hosting starts
 			// from this component's Update, and a listener waiting on its own
 			// update depends on frame order and on its screen still being the
