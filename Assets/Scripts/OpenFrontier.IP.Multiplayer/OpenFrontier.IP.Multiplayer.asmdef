@@ -4,7 +4,10 @@
     "references": [
         "OpenFrontier.IP",
         "Unity.TextMeshPro",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "OpenFrontier.IP.SavedGames.V2.Model",
+        "OpenFrontier.IP.SavedGames.V2.BinarySerialization",
+        "OpenFrontier.Unity.Utils"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

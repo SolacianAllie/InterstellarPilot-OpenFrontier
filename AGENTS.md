@@ -50,6 +50,16 @@ exit 198) — the user performs all editor actions.
   `UnityEditor.Android.Extensions.dll` plus every game assembly). Discord's
   own sample keeps `AndroidPostBuildProcessor` loose for this reason.
   **Platform-specific build callbacks must live in `Assets/Editor/`.**
+- **Unity asmdef references are NOT transitive here - use direct
+  references only.** `OpenFrontier.IP.Multiplayer` referenced
+  `OpenFrontier.IP`, which references `OpenFrontier.IP.SavedGames.V2.Model`,
+  and the editor still refused with CS0234 on a namespace the second
+  assembly plainly provides. An assembly can only use types from assemblies
+  it *directly* references. The compile harness links everything into
+  everything, so this is invisible offline and only shows up as CS0234 in
+  `Logs/Editor.log`. `asmdef-refs.py` in the harness now catches it (direct
+  references only, deliberately); add to that list whenever a script uses a
+  project type, or expect CS0234 in the editor.
 - **Story universes are baked INTO their scene files:** `unchartered_space.unity`
   (and `a_wormhole_too_far.unity`) contain fully-expanded runtime-named copies
   of every sector's content (`GasCloud_Gas Cloud Cool Blue_-1_No-faction`,
