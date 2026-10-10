@@ -91,6 +91,18 @@ exit 198) — the user performs all editor actions.
   scheme no longer matches names after the `Pixelfactor.*` → `OpenFrontier.*` rename.
   Verified: none of six plausible formulas reproduce any existing GUID, so the
   current set is effectively random — generate a fresh UUID hex for a new file.
+- **A hand-edited prefab with a null reference fails SILENTLY as
+  "nothing happens".** `MultiplayerScreen.prefab` is a hand-edited clone of
+  LoadGameScreen's, so a dropped field does not break the build - the C#
+  still compiles, the reference reads as null, and whatever was wired to it
+  stops working while looking fine. `ItemList` on `ItemListSelectionButton`
+  was `{fileID: 0}`; its `Awake` dereferences it, so Unity swallowed a
+  NullReferenceException inside `Instantiate` and the screen never opened.
+  Nothing in the UI looked broken and no error was shown. `prefab-null-check.py`
+  in the harness now catches it - it works from the script side, listing
+  fields a component dereferences without a guard - and
+  `prefab-field-check.py` catches the other shape (field absent entirely).
+  After touching any prefab, run `check.sh`, not just the compile.
 - **One MonoBehaviour per file, filename == class name, always.** Unity
   registers exactly one MonoScript per `.cs` file, named after the file. A
   `MonoBehaviour` declared in a file of a *different* name has NO MonoScript,
