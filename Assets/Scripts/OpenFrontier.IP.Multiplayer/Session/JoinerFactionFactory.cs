@@ -480,6 +480,47 @@ namespace OpenFrontier.IP.Multiplayer
 	}
 
 
+	/// <summary>
+	/// The class of the ship the host is flying, if there is one.
+	/// </summary>
+	/// <remarks>
+	/// Asked of the host rather than looked up, because the host is the only
+	/// machine that can say what a player in this game is supposed to be
+	/// flying. Its own pilot's class answers every question the class list
+	/// cannot - starting ship among them, because "the civilian starter" is a
+	/// decision the scenario and the player's own choices have already made
+	/// and a list of classes knows nothing about.
+	///
+	/// Null in the main menu, where there is no ship, and the caller falls
+	/// back to the series.
+	/// </remarks>
+	private static UnitClass TheShipThisGameStartsYouIn()
+	{
+		EngineASX engine = EngineASX.Instance;
+
+		if (engine == null || engine.World == null || !engine.World.HasInitialised)
+		{
+			return null;
+		}
+
+		Unit hostShip = engine.LocalUnit;
+
+		if (hostShip == null || hostShip.IsDestroyed)
+		{
+			return null;
+		}
+
+		UnitClass hostClass = hostShip.UnitClass;
+
+		if (hostClass == null || hostClass.UnitType != UnitType.Ship)
+		{
+			return null;
+		}
+
+		return hostClass;
+	}
+
+
 		/// <summary>
 		/// The shuttle, found by series name rather than by a hard-coded id.
 		/// </summary>

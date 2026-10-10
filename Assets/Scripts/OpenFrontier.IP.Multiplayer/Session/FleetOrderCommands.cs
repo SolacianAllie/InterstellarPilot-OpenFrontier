@@ -221,16 +221,93 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				Fleet fleet = engine.GetFleetByid(command.FleetIds[i]);
 
-				if (fleet != null && theirs != null && fleet.Faction != theirs)
+				if (fleet == null)
 				{
-					Debug.LogWarning("Multiplayer: refused an order from "
-						+ (player.DisplayName ?? player.Identity) + " for fleet "
-						+ command.FleetIds[i] + ", which is not theirs");
+					// A fleet this world does not have. A client's idea of
+					// which ships are in which fleet is a copy, and a copy can
+					// disagree - so this is said rather than treated as a
+					// refusal, because the order did not ask for anything
+					// anybody else owns.
+					Debug.LogWarning("Multiplayer: an order from "
+						+ (player.DisplayName ?? player.Identity) + " named fleet "
+						+ command.FleetIds[i] + ", which this world does not have."
+						+ " Nothing was carried out.");
 					return false;
 				}
+
+				// A fleet is theirs if it holds one of their ships.
+				//
+				// It used to be checked by faction, which is wrong twice over.
+				// A player owns their own ships wherever those ships are, and
+				// the two copies of a world do not necessarily agree about
+				// which fleet a ship is in - a client that docked created a
+				// fleet locally before orders existed, and the host never did.
+				// The player is asking about a ship of theirs, so the question
+				// is whether the fleet holds a ship of theirs.
+				if (theirs != null && fleet.Faction == theirs)
+				{
+					continue;
+				}
+
+				if (HoldsAShipOf(fleet, theirs))
+				{
+					continue;
+				}
+
+				// Said with what it saw. The first version of this said only
+				// "not theirs", which is a conclusion and not an observation,
+				// and left the next person - or the next run - with nothing to
+				// go on.
+				Debug.LogWarning("Multiplayer: refused an order from "
+					+ (player.DisplayName ?? player.Identity) + " for fleet "
+					+ command.FleetIds[i] + ", which holds none of their ships."
+					+ " The fleet belongs to "
+					+ (fleet.Faction == null
+						? "nobody in particular"
+						: "'" + fleet.Faction.Name + "' (" + fleet.Faction.UniqueId + ")")
+					+ " and theirs is "
+					+ (theirs == null ? "missing" : "'" + theirs.Name + "' ("
+						+ theirs.UniqueId + ")"));
+
+				return false;
 			}
 
 			return true;
+		}
+
+		/// <summary>Whether any ship in a fleet belongs to a faction.</summary>
+		private static bool HoldsAShipOf(Fleet fleet, Faction faction)
+		{
+			if (fleet == null || faction == null)
+			{
+				return false;
+			}
+
+			try
+			{
+				foreach (UnitComponentHolder holder in fleet.Ships)
+				{
+					if (holder == null)
+					{
+						continue;
+					}
+
+					Unit ship = holder.GetComponent<Unit>();
+
+					if (ship != null && ship.Faction == faction)
+					{
+						return true;
+					}
+				}
+			}
+			catch (System.Exception)
+			{
+				// Answered no. A fleet that cannot be read is a fleet this
+				// cannot prove belongs to the player, and refusing is the
+				// direction that is merely unhelpful rather than wrong.
+			}
+
+			return false;
 		}
 
 		/// <summary>
