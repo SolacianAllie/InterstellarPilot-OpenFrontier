@@ -986,8 +986,49 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
+		/// <summary>
+		/// Whether this copy simulates the ship, and therefore whether
+		/// <see cref="Tick"/> runs at all.
+		/// </summary>
+		/// <remarks>
+		/// One place, because <see cref="Tick"/> is one place. Everything a
+		/// ship does lives in it - the pilot's AI, the components, auto-turrets,
+		/// point defence, construction, scanning, detection - and it is reached
+		/// from exactly two callers: Unity's per-frame Update for the active
+		/// sector, and the engine's round-robin for the rest.
+		///
+		/// So a ship that is not this copy's to simulate simply does not tick.
+		/// Not frozen - not asked. Freezing it was the previous approach and it
+		/// only ever covered the physics: the AI above it kept deciding
+		/// things, and a partially stilled ship is the worst of both.
+		///
+		/// The check is on IsThisCopyAClient first, so a singleplayer game
+		/// never gets as far as asking which ship this is.
+		/// </remarks>
+		private bool ShouldSimulateThisShip()
+		{
+			if (!Authority.IsThisCopyAClient)
+			{
+				return true;
+			}
+
+			if (Authority.OwnsUnit(unit))
+			{
+				return true;
+			}
+
+			Authority.Declined();
+
+			return false;
+		}
+
 		public void Tick()
 		{
+			if (!ShouldSimulateThisShip())
+			{
+				return;
+			}
+
 			if (lastUpdate == 0f)
 			{
 				lastUpdate = Time.time;

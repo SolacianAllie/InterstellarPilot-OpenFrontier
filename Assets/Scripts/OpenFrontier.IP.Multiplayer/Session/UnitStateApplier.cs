@@ -162,9 +162,19 @@ namespace OpenFrontier.IP.Multiplayer
 				+ unknown + " unknown, of " + receivedTotal + " received (totals "
 				+ appliedTotal + "/" + unknownTotal + "/" + receivedTotal + ")");
 
+			// What this copy refused to simulate, alongside what it was sent.
+			//
+			// The refusal count is the one number that says the authority
+			// gate is working, and it is here rather than on the host because
+			// this is the only side that can be wrong quietly. A host that
+			// believes it stopped a client's simulation, when it did not,
+			// looks exactly like a host that is working.
+			int declined = Authority.TakeDeclinedSinceReport();
+
 			Debug.Log("Multiplayer: applying - " + applied + " applied, "
 				+ unknown + " named units this copy does not have, of "
-				+ receivedTotal + " received");
+				+ receivedTotal + " received; declined to simulate "
+				+ declined + " ship update(s) this period");
 		}
 
 		private void LateUpdate()
