@@ -201,18 +201,29 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// Tells the world which conveniences it has to do without.
 		/// </summary>
 		/// <remarks>
-		/// Follows the option rather than whether a listener happens to be up, so
-		/// switching multiplayer off mid-session gives the conveniences back
-		/// immediately rather than at the next scene load.
+		/// Follows whether there is actually a session with somebody in it, and
+		/// not the option that permits one.
 		///
-		/// God mode and hypersleep are single-player conveniences: one player
-		/// using either in a world others are in would change the game for them
-		/// without them having done anything.
+		/// It used to follow the option, on the reasoning that switching
+		/// multiplayer off mid-session should give the conveniences back at
+		/// once rather than at the next scene load. But the option is not a
+		/// statement about the world anybody is playing - it is a statement
+		/// about whether the player is willing to be joined. A player alone who
+		/// ticks it on so a friend can join them later lost god mode and
+		/// hypersleep in their own singleplayer game, with nobody in it and no
+		/// way to tell that was why. Both conveniences are singleplayer
+		/// conveniences, and the thing that makes them unsafe is another
+		/// person being in the world, not another person being allowed in.
+		///
+		/// Still evaluated every frame, so the conveniences come back the
+		/// instant the last player leaves rather than at a scene load.
 		/// </remarks>
 		private static void ApplyWorldRestrictions()
 		{
-			OpenFrontier.IP.Engine.UniverseWorld.WorldPlayerPermissions.SharedSession =
-				MultiplayerSettings.Enabled;
+			HostSession session = Session;
+
+			OpenFrontier.IP.Engine.UniverseWorld.WorldPlayerPermissions
+				.SetSharedSessionFor(session == null ? 0 : session.Players.Count);
 		}
 
 		private void OnDestroy()

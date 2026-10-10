@@ -57,7 +57,29 @@ namespace OpenFrontier.IP.Engine.UniverseWorld
 		/// assembly boundary, because everything that reads the permissions is
 		/// here and cannot reach across to ask.
 		/// </remarks>
-		public static bool SharedSession { get; set; }
+		public static bool SharedSession { get; private set; }
+
+		/// <summary>
+		/// Says whether anybody is actually in this world with you.
+		/// </summary>
+		/// <remarks>
+		/// A method taking a count rather than a public setter, because the
+		/// question is not "has the player permitted multiplayer" but "is
+		/// another person here". Those were conflated, and the cost was that a
+		/// player alone who had ticked the option on so a friend could join
+		/// them later lost god mode and hypersleep in their own singleplayer
+		/// game - with nobody in it, and nothing on screen saying why.
+		///
+		/// Both of those are singleplayer conveniences, and what makes them
+		/// unsafe is another person being present, not another person being
+		/// allowed in. Put here rather than in the caller so that the rule
+		/// sits with the thing it governs, and so it can be asked about
+		/// without a session object.
+		/// </remarks>
+		public static void SetSharedSessionFor(int playerCount)
+		{
+			SharedSession = playerCount > 0;
+		}
 
 		private bool allowHypersleep = true;
 

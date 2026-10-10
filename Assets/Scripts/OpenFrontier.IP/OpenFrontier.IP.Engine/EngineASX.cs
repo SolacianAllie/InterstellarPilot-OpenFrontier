@@ -1739,12 +1739,32 @@ namespace OpenFrontier.IP.Engine
 			faction.UniqueId = newId;
 			factionIdMap[newId] = faction;
 
-			// Past the new number, so nothing else is ever handed it.
-			if (newId >= FactionIdCounter)
-			{
-				FactionIdCounter = newId + 1;
-			}
-
+			// The counter is deliberately NOT advanced past the new number.
+			//
+			// It used to be, to stop the new id being handed out again. That
+			// is unnecessary: GetUniqueFactionId already walks forward while
+			// ContainsFactionById is true, and this faction is now in the map
+			// under its new id, so that scan cannot return it.
+			//
+			// It was also very harmful. The ids multiplayer moves factions to
+			// live in a reserved band near 900,000,000, so advancing the
+			// counter to just past one of them placed every faction the world
+			// generator went on to create inside that same band - the band
+			// that is meant to identify things a player made. The player's
+			// faction adopter runs at startup in every singleplayer game, so
+			// this was not a corner case: it was the ordinary path, and
+			// IsPlayerMade answered true for ordinary AI factions from then
+			// on. The corrupted counter was written into every save and read
+			// back on load, so it survived a restart too.
+			//
+			// The counter's only job is to avoid handing out an id that is
+			// already taken, and the map is what tells it. Moving a faction
+			// does not change how many factions exist.
+			//
+			// Nor can this collide by going the other way. A faction id below
+			// the counter is unreachable, because nothing walks the counter
+			// backwards, and a reassignment is refused outright when the new
+			// id is already in the map.
 			return true;
 		}
 
@@ -5200,10 +5220,39 @@ namespace OpenFrontier.IP.Engine
 			return DateTimeUtils.GetGameWorldDay(ScenarioElapsedTime);
 		}
 
+		/// <summary>
+		/// Whether this id cannot be handed out: it is already taken, or it
+		/// belongs to somebody.
+		/// </summary>
+		/// <remarks>
+		/// Every id allocator here walks a counter upward, which is why all ten
+		/// of them go through this rather than testing the map alone.
+		///
+		/// Multiplayer gives player-made factions and ships numbers in
+		/// reserved bands, so that "was this made by a player" is answerable
+		/// from the number by itself - in a save, in a log, in a debugger -
+		/// with no lookup table for two copies of a world to disagree about.
+		///
+		/// A counter cannot be trusted to stay far away from a range that
+		/// only means something to code outside this file. It did not, in
+		/// fact: moving a faction into the band used to drag the counter
+		/// past it, and from then on every faction the world generator
+		/// created was numbered inside the player band. IsPlayerMade
+		/// answered true for ordinary AI, and the corrupted counter was
+		/// written into saves and read back, so it survived a restart.
+		///
+		/// So the engine asks. With no policy registered this is one null
+		/// check, and a singleplayer game reaches nothing else.
+		/// </remarks>
+		private static bool IsTakenOrReserved(int id, System.Func<int, bool> inMap)
+		{
+			return inMap(id) || ReservedIds.IsReserved(id);
+		}
+
 		public int GetUniquePassengerGroupId()
 		{
 			int i;
-			for (i = PassengerGroupIdCounter; ContainsPassengerGroupById(i); i++)
+			for (i = PassengerGroupIdCounter; IsTakenOrReserved(i, ContainsPassengerGroupById); i++)
 			{
 			}
 			PassengerGroupIdCounter = i + 1;
@@ -5213,7 +5262,7 @@ namespace OpenFrontier.IP.Engine
 		public int GetUniqueUnitId()
 		{
 			int i;
-			for (i = UnitIdCounter; ContainsUnitById(i); i++)
+			for (i = UnitIdCounter; IsTakenOrReserved(i, ContainsUnitById); i++)
 			{
 			}
 			UnitIdCounter = i + 1;
@@ -5223,7 +5272,7 @@ namespace OpenFrontier.IP.Engine
 		public int GetUniqueFactionId()
 		{
 			int i;
-			for (i = FactionIdCounter; ContainsFactionById(i); i++)
+			for (i = FactionIdCounter; IsTakenOrReserved(i, ContainsFactionById); i++)
 			{
 			}
 			FactionIdCounter = i + 1;
@@ -5233,7 +5282,7 @@ namespace OpenFrontier.IP.Engine
 		public int GetUniqueFleetOrderId()
 		{
 			int i;
-			for (i = FleetOrderIdCounter; ContainsFleetOrderById(i); i++)
+			for (i = FleetOrderIdCounter; IsTakenOrReserved(i, ContainsFleetOrderById); i++)
 			{
 			}
 			FleetOrderIdCounter = i + 1;
@@ -5243,7 +5292,7 @@ namespace OpenFrontier.IP.Engine
 		public int GetUniqueFleetId()
 		{
 			int i;
-			for (i = FleetIdCounter; ContainsFleetById(i); i++)
+			for (i = FleetIdCounter; IsTakenOrReserved(i, ContainsFleetById); i++)
 			{
 			}
 			FleetIdCounter = i + 1;
@@ -5253,7 +5302,7 @@ namespace OpenFrontier.IP.Engine
 		public int GetUniquePersonId()
 		{
 			int i;
-			for (i = PersonIdCounter; ContainsPersonById(i); i++)
+			for (i = PersonIdCounter; IsTakenOrReserved(i, ContainsPersonById); i++)
 			{
 			}
 			PersonIdCounter = i + 1;
@@ -5263,7 +5312,7 @@ namespace OpenFrontier.IP.Engine
 		public int GetUniqueSectorId()
 		{
 			int i;
-			for (i = SectorIdCounter; ContainsSectorById(i); i++)
+			for (i = SectorIdCounter; IsTakenOrReserved(i, ContainsSectorById); i++)
 			{
 			}
 			SectorIdCounter = i + 1;
@@ -5283,7 +5332,7 @@ namespace OpenFrontier.IP.Engine
 		public int GetUniqueMissionId()
 		{
 			int i;
-			for (i = MissionIdCounter; ContainsMissionById(i); i++)
+			for (i = MissionIdCounter; IsTakenOrReserved(i, ContainsMissionById); i++)
 			{
 			}
 			MissionIdCounter = i + 1;
@@ -5293,7 +5342,7 @@ namespace OpenFrontier.IP.Engine
 		public int GetUniqueMissionObjectiveId()
 		{
 			int i;
-			for (i = MissionObjectiveIdCounter; ContainsMissionObjectiveById(i); i++)
+			for (i = MissionObjectiveIdCounter; IsTakenOrReserved(i, ContainsMissionObjectiveById); i++)
 			{
 			}
 			MissionObjectiveIdCounter = i + 1;
@@ -5303,7 +5352,7 @@ namespace OpenFrontier.IP.Engine
 		public int GetUniquePatrolPathId()
 		{
 			int i;
-			for (i = PatrolPathIdCounter; ContainsPatrolPathById(i); i++)
+			for (i = PatrolPathIdCounter; IsTakenOrReserved(i, ContainsPatrolPathById); i++)
 			{
 			}
 			PatrolPathIdCounter = i + 1;
