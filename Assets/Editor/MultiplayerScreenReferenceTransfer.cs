@@ -772,12 +772,6 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 				// The input field goes, along with its placeholder. Deactivated
 				// rather than deleted, so the dialog stays reversible.
-				//
-				// MaxCharsText is deliberately NOT in this list: it was the
-				// character counter, which meant nothing once there was nothing
-				// to type, and it is now the small line under the code that says
-				// where to turn multiplayer off again. Its text is replaced at
-				// runtime, so only the stale placeholder matters.
 				foreach (string gone in new[] { "LegacyInputField", "Placeholder" })
 				{
 					Transform found = contents.transform.FindDeep(gone);
@@ -789,12 +783,51 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 					}
 				}
 
+				// The character counter becomes the "where do I turn this off"
+				// hint. It has to be lifted out of the input field first: it is
+				// a CHILD of LegacyInputField, so switching the field back on
+				// left the hint invisible along with it - and it was invisible
+				// for exactly that reason after a run that had otherwise
+				// succeeded. Reparented to sit under the code, above the
+				// buttons, and released to the layout's width rather than
+				// keeping the 160-wide box it had inside the field.
 				Transform hint = contents.transform.FindDeep("MaxCharsText");
 
-				if (hint != null && !hint.gameObject.activeSelf)
+				if (hint == null)
+				{
+					report.Manual_("no MaxCharsText to use as the hint line");
+				}
+				else
 				{
 					hint.gameObject.SetActive(true);
-					report.Note("showed MaxCharsText as the hint line");
+
+					Transform parent = hint.parent;
+					Transform layout = parent;
+
+					// Up past the field, its wrapper and the input area, until
+					// reaching the layout the other rows sit in.
+					while (layout != null && layout.name != "VerticalLayout")
+					{
+						layout = layout.parent;
+					}
+
+					if (layout != null && parent != layout)
+					{
+						// SetParent appends, which would put the hint after the
+						// buttons. Sibling index moves it back to where it was,
+						// so it stays between the code and the buttons.
+						int index = hint.GetSiblingIndex();
+						hint.SetParent(layout, worldPositionStays: false);
+						hint.SetSiblingIndex(index);
+						report.Note("lifted MaxCharsText out of the input field");
+					}
+
+					RectTransform hintRect = hint as RectTransform;
+
+					if (hintRect != null)
+					{
+						hintRect.sizeDelta = new Vector2(0f, 24f);
+					}
 				}
 
 				// The cancel button now copies, so it says so. Icon-only like
