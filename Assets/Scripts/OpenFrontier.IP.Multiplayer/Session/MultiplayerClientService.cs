@@ -306,8 +306,56 @@ namespace OpenFrontier.IP.Multiplayer
 			uploader = gameObject.AddComponent<ClientShipUploader>();
 		}
 
+		private bool hasHadAWorld;
+
+		/// <summary>
+		/// Ends the session when this copy leaves its world.
+		/// </summary>
+		/// <remarks>
+		/// Quit from the pause menu does not quit anything - it returns to the
+		/// main menu - and nothing on that path touched the session. So a
+		/// player who quit stayed connected and silent, and a host who quit
+		/// left everybody they had admitted attached to a main menu they had
+		/// just been ejected from.
+		///
+		/// Watched rather than hooked, because the engine assembly cannot
+		/// reference this one, and every route back to the menu - quitting,
+		/// loading another save, coming back from the title - goes through a
+		/// different screen.
+		///
+		/// Only once a world has been seen, or the gap between joining and
+		/// the world arriving would look like a departure and would tear the
+		/// session down mid-transfer.
+		/// </remarks>
+		private void EndSessionIfWorldIsGone()
+		{
+			OpenFrontier.IP.Engine.EngineASX engine = OpenFrontier.IP.Engine.EngineASX.Instance;
+
+			if (engine != null && engine.World != null)
+			{
+				hasHadAWorld = true;
+				return;
+			}
+
+			if (!hasHadAWorld || Session == null || Session.State != JoinState.Connected)
+			{
+				return;
+			}
+
+			Debug.Log("Multiplayer: this world is gone, so the session is over");
+
+			const string reason = "You left the game, so the session ended.";
+
+			Failed?.Invoke(reason);
+			Disconnected?.Invoke(reason);
+
+			Disconnect();
+			hasHadAWorld = false;
+		}
+
 		private void Update()
 		{
+			EndSessionIfWorldIsGone();
 			UpdateOwnership();
 		}
 
