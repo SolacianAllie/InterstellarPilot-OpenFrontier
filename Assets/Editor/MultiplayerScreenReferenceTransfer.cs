@@ -798,6 +798,13 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				// under a heading, so the two reading off opposite edges looks
 				// accidental rather than laid out.
 				//
+				// It has to be STRETCHED first. It was authored as a fixed 200
+				// wide box at the panel's left edge, and left-aligned text just
+				// overflowed to the right of it - which looked fine until it was
+				// centred, at which point half of it overflowed to the LEFT, out
+				// of the panel entirely. Centring text means nothing until the
+				// thing centring it is as wide as the thing being centred.
+				//
 				// TMP alignment is a flags value rather than an enum, so it is
 				// assigned by value: 1 is Left and 2 is Centre.
 				TMPro.TMP_Text title = FindAnyLabel(contents, "TextScreenTitle");
@@ -806,6 +813,14 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				{
 					title.alignment = (TMPro.TextAlignmentOptions)2;
 				}
+
+				Stretch(title == null ? null : title.transform as RectTransform);
+
+				// The switch row spans the panel and centres its own children.
+				// It cannot be centred by its anchor: the vertical layout
+				// positions every child from the left, so an anchored-at-centre
+				// row just moves the offset without moving the row.
+				Stretch(contents.transform.FindDeep("CheckboxEnableMultiplayer") as RectTransform);
 
 				// The character counter becomes the "where do I turn this off"
 				// hint. It has to be lifted out of the input field first: it is
@@ -917,6 +932,27 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			{
 				tmp.alignment = (TMPro.TextAlignmentOptions)(int)anchor;
 			}
+		}
+
+		/// <summary>
+		/// Makes a row span its parent horizontally, keeping its height.
+		/// </summary>
+		/// <remarks>
+		/// Anchors rather than a size, so it follows the panel when that is
+		/// resized or re-laid out, instead of holding a width that was correct
+		/// for one particular screen.
+		/// </remarks>
+		private static void Stretch(RectTransform rect)
+		{
+			if (rect == null)
+			{
+				return;
+			}
+
+			rect.anchorMin = new Vector2(0f, rect.anchorMin.y);
+			rect.anchorMax = new Vector2(1f, rect.anchorMax.y);
+			rect.pivot = new Vector2(0.5f, rect.pivot.y);
+			rect.sizeDelta = new Vector2(0f, rect.sizeDelta.y);
 		}
 
 		private static Button FindButton(GameObject root, string objectName)
