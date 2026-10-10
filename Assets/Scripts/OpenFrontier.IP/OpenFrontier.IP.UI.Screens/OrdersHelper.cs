@@ -1037,34 +1037,50 @@ namespace OpenFrontier.IP.UI.Screens
 
 		public static Fleet CreateAndInitPlayerFleet(Faction faction, Sector sector, Vector3 sectorPosition, Fleet fleetPrefab)
 		{
-		// A copy that does not own the world does not make fleets.
-		//
-		// This is the only place a fleet is created - everything else comes
-		// through here - so it is the only place the rule has to be stated.
-		//
-		// A fleet made on a client is an id the host has never issued. The
-		// player then selects it, gives it an order, and the host refuses,
-		// because from the host's side that fleet genuinely does not exist:
-		//
-		//     client: This copy selected: fleet 100149 of 'Frontier Corp 2'
-		//     host:   named fleet 100149, which this world does not have
-		//
-		// Both halves true, and nothing anywhere said the client had built
-		// one. The refusal was correct; the bug was upstream of it, in a
-		// property screen's "create new fleet" that ran on both machines.
-		//
-		// Null rather than a local stand-in, because a stand-in is the same
-		// bug wearing a disguise. Callers are expected to cope, and the ones
-		// that cannot say so.
-		if (Authority.IsThisCopyAClient)
-		{
-			Debug.LogWarning("OrdersHelper: this copy cannot make a fleet - the world"
-				+ " that owns the ships has to make it. Nothing was created.");
-		}
+			// Any copy may build a fleet.
+			//
+			// This used to refuse on a client, and refuse on the host too -
+			// the return sat outside the check, so the game's only
+			// fleet-creation path returned null for every machine. The host
+			// never noticed because their own fleet is in the save and they
+			// never call this; a joining player has no fleet, calls it, and
+			// finds that every screen built around one - orders, cargo,
+			// settings - is dead.
+			//
+			// The rule it was trying to state is real and is enforced
+			// somewhere else: a fleet built on a client is an id the host has
+			// never issued, so a client must never put one on the wire.
+			// OneFleet does that, on the way out, for every one of the
+			// nineteen order kinds. Refusing to build one as well meant the
+			// world stopped disagreeing at the price of the game not working.
+			//
+			// So the fleet is built here, the UI works on it, and nothing
+			// built here is ever named to anybody. It is a view of a thing
+			// the host owns.
+			//
+			// Nothing below simulates anything. OnPlayerFleetCreated only
+			// sets fleet settings - aggression and interception distance -
+			// and fleets do not tick on a client at all, so those settings
+			// never drive anything here.
+			sectorPosition.y = 0f;
+			Fleet fleet = UnityObjectHelper.InstantiateAndGetComponent(fleetPrefab);
+			fleet.Init();
+			fleet.Faction = faction;
+			fleet.Sector = sector;
+			fleet.transform.localPosition = sectorPosition;
 
-		Authority.Declined();
+			if (faction.PreferredFormationStyle != null)
+			{
+				fleet.FleetFormation = EngineASX.Instance.GetFleetFormationById(faction.PreferredFormationStyle.UniqueId);
+			}
 
-		return null;
+			if (faction.IsPlayerFaction)
+			{
+				EngineASX.Instance.OnPlayerFleetCreated(fleet);
+				EngineASX.Instance.CachedFleetSettingsController.ApplyDefaultSettingsToFleet(fleet);
+			}
+
+			return fleet;
 		}
 
 		private static NpcPilot CreateNpcPilot(Unit unit)

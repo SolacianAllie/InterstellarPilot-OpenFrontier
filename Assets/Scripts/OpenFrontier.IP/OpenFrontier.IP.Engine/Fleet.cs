@@ -860,6 +860,32 @@ namespace OpenFrontier.IP.Engine
 			{
 				return;
 			}
+
+			// A copy that does not own the world does not run fleets.
+			//
+			// The gate on UnitComponentHolder.Tick() stops the ships, but a
+			// Fleet is a MonoBehaviour in its own right and ticks from its own
+			// Update - so orders, formation, target selection and the idle
+			// state machine all carried on running on a client while the ships
+			// they were supposed to drive stood still. Two copies of an order,
+			// one of them authoritative, is the exact thing this whole
+			// arrangement exists to prevent.
+			//
+			// Gated on being a client at all, rather than on who owns the
+			// ships. The rule is that no fleet simulates on a copy which is not
+			// the world. Gating per-ship would let a player's own fleet run
+			// orders locally and fight the stick, because that ship IS owned
+			// by the client while it is being flown by hand.
+			//
+			// It does not touch the autopilot handoff. That is claim and
+			// release on a ship, and it is a different path entirely.
+			if (Authority.IsThisCopyAClient)
+			{
+				Authority.Declined();
+
+				return;
+			}
+
 			if (leader == null && pilots.Count > 0)
 			{
 				DesignateLeader();
