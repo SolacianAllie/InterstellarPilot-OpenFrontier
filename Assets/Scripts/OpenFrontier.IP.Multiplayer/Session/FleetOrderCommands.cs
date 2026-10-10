@@ -79,6 +79,23 @@ namespace OpenFrontier.IP.Multiplayer
 					Debug.LogWarning("Multiplayer: cannot give an order - not connected."
 						+ " Nothing changed.");
 				}
+				else
+				{
+					// Selected nothing. Said, because the other half of this
+					// method returns true and tells its caller the order has
+					// been dealt with - so the order does not happen and nothing
+					// says why. A player who pressed an order button and watched
+					// no log line at all cannot tell that from a dropped
+					// connection, and neither can we.
+					//
+					// Most often this is a fleet that exists on this copy only.
+					// That is the expected shape of a client's world, not a bug,
+					// so it is worth saying in those words: it points at
+					// CreateAndInitPlayerFleet and OneFleet, not at the network.
+					Debug.LogWarning("Multiplayer: cannot give " + intent.Kind
+						+ " - this copy selected no fleet and no ship to send it"
+						+ " about. Nothing changed.");
+				}
 
 				return true;
 			}
@@ -838,6 +855,19 @@ namespace OpenFrontier.IP.Multiplayer
 				? null
 				: engine.GetUnitByid(command.TargetUnitId);
 
+			// How many of the named fleets the switch below actually did
+			// something to. Every refusal arm breaks out of the switch and
+			// falls into the log line at the end of this method, which used
+			// to say the order had run no matter which way the arm went. So a
+			// refused order was reported as a success, on the line directly
+			// under the warning that said it was refused.
+			//
+			// That is not a cosmetic problem. It is why a whole test session
+			// could report that exactly one order had ever been given when
+			// several had arrived and been turned away: the log said "ran"
+			// for all of them.
+			int refused = 0;
+
 			for (int i = 0; i < fleets.Count; i++)
 			{
 				Fleet fleet = fleets[i];
@@ -864,6 +894,7 @@ namespace OpenFrontier.IP.Multiplayer
 						// does internally.
 						Debug.LogWarning("Multiplayer: order " + kind
 							+ " cannot yet be given by a client.");
+						refused++;
 						break;
 
 					case FleetOrderKind.DockAtTarget:
@@ -925,6 +956,7 @@ namespace OpenFrontier.IP.Multiplayer
 						// it apart from a dropped connection.
 						Debug.LogWarning("Multiplayer: order " + kind
 							+ " cannot yet be given by a client, and was not carried out.");
+						refused++;
 						break;
 
 					default:
@@ -934,6 +966,7 @@ namespace OpenFrontier.IP.Multiplayer
 						// numbering and that is worth knowing about.
 						Debug.LogWarning("Multiplayer: order " + kind
 							+ " has no handler on this host, and was not carried out.");
+						refused++;
 						break;
 				}
 			}
@@ -966,7 +999,21 @@ namespace OpenFrontier.IP.Multiplayer
 				fleets[i].AssignNextOrderIfNoCurrentOrder();
 			}
 
-			Debug.Log("Multiplayer: ran " + kind + " for " + fleets.Count + " fleet(s)");
+			if (refused == 0)
+			{
+				Debug.Log("Multiplayer: ran " + kind + " for " + fleets.Count + " fleet(s)");
+			}
+			else if (refused == fleets.Count)
+			{
+				Debug.Log("Multiplayer: REFUSED " + kind + " for all "
+					+ fleets.Count + " fleet(s) - none of them were carried out.");
+			}
+			else
+			{
+				Debug.Log("Multiplayer: ran " + kind + " for "
+					+ (fleets.Count - refused) + " of " + fleets.Count
+					+ " fleet(s); refused " + refused + ".");
+			}
 		}
 	}
 }

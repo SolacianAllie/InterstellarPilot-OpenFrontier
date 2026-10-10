@@ -3,6 +3,22 @@
 Written at the end of the first working session, while the design was fresh
 and the remaining work was still honestly sized.
 
+> **This README is out of date.** It claims faction state is DONE; the diagram
+> further down marks the same thing NOT BUILT, and the diagram is right —
+> `FactionStateApplier` was never installed, so the receipt half of that push
+> does not run. Trust `Docs/multiplayer/coverage-plan.md` over anything here.
+>
+> The plans live in the repository at `Docs/multiplayer/`:
+>
+> | | |
+> |---|---|
+> | `coverage-plan.md` | **The current one.** What works, what does not, the ~55-action backlog, and the ten work streams. |
+> | `migration-plan.md` | The original design, as first written. |
+> | `order-system.md` | The fleet-order work, including gaps A–E. |
+>
+> They are kept here rather than in a scratch directory so that they survive a
+> power cut, and so that a claim in one can be checked against another.
+
 ## The rule
 
 **The host owns the world. A client owns exactly one thing: the ship it is
