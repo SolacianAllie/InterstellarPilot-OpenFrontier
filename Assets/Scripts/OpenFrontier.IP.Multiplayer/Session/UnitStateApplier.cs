@@ -91,10 +91,45 @@ namespace OpenFrontier.IP.Multiplayer
 			gate = gameObject.AddComponent<AuthorityGate>();
 		}
 
+		private float nextReportTime;
+
+		private int receivedTotal;
+
+		/// <summary>
+		/// What came in and what became of it.
+		/// </summary>
+		/// <remarks>
+		/// The count of units naming something this copy does not have is the
+		/// single most useful number in this feature and it was never printed.
+		/// Zero means the two worlds agree about ids. A large number means they
+		/// have diverged, and nothing else is worth investigating until they
+		/// have not.
+		/// </remarks>
+		private void Report()
+		{
+			if (Time.unscaledTime < nextReportTime)
+			{
+				return;
+			}
+
+			nextReportTime = Time.unscaledTime + 2f;
+
+			if (MultiplayerClientService.Instance == null || !MultiplayerClientService.Instance.IsConnected)
+			{
+				return;
+			}
+
+			Debug.Log("Multiplayer: applying - " + appliedLastUpdate + " applied, "
+				+ unknownLastUpdate + " named units this copy does not have, of "
+				+ receivedTotal + " received");
+		}
+
 		private void LateUpdate()
 		{
 			appliedLastUpdate = 0;
 			unknownLastUpdate = 0;
+
+			Report();
 
 			if (gate != null)
 			{
@@ -122,6 +157,8 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				return;
 			}
+
+			receivedTotal += message.Count;
 
 			EngineASX engine = EngineASX.Instance;
 

@@ -54,10 +54,76 @@ namespace OpenFrontier.IP.Multiplayer
 			Broadcast(session);
 		}
 
+		private static float nextReportTime;
+
+		/// <summary>
+		/// What is going out, every couple of seconds.
+		/// </summary>
+		/// <remarks>
+		/// Said unconditionally, and including when it is giving up and why.
+		/// A sender that is silent and a sender that is sending nothing look
+		/// identical from outside, and that ambiguity is what this exists to
+		/// remove. Reported before the bail-out below for the same reason:
+		/// the first version of this was placed after it, and so stayed quiet
+		/// in precisely the case it was written to explain.
+		/// </remarks>
+		private static void Report(EngineASX engine, Sector sector)
+		{
+			if (Time.unscaledTime < nextReportTime)
+			{
+				return;
+			}
+
+			nextReportTime = Time.unscaledTime + 2f;
+
+			if (engine == null)
+			{
+				Debug.Log("Multiplayer: broadcasting nothing - no engine yet");
+				return;
+			}
+
+			if (engine.World == null)
+			{
+				Debug.Log("Multiplayer: broadcasting nothing - no world yet");
+				return;
+			}
+
+			if (!engine.World.HasInitialised)
+			{
+				Debug.Log("Multiplayer: broadcasting nothing - the world has not finished initialising");
+				return;
+			}
+
+			if (sector == null)
+			{
+				Debug.Log("Multiplayer: broadcasting nothing - no active sector");
+				return;
+			}
+
+			List<Unit> ships = sector.GetUnitsByType(UnitType.Ship);
+
+			if (ships == null || ships.Count == 0)
+			{
+				Debug.Log("Multiplayer: broadcasting nothing - " + sector.name + " has no ships in it");
+				return;
+			}
+
+			int players = MultiplayerHostService.Session == null
+				? 0
+				: MultiplayerHostService.Session.Players.Count;
+
+			Debug.Log("Multiplayer: broadcasting " + ships.Count + " ship(s) from "
+				+ sector.name + ", ids " + ships[0].UniqueId
+				+ " to " + ships[ships.Count - 1].UniqueId
+				+ ", to " + players + " player(s)");
+		}
+
 		private static void Broadcast(HostSession session)
 		{
 			EngineASX engine = EngineASX.Instance;
 			Sector sector = engine?.ActiveSector;
+
+			Report(engine, sector);
 
 			// Nothing is sent rather than something incomplete. A client that
 			// receives some units and not others cannot tell "that one is
