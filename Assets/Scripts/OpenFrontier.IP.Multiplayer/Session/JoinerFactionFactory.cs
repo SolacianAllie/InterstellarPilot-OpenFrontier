@@ -71,7 +71,7 @@ namespace OpenFrontier.IP.Multiplayer
 
 			// Set BEFORE Init, which only assigns an id when there is none.
 			// After it would be overwritten by the engine's own counter.
-			int wanted = PlayerFactionIds.For(playerToken);
+			int wanted = PlayerIdScheme.FactionIdFor(playerToken);
 
 			faction.UniqueId = wanted >= 0 && !IsTaken(engine, wanted) ? wanted : -1;
 
@@ -245,11 +245,20 @@ namespace OpenFrontier.IP.Multiplayer
 				unit.transform.SetParent(sector.transform, false);
 				unit.Faction = faction;
 
-				// -1 above means "give me the next id", which is what makes the
-				// host's counter the single source of numbering both copies
-				// will agree on.
-				unit.SetUniqueId(engine.UnitIdCounter);
-				engine.UnitIdCounter++;
+				// From the reserved band rather than the engine's counter, so
+				// that a ship a player was given is recognisable by its id
+				// alone - in a save, in a log, in a debugger, without a lookup.
+				// Only the host allocates, which is what keeps the two copies
+				// agreeing without either of them negotiating.
+				int id = PlayerIdScheme.NextUnitId();
+
+				if (id < 0)
+				{
+					error = "There is no player ship id left.";
+					return null;
+				}
+
+				unit.SetUniqueId(id);
 
 				return unit;
 			}
