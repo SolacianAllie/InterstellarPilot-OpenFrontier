@@ -61,7 +61,21 @@ namespace OpenFrontier.IP.UI
 		private void RefreshNameText()
 		{
 			NameLabel.text = Item.GetDescriptiveFactionNameIncludingPilotName(Item.IsFreelancer);
-			NameLabel.color = (Item.IsPlayerFaction ? Item.Engine.OwnedColor : Item.Engine.AttitudeNeutralColor);
+
+			// Any faction somebody is playing is drawn in the colour the game
+			// already uses for a player, rather than in the neutral one every
+			// AI shares. A second player is not an AI with a different name;
+			// the list is where that is most visible, because it is the one
+			// screen that lists everybody at once.
+			//
+			// The opinion bar above it still uses IsPlayerFaction, and should.
+			// That bar is your opinion of a faction, and you do not have one
+			// of your own - but you very much do have one of the other
+			// player's, so theirs keeps the bar and only loses the colour
+			// difference that made it look like scenery.
+			NameLabel.color = (Item.IsAPlayersFaction
+				? Item.Engine.OwnedColor
+				: Item.Engine.AttitudeNeutralColor);
 		}
 
 		private void RefreshOpinionBar()

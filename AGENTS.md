@@ -38,46 +38,39 @@ one is the thing to fix, not the editor.
 
 C# changes are verified outside the editor with a generated .NET harness:
 
-- Regenerate: `python3 /tmp/opencode/gen_harness2.py` (rebuilds csprojs against live `Assets/Scripts`)
-- **New `.cs` files are INVISIBLE to the harness until regen** — a stale csproj silently skips them, so their errors only surface in the editor (`MainMenuWorldController.cs` hid three missing-using bugs this way). Always regen after creating files.
-- **`gen.sh --regen` ONLY rebuilds `All.csproj`.** The three test projects
-  (`handshake-test`, `probe-test`, `codec-test`) keep hand-maintained
-  `<Compile Include>` lists, and they pull in *different* subsets — so a new
-  protocol message that `All.csproj` compiles fine can still break
-  `handshake-test`, which links `ClientSession.cs` and therefore needs the
-  message type too. Symptom: `ALL CHECKS FAILED` with **no `error CS`
-  anywhere in `check.sh` output** and `codec tests / handshake tests /
-  probe tests` reporting only "The build failed". Run
-  `dotnet build handshake-test/handshake-test.csproj` directly to see it.
-  Add the new file to every test project that already lists a sibling of it,
-  and add new test `.cs` files to `codec-test.csproj` explicitly too.
+- Regenerate: `bash /tmp/opencode/harness/check.sh --regen`
+- Check: `bash /tmp/opencode/harness/check.sh`
+- **It lives in /tmp. A power cut wipes it** — as happened on 2026-10-10. The
+  project is safe (everything is committed); only `gen.py` and `check.sh` have
+  to be written again. Everything they need survives in the project: Unity's
+  managed DLLs under `~/Unity/Hub/Editor/6000.6.4f1/Editor/Data/Managed`, the
+  package DLLs under `Library/ScriptAssemblies`, and the vendored ones under
+  `Assets/Plugins`.
+- **One csproj per asmdef, with that asmdef's real references.** The earlier
+  harness compiled everything into everything, which meant it could not see
+  the two error classes that have actually bitten:
+  - a script using a type from an assembly it does not reference (CS0234)
+  - a call that exists in a stub but not in Unity 6 (`Resolution.refreshRateRatio.value`
+    is a `double`; a stub said `float`, and it compiled)
+- Referencing the **editor's own DLLs rather than a stub** closes the second
+  class outright. There is no stub to fall out of step with the editor.
+- `editor-scripts` is `Assets/Editor` — loose scripts, which Unity compiles
+  into `Assembly-CSharp-Editor`, referencing every game assembly. Platform
+  build callbacks must live there; see the trap below.
 - **The harness CANNOT catch a loop that never terminates.** `while (num > 0)`
   with nothing in the body changing `num` is valid C# and compiles clean in
-  both `All.csproj` and the editor — it is a runtime hang, on every launch,
-  and it looks exactly like a crash. This happened on 2026-10-10: adding a
+  both the harness and the editor — it is a runtime hang, on every launch, and
+  it looks exactly like a crash. This happened on 2026-10-10: adding a
   `continue` to `EngineASX.UpdateInactiveUnits` dropped the loop's `num--`
   and froze editor and build before the main menu. **Rule: when editing a
   loop, put the counter next to the read, before any `continue`/`break`, and
   re-read the whole body afterwards.** `grep` the loop for its counter as a
   check — the compiler will not do it.
-- Build: `cd /tmp/opencode/harness && dotnet build All.csproj -v q -nologo`
 
-**Known blind spot:** the harness compiles against a UnityEngine *reference stub*,
-not the real Unity 6 assemblies. It cannot catch Unity-version-specific API
-differences. Example that slipped through (fixed in commit `e330257c`):
-`Resolution.refreshRateRatio.value` is a `double` in Unity 6 but `float` in the
-stub, so `Mathf.RoundToInt(value)` passed the harness but failed in the editor
-with CS1503 (double → float).
-
-**Rule:** a clean harness build is necessary but not sufficient. After any code
-change, confirm zero `error CS` lines in the editor's `Logs/Editor.log`
-(or ask the user for the Console output) before considering the change done.
-
-**Editor-folder scripts are NOT compile-checked by the harness at all** (it
-skips `Editor/` dirs, and only walks `Assets/Scripts`). Anything behind a
-platform define (`#if UNITY_ANDROID`) is doubly invisible: the harness sees
-an empty file, and the editor won't compile it until the user switches build
-target. Verify those by grepping `Logs/Editor.log` for the target switch.
+**Known blind spot:** a clean build is necessary but not sufficient. The
+editor's own compile can still differ, because the harness does not define
+every symbol the editor defines — verify with `grep -c "error CS" Logs/Editor.log`
+after the editor refocuses (should be 0).
 
 ## Verification workflow
 

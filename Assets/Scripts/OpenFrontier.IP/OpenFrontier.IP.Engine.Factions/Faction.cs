@@ -259,6 +259,38 @@ namespace OpenFrontier.IP.Engine.Factions
 			}
 		}
 
+		/// <summary>
+		/// Whether a person is playing this faction - this copy's player, or
+		/// another one.
+		/// </summary>
+		/// <remarks>
+		/// Deliberately beside <see cref="IsPlayerFaction"/> rather than
+		/// widening it. That one means "mine", and the game asks it in
+		/// fifteen places where "mine" is the whole point - the AI does not
+		/// sell to you, does not target you, does not dock at your stations.
+		/// Widening it would quietly change all fifteen, and the measure of
+		/// this work is that a player who never opens the multiplayer menu
+		/// cannot tell any of it happened.
+		///
+		/// So this is the separate question, and it is asked only where the
+		/// answer is about how a faction should be drawn. With nobody else in
+		/// the game it is true for exactly the one faction
+		/// <see cref="IsPlayerFaction"/> is true for, so a singleplayer screen
+		/// is unchanged - it just asks a second question.
+		/// </remarks>
+		public bool IsAPlayersFaction
+		{
+			get
+			{
+				if (IsPlayerFaction)
+				{
+					return true;
+				}
+
+				return PlayerFactions.IsPlayerFaction(UniqueId);
+			}
+		}
+
 		public EngineASX Engine
 		{
 			get

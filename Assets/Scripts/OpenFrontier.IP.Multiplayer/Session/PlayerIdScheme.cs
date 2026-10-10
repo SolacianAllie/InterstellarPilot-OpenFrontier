@@ -115,6 +115,19 @@ namespace OpenFrontier.IP.Multiplayer
 			return id >= UnitIdBase && id < UnitIdBase + UnitIdBand;
 		}
 
+		/// <summary>Whether this id is in the band player factions are given.</summary>
+		/// <remarks>
+		/// Separate from <see cref="IsPlayerMadeUnit"/> for the same reason
+		/// the engine asks about bands separately from asking about players:
+		/// a number in the faction band is not a player unit, and a screen
+		/// asking about a faction should not have to exclude the other band
+		/// by hand every time.
+		/// </remarks>
+		public static bool IsPlayerMadeFaction(int id)
+		{
+			return id >= FactionIdBase && id < FactionIdBase + FactionIdBand;
+		}
+
 		/// <summary>Forgets every id handed out. For a new world.</summary>
 		public static void ForgetUnitIds()
 		{
