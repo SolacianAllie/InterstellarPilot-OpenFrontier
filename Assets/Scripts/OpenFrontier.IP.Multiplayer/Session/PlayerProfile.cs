@@ -34,6 +34,9 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>The slot a copy plays as when nothing says otherwise.</summary>
 		public const string DefaultSlot = "default";
 
+		/// <summary>The slot the editor plays as.</summary>
+		public const string EditorSlot = "editor";
+
 		private const string FileName = "openfrontier-profile.txt";
 		private const string EnvironmentVariable = "OPENFRONTIER_PROFILE";
 		private const string CommandLineSwitch = "--profile";
@@ -73,13 +76,20 @@ namespace OpenFrontier.IP.Multiplayer
 			cachedSlot = null;
 		}
 
-		/// <summary>Whether anything asked for a slot other than the default.</summary>
+		/// <summary>
+		/// Whether this copy uses the plain player slot.
+		/// </summary>
+		/// <remarks>
+		/// Deliberately not "is it the default slot", because the editor is a
+		/// different thing rather than a fallback, and a prefs key must be
+		/// scoped for it.
+		/// </remarks>
 		public static bool IsDefault => Slot == DefaultSlot;
 
 		/// <summary>A line for the session panel, so a test shows which copy is which.</summary>
 		public static string Describe()
 		{
-			return IsDefault ? "default" : Slot;
+			return Slot;
 		}
 
 		/// <summary>
@@ -92,12 +102,34 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public static string Key(string baseKey)
 		{
-			if (IsDefault || string.IsNullOrEmpty(baseKey))
+			return KeyFor(baseKey, Slot);
+		}
+
+		/// <summary>
+		/// Turns a prefs key into the key a given slot uses.
+		/// </summary>
+		/// <remarks>
+		/// Separate from <see cref="Key"/> so the rule can be checked on its
+		/// own, which matters because the slot this process resolves to
+		/// depends on where it is running - and outside a player, even Unity's
+		/// own assemblies report it as the editor.
+		/// </remarks>
+		public static string KeyFor(string baseKey, string slot)
+		{
+			if (string.IsNullOrEmpty(baseKey))
 			{
 				return baseKey;
 			}
 
-			return baseKey + "_" + Slot;
+			// The plain player slot is left completely untouched, so a player
+			// who never heard of any of this keeps exactly the keys they had.
+			// Only a slot that is actually distinct gets a suffix.
+			if (string.IsNullOrEmpty(slot) || slot == DefaultSlot)
+			{
+				return baseKey;
+			}
+
+			return baseKey + "_" + Sanitize(slot);
 		}
 
 		/// <summary>
@@ -175,6 +207,27 @@ namespace OpenFrontier.IP.Multiplayer
 			return hash.ToString("x8", CultureInfo.InvariantCulture);
 		}
 
+		/// <summary>
+		/// The slot to use when nothing has asked for one.
+		/// </summary>
+		/// <remarks>
+		/// The editor gets its own, so the commonest way of running two
+		/// players on one machine - the editor and a build of the same game,
+		/// side by side - needs no configuration at all. Nobody else is
+		/// affected: a player running the editor is a developer, and a
+		/// developer is exactly the person who wants to be a distinct player
+		/// from the build sitting next to them.
+		///
+		/// Separate rather than merged because they genuinely are different
+		/// situations. A returning player who tested in the editor and then
+		/// played the build should start fresh in the build, not inherit an
+		/// identity from a copy of the game they were never really playing.
+		/// </remarks>
+		public static string DefaultSlotFor(bool isEditor)
+		{
+			return isEditor ? EditorSlot : DefaultSlot;
+		}
+
 		private static string Resolve()
 		{
 			string fromCommandLine = FromCommandLine();
@@ -191,7 +244,25 @@ namespace OpenFrontier.IP.Multiplayer
 				return fromEnvironment;
 			}
 
-			return FromFile();
+			string fromFile = FromFile();
+
+			if (!string.IsNullOrEmpty(fromFile))
+			{
+				return fromFile;
+			}
+
+			// Asked for nothing, so fall back to what this copy is rather than
+			// to a fixed name. Read here and not in a field initializer,
+			// because asking Unity anything during type initialization is not
+			// allowed and would poison the whole type.
+			try
+			{
+				return DefaultSlotFor(Application.isEditor);
+			}
+			catch (Exception)
+			{
+				return DefaultSlot;
+			}
 		}
 
 		private static string FromCommandLine()

@@ -108,6 +108,43 @@ and lets another socket steal the port). Without it a host that stopped
 gracefully could not take its own port back for about a minute, which is the
 normal case for restarting a game.
 
+### Two copies on one machine
+
+The editor and a build share one `PlayerPrefs` file - same company, same
+product - so they share a player token and a session secret and hand out
+identical join codes. That makes the commonest way of testing a network
+feature with two players on one machine impossible.
+
+So a copy plays as a **slot**, which changes which prefs keys it uses and
+nothing else. Save games and settings stay shared: two copies on one machine
+are usually one person testing, not two people who happen to share a hard
+drive.
+
+The editor is its own slot by default, so the editor and a build side by side
+needs no configuration at all. It is separate rather than merged because they
+genuinely are different - a player who tested in the editor and then played
+the build should start fresh rather than inherit an identity from a copy of
+the game they were never really playing.
+
+A build uses the plain slot, which writes exactly the keys it always did.
+Anyone who has never heard of any of this keeps their identity.
+
+To make two builds different from each other, name one:
+
+| Where | How |
+|---|---|
+| command line | `--profile host-2` |
+| environment | `OPENFRONTIER_PROFILE=host-2` |
+| file | `openfrontier-profile.txt` beside the executable |
+
+The file path is the neat part: a build reads it from its own folder, the
+editor from the project root - already different places, so only one of them
+needs a file.
+
+The slot is stable. Same slot, same code, across restarts, which is what
+keeps repeated connections working. The panel and the hosting log line both
+show it, so it is never a mystery which copy produced a code.
+
 ### The row prefab
 
 `ScrollList` instantiates its `ItemPrefab` once per row, so the list needs a
