@@ -2001,6 +2001,35 @@ namespace OpenFrontier.IP.Engine.Factions
 			return RecentDamageSettings.RecentAttacksThreshold + RecentDamageSettings.RecentAttacksOpinionAddition * opinion - Aggression * RecentDamageSettings.RecentAttacksAgressionFactor;
 		}
 
+		/// <summary>
+		/// Whether taking damage from that faction should not start a war.
+		/// </summary>
+		/// <remarks>
+		/// Two people shooting each other is not a war between their
+		/// countries. If it were, the first exchange of fire would drag every
+		/// AI ship both of them own into it - which is not what a player who
+		/// shoots at another player asked for, and is not recoverable by
+		/// asking nicely afterwards.
+		///
+		/// So between two player factions, hostilities begin when a player
+		/// says so, and not before. Everything else about the relationship is
+		/// untouched: they are still not allied, their ships still defend
+		/// themselves, and the damage still counts toward the opinion. Only
+		/// the automatic declaration is withheld.
+		///
+		/// One check in one place, at the point where damage becomes a war.
+		/// Everywhere else that decides hostility is asking whether the player
+		/// meant it, which is the only question that can answer it.
+		///
+		/// False in a game with nobody else in it, so nothing changes for a
+		/// singleplayer world - both sides fail the test for the same reason.
+		/// </remarks>
+		private bool TwoPlayersAreShootingAtEachOther(Faction damageInflictorFaction)
+		{
+			return PlayerFactions.IsPlayerFaction(UniqueId)
+				&& PlayerFactions.IsPlayerFaction(damageInflictorFaction.UniqueId);
+		}
+
 		private bool SetHostileIfRecentAttackThresholdBreach(Faction damageInflictorFaction, float damageReceived)
 		{
 			if (damageInflictorFaction == this)
@@ -2017,7 +2046,9 @@ namespace OpenFrontier.IP.Engine.Factions
 				if (!attitude.IsHostile)
 				{
 					float recentAttacksThreshold = GetRecentAttacksThreshold(attitude.Opinion);
-					if (damageReceived > recentAttacksThreshold && (factionAi == null || factionAi.RequestPermissionToDeclareWarOn(damageInflictorFaction, isBeingAttacked: true)))
+					if (damageReceived > recentAttacksThreshold
+						&& !TwoPlayersAreShootingAtEachOther(damageInflictorFaction)
+						&& (factionAi == null || factionAi.RequestPermissionToDeclareWarOn(damageInflictorFaction, isBeingAttacked: true)))
 					{
 						if (LogWrapper.LogMsgs)
 						{
