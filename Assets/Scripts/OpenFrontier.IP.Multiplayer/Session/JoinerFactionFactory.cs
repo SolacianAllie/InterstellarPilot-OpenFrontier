@@ -243,6 +243,7 @@ namespace OpenFrontier.IP.Multiplayer
 				}
 
 				unit.transform.SetParent(sector.transform, false);
+				PlaceWhereTheScenarioWould(sector, unit);
 				unit.Faction = faction;
 
 				// From the reserved band rather than the engine's counter, so
@@ -281,6 +282,92 @@ namespace OpenFrontier.IP.Multiplayer
 				return null;
 			}
 		}
+
+	/// <summary>
+	/// Puts a new player's ship where a new player's ship goes.
+	/// </summary>
+	/// <remarks>
+	/// A shuttle built by CreateUnit has never been given a position, so it
+	/// came out wherever a new GameObject comes out - the origin of whatever
+	/// it was parented to - which read as "a random spot in the system".
+	///
+	/// Every scenario says where a player starts, because every scenario
+	/// opens on the player's ship and needs them somewhere in particular: a
+	/// dock, a system edge, a scripted first encounter. A joiner dropped
+	/// elsewhere is not merely untidy - the opening shot of a story scenario
+	/// is framed on that position, so a ship somewhere else means a joiner
+	/// watching an empty scene while the story assumes they are already
+	/// looking at it.
+	///
+	/// Asked of the world rather than worked out here, so a scenario with no
+	/// spawn point keeps behaving the way it always has.
+	/// </remarks>
+	private static void PlaceWhereTheScenarioWould(Sector sector, Unit unit)
+	{
+		if (unit == null || sector == null || EngineASX.Instance == null)
+		{
+			return;
+		}
+
+		// The spawn points are declared on World rather than WorldBase, so a
+		// world that is not one simply has none said - which is the same as
+		// a scenario with no spawn point, and is left alone.
+		World world = EngineASX.Instance.World as World;
+
+		if (world == null)
+		{
+			return;
+		}
+
+		// The same choice a singleplayer game makes: the one the scenario
+		// names, or one of its alternatives - preferring this sector.
+		UnitComponentHolder holder = world.NewGameSpawnLocation;
+
+		if (holder == null)
+		{
+			holder = InThisSector(world.NewGameSpawnLocations, sector);
+		}
+
+		if (holder == null || holder.Unit == null)
+		{
+			// Nothing said, so leave it where it is, which is what the engine
+			// does for a scenario that has no spawn point.
+			return;
+		}
+
+		unit.transform.localPosition = holder.transform.localPosition;
+		unit.transform.localRotation = holder.transform.localRotation;
+	}
+
+	/// <summary>
+	/// A spawn point in this sector, if the scenario has one there.
+	/// </summary>
+	/// <remarks>
+	/// Scenarios can offer alternatives in different systems, and a player who
+	/// joined to one sector should not appear in another. Exactly this sector
+	/// or nothing, because the alternative to a good position is a clearly
+	/// wrong one.
+	/// </remarks>
+	private static UnitComponentHolder InThisSector(List<UnitComponentHolder> options, Sector sector)
+	{
+		if (options == null)
+		{
+			return null;
+		}
+
+		for (int i = 0; i < options.Count; i++)
+		{
+			UnitComponentHolder holder = options[i];
+
+			if (holder != null && holder.Unit != null && holder.Unit.Sector == sector)
+			{
+				return holder;
+			}
+		}
+
+		return null;
+	}
+
 
 		/// <summary>
 		/// The shuttle, found by series name rather than by a hard-coded id.

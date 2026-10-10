@@ -52,13 +52,24 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>How many uploads have been sent, for the log.</summary>
 		public int UploadsSent { get; private set; }
 
+		private int reportedUploads;
+
+		private float nextReportTime;
+
 		private void Update()
 		{
 			MultiplayerClientService service = MultiplayerClientService.Instance;
 
 			// Connected, not merely present: a host that has also joined would
 			// otherwise be uploading its own world to itself.
-			if (service == null || !service.IsConnected || Time.unscaledTime < nextUploadTime)
+			if (service == null || !service.IsConnected)
+			{
+				return;
+			}
+
+			Report(service);
+
+			if (Time.unscaledTime < nextUploadTime)
 			{
 				return;
 			}
@@ -66,6 +77,63 @@ namespace OpenFrontier.IP.Multiplayer
 			nextUploadTime = Time.unscaledTime + (1f / UploadsPerSecond);
 
 			Upload(service);
+		}
+
+		/// <summary>
+		/// Says whether this copy is sending its ship, and if not, why not.
+		/// </summary>
+		/// <remarks>
+		/// There was no way to tell. Uploads were counted and never printed,
+		/// and nothing anywhere said what stopped them either - so a client
+		/// whose ship was silently not being sent looked exactly like a host
+		/// that was ignoring it, and neither could tell the other.
+		///
+		/// A reporter that can only say "I did nothing" is still a reporter:
+		/// the name of the reason is the whole content of it.
+		/// </remarks>
+		private void Report(MultiplayerClientService service)
+		{
+			if (Time.unscaledTime < nextReportTime)
+			{
+				return;
+			}
+
+			nextReportTime = Time.unscaledTime + 2f;
+
+			int sent = UploadsSent - reportedUploads;
+			reportedUploads = UploadsSent;
+
+			Unit local = EngineASX.Instance == null ? null : EngineASX.Instance.LocalUnit;
+
+			string why = "no reason - it is sending";
+
+			if (!service.IsConnected)
+			{
+				why = "not connected";
+			}
+			else if (local == null)
+			{
+				why = "this copy has no ship being flown";
+			}
+			else if (local.IsDestroyed)
+			{
+				why = "the ship being flown has been destroyed";
+			}
+
+			int total = UploadsSent;
+
+			NetLog.Client("uploading - " + sent + " ship state(s) in 2s; "
+				+ local2(local) + "; " + why);
+
+			Debug.Log("Multiplayer: uploading - " + sent + " ship state(s) in 2s ("
+				+ total + " so far); " + why);
+		}
+
+		private string local2(Unit local)
+		{
+			return local == null
+				? "no current unit"
+				: "ship " + local.UniqueId + (local.IsActiveInEngine ? string.Empty : ", NOT active in engine");
 		}
 
 		private void Upload(MultiplayerClientService service)
@@ -79,11 +147,16 @@ namespace OpenFrontier.IP.Multiplayer
 
 			Unit local = engine.LocalUnit;
 
-			// Only the ship being flown. A client that uploaded every unit in
-			// its copy would be asking the host to believe a whole second
-			// world, and the authority it would be asserting over ships
-			// nobody here is flying is exactly what must not exist.
-			if (local == null || local.IsDestroyed || !local.IsActiveInEngine)
+			// Only the ship being flown, and only if this copy is the one that
+			// simulates it.
+			//
+			// Asked of Authority rather than worked out here. This used to test
+			// IsActiveInEngine, which is true only for units in the active
+			// sector - so a player whose ship was anywhere else stopped
+			// uploading, silently, with nothing in either log to say so. The
+			// question "may this copy simulate this ship" is now answered in
+			// one place, and this is that place asking.
+			if (local == null || local.IsDestroyed || !Authority.OwnsUnit(local))
 			{
 				return;
 			}

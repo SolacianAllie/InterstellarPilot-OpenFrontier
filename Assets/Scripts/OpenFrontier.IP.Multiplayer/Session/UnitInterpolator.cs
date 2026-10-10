@@ -10,6 +10,7 @@ namespace OpenFrontier.IP.Multiplayer
 		public float Time;
 		public Vector3 Position;
 		public Quaternion Rotation;
+		public Vector3 Velocity;
 	}
 
 	/// <summary>
@@ -196,7 +197,12 @@ namespace OpenFrontier.IP.Multiplayer
 					Time = when,
 					Position = new Vector3(state.PositionX, state.PositionY, state.PositionZ),
 					Rotation = new Quaternion(
-						state.RotationX, state.RotationY, state.RotationZ, state.RotationW)
+						state.RotationX, state.RotationY, state.RotationZ, state.RotationW),
+
+					// Kept, and used below. The host has been sending this
+					// since the first version of the state message and
+					// nothing ever read it.
+					Velocity = new Vector3(state.VelocityX, state.VelocityY, state.VelocityZ)
 				});
 
 				tracks[state.Id] = track;
@@ -280,7 +286,12 @@ namespace OpenFrontier.IP.Multiplayer
 		{
 			UnitSample newest = track.Newest;
 
-			if (when >= newest.Time || track.Count == 1)
+			if (when >= newest.Time)
+			{
+				return Extrapolated(newest, when);
+			}
+
+			if (track.Count == 1)
 			{
 				return newest.Position;
 			}
@@ -312,13 +323,61 @@ namespace OpenFrontier.IP.Multiplayer
 		}
 
 		/// <summary>Facing the same way, the same moment.</summary>
+		/// <summary>
+		/// Carries a ship onward from its newest sample, briefly.
+		/// </summary>
+		/// <remarks>
+		/// Holding at the newest sample instead is what made a client's world
+		/// look like it stepped. It steps whenever the moment being drawn is
+		/// ahead of the newest message, and change detection guarantees it
+		/// often: the host only sends a ship that has moved, so a ship moving
+		/// slowly enough to stay under the threshold sends every few ticks
+		/// rather than every tick, and for a moment in every gap there is
+		/// nothing to interpolate towards.
+		///
+		/// So the gap is carried through on the velocity the host has been
+		/// sending all along and nothing was reading, which turns a step into
+		/// a continuation.
+		///
+		/// Bounded, because a ship that has just been told to stop would
+		/// otherwise coast on the last velocity it had for ever, and a
+		/// dropped connection would send every visible ship sailing away.
+		/// Past the bound it holds, which is wrong for a moment and visible,
+		/// rather than wrong indefinitely and invisible.
+		/// </remarks>
+		private static Vector3 Extrapolated(UnitSample newest, float when)
+		{
+			float ahead = when - newest.Time;
+
+			if (ahead <= 0f || ahead > MaxExtrapolationSeconds)
+			{
+				return newest.Position;
+			}
+
+			return newest.Position + (newest.Velocity * ahead);
+		}
+
+		/// <summary>How far past its last message a ship may be carried.</summary>
+		/// <remarks>
+		/// About a fifth of a second, which is two broadcast intervals: enough
+		/// to carry a ship through the gap that change detection leaves, and
+		/// short enough that a ship told to stop has visibly stopped rather
+		/// than sailed off.
+		/// </remarks>
+		private const float MaxExtrapolationSeconds = 0.2f;
+
 		private static Quaternion RotationAt(Track track, float when)
 		{
-			Quaternion newest = track.Newest.Rotation;
+			UnitSample newestSample = track.Newest;
 
-			if (when >= track.Newest.Time || track.Count == 1)
+			if (when >= newestSample.Time)
 			{
-				return newest;
+				return newestSample.Rotation;
+			}
+
+			if (track.Count == 1)
+			{
+				return newestSample.Rotation;
 			}
 
 			for (int i = track.Count - 1; i > 0; i--)
