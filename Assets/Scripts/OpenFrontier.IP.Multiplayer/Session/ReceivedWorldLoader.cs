@@ -53,12 +53,17 @@ namespace OpenFrontier.IP.Multiplayer
 
 			try
 			{
+				Debug.Log("Multiplayer: writing " + snapshot.Length
+					+ " received bytes to disk");
+
 				path = WriteTemporary(snapshot);
 
 				// Read back through the game's own header reader rather than
 				// trusting the bytes just written. It checks the version
 				// against what this build understands, and it is the same
 				// check every save in the load list has already passed.
+				Debug.Log("Multiplayer: reading the header back out of " + path);
+
 				EngineSaveGameHeader header = SaveGameUtilities.LoadHeader(path);
 
 				if (header == null)

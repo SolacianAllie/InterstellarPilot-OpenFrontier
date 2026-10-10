@@ -51,6 +51,9 @@ namespace OpenFrontier.IP.Multiplayer
 
 		private SnapshotReassembler reassembler;
 
+		/// <summary>Pieces seen for the transfer in progress, for the log.</summary>
+		private int chunkCount;
+
 		/// <summary>What this client believes about who owns what.</summary>
 		public ClientOwnershipView OwnershipView { get; } = new ClientOwnershipView();
 
@@ -116,7 +119,11 @@ namespace OpenFrontier.IP.Multiplayer
 				Connected?.Invoke();
 			};
 
-			client.Failed += reason => Failed?.Invoke(reason);
+			client.Failed += reason =>
+			{
+				Debug.LogWarning("Multiplayer: join failed - " + reason);
+				Failed?.Invoke(reason);
+			};
 
 			client.Disconnected += reason => Failed?.Invoke(reason);
 
@@ -129,6 +136,12 @@ namespace OpenFrontier.IP.Multiplayer
 			client.WorldDescriptorReceived += descriptor =>
 			{
 				HostWorld = descriptor;
+
+				Debug.Log("Multiplayer: host describes its world - scenario "
+					+ descriptor.ScenarioInfoId + (descriptor.HasJoiner
+						? ", our faction is " + descriptor.MyFactionId
+							+ " and our shuttle is " + descriptor.MyShipId
+						: ", no faction made for us"));
 
 				if (!descriptor.HasScenario)
 				{
@@ -279,16 +292,22 @@ namespace OpenFrontier.IP.Multiplayer
 			if (completed == null)
 			{
 				// A piece, not the world. Nothing to do, which is the normal
-				// case for most of the arrival.
+				// case for most of the arrival - but silence here is exactly
+				// what a stalled transfer looks like, so the count is kept.
+				chunkCount++;
 				return;
 			}
 
+			Debug.Log("Multiplayer: the host's world arrived after " + chunkCount
+				+ " pieces, " + completed.Length + " bytes");
+
+			chunkCount = 0;
 			HasWorld = true;
 
 			ReceivedWorldLoader.Load(completed,
 				HostWorld ?? default(WorldDescriptorMessage), reason =>
 			{
-				Debug.Log("Multiplayer: " + reason);
+				Debug.Log("Multiplayer: join finished - " + reason);
 				WorldReady?.Invoke(reason);
 			});
 		}
