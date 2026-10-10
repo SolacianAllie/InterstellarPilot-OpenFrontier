@@ -251,22 +251,44 @@ namespace OpenFrontier.IP.Multiplayer
 				// alone - in a save, in a log, in a debugger, without a lookup.
 				// Only the host allocates, which is what keeps the two copies
 				// agreeing without either of them negotiating.
-				int id = PlayerIdScheme.NextUnitId();
-
-				if (id < 0)
-				{
-					error = "There is no player ship id left.";
-					return null;
-				}
-
 				// Through the engine, not SetUniqueId. The exporter reads the
 				// field so the joiner is told the right number, but everything
 				// that looks a unit up uses the engine's map, and a unit
 				// renumbered without being re-registered is a unit the host
 				// cannot find - which is what stopped a player's shuttle moving.
-				if (!EngineASX.Instance.ReassignUnitId(unit, id))
+				//
+				// Tried more than once, because the number the scheme offers
+				// can already be in this world. It offers from a reserved set
+				// that is seeded from the world once, and a save made while
+				// somebody was playing contains the shuttle that was made for
+				// them - so the first number in the band is often taken, and a
+				// single refusal meant no shuttle at all and a joiner told
+				// they had joined.
+				int id = -1;
+				string refused = null;
+
+				for (int attempt = 0; attempt < 32; attempt++)
 				{
-					error = "Ship number " + id + " is already in this world.";
+					int candidate = PlayerIdScheme.NextUnitId();
+
+					if (candidate < 0)
+					{
+						break;
+					}
+
+					if (EngineASX.Instance.ReassignUnitId(unit, candidate))
+					{
+						id = candidate;
+						break;
+					}
+
+					refused = "Ship number " + candidate
+						+ " is already in this world.";
+				}
+
+				if (id < 0)
+				{
+					error = refused ?? "There is no player ship id left.";
 					return null;
 				}
 

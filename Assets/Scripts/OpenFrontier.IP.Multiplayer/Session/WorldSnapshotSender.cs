@@ -310,10 +310,27 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				{
 					Debug.LogError("Multiplayer: no faction could be made for " + player.Identity + " - " + makeError);
 				}
+				else if (shuttle == null)
+				{
+					// A faction with no ship is not a joiner. The factory says
+					// why and this drops it, rather than sending a descriptor
+					// naming a ship that does not exist - which is what the
+					// joiner then adopts, and why they ended up flying some
+					// other shuttle they happened to find.
+					//
+					// Said loudly because the alternative is this exact
+					// silence again: a joiner told they had joined, with a
+					// faction and a ship that were never theirs.
+					Debug.LogError("Multiplayer: made a faction for "
+						+ player.Identity + " but no ship - " + makeError
+						+ " They will not be sent the world.");
+
+					return;
+				}
 				else
 				{
 					factionId = made.UniqueId;
-					shipId = shuttle == null ? -1 : shuttle.UniqueId;
+					shipId = shuttle.UniqueId;
 					madeFor[player.Identity] = new int[] { factionId, shipId };
 
 					// The world just changed, so what was exported last time is
