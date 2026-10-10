@@ -930,7 +930,14 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			Set(SessionRouterLabel, DescribePortMapping(MultiplayerHostService.PortMapping));
 
-			Set(SessionProblemLabel, MultiplayerHostService.LastProblem);
+			// The router's own explanation is the most useful sentence on this
+			// screen when a join fails, and there is nowhere else to put it. It
+			// only takes the line when there is nothing more important to say,
+			// so a real networking problem is never buried under it.
+			UpnpResult mapping = MultiplayerHostService.PortMapping;
+			Set(SessionProblemLabel, string.IsNullOrEmpty(MultiplayerHostService.LastProblem)
+				? mapping.Detail
+				: MultiplayerHostService.LastProblem);
 		}
 
 		/// <summary>Sets a label, tolerating it not being there.</summary>
@@ -961,7 +968,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			switch (mapping.Status)
 			{
 				case UpnpStatus.Asking:
-					return "Asking the router...";
+					return "Asking...";
 
 				case UpnpStatus.Mapped:
 					return "Forwarded: " + mapping.Port;
@@ -970,10 +977,23 @@ namespace OpenFrontier.IP.Multiplayer.UI
 					return "Not hosting";
 
 				case UpnpStatus.NotNeeded:
-					return "No route out";
+					return "No way out";
 
 				case UpnpStatus.Removed:
 					return "Closed";
+
+				// The failures are named rather than collapsed into "No". A
+				// router that is simply not offering UPnP is a different
+				// situation from one that offered and then refused, and only
+				// one of them is worth a player changing something.
+				case UpnpStatus.NoGateway:
+					return "None found";
+
+				case UpnpStatus.Refused:
+					return "Router said no";
+
+				case UpnpStatus.Failed:
+					return "Ask failed";
 
 				default:
 					return "No";

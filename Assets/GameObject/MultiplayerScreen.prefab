@@ -6709,6 +6709,7 @@ MonoBehaviour:
   SessionIdentityLabel: {fileID: 114291547872775986}
   SessionProblemLabel: {fileID: 114232415838589296}
   SessionRouterLabel: {fileID: 114415925016355036}
+  MultipleItemsSelectedRoot: {fileID: 224739268104783211}
   TitleLabel: {fileID: 0}
 --- !u!1 &1709867586078768
 GameObject:
