@@ -54,6 +54,24 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// <summary>Whether the current session's port is forwarded.</summary>
 		public static bool PortIsForwarded => PortMapping.Status == UpnpStatus.Mapped;
 
+		/// <summary>
+		/// The id of the scenario this session is playing, or -1.
+		/// </summary>
+		/// <remarks>
+		/// An id rather than the scenario itself, because the joining copy has
+		/// the same scenarios installed and can look it up itself - the same
+		/// thing LoadGameScreen already does when it opens a save. Sending the
+		/// whole object would mean serialising a class that is meant to come
+		/// from the game's own content, and would let a host describe a
+		/// scenario its peer does not have.
+		///
+		/// Captured when the session starts rather than read from a save,
+		/// because most of the ways to be in a world - a sandbox, a skirmish,
+		/// anything started and not yet saved - have no save to read it from
+		/// yet, and that is exactly when somebody might want to join them.
+		/// </remarks>
+		public static int ScenarioId { get; private set; } = -1;
+
 		private float nextAttemptTime;
 
 		/// <summary>Seconds between attempts while hosting is wanted but failing.</summary>
@@ -262,6 +280,11 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			Session = session;
 			LastProblem = null;
 
+			// Re-read every time hosting starts, not cached once: a host can
+			// stop, load a different scenario and start again, and a stale id
+			// would send a joiner to a scenario nobody is playing.
+			ScenarioId = CaptureScenarioId();
+
 			// Raised rather than left for listeners to poll for. Hosting starts
 			// from this component's Update, and a listener waiting on its own
 			// update depends on frame order and on its screen still being the
@@ -347,6 +370,21 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// to be handed out on. The result is reported rather than assumed:
 		/// a player told they are reachable who is not has been told a lie.
 		/// </remarks>
+		/// <summary>
+		/// The scenario currently being played, if there is one.
+		/// </summary>
+		/// <remarks>
+		/// Null-safe throughout: this runs when hosting starts, which can be
+		/// while still in the main menu, before any world exists at all.
+		/// </remarks>
+		private static int CaptureScenarioId()
+		{
+		OpenFrontier.IP.Engine.WorldBase world = OpenFrontier.IP.Engine.EngineASX.Instance?.World;
+		OpenFrontier.IP.Engine.ScenarioInfo scenario = world?.ScenarioInfo;
+
+		return scenario == null ? -1 : scenario.UniqueId;
+		}
+
 		private static void AskTheRouterToForward()
 		{
 			HostSession session = Session;
