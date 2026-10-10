@@ -107,6 +107,12 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public const int UnitBytes = 4 + (3 * 4) + (4 * 4) + (3 * 4) + 4 + 4;
 
+		/// <summary>
+		/// Bytes before the first unit: an int count, a float time, an int
+		/// sector.
+		/// </summary>
+		public const int HeaderBytes = 8 + 4;
+
 		/// <summary>Units in this message.</summary>
 		public UnitState[] Units;
 
@@ -127,17 +133,40 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public float Time;
 
+		/// <summary>
+		/// The sector this batch is about - the one the recipient's own ship
+		/// is in.
+		/// </summary>
+		/// <remarks>
+		/// Sent because the host already knows it and was using it only to
+		/// choose which ships to include. Without saying so, a client stays in
+		/// whichever sector it arrived in and is sent the right ships for a
+		/// place it is not: the host filters correctly and the result is
+		/// invisibly wrong, which is the worst shape of bug this project has.
+		///
+		/// Part of the batch rather than its own message because it changes
+		/// rarely and the batch already goes out several times a second, so a
+		/// message for it would be almost entirely silence.
+		///
+		/// Zero means the host has not said, which is what a build from
+		/// before this field sends. The client leaves the sector alone rather
+		/// than guessing one.
+		/// </remarks>
+		public int SectorId;
+
 		public int Count => Units?.Length ?? 0;
 
 		public byte[] ToBytes()
 		{
 			int count = Math.Min(Count, MaxUnits);
 
-			using (MemoryStream stream = new MemoryStream(8 + (count * UnitBytes)))
+			using (MemoryStream stream = new MemoryStream(
+				HeaderBytes + (count * UnitBytes)))
 			using (BinaryWriter writer = new BinaryWriter(stream))
 			{
 				writer.Write(count);
 				writer.Write(Time);
+				writer.Write(SectorId);
 
 				for (int i = 0; i < count; i++)
 				{
@@ -181,6 +210,7 @@ namespace OpenFrontier.IP.Multiplayer
 				{
 					int count = reader.ReadInt32();
 					float time = reader.ReadSingle();
+					int sectorId = reader.ReadInt32();
 
 					// Bounded before allocating, from a number that arrived
 					// over a socket. A peer claiming a million units gets a
@@ -191,10 +221,11 @@ namespace OpenFrontier.IP.Multiplayer
 						return false;
 					}
 
-					if (stream.Length < 8L + ((long)count * UnitBytes))
+					if (stream.Length < HeaderBytes + ((long)count * UnitBytes))
 					{
 						error = "Payload holds " + stream.Length
-							+ " bytes, short of the " + (8L + ((long)count * UnitBytes))
+							+ " bytes, short of the "
+							+ (HeaderBytes + ((long)count * UnitBytes))
 							+ " that " + count + " units need.";
 						return false;
 					}
@@ -221,7 +252,12 @@ namespace OpenFrontier.IP.Multiplayer
 						};
 					}
 
-					message = new UnitStateMessage { Units = units, Time = time };
+					message = new UnitStateMessage
+					{
+						Units = units,
+						Time = time,
+						SectorId = sectorId
+					};
 					return true;
 				}
 			}

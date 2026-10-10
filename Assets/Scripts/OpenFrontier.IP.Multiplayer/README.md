@@ -136,12 +136,18 @@ rather than when there is time left.
 - **A player owning more than one ship** is answered by lowest-id-wins in
   `FactionStatePusher`. A client flies one ship at a time; the rest are
   scenery to that message.
-- **Sector changes are not synchronised.** Each client is sent the ships in
-  the sector its own ship is in, but *which* sector a player is in is never
-  sent — a client arrives in the host's active sector and stays there. Sector
-  claims are wired up for a player who *is* somewhere else (the host will
-  simulate it at full rate and stream it), but nothing moves a player between
-  sectors yet.
+- **Sector travel works, in one direction of trust.** A client ships the
+  sector it is in up with its own ship state, and the host moves its copy of
+  that player's ships there — only ever ships the ownership registry already
+  says the player has, so a client cannot move anything it does not own. The
+  host also sends which sector each batch is about; the client does *not* move
+  itself from that, because it has already crossed on its own ship's authority
+  and yanking its own camera because it was a second behind would stutter on
+  every wormhole. Instead it says so when the two disagree for more than a few
+  seconds, which is a host that has not caught up and has no other symptom.
+  The client crossing sectors is now real; a client that is *docked* into
+  another player's ship still does not pull that ship along, because that ship
+  belongs to the host.
 - **A watched sector costs the host a full sector's worth of simulation per
   frame**, on top of the one already being simulated. That is the real price
   of showing somebody a distant sector, paid on the host's frame time, and

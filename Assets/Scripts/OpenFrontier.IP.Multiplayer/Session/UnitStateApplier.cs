@@ -209,6 +209,60 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 		}
 
+		/// <summary>
+		/// Says, when it has settled, whether this copy and the host agree
+		/// about which sector it is in.
+		/// </summary>
+		/// <remarks>
+		/// A few seconds of disagreement in the middle of a wormhole crossing
+		/// is expected and not said. A disagreement that has not resolved
+		/// after that is the host streaming a neighbourhood for somewhere else,
+		/// and the symptom of that is a player watching an empty sky in a
+		/// sector that is full - which reads as a world with nothing in it,
+		/// and has no other explanation on offer.
+		/// </remarks>
+		private void NoteSectorAgreement(UnitStateMessage message, EngineASX engine)
+		{
+			if (message.SectorId <= 0)
+			{
+				return;
+			}
+
+			Sector active = engine.ActiveSector;
+
+			if (active != null && active.UniqueId == message.SectorId)
+			{
+				disagreeingSince = -1f;
+
+				return;
+			}
+
+			if (disagreeingSince < 0f)
+			{
+				disagreeingSince = Time.unscaledTime;
+
+				return;
+			}
+
+			if (Time.unscaledTime - disagreeingSince < SectorAgreementGraceSeconds)
+			{
+				return;
+			}
+
+			disagreeingSince = -1f;
+
+			Debug.LogWarning("Multiplayer: the host has been sending sector "
+				+ message.SectorId + " for " + SectorAgreementGraceSeconds
+				+ "s and this copy is in "
+				+ (active == null ? "no sector at all" : "'" + active.Name + "' ("
+					+ active.UniqueId + ")")
+				+ ". Their idea of where this player is has not caught up.");
+		}
+
+		private static float SectorAgreementGraceSeconds = 8f;
+
+		private float disagreeingSince = -1f;
+
 		/// <summary>Applies one batch, ignoring any unit this copy does not have.</summary>
 		public void Apply(UnitStateMessage message)
 		{
@@ -219,18 +273,34 @@ namespace OpenFrontier.IP.Multiplayer
 
 			receivedTotal += message.Count;
 
-			// Taken before the walk below, so that a unit this copy does not
-			// have is dropped from the samples as well as counted. Keeping
-			// samples for a ship that does not exist would grow without
-			// anything ever reading them.
-			UnitInterpolator.Record(message);
-
 			EngineASX engine = EngineASX.Instance;
 
 			if (engine == null)
 			{
 				return;
 			}
+
+			// Whether this copy is looking at the sector the host thinks it
+			// is in.
+			//
+			// It does not move itself from this. It has already crossed, on
+			// its own ship's own authority, and the host's copy catches up a
+			// moment later from the upload. Checking here rather than acting
+			// is deliberate: the two can be out of step for a second or two
+			// in the middle of a jump, and a client that yanked its own
+			// camera around because it was a second behind would be a
+			// visible stutter on every wormhole.
+			//
+			// But a permanent disagreement is a real fault - the host sending
+			// a neighbourhood for a sector this copy left minutes ago - and
+			// nothing else says so.
+			NoteSectorAgreement(message, engine);
+
+			// Taken before the walk below, so that a unit this copy does not
+			// have is dropped from the samples as well as counted. Keeping
+			// samples for a ship that does not exist would grow without
+			// anything ever reading them.
+			UnitInterpolator.Record(message);
 
 			UnitState[] units = message.Units;
 

@@ -54,6 +54,11 @@ namespace OpenFrontier.IP.Multiplayer
 			int notOurs = 0;
 			int unknown = 0;
 
+			// Done before the walk below so that a ship moved into a new
+			// sector is written at its new local position rather than at one
+			// that belonged to the sector it just left.
+			int moved = MoveToSector(engine, session, claimantToken, states);
+
 			for (int i = 0; i < units.Length; i++)
 			{
 				UnitState state = units[i];
@@ -76,13 +81,92 @@ namespace OpenFrontier.IP.Multiplayer
 				applied++;
 			}
 
-			Count(applied, notOurs, unknown, claimantToken);
+			Count(applied, notOurs, unknown, claimantToken, moved);
 
 			return applied;
 		}
 
+		/// <summary>
+		/// Puts the player's ships in the sector they said they were in.
+		/// </summary>
+		/// <param name="session">Decides what this player owns.</param>
+		/// <param name="claimantToken">Who is claiming these ships.</param>
+		/// <param name="states">The upload, carrying the sector on its batch.</param>
+		/// <remarks>
+		/// Only ever for ships the ownership registry already says this
+		/// player has, which is the same safety property as the position
+		/// above: believed where the host decided, never where the message
+		/// says. A client cannot move anything it does not already own.
+		///
+		/// Zero means the host was not told, which is what a build from
+		/// before this field sends, and everything is left where it is.
+		///
+		/// This is the whole of sector travel. Without it the host's copy of
+		/// a player's ship stays in the sector it left, so the host goes on
+		/// working out which ships to send that player from a place they left
+		/// minutes ago - correct arithmetic on a world that stopped being
+		/// true some time ago, which is the hardest kind of wrong to notice.
+		/// </remarks>
+		private static int MoveToSector(
+			EngineASX engine,
+			HostSession session,
+			string claimantToken,
+			UnitStateMessage states)
+		{
+			int wanted = states.SectorId;
+
+			if (wanted <= 0)
+			{
+				return 0;
+			}
+
+			Sector target = engine.GetSectorById(wanted);
+
+			if (target == null)
+			{
+				// Said, because it is a disagreement between two copies of the
+				// world about which sectors exist, and nothing else reports it.
+				Debug.LogWarning("Multiplayer: a player says their ship is in sector "
+					+ wanted + ", which this world does not have. Left where it is.");
+
+				return 0;
+			}
+
+			UnitState[] units = states.Units;
+			int moved = 0;
+
+			for (int i = 0; i < units.Length; i++)
+			{
+				UnitState state = units[i];
+
+				if (!session.Ownership.IsOwnedBy(state.Id, claimantToken))
+				{
+					continue;
+				}
+
+				Unit ship = engine.GetUnitByid(state.Id);
+
+				if (ship == null || ship.IsDestroyed || ship.Sector == target)
+				{
+					continue;
+				}
+
+				ship.Sector = target;
+				moved++;
+			}
+
+			if (moved > 0)
+			{
+				Debug.Log("Multiplayer: moved " + moved + " ship(s) into sector "
+					+ wanted + ", as the player flying them said");
+			}
+
+			return moved;
+		}
+
 		private static int reportedApplied = -1;
 		private static int reportedNotOurs;
+		private static int reportedMoved = -1;
 		private static float nextReportTime;
 
 		/// <summary>
@@ -100,7 +184,7 @@ namespace OpenFrontier.IP.Multiplayer
 		/// owned, no such ship here, or no upload arriving at all - and only
 		/// one of them is about ownership.
 		/// </remarks>
-		private static void Count(int applied, int notOurs, int unknown, string token)
+		private static void Count(int applied, int notOurs, int unknown, string token, int moved)
 		{
 			if (Time.unscaledTime < nextReportTime)
 			{
@@ -111,13 +195,18 @@ namespace OpenFrontier.IP.Multiplayer
 
 			// Only when it changed. The same wrong number every two seconds
 			// for the length of a session is how a log stops being read.
-			if (applied == reportedApplied && notOurs == reportedNotOurs)
+			// Sector moves are part of the comparison because they are the
+			// rare, interesting case - a ship crossing a wormhole happens
+			// twice in a session and the surrounding noise is every frame.
+			if (applied == reportedApplied && notOurs == reportedNotOurs
+				&& moved == reportedMoved)
 			{
 				return;
 			}
 
 			reportedApplied = applied;
 			reportedNotOurs = notOurs;
+			reportedMoved = moved;
 
 			string what = applied > 0
 				? "applied"
@@ -128,7 +217,7 @@ namespace OpenFrontier.IP.Multiplayer
 			Debug.Log("Multiplayer: ship upload from "
 				+ (string.IsNullOrEmpty(token) ? "a player" : token) + ": "
 				+ applied + " applied, " + notOurs + " not this player's, "
-				+ unknown + " not in this world - " + what);
+				+ unknown + " not in this world, " + moved + " moved sector - " + what);
 		}
 
 		/// <summary>

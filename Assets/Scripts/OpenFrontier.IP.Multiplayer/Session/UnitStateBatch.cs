@@ -28,13 +28,20 @@ namespace OpenFrontier.IP.Multiplayer
 		/// sends a time of zero to every client that then draws its ships
 		/// from a clock it believes is stopped.
 		/// </param>
+		/// <param name="sectorId">
+		/// The sector these states are in. Passed in and set in the
+		/// constructor for the same reason as the time: a List hands back a
+		/// copy from its indexer, so writing either field onto a packed
+		/// message afterwards writes into a temporary and throws it away.
+		/// </param>
 		/// <returns>
 		/// One message per <see cref="UnitStateMessage.MaxUnits"/> states,
 		/// last one short. Empty input gives an empty list rather than one
 		/// empty message - "nothing moved" and "I moved nothing" are the same
 		/// thing to the client, and sending the second wastes a write.
 		/// </returns>
-		public static List<UnitStateMessage> Pack(IReadOnlyList<UnitState> states, float time = 0f)
+		public static List<UnitStateMessage> Pack(
+			IReadOnlyList<UnitState> states, float time = 0f, int sectorId = 0)
 		{
 			List<UnitStateMessage> messages = new List<UnitStateMessage>();
 
@@ -53,7 +60,12 @@ namespace OpenFrontier.IP.Multiplayer
 					batch[i] = states[offset + i];
 				}
 
-				messages.Add(new UnitStateMessage { Units = batch, Time = time });
+				messages.Add(new UnitStateMessage
+				{
+					Units = batch,
+					Time = time,
+					SectorId = sectorId
+				});
 			}
 
 			return messages;

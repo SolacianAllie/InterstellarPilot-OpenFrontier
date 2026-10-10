@@ -164,7 +164,21 @@ namespace OpenFrontier.IP.Multiplayer
 			batch.Clear();
 			batch.Add(Sample(local));
 
-			service.SendUnitStates(UnitStateBatch.Pack(batch));
+			// The sector goes up with the ship.
+			//
+			// This copy simulates this ship, so it is the only machine that
+			// knows where it is - including when it has crossed into another
+			// sector, which is the one change the host cannot see any other
+			// way. Its copy of this ship stays in the old sector forever,
+			// which means the host keeps working out which ships to send this
+			// player from a place the player left some minutes ago.
+			//
+			// Sent as part of the state rather than as its own message
+			// because it changes rarely and this already goes out on a timer:
+			// a message for it would be almost entirely silence.
+			service.SendUnitStates(UnitStateBatch.Pack(
+				batch, Time.unscaledTime,
+				local.Sector == null ? 0 : local.Sector.UniqueId));
 			UploadsSent++;
 		}
 

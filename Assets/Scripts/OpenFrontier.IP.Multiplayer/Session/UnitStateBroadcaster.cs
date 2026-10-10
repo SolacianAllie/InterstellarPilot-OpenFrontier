@@ -479,7 +479,13 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
-			List<UnitStateMessage> messages = UnitStateBatch.Pack(batch, Time.unscaledTime);
+			// The sector goes with it. The host has known which sector this
+			// player is in all along - it used that fact to choose which ships
+			// to send - and never said so, so a client that travelled stayed
+			// in the sector it arrived in while being sent the right ships for
+			// a place it was not.
+			List<UnitStateMessage> messages = UnitStateBatch.Pack(
+				batch, Time.unscaledTime, sector.UniqueId);
 
 			for (int m = 0; m < messages.Count; m++)
 			{
