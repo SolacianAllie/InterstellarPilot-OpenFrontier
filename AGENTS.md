@@ -3,6 +3,37 @@
 Only non-obvious traps live here — things you cannot learn from the project
 structure. Add new ones as they are found.
 
+## The editor's focus-in segfault is Unity's, not ours
+
+`signo:11 code:1`, 33 frames, all native, zero managed. Identical twice:
+
+```
+OnFocusIn → NativeWindowManager::UpdateActiveWindow
+          → ContainerWindow::DoActivateAndBringToFront
+          → GtkSignalWaiter::WaitForWindowActivation
+          → PumpGtkMainloop → gtk_main_iteration_do
+          → g_main_context_iteration → gdk_display_get_event   ← SIGSEGV
+```
+
+A use-after-free of the `GdkDisplay`, inside Unity's Linux window manager,
+pumping GTK while bringing a window to the front. The frame *offsets* are the
+same in every crash; only the mmap base moves (ASLR). Nothing in
+`Assets/Scripts` can produce or prevent this stack.
+
+It fires on **focus-in while an asset import is in flight** — the log always
+shows `ImportOutOfDateAssets` right above it. Confirm with
+`grep -n "Caught fatal signal" Logs/Editor.log` and compare frames to
+`Logs/Editor-prev.log`. If a managed frame ever appears, it is a different
+crash and worth chasing.
+
+What ours contributes is the *state* it lands in. It was caught twice while
+the editor sat at the main menu holding a live session, still applying unit
+state in `LateUpdate`, still uploading. That was the `EndSession` bug (fixed
+in `0d1f29cb`): the socket outlived the session. So when triaging a crash
+here, first check `grep -nE "session ended|Moving to main menu|disconnect"`
+and make sure the disconnect actually followed — a session that ended without
+one is the thing to fix, not the editor.
+
 ## Offline compile verification (`/tmp/opencode/harness`)
 
 C# changes are verified outside the editor with a generated .NET harness:
