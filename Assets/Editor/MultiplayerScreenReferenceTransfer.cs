@@ -822,6 +822,16 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				// row just moves the offset without moving the row.
 				Stretch(contents.transform.FindDeep("CheckboxEnableMultiplayer") as RectTransform);
 
+				// The horizontal layout group added below controls its children's
+				// widths, and a child with no LayoutElement has no preferred width
+				// to hand it - which squashed the checkbox to a sliver. Both
+				// children are given an explicit size rather than left to be
+				// inferred, and a little space is put between the rows so the
+				// title, code and hint are not stacked line-on-line.
+				SetLayoutSize(contents, "CheckboxEnableMultiplayer", "Background", 30f, 30f);
+				SetLayoutSize(contents, "CheckboxEnableMultiplayer", "Text", 190f, -1f);
+				SetSpacing(contents, "VerticalLayout", 8f);
+
 				// The character counter becomes the "where do I turn this off"
 				// hint. It has to be lifted out of the input field first: it is
 				// a CHILD of LegacyInputField, so switching the field back on
@@ -953,6 +963,65 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			rect.anchorMax = new Vector2(1f, rect.anchorMax.y);
 			rect.pivot = new Vector2(0.5f, rect.pivot.y);
 			rect.sizeDelta = new Vector2(0f, rect.sizeDelta.y);
+		}
+
+		/// <summary>
+		/// Gives a row's child an explicit layout size, adding the LayoutElement
+		/// if it does not already have one.
+		/// </summary>
+		private static void SetLayoutSize(
+			GameObject root, string rowName, string childName, float width, float height)
+		{
+			Transform row = root.transform.FindDeep(rowName);
+
+			if (row == null)
+			{
+				return;
+			}
+
+			Transform child = row.FindDeep(childName);
+
+			if (child == null)
+			{
+				return;
+			}
+
+			LayoutElement element = child.GetComponent<LayoutElement>();
+
+			if (element == null)
+			{
+				element = child.gameObject.AddComponent<LayoutElement>();
+			}
+
+			element.minWidth = width;
+			element.preferredWidth = width;
+
+			if (height >= 0f)
+			{
+				element.minHeight = height;
+				element.preferredHeight = height;
+			}
+
+			element.flexibleWidth = 0f;
+			element.flexibleHeight = 0f;
+		}
+
+		/// <summary>Sets the gap between a layout's rows.</summary>
+		private static void SetSpacing(GameObject root, string layoutName, float spacing)
+		{
+			Transform layout = root.transform.FindDeep(layoutName);
+
+			if (layout == null)
+			{
+				return;
+			}
+
+			VerticalLayoutGroup vertical = layout.GetComponent<VerticalLayoutGroup>();
+
+			if (vertical != null)
+			{
+				vertical.spacing = spacing;
+			}
 		}
 
 		private static Button FindButton(GameObject root, string objectName)

@@ -282,7 +282,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// claim leaves the switch stranded a long way below the line telling
 			// the player to use it. Handing the slack back while the switch is
 			// up pulls the two together.
-			SetFlexibleHeight(!hosting);
+			SetFlexibleHeight(hosting);
 
 			// With the switch gone there is nothing on screen saying where to
 			// turn multiplayer off, so the hint takes its place. Without this the
@@ -301,6 +301,11 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// Drives the label's LayoutElement rather than anything on the transform,
 		/// because the vertical layout owns this row's position - setting
 		/// anchoredPosition here would be overwritten on the next layout pass.
+		///
+		/// The argument is "is flexible", not "is hosting". It was the other way
+		/// round for a while, which took the slack away from the code at exactly
+		/// the moment it had something to show: the whole block packed to the top
+		/// of the dialog with a large gap beneath the buttons.
 		/// </remarks>
 		private void SetFlexibleHeight(bool flexible)
 		{
