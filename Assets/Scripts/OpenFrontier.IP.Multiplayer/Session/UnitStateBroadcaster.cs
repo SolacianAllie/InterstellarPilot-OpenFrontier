@@ -6,18 +6,40 @@ using UnityEngine;
 namespace OpenFrontier.IP.Multiplayer
 {
 	/// <summary>
-	/// Tells the session's clients where everything is.
+	/// Tells each client where the ships it can see are.
 	///
-	/// Runs on the host only. It samples the ships in the active sector ten
-	/// times a second and sends each client the same batch, because the host
-	/// is the only copy of the world that is simulated rather than told.
+	/// Runs on the host only. It samples ships and sends each client the
+	/// batch, because the host is the only copy of the world that is
+	/// simulated rather than told.
 	///
-	/// Ten a second is a deliberate choice rather than a comfortable one. A
-	/// client that gets a position and a velocity every 100ms can draw the
-	/// gap between them smoothly, so it never has to arrive at 60Hz to look
-	/// smooth - and it means a session of four people costs a few kilobytes a
-	/// second rather than a few hundred. Slower than the eye and cheaper than
-	/// the alternative.
+	/// Two things decide what goes out, and both of them are the engine's
+	/// decisions rather than ours:
+	///
+	/// **Whose sector.** Each client is sent the ships in the sector its own
+	/// ship is in. This is what fixed a bug the obvious approach created. It
+	/// used to sample the host's active sector for everybody, so a client two
+	/// jumps away was sent nothing at all; the next attempt fixed that by
+	/// sending the whole galaxy to everybody, which worked and cost most of
+	/// the bandwidth doing it. Asking per recipient is the version that was
+	/// wanted the first time - the client that was being starved now gets
+	/// their own sector, and everyone else stops paying for the ones they
+	/// cannot see.
+	///
+	/// **Whether it moved.** A ship is only sent when its position or facing
+	/// has actually changed since that player was last told. This is what
+	/// tiers the traffic, and it tiers it for free: the engine already ticks
+	/// ships in unvisited sectors once every
+	/// <c>PreferredTimeBetweenUnitUpdates</c> seconds rather than every frame,
+	/// so a ship nobody is near does not change and is not sent, while a ship
+	/// somebody is flying changes every frame and is sent every frame. No
+	/// schedule is invented here. The host's own simulation decides who is
+	/// fast.
+	///
+	/// Ten a second is the ceiling, not the plan. A client that gets a
+	/// position and a velocity every 100ms can draw the gap between them
+	/// smoothly, so it never has to arrive at 60Hz to look smooth - and it
+	/// means a session of four people costs a few kilobytes a second rather
+	/// than a few hundred.
 	/// </summary>
 	public sealed class UnitStateBroadcaster : MonoBehaviour
 	{
@@ -29,15 +51,61 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public const float UpdatesPerSecond = 10f;
 
-		private static readonly List<UnitState> scratch = new List<UnitState>(UnitStateMessage.MaxUnits * 4);
-		private static readonly List<UnitState> personal = new List<UnitState>(UnitStateMessage.MaxUnits * 4);
-		private static readonly List<int> sampledIds = new List<int>(UnitStateMessage.MaxUnits * 4);
+		/// <summary>
+		/// How far a ship may drift before it counts as having moved.
+		/// </summary>
+		/// <remarks>
+		/// Not zero. Floating point noise in a transform that is not being
+		/// written to is not motion, and a comparison at zero would put every
+		/// stationary ship back on the wire forever. A centimetre is well
+		/// below anything visible at ship scale and comfortably above the
+		/// noise floor.
+		/// </remarks>
+		private const float MovedEpsilon = 0.01f;
+
+		/// <summary>
+		/// How far a ship may turn before it counts as having turned.
+		/// </summary>
+		/// <remarks>
+		/// Half a degree. Generous enough that a ship sitting in a rotating
+		/// fleet formation does not count as moving, tight enough that a ship
+		/// actually turning is not mistaken for one that is not. Quantities
+		/// differ because a rotation is an angle in degrees and a position
+		/// is metres, and one epsilon for both would be wrong for whichever
+		/// it was not sized for.
+		/// </remarks>
+		private const float FacingEpsilon = 0.5f;
+
+		/// <summary>What one player was last told about one ship.</summary>
+		private struct Remembered
+		{
+			public Vector3 Position;
+			public Quaternion Rotation;
+			public bool Known;
+		}
+
+		private static readonly Dictionary<string, Dictionary<int, Remembered>> remembered =
+			new Dictionary<string, Dictionary<int, Remembered>>();
+
+		private static readonly List<UnitState> batch = new List<UnitState>(UnitStateMessage.MaxUnits * 4);
+		private static readonly HashSet<int> seen = new HashSet<int>();
 
 		private float nextUpdateTime;
+
+		/// <summary>The session this broadcaster is currently listening to.</summary>
+		private HostSession listening;
 
 		private void Update()
 		{
 			HostSession session = MultiplayerHostService.Session;
+
+			// Listens for players leaving rather than being told to forget
+			// them. HostSession is deliberately free of any reference to the
+			// engine or to this class - it is the part of the protocol that
+			// can be reasoned about without a game - and reaching into it
+			// from here to drop a dictionary entry would break that for the
+			// sake of one line. It already raises the event; this listens.
+			Listen(session);
 
 			if (session == null || session.Players.Count == 0)
 			{
@@ -51,16 +119,60 @@ namespace OpenFrontier.IP.Multiplayer
 
 			nextUpdateTime = Time.unscaledTime + (1f / UpdatesPerSecond);
 
+			// Before sampling, and every update rather than on an event,
+			// because the engine's tick rate for a sector is the thing that
+			// makes a distant player see anything at all. Saying it after
+			// sampling would mean broadcasting a sector that is still being
+			// simulated at a third of a second per ship.
+			WatchedSectorWatcher.Instance.Refresh();
+
 			Broadcast(session);
 		}
 
-		private static float nextReportTime;
+		private void Listen(HostSession session)
+		{
+			if (session == listening)
+			{
+				return;
+			}
 
-		private static int sectorCount;
+			if (listening != null)
+			{
+				listening.PlayerLeft -= OnPlayerLeft;
+			}
+
+			listening = session;
+
+			if (listening != null)
+			{
+				listening.PlayerLeft += OnPlayerLeft;
+			}
+		}
+
+		private void OnDestroy()
+		{
+			if (listening != null)
+			{
+				listening.PlayerLeft -= OnPlayerLeft;
+				listening = null;
+			}
+		}
+
+		/// <summary>
+		/// Drops what was remembered about a player who has gone.
+		/// </summary>
+		/// <remarks>
+		/// Without this the record - one entry per ship in their sector -
+		/// would outlive them, so a session people join and leave would grow
+		/// a copy of every ship each of them was ever shown.
+		/// </remarks>
+		private static void OnPlayerLeft(RemotePlayer player, string reason)
+		{
+			Forget(player == null ? null : player.Identity);
+		}
 
 		/// <summary>Players whose sends have already failed once.</summary>
-		private static readonly System.Collections.Generic.HashSet<string> failedPlayers =
-			new System.Collections.Generic.HashSet<string>();
+		private static readonly HashSet<string> failedPlayers = new HashSet<string>();
 
 		private static string Short(RemotePlayer player)
 		{
@@ -68,18 +180,31 @@ namespace OpenFrontier.IP.Multiplayer
 			return string.IsNullOrEmpty(identity) ? "a player" : identity;
 		}
 
+		/// <summary>Forgets what was sent to a player who has left.</summary>
+		public static void Forget(string token)
+		{
+			if (!string.IsNullOrEmpty(token))
+			{
+				remembered.Remove(token);
+			}
+		}
+
+		private static float nextReportTime;
+		private static int lastSampled;
+		private static int lastSent;
+		private static int lastPlayers;
+
 		/// <summary>
 		/// What is going out, every couple of seconds.
 		/// </summary>
 		/// <remarks>
-		/// Said unconditionally, and including when it is giving up and why.
-		/// A sender that is silent and a sender that is sending nothing look
-		/// identical from outside, and that ambiguity is what this exists to
-		/// remove. Reported before the bail-out below for the same reason:
-		/// the first version of this was placed after it, and so stayed quiet
-		/// in precisely the case it was written to explain.
+		/// Reported before the bail-outs below, not after. A sender that is
+		/// silent and a sender that is sending nothing look identical from
+		/// outside, and that ambiguity is the whole reason this exists - the
+		/// first version sat after the early return and so stayed quiet in
+		/// precisely the case it was written to explain.
 		/// </remarks>
-		private static void Report(EngineASX engine, Sector sector)
+		private static void Report(EngineASX engine)
 		{
 			if (Time.unscaledTime < nextReportTime)
 			{
@@ -94,120 +219,47 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
-			if (engine.World == null)
+			if (engine.World == null || !engine.World.HasInitialised)
 			{
-				Debug.Log("Multiplayer: broadcasting nothing - no world yet");
+				Debug.Log("Multiplayer: broadcasting nothing - no world yet, or it has not finished initialising");
 				return;
 			}
 
-			if (!engine.World.HasInitialised)
-			{
-				Debug.Log("Multiplayer: broadcasting nothing - the world has not finished initialising");
-				return;
-			}
-
-			if (sector == null)
+			if (engine.ActiveSector == null)
 			{
 				Debug.Log("Multiplayer: broadcasting nothing - no active sector");
 				return;
 			}
 
-			// EVERY sector, not just the one the host happens to be looking
-			// at. A client sitting two jumps away was getting nothing at all,
-			// because the host was not in that sector to sample it - and the
-			// ships there are still being simulated by the engine, they simply
-			// were not on the wire.
-			//
-			// The whole galaxy at ten hertz is affordable at this world size
-			// and buys correctness; per-sector subscriptions are the
-			// optimisation to make afterwards if the bandwidth ever matters,
-			// and they are only worth building once sectors are actually
-			// synchronised between players.
-			scratch.Clear();
-			sampledIds.Clear();
-			sectorCount = 0;
+			NetLog.Host("sent " + lastSent + " of " + lastSampled + " sampled ship(s) to "
+				+ lastPlayers + " player(s) - " + lastSampled
+				+ (lastSampled > 0 ? ", " : "") + Percent(lastSent, lastSampled)
+				+ " was motion");
 
-			for (int sectorIndex = 0; sectorIndex < engine.Sectors.Count; sectorIndex++)
-			{
-				Sector each = engine.Sectors[sectorIndex];
+			Debug.Log("Multiplayer: sent " + lastSent + " of " + lastSampled
+				+ " sampled ship(s) to " + lastPlayers + " player(s) over 2s");
 
-				if (each == null)
-				{
-					continue;
-				}
+			lastSampled = 0;
+			lastSent = 0;
+			lastPlayers = 0;
+		}
 
-				sectorCount++;
-
-				List<Unit> inSector = each.GetUnitsByType(UnitType.Ship);
-
-				if (inSector == null)
-				{
-					continue;
-				}
-
-				for (int i = 0; i < inSector.Count; i++)
-				{
-					Unit ship = inSector[i];
-
-					if (ship == null || ship.IsDestroyed)
-					{
-						continue;
-					}
-
-					UnitState? state = Sample(ship);
-
-					if (state.HasValue)
-					{
-						scratch.Add(state.Value);
-						sampledIds.Add(ship.UniqueId);
-					}
-				}
-			}
-
-			if (scratch.Count == 0)
-			{
-				Debug.Log("Multiplayer: broadcasting nothing - no ships anywhere");
-				return;
-			}
-
-			int players = MultiplayerHostService.Session == null
-				? 0
-				: MultiplayerHostService.Session.Players.Count;
-
-			NetLog.Host("broadcasting " + scratch.Count + " ship(s) across "
-				+ sectorCount + " sector(s), ids " + sampledIds[0]
-				+ " to " + sampledIds[sampledIds.Count - 1]
-				+ ", to " + players + " player(s)");
-
-			Debug.Log("Multiplayer: broadcasting " + scratch.Count + " ship(s) across "
-				+ sectorCount + " sector(s), ids " + sampledIds[0]
-				+ " to " + sampledIds[sampledIds.Count - 1]
-				+ ", to " + players + " player(s)");
+		private static string Percent(int part, int whole)
+		{
+			return whole > 0 ? ((100 * part / whole) + "%") : "n/a";
 		}
 
 		private static void Broadcast(HostSession session)
 		{
 			EngineASX engine = EngineASX.Instance;
-			Sector sector = engine?.ActiveSector;
 
-			Report(engine, sector);
+			Report(engine);
 
 			// Nothing is sent rather than something incomplete. A client that
 			// receives some units and not others cannot tell "that one is
 			// missing" from "that one is stationary", so a partial frame is
 			// worse than no frame.
-			if (engine == null || sector == null || engine.World == null || !engine.World.HasInitialised)
-			{
-				return;
-			}
-
-			// Sampled above, across every sector. Packed per recipient rather
-			// than once for everyone: a ship a player is flying must NOT come
-			// back to them, because they are already simulating it and
-			// applying the host's copy would fight their own stick. Everyone
-			// else still needs it, so each player gets a slightly different
-			// set and one shared message list cannot express that.
-			if (scratch.Count == 0)
+			if (engine == null || engine.World == null || !engine.World.HasInitialised)
 			{
 				return;
 			}
@@ -221,59 +273,179 @@ namespace OpenFrontier.IP.Multiplayer
 					continue;
 				}
 
-				personal.Clear();
+				lastPlayers++;
 
-				for (int u = 0; u < scratch.Count; u++)
-				{
-					if (!session.Ownership.IsOwnedBy(sampledIds[u], player.Identity))
-					{
-						personal.Add(scratch[u]);
-					}
-				}
+				Send(engine, session, player);
+			}
+		}
 
-				if (personal.Count == 0)
+		/// <summary>One player's worth of ships: their sector, and only what moved.</summary>
+		private static void Send(EngineASX engine, HostSession session, RemotePlayer player)
+		{
+			string token = player.Identity ?? string.Empty;
+
+			// Their own sector, not the host's. A client two jumps away from
+			// the host used to be sent the host's neighbourhood, which is a
+			// sector it cannot see and is not in.
+			Sector sector = SectorFor(engine, session, token);
+
+			if (sector == null)
+			{
+				return;
+			}
+
+			List<Unit> inSector = sector.GetUnitsByType(UnitType.Ship);
+
+			if (inSector == null || inSector.Count == 0)
+			{
+				return;
+			}
+
+			Dictionary<int, Remembered> told = remembered.TryGetValue(token, out Dictionary<int, Remembered> found)
+				? found
+				: new Dictionary<int, Remembered>();
+
+			remembered[token] = told;
+
+			batch.Clear();
+			seen.Clear();
+
+			for (int i = 0; i < inSector.Count; i++)
+			{
+				Unit ship = inSector[i];
+
+				if (ship == null || ship.IsDestroyed || ship.Sector != sector)
 				{
-					// This player is flying everything in view. Nothing to
-					// say to them.
 					continue;
 				}
 
-				// The host's own clock, read once so every message in this
-				// batch agrees about when it was taken. Anything monotonic
-				// will do: it never has to mean the same thing as the
-				// client's, because the client measures the difference.
-				float sampledAt = Time.unscaledTime;
-
-				List<UnitStateMessage> messages = UnitStateBatch.Pack(personal, sampledAt);
-
-				for (int m = 0; m < messages.Count; m++)
+				// The ship they are flying. They are simulating it; sending
+				// them the host's copy would fight their own stick.
+				if (session.Ownership.IsOwnedBy(ship.UniqueId, token))
 				{
-					try
+					continue;
+				}
+
+				lastSampled++;
+				seen.Add(ship.UniqueId);
+
+				UnitState? sampled = Sample(ship);
+
+				if (!sampled.HasValue)
+				{
+					continue;
+				}
+
+				UnitState value = sampled.Value;
+				Vector3 position = ship.transform.localPosition;
+				Quaternion rotation = ship.transform.localRotation;
+
+				// The tiering. A ship whose transform has not changed since
+				// this player was last told is not sent again, which means a
+				// docked ship costs nothing and a ship in a sector the engine
+				// only ticks every few seconds costs almost nothing.
+				if (told.TryGetValue(ship.UniqueId, out Remembered was) && was.Known
+					&& (was.Position - position).sqrMagnitude < MovedEpsilon * MovedEpsilon
+					&& Quaternion.Angle(was.Rotation, rotation) < FacingEpsilon)
+				{
+					continue;
+				}
+
+				told[ship.UniqueId] = new Remembered
+				{
+					Position = position,
+					Rotation = rotation,
+					Known = true
+				};
+
+				batch.Add(value);
+				lastSent++;
+			}
+
+			// Ships that have left, been destroyed, or docked out of this
+			// sector are dropped, so the memory of what was sent does not
+			// grow for the whole life of the session.
+			Prune(told);
+
+			if (batch.Count == 0)
+			{
+				return;
+			}
+
+			List<UnitStateMessage> messages = UnitStateBatch.Pack(batch, Time.unscaledTime);
+
+			for (int m = 0; m < messages.Count; m++)
+			{
+				try
+				{
+					player.Channel.Send(
+						FramedMessage.Create(ProtocolVersion.UnitStateMessageId, messages[m].ToBytes()));
+				}
+				catch (System.Exception e)
+				{
+					// Said once per player, because swallowing this silently
+					// is what made an entire session impossible to diagnose:
+					// the host reported broadcasting sixty ships and the
+					// client reported receiving none, and the gap between
+					// those two facts had no name.
+					if (failedPlayers.Add(token))
 					{
-						player.Channel.Send(
-							FramedMessage.Create(ProtocolVersion.UnitStateMessageId, messages[m].ToBytes()));
-					}
-					catch (System.Exception e)
-					{
-						// A player who has gone away mid-send is not this loop's
-						// problem: they will be noticed on their own close, and
-						// abandoning the rest of the batch over one bad socket
-						// would starve everyone else.
-						//
-						// Said once per player, because swallowing this
-						// silently is what made an entire session impossible
-						// to diagnose: the host reported broadcasting sixty
-						// ships and the client reported receiving none, and
-						// the gap between those two facts had no name.
-						if (!failedPlayers.Contains(player.Identity ?? string.Empty))
-						{
-							failedPlayers.Add(player.Identity ?? string.Empty);
-							Debug.LogWarning("Multiplayer: a send to " + Short(player)
-								+ " failed and will not be retried - " + e.Message);
-						}
+						Debug.LogWarning("Multiplayer: a send to " + Short(player)
+							+ " failed and will not be retried - " + e.Message);
 					}
 				}
 			}
+		}
+
+		/// <summary>Drops what was sent about ships this player can no longer see.</summary>
+		/// <remarks>
+		/// Otherwise the record of what each player was told grows for the
+		/// whole session, holding entries for ships destroyed hours ago and
+		/// for sectors they flew through last week.
+		///
+		/// Only runs when the record is the larger of the two. It is
+		/// otherwise wasted work, and the usual case is a record that exactly
+		/// matches the sector.
+		/// </remarks>
+		private static void Prune(Dictionary<int, Remembered> told)
+		{
+			if (told.Count == 0 || told.Count <= seen.Count)
+			{
+				return;
+			}
+
+			List<int> gone = new List<int>();
+
+			foreach (KeyValuePair<int, Remembered> entry in told)
+			{
+				if (!seen.Contains(entry.Key))
+				{
+					gone.Add(entry.Key);
+				}
+			}
+
+			for (int i = 0; i < gone.Count; i++)
+			{
+				told.Remove(gone[i]);
+			}
+		}
+
+		/// <summary>The sector this player's ship is in, or the host's if they have none.</summary>
+		private static Sector SectorFor(EngineASX engine, HostSession session, string token)
+		{
+			foreach (int unitId in session.Ownership.UnitsOwnedBy(token))
+			{
+				Unit ship = engine.GetUnitByid(unitId);
+
+				if (ship != null && ship.Sector != null)
+				{
+					return ship.Sector;
+				}
+			}
+
+			// A player with no ship yet has no sector of their own. The host's
+			// is the best guess: it is where they will be put.
+			return engine.ActiveSector;
 		}
 
 		/// <summary>Reads one unit's state, or nothing if it is not simulable yet.</summary>

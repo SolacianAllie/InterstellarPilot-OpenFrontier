@@ -3938,6 +3938,7 @@ namespace OpenFrontier.IP.Engine
 			{
 				Hud.UpdateInactive();
 			}
+			UpdateWatchedSectorUnits();
 			UpdateInactiveUnits();
 			UpdateInactiveFleets();
 			UpdateInactiveGroupSpawners();
@@ -4136,11 +4137,113 @@ namespace OpenFrontier.IP.Engine
 					curInactiveUnitIndex = 0;
 				}
 				Unit unit = updatableUnits[curInactiveUnitIndex];
-				if (unit != null && unit.Sector != null && !unit.Sector.IsActive)
+
+				// Watched sectors are skipped here and ticked in full by
+				// UpdateWatchedSectorUnits instead. Two reasons, and the
+				// second is the important one: spending the round-robin's
+				// budget on a unit that is about to be ticked anyway makes
+				// the genuinely unwatched sectors update less often for no
+				// reason, and ticking a watched unit from both paths would
+				// simulate it twice a frame - which is the kind of bug that
+				// makes ships in one sector move at double speed and looks
+				// like a cheat.
+				if (unit == null || unit.Sector == null
+					|| unit.Sector.IsActive || unit.Sector.SimulatesEveryFrame)
 				{
-					unit.Components.Tick();
+					continue;
 				}
-				num--;
+
+				unit.Components.Tick();
+			}
+		}
+
+		/// <summary>
+		/// Ticks every frame the sectors that are not on screen but are being
+		/// watched by somebody in the session.
+		/// </summary>
+		/// <remarks>
+		/// The engine's assumption is that a sector nobody is looking at has
+		/// nothing visible happening in it, and updates it slowly on that
+		/// basis. In a session that is wrong: a player two jumps away is
+		/// watching theirs, and ships that only move once every three seconds
+		/// look precisely like the sync being broken - worse, they look like
+		/// it intermittently, which is harder to tell from a bug than a
+		/// consistent one.
+		///
+		/// Walked from the list of watched sectors rather than from
+		/// UpdatableUnits, because that list is every unit in the galaxy and
+		/// this is at most a handful of sectors. On a session with two players
+		/// two jumps apart this is two sectors' worth of ships per frame on
+		/// top of the one already being simulated - which is the real cost of
+		/// showing somebody a distant sector, paid on the host's frame time,
+		/// and worth knowing about before a session grows to four players
+		/// spread across four sectors.
+		/// </remarks>
+		private void UpdateWatchedSectorUnits()
+		{
+			for (int s = 0; s < watchedSectors.Count; s++)
+			{
+				Sector sector = watchedSectors[s];
+
+				if (sector == null || sector.IsActive)
+				{
+					continue;
+				}
+
+				List<Unit> inSector = sector.GetUnitsByType(UnitType.Ship);
+
+				if (inSector == null)
+				{
+					continue;
+				}
+
+				for (int i = 0; i < inSector.Count; i++)
+				{
+					Unit unit = inSector[i];
+
+					if (unit != null && !unit.IsDestroyed && unit.Components != null)
+					{
+						unit.Components.Tick();
+					}
+				}
+			}
+		}
+
+		private readonly List<Sector> watchedSectors = new List<Sector>(4);
+
+		/// <summary>
+		/// Says that somebody in the session is watching this sector, or that
+		/// they have stopped.
+		/// </summary>
+		/// <remarks>
+		/// Reference-counted per player rather than counted per sector, so
+		/// two players in one sector claim it twice and the first to leave
+		/// does not switch the tick rate back down underneath the second. The
+		/// sector counts its own claims; this list only has to be able to
+		/// forget a sector entirely once nobody is in it.
+		/// </remarks>
+		public void SetSectorWatched(Sector sector, bool watched)
+		{
+			if (sector == null)
+			{
+				return;
+			}
+
+			sector.SetSimulatesEveryFrame(watched);
+
+			if (watched)
+			{
+				if (!watchedSectors.Contains(sector))
+				{
+					watchedSectors.Add(sector);
+				}
+
+				return;
+			}
+
+			if (!sector.SimulatesEveryFrame)
+			{
+				watchedSectors.Remove(sector);
 			}
 		}
 

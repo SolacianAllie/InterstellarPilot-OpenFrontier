@@ -111,6 +111,68 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
+		/// <summary>
+		/// Whether this sector is simulated every frame despite not being the
+		/// one on screen.
+		/// </summary>
+		/// <remarks>
+		/// The engine normally ticks only the active sector per frame and
+		/// round-robins the rest at roughly one unit every three seconds,
+		/// because an unwatched sector is a sector where nothing visible is
+		/// happening. That assumption is false in a session: a player two
+		/// jumps away is watching their sector, and ships that only move once
+		/// every three seconds look exactly like the sync being broken.
+		///
+		/// So somebody has to say which sectors are watched, and the
+		/// multiplayer host does - it knows where every player's ship is.
+		/// Nothing else sets this, which means single-player behaviour is
+		/// untouched and a sector nobody is in goes back to ticking slowly the
+		/// moment its last player leaves.
+		///
+		/// Set through <see cref="SetSimulatesEveryFrame"/> rather than
+		/// assigned, so the count of sectors claiming this stays even when two
+		/// players are in one place.
+		/// </remarks>
+		public bool SimulatesEveryFrame { get; private set; }
+
+		private int fullRateClaims;
+
+		/// <summary>
+		/// Claims or releases this sector's need to be simulated every frame.
+		/// </summary>
+		/// <remarks>
+		/// A count rather than a flag because two players can be in one
+		/// sector, and the first of them to leave must not switch the tick
+		/// rate back down underneath the second.
+		/// </remarks>
+		public void SetSimulatesEveryFrame(bool wanted)
+		{
+			if (wanted == SimulatesEveryFrame)
+			{
+				return;
+			}
+
+			if (wanted)
+			{
+				fullRateClaims++;
+			}
+			else
+			{
+				fullRateClaims--;
+
+				// Someone setting this to false without having claimed it
+				// would drive the count negative and leave the sector stuck
+				// on full rate forever, which is a bug that only shows up
+				// after a player has left.
+				if (fullRateClaims < 0)
+				{
+					fullRateClaims = 0;
+				}
+			}
+
+			SimulatesEveryFrame = fullRateClaims > 0;
+		}
+
 		public List<SectorNeighbour> Neighbours => neighbors;
 
 		public EngineASX Engine

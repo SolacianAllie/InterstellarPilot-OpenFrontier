@@ -27,6 +27,9 @@ player owns.
 | Joiner adopts them and is placed in the shuttle | ✅ |
 | Unit transforms host → client at 10 Hz, interpolated between updates | ✅ |
 | Host's clock on every batch, so clients draw on its timeline | ✅ |
+| Per-recipient sectors: each client is sent only the ships in their own sector | ✅ |
+| Only ships that moved are sent; background sectors stream at the engine's own slow tick | ✅ |
+| Sectors holding a player are simulated every frame, not once per 3 s | ✅ |
 | The joiner's ship state client → host, accepted as authority | ✅ |
 | Ownership arbitration: one ship, one player | ✅ |
 | Credits and the ship's hold, host → client on change | ✅ |
@@ -131,9 +134,16 @@ rather than when there is time left.
 - **A player owning more than one ship** is answered by lowest-id-wins in
   `FactionStatePusher`. A client flies one ship at a time; the rest are
   scenery to that message.
-- **Sector changes are not synchronised.** Every sector's ships are
-  broadcast, but *which* sector a player is in is not sent — the client
-  arrives in the host's active sector and stays there.
+- **Sector changes are not synchronised.** Each client is sent the ships in
+  the sector its own ship is in, but *which* sector a player is in is never
+  sent — a client arrives in the host's active sector and stays there. Sector
+  claims are wired up for a player who *is* somewhere else (the host will
+  simulate it at full rate and stream it), but nothing moves a player between
+  sectors yet.
+- **A watched sector costs the host a full sector's worth of simulation per
+  frame**, on top of the one already being simulated. That is the real price
+  of showing somebody a distant sector, paid on the host's frame time, and
+  worth watching as sessions grow to four players spread across four sectors.
 - **No interpolation for the joiner's own ship**, only for everyone else's —
   it is simulated here instead, because a control that waits for a round trip
   is not a control. Its own input is uploaded to the host.
