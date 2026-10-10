@@ -7,7 +7,14 @@
         "UnityEngine.UI",
         "OpenFrontier.IP.SavedGames.V2.Model",
         "OpenFrontier.IP.SavedGames.V2.BinarySerialization",
-        "OpenFrontier.Unity.Utils"
+        "OpenFrontier.IP.Common",
+        "OpenFrontier.Unity.Utils",
+        "OpenFrontier.IP.Avatars",
+        "OpenFrontier.IP.OutlawNamesGenerator",
+        "OpenFrontier.IP.SpaceUnity",
+        "OpenFrontier.Math",
+        "Discord.Sdk",
+        "OpenFrontier"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
