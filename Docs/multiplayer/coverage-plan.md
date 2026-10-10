@@ -12,6 +12,69 @@ networks, and "it works on my machine" is not evidence.
 
 ---
 
+## Progress
+
+Updated as work lands. "Verified" means read in a log on both sides, not
+compiled.
+
+### Stream A — honest failure: **DONE, awaiting verification**
+
+| | |
+|---|---|
+| A1 | `ExecuteOnHost` counts refusals and says ran / refused / ran-some-and-refused-some. `refused++` in all three refusal arms. |
+| A2 | `SendIfClient` says so when the player selected nothing, and names the likely cause (a fleet that exists on this copy only). |
+| A3 | `Authority.Refused(what, whatItWouldHaveChanged)` — counts the decline and names the action, once per action. Four chokepoint gates: `Faction.ApplyTransaction`, `DestructableUnit.ApplyDamage`, `UnitComponentHolder.TryDockInUnit` / `UndockIfDocked`, `ShipBuyScreen.Buy`. |
+
+### Stream B — infrastructure: **5 of 8 done**
+
+| | |
+|---|---|
+| B1 | `FactionStateApplier` installed in `MultiplayerClientService.Install`. It had never been fitted to anything. |
+| B2 | `FactionAIBase.Update` gated on `Authority.OwnsFaction`. Clients were simulating a galaxy economy. |
+| B3 | `MayBeClaimed` refuses units the host has never heard of, and says so in words that are not "it belongs to the host". |
+| B4 | **Folds into D1** — a purchase is now refused on a client, so no out-of-band ship can be created until the relay exists. |
+| B5 | `ApplyWorldRestrictions` distinguishes "not hosting" from "alone". God mode was live on every joiner. |
+| B6 | Not done — dead comments in `PropertyScreen` / `OrdersHelper`. Cosmetic. |
+| B7 | Not done — needs E3. Hull/shield/capacitor are not on the wire. |
+| B8 | Partly done — the README's DONE claim is corrected and points at the coverage plan. |
+
+### Not started
+
+C command channel · D empire · E combat · F remaining orders · G legibility ·
+H comms · I public release · J audit
+
+### What to check in the next session
+
+On the **client**, at startup:
+
+```
+Authority: CLIENT - following another player's game; would simulate 1 of N ship(s) and 0 of M faction(s)
+```
+
+`0 of M factions` is B2 landing. Before this it always said `M of M`.
+
+Then, on the **client**, press Buy on a docked ship, and fire at anything:
+
+```
+Multiplayer: refused - buying a ship. Nothing changed. It would have spent 45000 credits...
+Multiplayer: refused - firing weapons. Nothing changed. It would have damaged ship 100812 for 34...
+```
+
+Both are new. Neither was possible before — the log could not distinguish a
+refusal from a success.
+
+On the **host**, after any client order:
+
+```
+Multiplayer: ran DockAtTarget for 1 fleet(s)          <- success
+Multiplayer: REFUSED Patrol for all 1 fleet(s) - none of them were carried out.   <- refusal
+```
+
+A host log containing "ran X" with no preceding refusal warning for the same X
+is now trustworthy, which it was not before.
+
+---
+
 ## How to read this
 
 | Marker | Meaning |
