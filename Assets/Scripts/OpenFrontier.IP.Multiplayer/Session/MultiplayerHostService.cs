@@ -220,10 +220,37 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// </remarks>
 		private static void ApplyWorldRestrictions()
 		{
-			HostSession session = Session;
+			HostSession hosted = Session;
+
+			if (hosted != null)
+			{
+				OpenFrontier.IP.Engine.UniverseWorld.WorldPlayerPermissions
+					.SetSharedSessionFor(hosted.Players.Count);
+
+				return;
+			}
+
+			// Not hosting. That is not the same as being alone.
+			//
+			// This used to pass 0 for anything that was not hosting, on the
+			// reasoning that a process with no session of its own has nobody
+			// in it. A joiner does have somebody in it - the host - and this
+			// ran on clients too, because MultiplayerHostService installs
+			// itself on every process. So every joiner read 0, concluded they
+			// were alone, and kept god mode in a world other people were
+			// playing: a client could make themselves unkillable and nobody
+			// else would ever find out.
+			//
+			// The count is meaningless for a client; what matters is whether
+			// there is a connection, and if there is then the host is another
+			// person. So it is asked as the question it actually is rather
+			// than as a player count this process has no way of producing.
+			ClientSession joined = MultiplayerClientService.Instance == null
+				? null
+				: MultiplayerClientService.Instance.Session;
 
 			OpenFrontier.IP.Engine.UniverseWorld.WorldPlayerPermissions
-				.SetSharedSessionFor(session == null ? 0 : session.Players.Count);
+				.SetSharedSessionFor(joined == null ? 0 : 1);
 		}
 
 		private void OnDestroy()

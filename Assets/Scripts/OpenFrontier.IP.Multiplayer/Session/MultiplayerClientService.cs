@@ -107,11 +107,30 @@ namespace OpenFrontier.IP.Multiplayer
 			DontDestroyOnLoad(host);
 			host.AddComponent<MultiplayerClientService>();
 
-			// The applier goes with it rather than into a scene, for the
+			// The appliers go with it rather than into a scene, for the
 			// reason this whole service exists: anything parented to a scene
 			// stops existing the moment a player leaves the menu, and what it
 			// exists to do only happens in a game.
 			host.AddComponent<UnitStateApplier>();
+
+			// And the faction one, which was written and then never fitted to
+			// anything.
+			//
+			// The host has been pushing credits and cargo holds to every
+			// client since faction state was built - FactionStatePusher sends
+			// per player, change-detected - and ClientSession decoded it and
+			// raised FactionStateReceived into a room with nobody in it. The
+			// README said DONE. The diagram in the same README said NOT
+			// BUILT, and the diagram was right.
+			//
+			// So a client's credits were whatever they were at join, and no
+			// host-side spend ever reached it. Nothing looked broken: the
+			// number on the screen was simply always the number from the
+			// snapshot.
+			//
+			// Safe to install on a host too, because Attach() subscribes only
+			// to a live ClientSession and a host has none.
+			host.AddComponent<FactionStateApplier>();
 		}
 
 		private void Awake()

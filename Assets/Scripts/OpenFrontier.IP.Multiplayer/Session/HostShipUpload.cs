@@ -250,9 +250,48 @@ namespace OpenFrontier.IP.Multiplayer
 
 			Unit unit = engine.GetUnitByid(unitId);
 
-			if (unit == null || unit.Faction == null)
+			if (unit == null)
 			{
-				return true;
+				// Refused, and this used to be permitted.
+				//
+				// Ownership is a claim about an object both copies have. If
+				// the host has never heard of this ship then there is nothing
+				// to own: TryClaim succeeds because nobody holds it, the host
+				// broadcasts to every client that this player owns it, and the
+				// registry holds that forever. HostShipUpload.Apply then
+				// counts it unknown and drops it, so the ship is inert on the
+				// host while the client flies it - a ship that exists for one
+				// player and for nobody else, with a permanent entry in the
+				// ownership table pointing at it.
+				//
+				// Almost always this is the buy-a-ship bug wearing a disguise.
+				// A client presses Buy, ShipBuyScreen.SpawnUnit makes a real
+				// Unit in that copy alone, buy-and-enter flies it, and the
+				// client asks for the new id. The id is an engine counter
+				// value around 100500 rather than a player-band one, so it
+				// will not even pass the IsPlayerMade test.
+				//
+				// So this refusal is doing two jobs: it stops the phantom
+				// entry, and it is the loudest symptom of an unrelayed world
+				// mutation. Said in those words, because HostSession answers
+				// every refusal from here with "it belongs to the host", which
+				// is not what happened and would send whoever reads it looking
+				// at the wrong thing.
+				Debug.LogWarning("Multiplayer: refusing ship " + unitId
+					+ " to " + claimantToken + " - this world has no such ship."
+					+ " Usually this means the client built something in its own"
+					+ " copy and asked to own it, which no message can carry yet.");
+
+				return false;
+			}
+
+			if (unit.Faction == null)
+			{
+				Debug.LogWarning("Multiplayer: refusing ship " + unitId
+					+ " to " + claimantToken + " - the ship exists but has no faction,"
+					+ " so there is no way to tell whose it is.");
+
+				return false;
 			}
 
 			if (unit.Faction != engine.LocalFaction)
