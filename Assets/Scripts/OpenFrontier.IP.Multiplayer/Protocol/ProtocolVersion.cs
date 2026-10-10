@@ -140,5 +140,15 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>A player asking the host to give a fleet an order.</summary>
 		public const int FleetOrderCommandMessageId = 13;
+
+		/// <summary>A player asking the host to change something.</summary>
+		/// <remarks>
+		/// The general channel, so that the forty-odd actions still to relay
+		/// do not each need a type, an id, a codec and a dispatch branch.
+		/// </remarks>
+		public const int PlayerCommandMessageId = 14;
+
+		/// <summary>The host saying which hangar a ship is in, if any.</summary>
+		public const int DockedStateMessageId = 15;
 	}
 }
