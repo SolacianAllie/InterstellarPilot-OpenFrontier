@@ -66,6 +66,23 @@ C# changes are verified outside the editor with a generated .NET harness:
   loop, put the counter next to the read, before any `continue`/`break`, and
   re-read the whole body afterwards.** `grep` the loop for its counter as a
   check — the compiler will not do it.
+- **`codec-test` links 18 real source files**, copied by its own `sync.py`
+  from wherever they actually live. The previous harness kept hand-maintained
+  `<Compile Include>` lists, which is how a new protocol message compiled in
+  the game and broke a test project that had never heard of it. Tests link the
+  real file, so a test cannot pass against a stale copy.
+- `Authority.cs` and `HostSession.cs` are **deliberately not in codec-test**:
+  they need `Unit`, `Faction` and `NetListener`, and a stub of `Unit` would
+  pass while the real type did something else. Absence is better than a
+  confident wrong answer.
+- **`checks/prefab-field-check.py` was written and deleted** on 2026-10-10.
+  It modelled which fields Unity serialises and produced 1867 findings across
+  2084 prefabs, i.e. it was wrong about almost everything it said. Modelling
+  Unity's serialisation rules well enough to be trusted is a bigger job than
+  it looks, and a checker that cries wolf gets ignored and then catches
+  nothing. The prefab trap is still real — a hand-edited clone can drop a
+  field and fail silently — so it is caught by **reading the diff on the
+  prefab**, not by a script.
 
 **Known blind spot:** a clean build is necessary but not sufficient. The
 editor's own compile can still differ, because the harness does not define

@@ -36,9 +36,21 @@ namespace OpenFrontier.IP.Multiplayer
 		}
 
 		/// <summary>
-		/// Splits a framed message. Returns false for anything too short or
-		/// truncated rather than throwing.
+		/// Splits a framed message. Returns false for anything too short to
+		/// hold an id rather than throwing.
 		/// </summary>
+		/// <remarks>
+		/// There is no length prefix. The payload is whatever is left after
+		/// the id, so this can only refuse a packet that cannot hold a header
+		/// - it cannot tell a short payload from a correct one, and must not
+		/// pretend to.
+		///
+		/// Truncation is caught where it can be: each message codec knows its
+		/// own header and its own counts, and refuses a payload shorter than
+		/// the thing it claims to hold. A test that expects this to catch a
+		/// truncated payload is testing a guarantee that was never made here,
+		/// and will be wrong in the way this comment is written.
+		/// </remarks>
 		public static bool TrySplit(byte[] framed, out int messageId, out byte[] payload)
 		{
 			messageId = 0;
