@@ -52,7 +52,24 @@ namespace OpenFrontier.IP.Multiplayer
 		/// shown, because "the host is up but you are not connected to it" and
 		/// "the host is not up at all" call for different actions.
 		/// </remarks>
+		/// <summary>Whether this player is in a session hosted here right now.</summary>
 		public bool IsConnected { get; set; }
+
+		/// <summary>
+		/// Whether a join to this host is on its way.
+		/// </summary>
+		/// <remarks>
+		/// Separate from <see cref="IsConnected"/> because a join takes a
+		/// moment and the button has to stop being pressable the instant it is
+		/// pressed, not once the answer arrives. Without this, a second press
+		/// while the first was still being answered opened a second connection
+		/// - which is not a harmless double, because the host admits it and
+		/// ends up holding two players wearing the same identity.
+		///
+		/// Session state, not saved: a host file records who and where, not what
+		/// this particular copy of the game is doing right now.
+		/// </remarks>
+		public bool IsConnecting { get; set; }
 
 		/// <summary>
 		/// What the last liveness probe found.

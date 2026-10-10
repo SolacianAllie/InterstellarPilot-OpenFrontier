@@ -102,6 +102,17 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 		private ClientSession client;
 
+		/// <summary>
+		/// The code of the host this copy is joining, or connected to.
+		/// </summary>
+		/// <remarks>
+		/// Held so that leaving can clear the state that joining set. The
+		/// client itself goes away with this screen, but the saved host list
+		/// is rebuilt from storage and would otherwise still say this copy is
+		/// connected to something it is no longer connected to.
+		/// </remarks>
+		private string joiningCode;
+
 		protected override void awake()
 		{
 			base.awake();
@@ -437,6 +448,12 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			Disconnect();
 
+			// Marked before the session exists, not after: the connect is
+			// asynchronous, and anything that waits for an answer to know a
+			// button is busy has already lost the race.
+			joiningCode = host.Code;
+			SetJoining(host.Code, true);
+
 			client = new ClientSession();
 			client.Failed += OnJoinFailed;
 			client.Connected += () => MarkConnected(host, true);
@@ -458,6 +475,14 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 		private void OnJoinFailed(string reason)
 		{
+			// Cleared before the box, not after. A join that has been refused
+			// is over, and the host the player most wants to try again is the
+			// one that just turned them down - so leaving the button hidden
+			// here would strand them on a host that said no, with no way back
+			// into it.
+			SetJoining(joiningCode, false);
+			joiningCode = null;
+
 			UIController.Instance.ShowMessageBox(reason, MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
 		}
 
@@ -478,9 +503,26 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			if (live != null)
 			{
 				live.IsConnected = connected;
+
+				// An answer of any kind means the join is no longer on its
+				// way. Leaving this set on failure would hide the button on a
+				// host that refused, which is the one case where the player
+				// most wants to try again.
+				live.IsConnecting = false;
 			}
 
 			RefreshItemData();
+		}
+
+		/// <summary>Marks a host connected or not, given only its code.</summary>
+		private static void MarkConnectedByCode(string code, bool connected)
+		{
+			SavedHost live = FindByCode(code);
+
+			if (live != null)
+			{
+				live.IsConnected = connected;
+			}
 		}
 
 		/// <summary>The current entry for a code, or null if it is no longer saved.</summary>
@@ -504,6 +546,20 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 		private void Disconnect()
 		{
+			// The flags cleared whether or not there is a socket to close.
+			// Returning early when there is not would tie the honesty of the
+			// list to the lifetime of one field, and those two have no reason
+			// to fail together: quitting to the main menu from a session is
+			// how a player leaves, and if this only closed the connection the
+			// host would go on reading as connected with the join button
+			// hidden and nothing left to bring it back.
+			if (!string.IsNullOrEmpty(joiningCode))
+			{
+				SetJoining(joiningCode, false);
+				MarkConnectedByCode(joiningCode, false);
+				joiningCode = null;
+			}
+
 			if (client == null)
 			{
 				return;
@@ -511,6 +567,26 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			client.Dispose();
 			client = null;
+		}
+
+		/// <summary>
+		/// Sets or clears the in-flight marker on the host with this code.
+		/// </summary>
+		/// <remarks>
+		/// Resolved by code rather than through the object handed in, for the
+		/// same reason MarkConnected does it: the store rebuilds its objects
+		/// on refresh, so a reference captured when the join started is often
+		/// one nothing is showing any more.
+		/// </remarks>
+		private void SetJoining(string code, bool joining)
+		{
+			SavedHost live = FindByCode(code);
+
+			if (live != null)
+			{
+				live.IsConnecting = joining;
+				RefreshItemData();
+			}
 		}
 
 		// ---- rename / delete ------------------------------------------------
@@ -875,7 +951,12 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			SetActive(SessionPanelRoot, !severalSelected);
 			SetActive(MultipleItemsSelectedRoot, severalSelected);
 
-			SetActive(JoinButton, single != null && !single.IsConnected);
+			// Hidden while a join is on its way as well as while connected, so
+			// the button cannot be pressed a second time before the first has
+			// answered. The host admits both, and two players sharing one
+			// identity is worse than a button that was briefly absent.
+			SetActive(JoinButton,
+				single != null && !single.IsConnected && !single.IsConnecting);
 			SetActive(DeleteHostButton, selectedCount > 0);
 			SetActive(RenameHostButton, single != null);
 
