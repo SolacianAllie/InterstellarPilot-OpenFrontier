@@ -101,24 +101,17 @@ namespace OpenFrontier.IP.Multiplayer
 					return;
 				}
 
-				// Only now, once the world is in, can this copy be about the
-				// joiner rather than the host. Doing it earlier would be
-				// pointing at factions that are not loaded yet.
-				if (JoinerIdentityAdopter.Adopt(descriptor.MyFactionId, descriptor.MyShipId, out string adopted))
-				{
-					Debug.Log("Multiplayer: joined as " + adopted);
-					finished?.Invoke("Joined as " + adopted + ".");
-				}
-				else
-				{
-					// Said plainly rather than left to be discovered: the
-					// player is otherwise the host's pilot, with no sign that
-					// anything went wrong.
-					Debug.LogWarning("Multiplayer: joined, but no faction of ours - " + adopted);
+				// NOT here. TryLoadScenario returning does not mean the world
+				// is in - it means a scene started loading - and adopting now
+				// looks in a world that has not had the save applied yet. It
+				// reported that the host had sent no faction, which was true
+				// of that instant and false a second later.
+				JoinerPilotAdoption waiter = new GameObject("JoinerPilotAdoption")
+					.AddComponent<JoinerPilotAdoption>();
 
-					finished?.Invoke("Joined, but could not become your own "
-						+ "pilot: " + adopted + ".");
-				}
+				UnityEngine.Object.DontDestroyOnLoad(waiter.gameObject);
+				waiter.Begin(descriptor);
+				finished?.Invoke("Joined.");
 			}
 			catch (Exception e)
 			{

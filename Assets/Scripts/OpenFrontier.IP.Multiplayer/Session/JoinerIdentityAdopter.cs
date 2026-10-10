@@ -27,35 +27,29 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>
 		/// Points this copy's local player at the joiner's faction and ship.
 		/// </summary>
-		/// <returns>True when the world is now about this player.</returns>
-		public static bool Adopt(int factionId, int shipId, out string result)
+		/// <returns>A sentence for the player, saying what happened.</returns>
+		public static string Adopt(int factionId, int shipId)
 		{
-			result = null;
-			LastResult = null;
-
 			EngineASX engine = EngineASX.Instance;
 
 			if (engine == null || engine.World == null)
 			{
-				result = "no world loaded";
-				return false;
+				return "there is no world to join";
 			}
 
 			if (factionId < 0)
 			{
-				// The host had no world to make a faction in, so there is
-				// nothing to become. Not an error to shout about - the joiner
-				// can see for themselves that they are still the host's pilot.
-				result = "the host did not make a faction";
-				return false;
+				// The host had no world to make a faction in. Not something to
+				// shout about - the joiner can see for themselves that they
+				// are still the host's pilot.
+				return "the host never made a player for you";
 			}
 
 			Faction mine = FindFaction(factionId);
 
 			if (mine == null)
 			{
-				result = "faction " + factionId + " is not in this world";
-				return false;
+				return "your faction (" + factionId + ") is not in this world";
 			}
 
 			Person person = FindOrMakePerson(engine, mine);
@@ -63,21 +57,11 @@ namespace OpenFrontier.IP.Multiplayer
 
 			if (player == null || person == null)
 			{
-				result = "no local player to point at a faction";
-				return false;
+				return "there is no local player to give your faction to";
 			}
 
 			player.Person.Faction = mine;
 			mine.LeaderPerson = person;
-
-			// The previous player's faction is not ours to automate or keep.
-			// It is the host's, and the host is flying it.
-			if (engine.LocalFaction != mine)
-			{
-				// Nothing to undo here on purpose: the host's faction is left
-				// exactly as it was found, because the host's copy still owns
-				// it and both copies must agree.
-			}
 
 			Unit ship = shipId >= 0 ? engine.GetUnitByid(shipId) : null;
 
@@ -86,32 +70,16 @@ namespace OpenFrontier.IP.Multiplayer
 				ship.Faction = mine;
 			}
 
-			result = ship == null
-				? "faction " + factionId + " (" + mine.Name + "), no shuttle found"
+			return ship == null
+				? "faction " + factionId + " (" + mine.Name + "), but no shuttle found"
 				: "faction " + factionId + " (" + mine.Name + ") flying shuttle " + shipId;
-
-			LastResult = result;
-			return true;
 		}
 
 		private static Faction FindFaction(int factionId)
 		{
-			IList<Faction> factions = EngineASX.Instance.Factions;
-
-			if (factions == null)
-			{
-				return null;
-			}
-
-			for (int i = 0; i < factions.Count; i++)
-			{
-				if (factions[i] != null && factions[i].UniqueId == factionId)
-				{
-					return factions[i];
-				}
-			}
-
-			return null;
+			// Through the engine's own lookup rather than walking the list,
+			// so it is the same answer the rest of the game would give.
+			return EngineASX.Instance.GetFactionByid(factionId);
 		}
 
 		private static Person FindOrMakePerson(EngineASX engine, Faction faction)
