@@ -279,7 +279,11 @@ namespace OpenFrontier.IP.Multiplayer
 		{
 			error = null;
 
-			UnitClass shuttle = FindShuttle();
+			// The ship a second player starts in should be the ship the first
+			// one started in. Asked of the host, because the host is the only
+			// machine that knows what a player in this game is supposed to be
+			// flying.
+			UnitClass shuttle = TheShipThisGameStartsYouIn() ?? FindShuttle();
 
 			if (shuttle == null)
 			{
