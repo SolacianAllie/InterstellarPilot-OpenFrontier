@@ -72,18 +72,6 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 		}
 
-		/// <summary>
-		/// Picks a port to host on. Port 0 asks the OS for any free port, which
-		/// is then read back from <see cref="Port"/> - this avoids the "port
-		/// already in use" failure entirely, and the chosen port is what goes
-		/// into the join code, so it does not need to be memorable.
-		/// </summary>
-		public static NetListener CreateEphemeral(IPAddress address)
-		{
-			var probe = new NetListener(0, address);
-			return probe;
-		}
-
 		/// <summary>The port the OS actually assigned, valid after Start succeeds.</summary>
 		public int BoundPort => ((IPEndPoint)listener.LocalEndpoint).Port;
 

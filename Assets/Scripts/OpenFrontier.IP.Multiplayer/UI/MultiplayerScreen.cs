@@ -910,7 +910,10 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				: Versioning.Version.ToString());
 			Set(SessionProtocolLabel, ProtocolVersion.Current.ToString());
 			Set(SessionPlayersLabel, session == null ? "0" : session.Players.Count.ToString());
-			Set(SessionHostingLabel, session != null ? "Yes" : "No");
+			// "All interfaces", because that is the bind: the session accepts on
+			// WiFi, on Ethernet and on any public address alike, and the row
+			// below names the one address that goes into the code.
+			Set(SessionHostingLabel, session != null ? "Yes - all interfaces" : "No");
 			Set(SessionAddressLabel, session == null ? "Not listening" : session.Endpoint);
 			Set(SessionCodeLabel, string.IsNullOrEmpty(OwnJoinCode) ? "None" : OwnJoinCode);
 

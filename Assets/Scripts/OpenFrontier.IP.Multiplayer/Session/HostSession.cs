@@ -88,7 +88,17 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <param name="port">Port, or 0 for any free port.</param>
 		/// <param name="onError">Receives a player-facing message if hosting fails.</param>
 		/// <returns>A live session, or null if the listener could not start.</returns>
-		public static HostSession Start(IPAddress address, int port, Action<string> onError)
+		/// <summary>Starts a session, listening on every interface.</summary>
+		/// <remarks>
+		/// The bind address and the advertised address are separate on
+		/// purpose: binding everywhere means any route in reaches the
+		/// session, while the code still names the single address most
+		/// likely to be the right one for the person joining.
+		/// </remarks>
+		public static HostSession Start(
+			IPAddress bindAddress,
+			IPAddress advertisedAddress,
+			Action<string> onError)
 		{
 			if (!MultiplayerSettings.CanHost)
 			{
@@ -102,7 +112,9 @@ namespace OpenFrontier.IP.Multiplayer
 			// exactly that prefix, not the whole generated value - comparing a
 			// 7-byte code secret against a 20-byte generated one can never
 			// match, and would refuse every joiner.
-			var listener = new NetListener(port, address);
+			//
+			// Port 0: the OS picks a free one, and the code carries it.
+			var listener = new NetListener(0, bindAddress);
 
 			if (!listener.Start())
 			{
@@ -113,9 +125,11 @@ namespace OpenFrontier.IP.Multiplayer
 				return null;
 			}
 
-			var session = new HostSession(address, secret, listener);
+			var session = new HostSession(advertisedAddress, secret, listener);
 
-			string code = SessionCode.Create(address, listener.BoundPort, secret);
+			// The advertised address, not the bind address: the bind is
+			// always 0.0.0.0, which nobody can dial.
+			string code = SessionCode.Create(advertisedAddress, listener.BoundPort, secret);
 			session.JoinCode = SessionCode.Format(code);
 
 			session.listener.PeerAccepted += session.OnPeerAccepted;
@@ -304,18 +318,14 @@ namespace OpenFrontier.IP.Multiplayer
 				return false;
 			}
 
-			// Read through the listener rather than from a copy taken at Start:
-			// the listener is where the OS reports what it actually bound, which
-			// is the only thing a peer will ever connect to.
-			IPAddress bound = listener?.Address;
-
-			if (bound == null)
-			{
-				return false;
-			}
-
+			// The advertised address, NOT the listener's bind address. The
+			// session binds to every interface so that 0.0.0.0 is always
+			// what it listens on, and a code carries the one real address - so
+			// comparing against the bind address would never match anything,
+			// and every player would be free to join their own session.
 			return data.Port == listener.BoundPort
-				&& bound.Equals(data.Address)
+				&& Address != null
+				&& Address.Equals(data.Address)
 				&& SessionCode.SecretsMatch(sessionSecret, data.Secret);
 		}
 

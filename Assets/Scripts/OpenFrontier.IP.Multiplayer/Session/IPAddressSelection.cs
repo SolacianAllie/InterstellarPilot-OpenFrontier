@@ -29,28 +29,47 @@ namespace OpenFrontier.IP.Multiplayer
 	public static class IPAddressSelection
 	{
 		/// <summary>
-		/// Picks an address to listen on and a port to request.
+		/// Chooses where to listen, and which address goes into a join code.
 		/// </summary>
-		/// <param name="address">Address to bind, or null to bind all interfaces.</param>
-		/// <param name="port">Requested port, or 0 to let the OS choose.</param>
+		/// <remarks>
+		/// These are two different questions, and until now they were answered
+		/// as one - which is why a machine holding both a WiFi address and a
+		/// public one could only ever be reached over WiFi.
+		/// 
+		/// The listener binds to every interface, so a session is reachable on
+		/// WiFi, on Ethernet, and on any public address the machine actually
+		/// holds. Binding to a single chosen address instead meant whichever
+		/// interface the picker happened to land on, and every other route in
+		/// was simply closed.
+		/// 
+		/// The advertised address stays singular, because a join code holds
+		/// exactly one, and stays LAN-first, because two players on the same
+		/// network is the case that always works and needs nothing set up.
+		/// </remarks>
+		/// <param name="bindAddress">Always <see cref="IPAddress.Any"/>.</param>
+		/// <param name="advertisedAddress">The address to put in the join code.</param>
 		/// <param name="problem">Why no usable address was found, or null.</param>
-		public static void ListenAll(out IPAddress address, out int port, out string problem)
+		public static void ChooseEndpoints(
+			out IPAddress bindAddress,
+			out IPAddress advertisedAddress,
+			out string problem)
 		{
-			address = null;
+			// Every interface, on a port the OS picks. A fixed port would
+			// collide with another copy of the game or another program,
+			// and the code carries the port anyway so nobody has to type it.
+			bindAddress = IPAddress.Any;
+			advertisedAddress = null;
 			problem = null;
-
-			// Port 0 asks the OS for any free port. A memorable port would be
-			// nicer for players typing an address by hand, but an OS-assigned one
-			// can never collide with another program or another copy of the game
-			// - and the code carries the port anyway, so it never has to be typed.
-			port = 0;
 
 			if (TryGetReachableAddress(out IPAddress selected))
 			{
-				address = selected;
+				advertisedAddress = selected;
 				return;
 			}
 
+			// Listening would still have worked - the bind above succeeds
+			// regardless - but a code with no address in it is one nobody
+			// can use, so a session is not worth starting.
 			problem = "Couldn't identify a network address other players can reach. "
 				+ "Connect to a network and try again.";
 		}

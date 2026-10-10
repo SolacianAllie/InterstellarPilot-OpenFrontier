@@ -170,9 +170,12 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 			nextAttemptTime = Time.unscaledTime + RetryIntervalSeconds;
 
-			IPAddressSelection.ListenAll(out IPAddress address, out int port, out string problem);
+			IPAddressSelection.ChooseEndpoints(
+				out IPAddress bindAddress,
+				out IPAddress advertisedAddress,
+				out string problem);
 
-			if (address == null)
+			if (advertisedAddress == null)
 			{
 				// Nothing to listen on. Reported, not thrown: the game is fully
 				// playable on its own, so this must never stop it starting.
@@ -184,7 +187,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				return;
 			}
 
-			HostSession session = HostSession.Start(address, port, reason =>
+			HostSession session = HostSession.Start(bindAddress, advertisedAddress, reason =>
 			{
 				LastProblem = reason;
 				Debug.LogWarning("Multiplayer: " + reason);
@@ -209,7 +212,12 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// The bound port, not the requested one: the session asks the OS
 			// for any free port, so logging the request prints a port of zero -
 			// true, and useless when a join will not open.
-			Debug.Log("Multiplayer: hosting on " + address + ":" + Session.Port
+			//
+			// The advertised address and the endpoint it listens on are now two
+			// different things, so both are named: the address goes into the code,
+			// and 0.0.0.0 is what every interface is bound to.
+			Debug.Log("Multiplayer: hosting, code advertises " + advertisedAddress
+				+ ", listening on every interface at " + Session.Endpoint
 				+ ", code " + Session.JoinCode);
 		}
 
