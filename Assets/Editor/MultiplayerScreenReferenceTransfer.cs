@@ -736,6 +736,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				target.CodeLabel = FindAnyLabel(contents, "LegacyTextSubTitle");
 				target.OkButton = FindButton(contents, "ButtonIconOK");
 				target.CopyButton = FindButton(contents, "ButtonIconCancel");
+				target.EnableMultiplayerToggle = FindToggle(contents, "CheckboxEnableMultiplayer");
 
 				List<string> unwired = new List<string>();
 
@@ -750,6 +751,14 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 
 				if (target.OkButton == null) unwired.Add("ButtonIconOK (OkButton)");
 				if (target.CopyButton == null) unwired.Add("ButtonIconCancel (CopyButton)");
+
+				// Optional rather than required: the dialog is perfectly usable
+				// without it, it just means an extra trip to Options.
+				if (target.EnableMultiplayerToggle == null)
+				{
+					report.Manual_("no CheckboxEnableMultiplayer in the dialog - the player will "
+						+ "have to turn multiplayer on in Options instead");
+				}
 
 				if (unwired.Count > 0)
 				{
@@ -793,6 +802,12 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		{
 			Transform found = root.transform.FindDeep(objectName);
 			return found == null ? null : found.GetComponent<Button>();
+		}
+
+		private static Toggle FindToggle(GameObject root, string objectName)
+		{
+			Transform found = root.transform.FindDeep(objectName);
+			return found == null ? null : found.GetComponent<Toggle>();
 		}
 
 		/// <summary>

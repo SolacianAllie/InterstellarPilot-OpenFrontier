@@ -33,6 +33,17 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		public Button CopyButton;
 
 		/// <summary>
+		/// Turns multiplayer on without leaving this dialog.
+		/// </summary>
+		/// <remarks>
+		/// The same row the player would otherwise have to find in Options,
+		/// cloned across so the two cannot drift apart. Shown only while there
+		/// is no code: once there is one, the switch has done its job and the
+		/// space is better given to the code.
+		/// </remarks>
+		public Toggle EnableMultiplayerToggle;
+
+		/// <summary>
 		/// The prompt's legacy label, kept only so its text can be replaced.
 		/// </summary>
 		/// <remarks>
@@ -126,6 +137,60 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			{
 				CopyButton.onClick.AddListener(CopyToClipboard);
 			}
+
+			if (EnableMultiplayerToggle != null)
+			{
+				EnableMultiplayerToggle.onValueChanged.AddListener(EnableMultiplayerChanged);
+			}
+		}
+
+		/// <summary>
+		/// Watches for the host coming up once the switch is flipped.
+		/// </summary>
+		/// <remarks>
+		/// Hosting does not start here. It is MultiplayerHostService's job, and
+		/// it happens on the next frame - the service reads the same option, so
+		/// there is one path into it and this dialog is not a second one that
+		/// could fall out of step.
+		///
+		/// So all that is needed here is to notice when a code has appeared and
+		/// repaint. Polling a null check is cheaper than wiring an event across
+		/// assemblies for something that happens once.
+		/// </remarks>
+		protected override void update()
+		{
+			base.update();
+
+			if (EnableMultiplayerToggle != null
+				&& EnableMultiplayerToggle.gameObject.activeSelf
+				&& EnableMultiplayerToggle.isOn
+				&& string.IsNullOrWhiteSpace(CodeText)
+				&& !string.IsNullOrWhiteSpace(MultiplayerHostService.JoinCode))
+			{
+				CodeText = MultiplayerHostService.JoinCode;
+				refresh();
+			}
+		}
+
+		private void EnableMultiplayerChanged(bool value)
+		{
+			// Written to PlayerOptions rather than to MultiplayerSettings: the
+			// options screen writes there, and the host service reads from
+			// there, so this is the same switch by another route rather than a
+			// second setting that can disagree with it.
+			//
+			// The settings class lives in this assembly but the option does not,
+			// and this screen can reach both - unlike OptionsScreen, which sits
+			// on the other side of a one-way reference.
+			if (OpenFrontier.IP.Engine.GameController.Instance != null)
+			{
+				OpenFrontier.IP.Engine.GameController.Instance.PlayerOptions.General_EnableMultiplayer = value;
+			}
+
+			// Nothing to show yet either way; the update() above waits for the
+			// service to bring a code up, and this shows the "still working on
+			// it" state in the meantime.
+			refresh();
 		}
 
 		protected override void refresh()
@@ -173,6 +238,22 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			if (CopyButton != null)
 			{
 				CopyButton.interactable = !string.IsNullOrWhiteSpace(CodeText);
+			}
+
+			// The switch is offered only while there is nothing to show. Once
+			// there is a code it has done its job, and the space reads better
+			// given to the code than to a control that would only turn it off.
+			if (EnableMultiplayerToggle != null)
+			{
+				bool off = string.IsNullOrWhiteSpace(CodeText);
+
+				EnableMultiplayerToggle.gameObject.SetActive(off);
+
+				if (off && OpenFrontier.IP.Engine.GameController.Instance != null)
+				{
+					EnableMultiplayerToggle.SetIsOnWithoutNotify(
+						OpenFrontier.IP.Engine.GameController.Instance.PlayerOptions.General_EnableMultiplayer);
+				}
 			}
 		}
 
