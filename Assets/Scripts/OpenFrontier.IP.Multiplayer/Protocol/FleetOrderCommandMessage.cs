@@ -40,13 +40,16 @@ namespace OpenFrontier.IP.Multiplayer
 		/// three target ids, a cargo class, a position, a parameter, three
 		/// flags, and the count.
 		/// </remarks>
-		public const int HeaderBytes = 13 * 4;
+		public const int HeaderBytes = 14 * 4;
 
 		/// <summary>Which order.</summary>
 		public FleetOrderKind Kind;
 
 		/// <summary>The fleets to give it to, in the player's selection order.</summary>
 		public int[] FleetIds;
+
+		/// <summary>Selected ships not yet in a fleet, for the host to build one for.</summary>
+		public int[] LooseUnitIds;
 
 		/// <summary>For orders that name a unit: what to dock with, claim, collect.</summary>
 		public int TargetUnitId;
@@ -82,8 +85,12 @@ namespace OpenFrontier.IP.Multiplayer
 		public byte[] ToBytes()
 		{
 			int count = Math.Min(Count, MaxFleets);
+			int looseCount = LooseUnitIds == null
+				? 0
+				: Math.Min(LooseUnitIds.Length, MaxFleets);
 
-			using (MemoryStream stream = new MemoryStream(HeaderBytes + (count * 4)))
+			using (MemoryStream stream = new MemoryStream(
+				HeaderBytes + ((count + looseCount) * 4)))
 			using (BinaryWriter writer = new BinaryWriter(stream))
 			{
 				writer.Write((int)Kind);
@@ -99,10 +106,16 @@ namespace OpenFrontier.IP.Multiplayer
 				writer.Write(Loop ? 1 : 0);
 				writer.Write(Repeat ? 1 : 0);
 				writer.Write(count);
+				writer.Write(looseCount);
 
 				for (int i = 0; i < count; i++)
 				{
 					writer.Write(FleetIds[i]);
+				}
+
+				for (int i = 0; i < looseCount; i++)
+				{
+					writer.Write(LooseUnitIds[i]);
 				}
 
 				writer.Flush();
@@ -139,21 +152,24 @@ namespace OpenFrontier.IP.Multiplayer
 					bool loop = reader.ReadInt32() != 0;
 					bool repeat = reader.ReadInt32() != 0;
 					int count = reader.ReadInt32();
+					int looseCount = reader.ReadInt32();
 
 					// Bounded before allocating, from a number that arrived over a
 					// socket. See UnitStateMessage for why this is not optional.
-					if (count < 0 || count > MaxFleets)
+					if (count < 0 || count > MaxFleets
+						|| looseCount < 0 || looseCount > MaxFleets)
 					{
-						error = "Fleet count " + count + " is outside 0-" + MaxFleets + ".";
+						error = "Count " + count + " fleets and " + looseCount
+							+ " loose ships is outside 0-" + MaxFleets + " each.";
 						return false;
 					}
 
-					if (stream.Length < HeaderBytes + ((long)count * 4))
+					if (stream.Length < HeaderBytes + (((long)count + looseCount) * 4))
 					{
 						error = "Payload holds " + stream.Length
 							+ " bytes, short of the "
-							+ (HeaderBytes + ((long)count * 4))
-							+ " that " + count + " fleets need.";
+							+ (HeaderBytes + (((long)count + looseCount) * 4))
+							+ " that " + (count + looseCount) + " ids need.";
 						return false;
 					}
 
@@ -162,6 +178,13 @@ namespace OpenFrontier.IP.Multiplayer
 					for (int i = 0; i < count; i++)
 					{
 						fleets[i] = reader.ReadInt32();
+					}
+
+					int[] loose = new int[looseCount];
+
+					for (int i = 0; i < looseCount; i++)
+					{
+						loose[i] = reader.ReadInt32();
 					}
 
 					// Refused rather than guessed at: two builds that
@@ -188,7 +211,8 @@ namespace OpenFrontier.IP.Multiplayer
 						Stack = stack,
 						Loop = loop,
 						Repeat = repeat,
-						FleetIds = fleets
+						FleetIds = fleets,
+						LooseUnitIds = loose
 					};
 
 					return true;

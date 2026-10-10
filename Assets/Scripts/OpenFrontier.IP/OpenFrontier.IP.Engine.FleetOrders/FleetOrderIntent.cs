@@ -58,6 +58,22 @@ namespace OpenFrontier.IP.Engine.FleetOrders
 		/// <summary>The fleets to give it to, in the player's selection order.</summary>
 		public List<int> FleetIds;
 
+		/// <summary>
+		/// Selected ships that are not in a fleet yet.
+		/// </summary>
+		/// <remarks>
+		/// Named rather than turned into a fleet on this machine. Selecting a
+		/// ship with no fleet is the ordinary way to order it to do something,
+		/// and the game resolves it by building a fleet around it - a real
+		/// mutation, with a new id, that the other copy of the world knows
+		/// nothing about.
+		///
+		/// So on a client the ships are named and the host does the building.
+		/// It is the same rule as everything else here: this copy does not
+		/// decide, it asks.
+		/// </remarks>
+		public List<int> LooseUnitIds;
+
 		/// <summary>Zero means "none", which is how the engine already says so.</summary>
 		/// <remarks>
 		/// Not a field initialiser, because the language level this compiles at
@@ -110,6 +126,61 @@ namespace OpenFrontier.IP.Engine.FleetOrders
 		/// Installed by the networking layer. Left null otherwise.
 		/// </summary>
 		public static IFleetOrderInterceptor Interceptor { get; set; }
+
+		/// <summary>
+		/// Selected ships that were not in a fleet, waiting to be named on an
+		/// order.
+		/// </summary>
+		/// <remarks>
+		/// Selecting a ship with no fleet is the ordinary way to order it to do
+		/// something, and the game resolves it by building a fleet around it.
+		/// That is a real mutation with a new id, and on a second copy of the
+		/// world it produces a fleet the host has never heard of - which is
+		/// then named in an order, and refused.
+		///
+		/// So a copy that does not own the world says so instead of building
+		/// one, and hands the ids over for the world that does.
+		///
+		/// Held here rather than threaded through every order method because
+		/// the fleet overloads are called from a dozen places that know
+		/// nothing about selection. Drained by whoever builds the intent.
+		/// </remarks>
+		private static List<int> pendingLooseUnitIds = new List<int>();
+
+		/// <summary>Notes ships that were selected without a fleet.</summary>
+		public static void NoteLooseUnits(IEnumerable<int> unitIds)
+		{
+			if (unitIds == null)
+			{
+				return;
+			}
+
+			foreach (int id in unitIds)
+			{
+				if (!pendingLooseUnitIds.Contains(id))
+				{
+					pendingLooseUnitIds.Add(id);
+				}
+			}
+		}
+
+		/// <summary>
+		/// Takes the loose ships and clears them, so an order carries the
+		/// selection it was made from and not the one before it.
+		/// </summary>
+		public static List<int> TakeLooseUnits()
+		{
+			if (pendingLooseUnitIds.Count == 0)
+			{
+				return null;
+			}
+
+			List<int> taken = new List<int>(pendingLooseUnitIds);
+
+			pendingLooseUnitIds.Clear();
+
+			return taken;
+		}
 
 		/// <summary>
 		/// Offers an order to whoever is listening. True means it was handled

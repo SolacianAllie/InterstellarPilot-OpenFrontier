@@ -286,16 +286,34 @@ namespace OpenFrontier.IP.Multiplayer
 
 			Debug.Log("Multiplayer: session ended (" + ending + ") - " + reason);
 
+			// Close the socket here, while the reason is still known.
+			//
+			// It used not to, and that left a client that had been told the
+			// host left still holding a live session - sitting in the main
+			// menu, reported as connected, with a socket nothing would ever
+			// answer on. The session ended on paper and nowhere else.
+			//
+			// Safe from inside a message handler: the session checks for its
+			// own disposal before it looks at another message.
+			Disconnect();
+
 			Failed?.Invoke(reason);
 			Disconnected?.Invoke(reason);
-
-			TellThePlayer(ending, reason);
 
 			if (ending != Ending.LeftGame)
 			{
 				// Only for the other endings. When this copy left on purpose
 				// it has somewhere to go already and is on its way.
+				PublishNotice(reason, ending);
+
 				GoBackToMenu();
+			}
+			else
+			{
+				// No menu transition to lose the popup in, so it can be said
+				// now, where the player is still looking at the world they
+				// just left.
+				TellThePlayer(ending, reason);
 			}
 		}
 
@@ -319,6 +337,24 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				Debug.LogWarning("Multiplayer: could not return to the main menu - " + e.Message);
 			}
+		}
+
+		/// <summary>
+		/// Leaves a reason for the next screen up, in the game's own words.
+		/// </summary>
+		/// <remarks>
+		/// The game assembly owns the popup and the menu screen that would
+		/// read it, and the networking assembly points at it rather than the
+		/// other way round - a reference back would be a circle between two
+		/// assemblies. Same shape as the authority question and the
+		/// shared-session flag, for the same reason.
+		/// </remarks>
+		private static void PublishNotice(string reason, Ending ending)
+		{
+			OpenFrontier.IP.UI.SessionNotices.Publish(reason,
+				ending == Ending.HostLeft
+					? OpenFrontier.IP.UI.SessionNotices.NoticeKind.Warning
+					: OpenFrontier.IP.UI.SessionNotices.NoticeKind.Error);
 		}
 
 		private static void TellThePlayer(Ending ending, string reason)

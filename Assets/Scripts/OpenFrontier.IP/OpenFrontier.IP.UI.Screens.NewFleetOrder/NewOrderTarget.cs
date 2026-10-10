@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using OpenFrontier.IP.Engine;
 using OpenFrontier.IP.Engine.Factions;
+using OpenFrontier.IP.Engine.FleetOrders;
 using OpenFrontier.IP.Engine.Fleets.ActiveOrders;
 
 namespace OpenFrontier.IP.UI.Screens.NewFleetOrder
@@ -290,6 +291,24 @@ namespace OpenFrontier.IP.UI.Screens.NewFleetOrder
 		{
 			List<Fleet> list = new List<Fleet>();
 			list.AddRange(orderedFleets);
+
+			// A copy that does not own the world does not build fleets.
+			//
+			// It used to build them here, unconditionally, which is how a
+			// client came to hold a fleet the host had never heard of - the
+			// order that followed named it and was refused, and the world
+			// quietly carried a ship, an NPC and a fleet that existed in one
+			// place and nowhere else.
+			//
+			// The ships are named instead, and the world that owns them builds
+			// the fleet when it carries the order out.
+			if (Authority.IsThisCopyAClient)
+			{
+				NoteLooseShipsWithoutFleets(list);
+
+				return list;
+			}
+
 			foreach (Unit item in unitsWithoutFleet)
 			{
 				Fleet fleet = item.GetFleet();
@@ -300,6 +319,65 @@ namespace OpenFrontier.IP.UI.Screens.NewFleetOrder
 				}
 			}
 			return list;
+		}
+
+		/// <summary>
+		/// Hands over the selected ships that have no fleet, and clears them
+		/// from the selection so a second order does not carry them again.
+		/// </summary>
+		private void NoteLooseShipsWithoutFleets(List<Fleet> alreadyHave)
+		{
+			List<int> loose = null;
+
+			foreach (Unit item in unitsWithoutFleet)
+			{
+				if (item == null || item.IsDestroyed || item.GetFleet() != null)
+				{
+					continue;
+				}
+
+				if (FleetContaining(alreadyHave, item) != null)
+				{
+					continue;
+				}
+
+				if (loose == null)
+				{
+					loose = new List<int>();
+				}
+
+				loose.Add(item.UniqueId);
+			}
+
+			FleetOrderIntents.NoteLooseUnits(loose);
+
+			unitsWithoutFleet.Clear();
+		}
+
+		/// <summary>
+		/// Which of these fleets already contains this ship, if any.
+		/// </summary>
+		/// <remarks>
+		/// A ship can be both selected on its own and inside a selected fleet,
+		/// and naming it twice would have the host build a second fleet around
+		/// a ship that has one.
+		/// </remarks>
+		private static Fleet FleetContaining(List<Fleet> fleets, Unit unit)
+		{
+			if (fleets == null || unit == null)
+			{
+				return null;
+			}
+
+			foreach (Fleet fleet in fleets)
+			{
+				if (fleet != null && fleet.ContainsUnit(unit))
+				{
+					return fleet;
+				}
+			}
+
+			return null;
 		}
 
 		public bool AnyUnitNeedsRepair(float hullConditionThreshold, float componentsConditionThreshold, float shieldConditionThreshold)

@@ -66,8 +66,10 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 
 			ClientSession session = Session;
+			int fleetCount = intent.FleetIds == null ? 0 : intent.FleetIds.Count;
+			int looseCount = intent.LooseUnitIds == null ? 0 : intent.LooseUnitIds.Count;
 
-			if (session == null || intent.FleetIds == null || intent.FleetIds.Count == 0)
+			if (session == null || (fleetCount == 0 && looseCount == 0))
 			{
 				// Either not connected, or the player selected nothing.
 				// Neither is worth a message, and the first must not leave the
@@ -84,7 +86,12 @@ namespace OpenFrontier.IP.Multiplayer
 			FleetOrderCommandMessage message = new FleetOrderCommandMessage
 			{
 				Kind = intent.Kind,
-				FleetIds = intent.FleetIds.ToArray(),
+				FleetIds = intent.FleetIds == null
+					? new int[0]
+					: intent.FleetIds.ToArray(),
+				LooseUnitIds = intent.LooseUnitIds == null
+					? new int[0]
+					: intent.LooseUnitIds.ToArray(),
 				TargetUnitId = intent.TargetUnitId,
 				TargetSectorId = intent.TargetSectorId,
 				TargetFleetId = intent.TargetFleetId,
@@ -103,7 +110,7 @@ namespace OpenFrontier.IP.Multiplayer
 				session.Send(ProtocolVersion.FleetOrderCommandMessageId, message.ToBytes());
 
 				Debug.Log("Multiplayer: asked the host for " + intent.Kind + " on "
-					+ intent.FleetIds.Count + " fleet(s)");
+					+ fleetCount + " fleet(s) and " + looseCount + " loose ship(es)");
 
 				return true;
 			}
@@ -188,7 +195,112 @@ namespace OpenFrontier.IP.Multiplayer
 				return;
 			}
 
+			// Loose ships become fleets here, on the world that owns them,
+			// through the same call a local click would have made. The copy
+			// that sent the order deliberately did not build them: a fleet it
+			// built would be an id the host has never issued.
+			command = WithFleetsForLooseShips(player, command);
+
 			ExecuteOnHost(command);
+		}
+
+		/// <summary>
+		/// Turns the ships an order named without fleets into fleets, on the
+		/// host.
+		/// </summary>
+		/// <remarks>
+		/// All or nothing, like the ownership check. A selection is one
+		/// action, and leaving half of it undone is worse than leaving all of
+		/// it - the player sees some of their fleet move and cannot tell that
+		/// the rest was refused.
+		///
+		/// A ship that has acquired a fleet since the order was sent is left
+		/// out, because the player selected a ship and the ship is in a fleet;
+		/// the fleet was never the point.
+		/// </remarks>
+		private static FleetOrderCommandMessage WithFleetsForLooseShips(
+			RemotePlayer player, FleetOrderCommandMessage command)
+		{
+			if (command.LooseUnitIds == null || command.LooseUnitIds.Length == 0)
+			{
+				return command;
+			}
+
+			EngineASX engine = EngineASX.Instance;
+
+			if (engine == null)
+			{
+				return command;
+			}
+
+			List<int> fleetIds = new List<int>();
+
+			if (command.FleetIds != null)
+			{
+				fleetIds.AddRange(command.FleetIds);
+			}
+
+			int built = 0;
+			int alreadyInOne = 0;
+
+			for (int i = 0; i < command.LooseUnitIds.Length; i++)
+			{
+				Unit ship = engine.GetUnitByid(command.LooseUnitIds[i]);
+
+				if (ship == null || ship.IsDestroyed)
+				{
+					Debug.LogWarning("Multiplayer: an order from "
+						+ (player.DisplayName ?? player.Identity) + " named ship "
+						+ command.LooseUnitIds[i] + ", which this world does not"
+						+ " have. Nothing was carried out.");
+
+					return command;
+				}
+
+				Fleet existing = ship.GetFleet();
+
+				if (existing != null)
+				{
+					if (!fleetIds.Contains(existing.UniqueId))
+					{
+						fleetIds.Add(existing.UniqueId);
+
+						alreadyInOne++;
+					}
+
+					continue;
+				}
+
+				Fleet fleet = OpenFrontier.IP.UI.Screens.OrdersHelper
+					.FindOrCreateNpcAndFleetAndPilotShip(ship);
+
+				if (fleet == null)
+				{
+					Debug.LogWarning("Multiplayer: could not put ship "
+						+ ship.UniqueId + " into a fleet. Nothing was carried out.");
+
+					return command;
+				}
+
+				if (!fleetIds.Contains(fleet.UniqueId))
+				{
+					fleetIds.Add(fleet.UniqueId);
+
+					built++;
+				}
+			}
+
+			if (built > 0 || alreadyInOne > 0)
+			{
+				Debug.Log("Multiplayer: put "
+					+ (player.DisplayName ?? player.Identity) + "'s order on "
+					+ built + " new fleet(s) and " + alreadyInOne
+					+ " fleet(s) their loose ships had joined");
+			}
+
+			command.FleetIds = fleetIds.ToArray();
+
+			return command;
 		}
 
 		/// <summary>
@@ -270,6 +382,40 @@ namespace OpenFrontier.IP.Multiplayer
 						+ theirs.UniqueId + ")"));
 
 				return false;
+			}
+
+			// Loose ships are checked on their own account. They were not in
+			// a fleet when the order left, so the fleet loop above never saw
+			// them, and the one below builds a fleet around whatever it is
+			// given.
+			for (int i = 0; command.LooseUnitIds != null && i < command.LooseUnitIds.Length; i++)
+			{
+				Unit ship = engine.GetUnitByid(command.LooseUnitIds[i]);
+
+				if (ship == null || ship.IsDestroyed)
+				{
+					Debug.LogWarning("Multiplayer: refused an order from "
+						+ (player.DisplayName ?? player.Identity) + " for ship "
+						+ command.LooseUnitIds[i] + ", which this world does not"
+						+ " have. Nothing was carried out.");
+
+					return false;
+				}
+
+				if (theirs == null || ship.Faction != theirs)
+				{
+					Debug.LogWarning("Multiplayer: refused an order from "
+						+ (player.DisplayName ?? player.Identity) + " for ship "
+						+ ship.UniqueId + ", which belongs to "
+						+ (ship.Faction == null
+							? "nobody in particular"
+							: "'" + ship.Faction.Name + "' (" + ship.Faction.UniqueId + ")")
+						+ " and theirs is "
+						+ (theirs == null ? "missing" : "'" + theirs.Name + "' ("
+							+ theirs.UniqueId + ")"));
+
+					return false;
+				}
 			}
 
 			return true;

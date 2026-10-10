@@ -44,6 +44,7 @@ namespace OpenFrontier.IP.UI.Screens
 			{
 				Kind = kind,
 				FleetIds = OneFleet(fleet),
+				LooseUnitIds = FleetOrderIntents.TakeLooseUnits(),
 				TargetUnitId = targetUnit,
 				TargetSectorId = targetSector,
 				TargetX = x,

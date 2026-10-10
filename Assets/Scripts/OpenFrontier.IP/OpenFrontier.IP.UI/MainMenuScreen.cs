@@ -255,6 +255,23 @@ namespace OpenFrontier.IP.UI
 			}
 			ApplyLaunchOrigin();
 			RefreshVersionText();
+			SayWhyTheLastSessionEnded();
+		}
+
+		/// <summary>
+		/// Tells the player why they are here, if a session ended before any
+		/// screen was up to say it on.
+		/// </summary>
+		/// <remarks>
+		/// This is the first screen after a session ends, so it is the first
+		/// place the reason can be read. Said from here rather than raised
+		/// over the world that has just been left, because that world is gone
+		/// by the time the menu loads and the popup goes with it - which left
+		/// the player moved to the menu in silence.
+		/// </remarks>
+		private static void SayWhyTheLastSessionEnded()
+		{
+			SessionNotices.SayPending();
 		}
 
 		protected override void update()
