@@ -662,14 +662,28 @@ namespace OpenFrontier.IP.Engine
 		{
 			if (!(EngineASX.Instance.LocalFaction == null) && (!(ScenarioInfo != null) || ScenarioInfo.UniqueId != 4000 || EngineASX.Instance.LocalFaction.UniqueId == 8000 || EngineASX.Instance.LocalFaction.UniqueId >= 100000))
 			{
+				Faction playerFaction = EngineASX.Instance.LocalFaction;
+
+				// The name has to become CUSTOM, not merely be assigned.
+				//
+				// A faction's name is only written to a save when it is custom
+				// - when GeneratedNameId is negative - and this was setting
+				// the name while leaving that id alone. Two saves were read
+				// straight off disk to confirm it: both contain the text, and
+				// neither contains it as a stored string. The name generator
+				// runs later in world creation, assigns a generated name, and
+				// in doing so orphans the name that was set here - so it
+				// comes back from a save as whatever the pool gave it, or as
+				// the prefab's, which is why it looked like a reset to
+				// 'Player'.
+				playerFaction.ClearGeneratedName();
+
 				Debug.Log("DiagB applying default faction name '"
 					+ GameController.Instance.DefaultFactionName + "' over '"
-					+ EngineASX.Instance.LocalFaction.Name + "' generatedNameId="
-					+ EngineASX.Instance.LocalFaction.GeneratedNameId
-					+ " - not cleared, so this name is not saved");
+					+ playerFaction.Name + "' - marked custom, so it will be saved");
 
-				EngineASX.Instance.LocalFaction.Name = GameController.Instance.DefaultFactionName;
-				EngineASX.Instance.LocalFaction.ShortName = GameController.Instance.DefaultFactionShortName;
+				playerFaction.Name = GameController.Instance.DefaultFactionName;
+				playerFaction.ShortName = GameController.Instance.DefaultFactionShortName;
 			}
 		}
 
