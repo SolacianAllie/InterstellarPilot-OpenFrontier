@@ -103,10 +103,12 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// Size for an explanation instead of a code.
 		/// </summary>
 		/// <remarks>
-		/// Smaller because it is prose rather than something to be transcribed,
-		/// and because a sentence at the code's size does not fit the panel.
+		/// Smaller than the code because it is prose rather than something to be
+		/// transcribed, but only a little: the panel is sized for a 32-character
+		/// code, so an explanation at the code's own size sits in a lot of empty
+		/// space and looks like an afterthought.
 		/// </remarks>
-		public const int ExplanationFontSize = 16;
+		public const int ExplanationFontSize = 22;
 
 		protected override void awake()
 		{
@@ -185,6 +187,17 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// the Android clipboard on a device, so this is not a desktop-only
 			// affordance.
 			GUIUtility.systemCopyBuffer = CodeText;
+
+			// Close BEFORE confirming, never after. Raising the confirmation
+			// first would make its message box the current screen, and the
+			// NavigateBack below would then be refused by its own guard -
+			// "only current panel can navigate back" - leaving this dialog open
+			// with the confirmation stacked on top of it.
+			//
+			// Dismiss is synchronous, so by the time Copied is raised this
+			// screen is off the stack and the message lands on whatever is
+			// underneath.
+			Dismiss();
 
 			Copied?.Invoke();
 		}
