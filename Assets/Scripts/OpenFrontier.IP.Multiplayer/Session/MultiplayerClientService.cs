@@ -290,6 +290,35 @@ namespace OpenFrontier.IP.Multiplayer
 			Disconnected?.Invoke(reason);
 
 			TellThePlayer(ending, reason);
+
+			if (ending != Ending.LeftGame)
+			{
+				// Only for the other endings. When this copy left on purpose
+				// it has somewhere to go already and is on its way.
+				GoBackToMenu();
+			}
+		}
+
+		/// <summary>
+		/// Returns to the main menu after a session that ended in a game.
+		/// </summary>
+		/// <remarks>
+		/// Saying the session ended and then leaving the player standing in
+		/// the host's world is worse than saying nothing: the world is frozen,
+		/// nothing explains it, and the way out is a reload. The menu screen
+		/// that used to handle this only exists in the menu, so nothing was
+		/// listening at exactly the moment it mattered.
+		/// </remarks>
+		private static void GoBackToMenu()
+		{
+			try
+			{
+				OpenFrontier.IP.Engine.GameController.Instance.QuitToMainMenu();
+			}
+			catch (System.Exception e)
+			{
+				Debug.LogWarning("Multiplayer: could not return to the main menu - " + e.Message);
+			}
 		}
 
 		private static void TellThePlayer(Ending ending, string reason)
@@ -384,6 +413,19 @@ namespace OpenFrontier.IP.Multiplayer
 
 		private bool hasHadAWorld;
 
+		/// <summary>How long the world must be gone before we believe it.</summary>
+		/// <remarks>
+		/// A single frame of nothing is not leaving. Swapping ships, docking,
+		/// jumping and coming back all pass through moments where the world
+		/// is briefly not there, and a check that fired on one of them told
+		/// the player they had left the game while they were still playing
+		/// it. Quitting takes seconds and does not come back; that difference
+		/// is the whole test.
+		/// </remarks>
+		private const float GoneGraceSeconds = 2f;
+
+		private float worldGoneSince = -1f;
+
 		/// <summary>
 		/// Ends the session when this copy leaves its world.
 		/// </summary>
@@ -410,6 +452,7 @@ namespace OpenFrontier.IP.Multiplayer
 			if (engine != null && engine.World != null)
 			{
 				hasHadAWorld = true;
+				worldGoneSince = -1f;
 				return;
 			}
 
@@ -417,6 +460,19 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				return;
 			}
+
+			if (worldGoneSince < 0f)
+			{
+				worldGoneSince = Time.unscaledTime;
+				return;
+			}
+
+			if (Time.unscaledTime - worldGoneSince < GoneGraceSeconds)
+			{
+				return;
+			}
+
+			worldGoneSince = -1f;
 
 			EndSession(Ending.LeftGame, "You left the game, so the session ended.");
 
