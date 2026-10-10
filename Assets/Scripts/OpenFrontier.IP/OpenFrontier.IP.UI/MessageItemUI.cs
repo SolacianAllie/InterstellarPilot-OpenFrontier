@@ -25,6 +25,48 @@ namespace OpenFrontier.IP.UI
 				SubjectText.fontStyle = ((!Item.Opened) ? FontStyles.Bold : FontStyles.Normal);
 				DateLabel.fontStyle = SubjectText.fontStyle;
 			}
+
+			LetTheTextWrap();
+		}
+
+		/// <summary>
+		/// Stops the From and Subject columns being truncated to nothing.
+		/// </summary>
+		/// <remarks>
+		/// With word wrapping off and overflow set to truncate or ellipsis, a
+		/// line wider than its rect produces NO characters at all - not a
+		/// shortened line, none. Measured, not guessed:
+		///
+		///     TextFrom   chars=0   wrap=NoWrap
+		///     TextHeader chars=0   wrap=NoWrap
+		///     TextDate   chars=16  wrap=Normal
+		///
+		/// A message is far wider than its rect; a date is not. That is the
+		/// whole difference between two empty columns and one working column
+		/// on the same row, with the same font and the same component.
+		///
+		/// Set here rather than only in the prefab because the prefab edit was
+		/// correct on disk and still not in effect - Unity had not reimported
+		/// it, and a build has it baked in. AGENTS.md already records
+		/// hand-edited YAML being stripped by tooling in this project; a
+		/// value that has to survive a reimport to keep working is a value
+		/// that will eventually stop working.
+		///
+		/// Written only when it is wrong, so a list that refreshes every frame
+		/// does not rebuild its text mesh every frame.
+		/// </remarks>
+		private void LetTheTextWrap()
+		{
+			Wrap(FromLabel);
+			Wrap(SubjectText);
+		}
+
+		private static void Wrap(TextMeshProUGUI label)
+		{
+			if (label != null && label.textWrappingMode != TextWrappingModes.Normal)
+			{
+				label.textWrappingMode = TextWrappingModes.Normal;
+			}
 		}
 
 		private static bool diagged;
