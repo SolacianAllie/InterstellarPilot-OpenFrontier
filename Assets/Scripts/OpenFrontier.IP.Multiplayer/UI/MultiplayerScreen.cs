@@ -8,6 +8,7 @@ using OpenFrontier.IP.UI.Screens;
 using OpenFrontier.IP.UI.Screens.MessageBox;
 using OpenFrontier.IP.UI.Screens.RenameUnit;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 namespace OpenFrontier.IP.Multiplayer.UI
@@ -62,23 +63,32 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		{
 			base.awake();
 
-			// The prefab this screen was adapted from is LoadGameScreen, which
-			// still has its own field set. Swapping the script without remapping
-			// the fields leaves every one of them null, and each is dereferenced
-			// the moment the screen is opened - so the failure would look like a
-			// crash on opening rather than an unwired prefab. Naming it here
-			// means the console says what is actually wrong.
-			if (!AreReferencesAssigned())
+			// Each control is wired as soon as it exists, rather than all or
+			// nothing. This prefab was cloned from LoadGameScreen, so while it is
+			// still being wired up one unassigned field took every control down
+			// with it - Add Host looked broken rather than unwired, which is a
+			// misleading thing to be looking at.
+			WireButton(JoinButton, JoinSelectedHost);
+			WireButton(AddHostButton, AddHostButtonClick);
+			WireButton(DeleteHostButton, DeleteHostButtonClick);
+			WireButton(RenameHostButton, RenameHostButtonClick);
+
+			if (ItemsList != null)
 			{
-				return;
+				ItemsList.SelectedItemsChanged += OnSelectedItemsChanged;
 			}
 
-			JoinButton.onClick.AddListener(JoinSelectedHost);
-			AddHostButton.onClick.AddListener(AddHostButtonClick);
-			DeleteHostButton.onClick.AddListener(DeleteHostButtonClick);
-			RenameHostButton.onClick.AddListener(RenameHostButtonClick);
+			// Still reported, because something genuinely is unwired - but only
+			// after the controls that did get wired are live, so the screen is
+			// usable while the prefab is being finished.
+			AreReferencesAssigned();
+		}
 
-			ItemsList.SelectedItemsChanged += OnSelectedItemsChanged;
+		private static void WireButton(Button button, UnityAction action)		{
+			if (button != null)
+			{
+				button.onClick.AddListener(action);
+			}
 		}
 
 		protected override void refresh()
@@ -92,8 +102,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				return;
 			}
 
-			SavedHostStore.InvalidateCache();
-			ItemsList.Refresh();
+			RefreshHostList();
 			RefreshItemData();
 
 			// Probe as soon as the screen opens rather than waiting out the
@@ -144,15 +153,22 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				screen.TitleText = "Enter a join code...";
 				screen.MinCharacters = 1;
 
-				// 40 covers the 32-character code with room for the separators
-				// the player might paste along with it.
-				screen.MaxCharacters = 40;
+				// 44 covers the 32-character code with room for the separators
+				// the player might paste along with it - a code is normally
+				// shown as four blocks of eight, so a copy out of the host's
+				// screen arrives with dashes already in it.
+				screen.MaxCharacters = 44;
 
-				// Join codes are Base32 - A-Z and 2-7 - plus the dashes used for
-				// grouping. Rejecting anything else here means an obvious typo is
-				// caught while typing rather than as a failed connection.
-				screen.RegexPatternValidation = "^[A-Za-z2-7\\-]*$";
-				screen.RegexPatternValidationMessage = "That is not a join code. A code uses the letters A-Z, the digits 2-7, and dashes.";
+				// Base32 is A-Z and 2-7, plus the separators a code is displayed
+				// with. This has to match what SessionCode.TryParse strips, or
+				// validation would reject a code the parser would have accepted
+				// - which is what a paste straight out of the host's screen
+				// looks like. Being permissive here costs nothing: TryParse
+				// checks the length and the checksum, and a wrong code is
+				// refused there rather than silently saved.
+				screen.RegexPatternValidation = "^[A-Za-z2-7\\-_ ]*$";
+				screen.RegexPatternValidationMessage =
+					"That is not a join code. A code uses the letters A-Z, the digits 2-7, and dashes.";
 
 				screen.NewName = string.Empty;
 				screen.RenameConfirmed += (handler, confirmed, enteredCode) =>
@@ -162,38 +178,107 @@ namespace OpenFrontier.IP.Multiplayer.UI
 						return;
 					}
 
-					if (string.IsNullOrWhiteSpace(enteredCode))
+					SavedHost added = AddHostFromCode(enteredCode);
+
+					if (added != null)
 					{
-						return;
+						ShowHost(added);
 					}
-
-					// Confirm the code is at least well-formed before saving it,
-					// so the list cannot fill up with rubbish typed by mistake.
-					SessionCodeParseResult parsed = SessionCode.TryParse(enteredCode);
-
-					if (!parsed.Success)
-					{
-						UIController.Instance.ShowMessageBox(
-							parsed.Error, MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
-						return;
-					}
-
-					// Save the code exactly as typed. The parsed form is only used
-					// for validation here - the player can still attempt to join a
-					// host from a different version later and be told why, rather
-					// than having the entry silently rejected at add time.
-					SavedHost added = SavedHostStore.AddOrUpdate(null, enteredCode);
-
-					if (added == null)
-					{
-						return;
-					}
-
-					ItemsList.Refresh();
-					ItemsList.SetSelectedItems(new[] { added });
-					ItemsList.ScrollToSelected();
-					RefreshItemData();
 				};
+			});
+		}
+
+		/// <summary>
+		/// Validates a typed code and saves it, reporting anything wrong with it.
+		/// </summary>
+		/// <returns>The saved entry, or null if nothing was saved.</returns>
+		private SavedHost AddHostFromCode(string enteredCode)
+		{
+			if (string.IsNullOrWhiteSpace(enteredCode))
+			{
+				return null;
+			}
+
+			// Confirm the code is at least well-formed before saving it, so the
+			// list cannot fill up with rubbish typed by mistake.
+			SessionCodeParseResult parsed = SessionCode.TryParse(enteredCode);
+
+			if (!parsed.Success)
+			{
+				UIController.Instance.ShowMessageBox(
+					parsed.Error, MessageBoxButtons.Ok, null, MessageBoxIcon.Error);
+				return null;
+			}
+
+			// Save the code exactly as typed. The parsed form is only used for
+			// validation here - the player can still attempt to join a host
+			// from a different version later and be told why, rather than having
+			// the entry silently rejected at add time.
+			return SavedHostStore.AddOrUpdate(null, enteredCode);
+		}
+
+		/// <summary>
+		/// Puts a newly added host on screen: selected, scrolled to, and probed
+		/// straight away.
+		/// </summary>
+		/// <remarks>
+		/// Probed here rather than left to the interval because otherwise the
+		/// row the player just created sits on "Checking..." for up to fifteen
+		/// seconds - which reads as the add having not worked. A mistyped code
+		/// that still passes the checksum is exactly the case worth catching
+		/// while the player is still looking at the screen.
+		/// </remarks>
+		private void ShowHost(SavedHost added)
+		{
+			RefreshHostList();
+
+			if (ItemsList == null || added == null)
+			{
+				return;
+			}
+
+			// Re-resolved: refreshing the list rebuilds the entries, so the
+			// object AddOrUpdate returned may already be a discarded one.
+			SavedHost live = FindByCode(added.Code);
+
+			if (live == null)
+			{
+				return;
+			}
+
+			ItemsList.SetSelectedItems(new[] { live });
+			ItemsList.ScrollToSelected();
+			RefreshItemData();
+
+			ProbeHost(live);
+		}
+
+		/// <summary>Probes one host and repaints the list when the answer lands.</summary>
+		private void ProbeHost(SavedHost host)
+		{
+			if (host == null || ItemsList == null)
+			{
+				return;
+			}
+
+			SessionCodeParseResult parsed = SessionCode.TryParse(host.Code);
+
+			if (!parsed.Success)
+			{
+				return;
+			}
+
+			HostProbe.Probe(parsed.Data, result =>
+			{
+				// A probe can land after the player has backed out; touching the
+				// list then re-initialises it and leaves the navigation state
+				// inconsistent.
+				if (isTornDown || ItemsList == null)
+				{
+					return;
+				}
+
+				ApplyProbeResult(host.Code, result);
 			});
 		}
 
@@ -261,12 +346,38 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// </summary>
 		private void MarkConnected(SavedHost host, bool connected)
 		{
-			if (host != null)
+			// Resolved by code rather than set on the object handed in:
+			// SavedHostStore drops its cache and rebuilds the list on every
+			// screen refresh, which creates new SavedHost objects. The one a
+			// join callback captured is often already a discarded one, and its
+			// flag would then be set on an object no row is showing.
+			SavedHost live = FindByCode(host == null ? null : host.Code);
+
+			if (live != null)
 			{
-				host.IsConnected = connected;
+				live.IsConnected = connected;
 			}
 
 			RefreshItemData();
+		}
+
+		/// <summary>The current entry for a code, or null if it is no longer saved.</summary>
+		private static SavedHost FindByCode(string code)
+		{
+			if (string.IsNullOrEmpty(code))
+			{
+				return null;
+			}
+
+			foreach (SavedHost candidate in SavedHostStore.Hosts)
+			{
+				if (string.Equals(candidate.Code, code, StringComparison.OrdinalIgnoreCase))
+				{
+					return candidate;
+				}
+			}
+
+			return null;
 		}
 
 		private void Disconnect()
@@ -301,21 +412,25 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				screen.NewName = host.Name;
 				screen.RenameConfirmed += (handler, confirmed, newName) =>
 				{
-					if (confirmed)
+					if (!confirmed)
 					{
-						SavedHostStore.Rename(host, newName);
-
-						// Rebuild so the row picks up the new name.
-						ItemsList.Refresh();
-						RefreshItemData();
+						return;
 					}
+
+					SavedHost live = FindByCode(host.Code) ?? host;
+
+					SavedHostStore.Rename(live, newName);
+
+					// Rebuild so the row picks up the new name.
+					RefreshHostList();
+					RefreshItemData();
 				};
 			});
 		}
 
 		private void DeleteHostButtonClick()
 		{
-			int count = ItemsList.SelectedItemCount;
+			int count = ItemsList == null ? 0 : ItemsList.SelectedItemCount;
 
 			if (count == 0)
 			{
@@ -334,7 +449,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 
 		private void DeleteConfirmed(MessageBoxScreen sender, MessageBoxResult result)
 		{
-			if (result != MessageBoxResult.Ok)
+			if (result != MessageBoxResult.Ok || ItemsList == null)
 			{
 				return;
 			}
@@ -344,14 +459,14 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				SavedHostStore.Remove(host);
 			}
 
-			ItemsList.Refresh();
+			RefreshHostList();
 			RefreshItemData();
 		}
 
 		// ---- details panel --------------------------------------------------
 
 		private SavedHost SingleSelectedHost =>
-			ItemsList.SelectedItemCount == 1 ? ItemsList.SingleSelectedItem : null;
+			ItemsList != null && ItemsList.SelectedItemCount == 1 ? ItemsList.SingleSelectedItem : null;
 
 		private void OnSelectedItemsChanged(ScrollListBase sender)
 		{
@@ -425,7 +540,11 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			}
 
 			List<SessionCodeData> targets = new List<SessionCodeData>(hosts.Count);
-			Dictionary<string, SavedHost> byCode = new Dictionary<string, SavedHost>(hosts.Count);
+
+			// Keyed by probe identity, valued by code. The entry is looked up
+			// again when the result lands rather than held onto, because a
+			// refresh in between rebuilds the list and orphans the object.
+			Dictionary<string, string> codeByKey = new Dictionary<string, string>(hosts.Count);
 
 			foreach (SavedHost host in hosts)
 			{
@@ -439,7 +558,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				}
 
 				targets.Add(parsed.Data);
-				byCode[host.Code] = host;
+				codeByKey[ProbeKey(parsed.Data)] = host.Code;
 			}
 
 			if (targets.Count == 0)
@@ -459,17 +578,46 @@ namespace OpenFrontier.IP.Multiplayer.UI
 					return;
 				}
 
-				if (byCode.TryGetValue(ProbeKey(probed), out SavedHost host))
+				if (codeByKey.TryGetValue(ProbeKey(probed), out string code))
 				{
-					host.ProbeResult = result;
-
-					// Repaint the affected rows. Refresh() on the whole list is
-					// cheap at this size and avoids reaching into the list's
-					// internals to update one row.
-					ItemsList.Refresh();
-					RefreshItemData();
+					ApplyProbeResult(code, result);
 				}
 			});
+		}
+
+		/// <summary>
+		/// Records a probe result against the live entry and repaints.
+		/// </summary>
+		private void ApplyProbeResult(string code, HostProbeResult result)
+		{
+			SavedHost live = FindByCode(code);
+
+			if (live == null)
+			{
+				return;
+			}
+
+			live.ProbeResult = result;
+
+			// Repaint the affected rows. Refresh() on the whole list is cheap at
+			// this size and avoids reaching into the list's internals to update
+			// one row.
+			RefreshHostList();
+			RefreshItemData();
+		}
+
+		/// <summary>
+		/// Re-reads the store and rebuilds the list.
+		/// </summary>
+		private void RefreshHostList()
+		{
+			if (ItemsList == null)
+			{
+				return;
+			}
+
+			SavedHostStore.InvalidateCache();
+			ItemsList.Refresh();
 		}
 
 		/// <summary>
@@ -493,31 +641,75 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// </summary>
 		private void RefreshItemData()
 		{
+			int selectedCount = ItemsList == null ? 0 : ItemsList.SelectedItemCount;
 			SavedHost single = SingleSelectedHost;
 
-			HostInfoRoot.gameObject.SetActive(single != null);
-			MultipleItemsSelectedRoot.gameObject.SetActive(ItemsList.SelectedItemCount > 1);
+			SetActive(HostInfoRoot, single != null);
+			SetActive(MultipleItemsSelectedRoot, selectedCount > 1);
 
-			JoinButton.gameObject.SetActive(single != null && !single.IsConnected);
-			DeleteHostButton.gameObject.SetActive(ItemsList.SelectedItemCount > 0);
-			RenameHostButton.gameObject.SetActive(single != null);
+			SetActive(JoinButton, single != null && !single.IsConnected);
+			SetActive(DeleteHostButton, selectedCount > 0);
+			SetActive(RenameHostButton, single != null);
+
+			// Add Host never depends on a selection, so it is left alone here.
 
 			if (single == null)
 			{
 				return;
 			}
 
-			HostNameLabel.text = string.IsNullOrWhiteSpace(single.Name) ? single.Code : single.Name;
-			HostCodeLabel.text = single.Code;
-			HostAddedLabel.text = single.AddedUtc.ToLocalTime().ToString("dd-MMM-yyyy H:mm");
-
-			if (single.IsConnected)
+			if (HostNameLabel != null)
 			{
-				HostStatusLabel.text = "Connected";
+				HostNameLabel.text = string.IsNullOrWhiteSpace(single.Name) ? single.Code : single.Name;
 			}
-			else
+
+			if (HostCodeLabel != null)
 			{
-				HostStatusLabel.text = single.ProbeResult.Describe();
+				HostCodeLabel.text = single.Code;
+			}
+
+			if (HostAddedLabel != null)
+			{
+				HostAddedLabel.text = single.AddedUtc.ToLocalTime().ToString("dd-MMM-yyyy H:mm");
+			}
+
+			if (HostStatusLabel != null)
+			{
+				HostStatusLabel.text = single.IsConnected
+					? "Connected"
+					: single.ProbeResult.Describe();
+			}
+		}
+
+		/// <summary>
+		/// Shows or hides an optional panel or control.
+		/// </summary>
+		/// <remarks>
+		/// Checked rather than assumed because this runs on every selection
+		/// change and every probe result: one unassigned field would otherwise
+		/// throw repeatedly and take the screen down with it.
+		/// </remarks>
+		private static void SetActive(Component component, bool active)
+		{
+			if (component != null)
+			{
+				component.gameObject.SetActive(active);
+			}
+		}
+
+		/// <summary>
+		/// Shows or hides an optional panel held as a GameObject.
+		/// </summary>
+		/// <remarks>
+		/// An overload rather than a change of field type: the prefab stores a
+		/// GameObject reference under a different fileID from a Transform one,
+		/// so retyping the field would silently drop the assignment.
+		/// </remarks>
+		private static void SetActive(GameObject gameObject, bool active)
+		{
+			if (gameObject != null)
+			{
+				gameObject.SetActive(active);
 			}
 		}
 
