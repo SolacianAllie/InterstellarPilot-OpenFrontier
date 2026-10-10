@@ -51,6 +51,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 			UnitState[] units = states.Units;
 			int applied = 0;
+			int notOurs = 0;
+			int unknown = 0;
 
 			for (int i = 0; i < units.Length; i++)
 			{
@@ -58,6 +60,7 @@ namespace OpenFrontier.IP.Multiplayer
 
 				if (!session.Ownership.IsOwnedBy(state.Id, claimantToken))
 				{
+					notOurs++;
 					continue;
 				}
 
@@ -65,6 +68,7 @@ namespace OpenFrontier.IP.Multiplayer
 
 				if (unit == null || unit.IsDestroyed)
 				{
+					unknown++;
 					continue;
 				}
 
@@ -72,7 +76,59 @@ namespace OpenFrontier.IP.Multiplayer
 				applied++;
 			}
 
+			Count(applied, notOurs, unknown, claimantToken);
+
 			return applied;
+		}
+
+		private static int reportedApplied = -1;
+		private static int reportedNotOurs;
+		private static float nextReportTime;
+
+		/// <summary>
+		/// What the host did with what a client told it about its ship.
+		/// </summary>
+		/// <remarks>
+		/// There was no way to tell, and the symptom is the same from either
+		/// side: a client whose uploads are all being dropped sees its ship
+		/// move locally and nowhere else, and a host that is dropping them
+		/// sees a ship that does not move. Both look like a broken connection
+		/// and neither had anything in its log to say so.
+		///
+		/// The three counts are reported apart rather than as one total,
+		/// because "nothing applied" has three quite different causes - not
+		/// owned, no such ship here, or no upload arriving at all - and only
+		/// one of them is about ownership.
+		/// </remarks>
+		private static void Count(int applied, int notOurs, int unknown, string token)
+		{
+			if (Time.unscaledTime < nextReportTime)
+			{
+				return;
+			}
+
+			nextReportTime = Time.unscaledTime + 2f;
+
+			// Only when it changed. The same wrong number every two seconds
+			// for the length of a session is how a log stops being read.
+			if (applied == reportedApplied && notOurs == reportedNotOurs)
+			{
+				return;
+			}
+
+			reportedApplied = applied;
+			reportedNotOurs = notOurs;
+
+			string what = applied > 0
+				? "applied"
+				: notOurs > 0
+					? "NOTHING APPLIED - the host does not think this player owns that ship"
+					: "nothing to apply";
+
+			Debug.Log("Multiplayer: ship upload from "
+				+ (string.IsNullOrEmpty(token) ? "a player" : token) + ": "
+				+ applied + " applied, " + notOurs + " not this player's, "
+				+ unknown + " not in this world - " + what);
 		}
 
 		/// <summary>

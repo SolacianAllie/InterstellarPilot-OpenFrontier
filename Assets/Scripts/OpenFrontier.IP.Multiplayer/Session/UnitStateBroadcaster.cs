@@ -82,7 +82,40 @@ namespace OpenFrontier.IP.Multiplayer
 			public Vector3 Position;
 			public Quaternion Rotation;
 			public bool Known;
+
+			/// <summary>When this player was last told anything about it.</summary>
+			/// <remarks>
+			/// Not when it last moved - when it was last SENT. The difference
+			/// is the whole of the change below.
+			/// </remarks>
+			public float LastSentTime;
+
+			/// <summary>Whether it was still moving the last time it was sent.</summary>
+			public bool WasMoving;
 		}
+
+		/// <summary>
+		/// How long a ship keeps being sent after it stops moving.
+		/// </summary>
+		/// <remarks>
+		/// A ship that has not moved is not sent, which is where the saving
+		/// comes from - and it was wrong in a way that only shows up on a
+		/// turning ship.
+		///
+		/// Turning in place, a ship moves almost not at all. If a single
+		/// quiet tick were taken as "stopped", the host would go quiet on it
+		/// while it was still rotating, the client would have nothing new to
+		/// draw and would hold the last facing it had - and the ship would sit
+		/// at an angle, frozen mid-turn, until something else made it move
+		/// again.
+		///
+		/// So a ship that has gone quiet is not believed straight away. It
+		/// keeps being sent for a few seconds first, and only then is it
+		/// treated as actually stopped. The cost is a few bytes a second per
+		/// ship for a few seconds after it settles, which is far cheaper than
+		/// every ship in view being sent forever the moment they all dock.
+		/// </remarks>
+		private const float StoppedConfirmationSeconds = 4f;
 
 		private static readonly Dictionary<string, Dictionary<int, Remembered>> remembered =
 			new Dictionary<string, Dictionary<int, Remembered>>();
@@ -344,13 +377,18 @@ namespace OpenFrontier.IP.Multiplayer
 				Vector3 position = ship.transform.localPosition;
 				Quaternion rotation = ship.transform.localRotation;
 
-				// The tiering. A ship whose transform has not changed since
-				// this player was last told is not sent again, which means a
-				// docked ship costs nothing and a ship in a sector the engine
-				// only ticks every few seconds costs almost nothing.
+				// The tiering, with a settling period.
+				//
+				// A ship that has not moved is only left alone once it has
+				// been still for a few seconds. Anything less and a ship
+				// turning in place - which barely translates - is written off
+				// as stopped while it is still rotating, and the client holds
+				// the last facing it was sent, which leaves it stuck at an
+				// angle until something else moves it.
 				if (told.TryGetValue(ship.UniqueId, out Remembered was) && was.Known
 					&& (was.Position - position).sqrMagnitude < MovedEpsilon * MovedEpsilon
-					&& Quaternion.Angle(was.Rotation, rotation) < FacingEpsilon)
+					&& Quaternion.Angle(was.Rotation, rotation) < FacingEpsilon
+					&& Time.unscaledTime - was.LastSentTime > StoppedConfirmationSeconds)
 				{
 					continue;
 				}
@@ -359,7 +397,9 @@ namespace OpenFrontier.IP.Multiplayer
 				{
 					Position = position,
 					Rotation = rotation,
-					Known = true
+					Known = true,
+					LastSentTime = Time.unscaledTime,
+					WasMoving = was.WasMoving
 				};
 
 				batch.Add(value);

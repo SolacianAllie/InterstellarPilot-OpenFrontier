@@ -451,8 +451,19 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				// A client telling the host who owns what is not something to
 				// obey. This registry is the only writer.
+				//
+				// Said rather than dropped in silence. This is the first place
+				// a claim can die without a word, and a claim that dies here
+				// looks exactly like a claim that was never sent - which is
+				// what it was mistaken for.
+				Log?.Invoke("Multiplayer: " + Short(player.Identity)
+					+ " sent an ownership message of kind " + message.Kind
+					+ " for ship " + message.UnitId + ", which is not a request. Ignored.");
 				return;
 			}
+
+			Log?.Invoke("Multiplayer: " + Short(player.Identity)
+				+ " asked for ship " + message.UnitId);
 
 			if (!ShipMayBeClaimed?.Invoke(message.UnitId, player.Identity) ?? true)
 			{
