@@ -181,6 +181,62 @@ namespace OpenFrontier.IP.Engine
 			DeclinedSinceReport++;
 		}
 
+		/// <summary>Actions already refused, so each is only said once.</summary>
+		private static readonly System.Collections.Generic.HashSet<string> RefusalsAlreadySaid =
+			new System.Collections.Generic.HashSet<string>();
+
+		/// <summary>
+		/// Refuses a mutation this copy is not allowed to make, by name.
+		/// </summary>
+		/// <remarks>
+		/// For the consult points that are about changing the world rather
+		/// than about who simulates it. <see cref="Declined()"/> counts those
+		/// without saying which, which is right for a per-frame simulation
+		/// gate and useless for a button: "3 declines" does not tell a player
+		/// why their ship just did not move, and it does not tell us which of
+		/// forty unwired actions somebody pressed.
+		///
+		/// Returns true when it refused, so a caller reads
+		/// <c>if (Authority.Refused(...)) { return; }</c> and is otherwise
+		/// untouched. False in a game with nobody else in it, and false on the
+		/// host - which is the whole point of putting it here rather than at
+		/// each call site: singleplayer keeps working by construction instead
+		/// of by forty separate pieces of care.
+		///
+		/// Said once per action rather than every time, because several of
+		/// these sit under Update and a refusal per frame per faction would
+		/// bury everything else in the log - which is how the log got to
+		/// saying "ran Patrol" directly underneath "Patrol was refused" in the
+		/// first place. The count still rises, so the leak is still visible in
+		/// <see cref="AuthorityModeReport"/>, and it says which one it was.
+		///
+		/// The alternative to this is silence: the click mutates the player's
+		/// own copy, the host never hears, and the two drift apart with
+		/// nothing on screen or in either log to say so. A player who is told
+		/// no can wait for it to work. A player who is quietly wrong cannot.
+		/// </remarks>
+		public static bool Refused(string whatThePlayerWasTryingToDo, string whatItWouldHaveChanged)
+		{
+			if (!IsThisCopyAClient)
+			{
+				return false;
+			}
+
+			Declined();
+
+			if (RefusalsAlreadySaid.Add(whatThePlayerWasTryingToDo))
+			{
+				UnityEngine.Debug.LogWarning("Multiplayer: refused - "
+					+ whatThePlayerWasTryingToDo
+					+ ". Nothing changed. It would have " + whatItWouldHaveChanged
+					+ ", which only the host may decide. This action is not"
+					+ " relayed to the host yet - see Docs/multiplayer/coverage-plan.md"
+					+ " for whether it is planned.");
+			}
+
+			return true;
+		}
+
 		/// <summary>
 		/// Returns what has been declined and starts again.
 		/// </summary>

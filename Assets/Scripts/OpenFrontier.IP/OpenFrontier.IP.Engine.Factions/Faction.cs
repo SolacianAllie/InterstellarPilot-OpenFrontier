@@ -2227,6 +2227,44 @@ namespace OpenFrontier.IP.Engine.Factions
 			{
 				return;
 			}
+
+			// Every credit in the game moves through here.
+			//
+			// Thirty-six call sites: buying and selling ships, buying and
+			// selling cargo, refitting, building stations, mission rewards,
+			// bounty payouts, taxes. All of them were writing to the player's
+			// own copy of the balance and none of them told the host, so a
+			// client that bought a ship had a ship no other player could see
+			// and a balance that would be overwritten the moment the host
+			// happened to spend the same faction's credits for any reason.
+			//
+			// Gated here rather than at thirty-six call sites because this is
+			// the one place they all pass through, so there is nothing to
+			// forget and nothing to get wrong per-screen. It also catches the
+			// path nobody would have thought to intercept: buying intel
+			// debits the player AND credits the AI faction that sold it, from
+			// the client's copy, for an AI nobody was ever going to hear from.
+			//
+			// On the creditsSource rather than on this, because this is not
+			// always the faction being paid. That is exactly the intel case.
+			//
+			// Described by the balance it would have produced rather than by
+			// name, because ICreditsSource has no identity to quote and this
+			// sits under per-frame sector income, where a string built on
+			// every call in a game with nobody else in it would be waste.
+			if (Authority.Refused(
+				"a " + transactionType + " transaction",
+				"moved " + creditsValue + " credits "
+					+ (creditsValue < 0 ? "away from" : "into") + " a balance of "
+					+ creditsSource.Credits + ", leaving "
+					+ (creditsSource.Credits + creditsValue)
+					+ (otherFaction == null
+						? string.Empty
+						: ", in trade with faction " + otherFaction.UniqueId)))
+			{
+				return;
+			}
+
 			creditsSource.Credits += creditsValue;
 			if (IsPlayerFaction && this == creditsSource)
 			{

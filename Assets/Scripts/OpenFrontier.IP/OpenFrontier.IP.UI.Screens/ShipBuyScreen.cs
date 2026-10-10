@@ -280,6 +280,41 @@ namespace OpenFrontier.IP.UI.Screens
 
 		public void Buy(bool enterShip, bool docksShips, bool createFleet)
 		{
+			// Refused as a whole, at the top, rather than at any one step.
+			//
+			// There is no message in the protocol that can bring a new object
+			// into existence - all twelve describe things that already exist in
+			// both copies - so a purchase cannot be relayed yet. Until one
+			// can, a client pressing Buy made a real Unit in its own world,
+			// spent its own copy of the credits, and told nobody. The ship was
+			// invisible to every other player and the balance was overwritten
+			// the moment the host spent the same faction's credits for any
+			// reason at all.
+			//
+			// At the top rather than inside SpawnUnit, because
+			// ApplyTransaction is void: refusing the money there tells Buy
+			// nothing, and it carries straight on to instantiate the ship
+			// anyway. Two gates in the wrong places are worse than one gate in
+			// the right one, and a null return would have thrown on the line
+			// after it.
+			//
+			// The id is a second problem this happens to cover. A purchased
+			// ship is created by the engine's own counter at around 100500
+			// rather than by PlayerIdScheme from the 800,000,000 player band,
+			// so it does not even pass the test that decides whether a ship is
+			// a player's - and when it asked to own itself the host said yes
+			// and told everybody.
+			if (Authority.Refused(
+				"buying a ship",
+				"spent " + GetTotalCost() + " credits and created a "
+					+ (CurrentItem == null
+						? "ship"
+						: CurrentItem.UnitClass.GetSeriesName())
+					+ " that no other player could see"))
+			{
+				return;
+			}
+
 			int totalCost = GetTotalCost();
 			Debug.Log($"Player buying ship for a price of {totalCost}");
 			RegisterTransaction(totalCost);

@@ -134,6 +134,29 @@ namespace OpenFrontier.IP.Engine
 		public UnitDamageInfo ApplyDamage(Vector3 sourceWorldPosition, Faction sourceFaction, Unit sourceUnit, DamageType damageType, DamageDirectType damageDirectType, int shieldIndex)
 		{
 			UnitDamageInfo damageInfo = default;
+
+			// Every point of damage in the game ends here: projectiles,
+			// beams, point defence, and the off-screen fire that exists so
+			// that a battle in another sector still resolves.
+			//
+			// A client was resolving them into its own copy. It fired, its
+			// own numbers came up, and the host - which is also simulating
+			// that target, and does not know the shot happened - streamed the
+			// target back at full health ten times a second. So the damage
+			// appeared and then un-did itself in front of the player. Two
+			// players shooting each other did nothing whatever.
+			//
+			// Refused rather than left to happen: a shot that visibly does
+			// nothing, with a log line saying combat is not relayed yet, is
+			// something a player can report. Damage that heals itself is not.
+			if (Authority.Refused(
+				"firing weapons",
+				"damaged " + (unit == null ? "a ship" : "ship " + unit.UniqueId)
+					+ " for " + damageType.Damage))
+			{
+				return damageInfo;
+			}
+
 			EngineASX instance = EngineASX.Instance;
 			if (!isDestroyed && instance != null)
 			{

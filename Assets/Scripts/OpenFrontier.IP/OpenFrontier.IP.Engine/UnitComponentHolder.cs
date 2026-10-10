@@ -1760,6 +1760,14 @@ namespace OpenFrontier.IP.Engine
 
 		public bool TryDockInUnit(Unit unit)
 		{
+			if (Authority.Refused(
+				"docking at a station",
+				"moved ship " + (unit == null ? "?" : unit.UniqueId.ToString())
+					+ " inside a hangar the host does not know about"))
+			{
+				return false;
+			}
+
 			if (unit != null)
 			{
 				UnitHangar hangar = unit.GetHangar();
@@ -1807,6 +1815,22 @@ namespace OpenFrontier.IP.Engine
 
 		public bool UndockIfDocked()
 		{
+			// Docked-ness is not on the wire. UnitState carries a transform
+			// and nothing else, so there is no field for it and nothing to
+			// correct it with afterwards: a client that docked locally put its
+			// ship inside a hangar the host has never heard of, and the two
+			// copies' UnitHangar.Items stayed different for the rest of the
+			// session. It shows - the sector map filters on IsDocked, and the
+			// joiner factory skips docked ships when it takes a snapshot.
+			//
+			// Undocking is refused for the same reason, and for one more:
+			// only the host knows what is in the hangar, so only the host can
+			// take a ship out of it.
+			if (Authority.Refused("undocking", "moved a ship out of a hangar"))
+			{
+				return false;
+			}
+
 			if (IsDocked)
 			{
 				DockedInHangarBay = null;
