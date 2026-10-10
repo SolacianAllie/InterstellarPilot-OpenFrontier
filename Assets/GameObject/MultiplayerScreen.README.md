@@ -83,6 +83,31 @@ or "No" depending on what the router had to say.
 The screen heading lives in `TextScreenTitle`, not on the button: the button row
 is icon-only throughout, like the rest.
 
+### The port
+
+A session hosts on `24890`-`24897`, tried in order, and falls back to any free
+port only if all eight are taken. The choice is deliberate:
+
+- **Above 1024** so binding never needs privileges.
+- **Below 32768** - Linux and Android hand out outbound ports from 32768 up,
+  and every one of those lingers in `TIME_WAIT` for a minute, so a listening
+  port up there spends its life being refused.
+- **Unregistered** in the IANA service registry. Only about 11% of 1024-49151
+  is claimed, but IANA asks that user ports be registered before use. Also
+  checked against the ports games actually bind - 7777, 25565, 27015, 3074,
+  3659, 2302-2404, 3478-3480, 10999, 19132, 34197 and the Steam ranges.
+- **A range rather than one number**, so a second copy of the game costs one
+  number instead of the session. Factorio takes the same approach.
+
+Registering the block with IANA would be the formally correct step before a
+release. Nothing depends on it working.
+
+The listener also asks to reuse the address (`SO_REUSEADDR`, or
+`SO_EXCLUSIVEADDRUSE` on Windows, where the Unix spelling means the opposite
+and lets another socket steal the port). Without it a host that stopped
+gracefully could not take its own port back for about a minute, which is the
+normal case for restarting a game.
+
 ### The row prefab
 
 `ScrollList` instantiates its `ItemPrefab` once per row, so the list needs a
