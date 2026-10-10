@@ -135,7 +135,7 @@ namespace OpenFrontier.IP.Multiplayer
 				Post(upnp =>
 				{
 					upnp.Status = UpnpStatus.Failed;
-					upnp.Detail = "The port to forward is not a real port number.";
+					upnp.Detail = "That port number cannot be used";
 				}, onResult);
 				return;
 			}
@@ -149,7 +149,7 @@ namespace OpenFrontier.IP.Multiplayer
 				{
 					upnp.Status = UpnpStatus.NotNeeded;
 					upnp.Port = port;
-					upnp.Detail = "This device has no route to the internet, so no port was opened.";
+					upnp.Detail = "No way out of this network";
 				}, onResult);
 				return;
 			}
@@ -211,7 +211,7 @@ namespace OpenFrontier.IP.Multiplayer
 					// or the player may have closed the game mid-request. None
 					// of that is worth interrupting anything for, but it is
 					// worth saying so in the log.
-					result.Detail = "The port forward may still be set on the router.";
+					result.Detail = "The port forward may still be set";
 				}
 
 				Post(upnp => { }, onResult, result);
@@ -235,8 +235,7 @@ namespace OpenFrontier.IP.Multiplayer
 			if (location == null)
 			{
 				result.Status = UpnpStatus.NoGateway;
-				result.Detail = "No router on this network offers to forward ports. Players on the "
-					+ "same network can still join you.";
+				result.Detail = "No UPnP router on this network";
 				return result;
 			}
 
@@ -257,14 +256,14 @@ namespace OpenFrontier.IP.Multiplayer
 				// hosting session already up, and an escaping exception
 				// would take the thread with it and say nothing at all.
 				result.Status = UpnpStatus.Failed;
-				result.Detail = "The router's description could not be read: " + Describe(e);
+				result.Detail = "Could not read the router's description";
 				return result;
 			}
 
 			if (control == null)
 			{
 				result.Status = UpnpStatus.Refused;
-				result.Detail = "The router answered but does not offer to forward ports.";
+				result.Detail = "This router will not forward ports";
 				return result;
 			}
 
@@ -277,7 +276,7 @@ namespace OpenFrontier.IP.Multiplayer
 			catch (Exception e)
 			{
 				result.Status = UpnpStatus.Failed;
-				result.Detail = "The router would not forward the port: " + Describe(e);
+				result.Detail = "Could not ask the router to forward";
 				return result;
 			}
 
@@ -289,7 +288,9 @@ namespace OpenFrontier.IP.Multiplayer
 			if (fault != null)
 			{
 				result.Status = UpnpStatus.Refused;
-				result.Detail = "The router would not forward the port: " + fault;
+				result.Detail = fault.StartsWith("another program", StringComparison.Ordinal)
+					? "Another program already uses this port"
+					: "This router will not forward ports";
 				return result;
 			}
 
@@ -300,7 +301,7 @@ namespace OpenFrontier.IP.Multiplayer
 			}
 
 			result.Status = UpnpStatus.Mapped;
-			result.Detail = "Players outside this network can reach you on port " + port.ToString(CultureInfo.InvariantCulture) + ".";
+			result.Detail = "Reachable from outside this network";
 			onLog?.Invoke("UPnP: forwarding " + result.Gateway + ":" + port + " to " + internalAddress);
 			return result;
 		}

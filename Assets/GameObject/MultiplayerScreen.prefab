@@ -1714,9 +1714,9 @@ RectTransform:
   m_Father: {fileID: 224719897623072781}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: -36.999992}
-  m_SizeDelta: {x: 49.0099, y: 10}
+  m_SizeDelta: {x: -16, y: 26}
   m_Pivot: {x: 0, y: 1}
 --- !u!222 &222360591974699550
 CanvasRenderer:
@@ -1756,8 +1756,8 @@ MonoBehaviour:
     m_Alignment: 0
     m_AlignByGeometry: 0
     m_RichText: 0
-    m_HorizontalOverflow: 1
-    m_VerticalOverflow: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
     m_LineSpacing: 1
   m_Text: '[date]'
 --- !u!114 &114249237965167194

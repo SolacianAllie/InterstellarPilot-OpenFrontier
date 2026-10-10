@@ -559,6 +559,40 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			new { Row = "TextPilot", Value = "TextPilotValue", Caption = "Router:", Field = nameof(target.SessionRouterLabel) }
 			};
 
+			// The problem line is the one label here whose text is chosen by us
+			// rather than by a row, and it is the only one that can be long
+			// enough to matter. The clone gives it a 49-pixel box and lets the
+			// text overflow, which is fine for a date and not fine for a
+			// sentence - so it is stretched across the panel, wrapped, and
+			// truncated vertically so it can never run down over the rows.
+			Transform problemLine = contents.transform.FindDeep("TextDate");
+
+			if (problemLine == null)
+			{
+				report.Fail("the problem line (TextDate) was not found in the clone");
+			}
+			else
+			{
+				RectTransform problemRect = problemLine.GetComponent<RectTransform>();
+
+				if (problemRect != null)
+				{
+					problemRect.anchorMin = new Vector2(0f, 1f);
+					problemRect.anchorMax = new Vector2(1f, 1f);
+					problemRect.sizeDelta = new Vector2(-16f, 26f);
+				}
+
+				Text problemText = problemLine.GetComponent<Text>();
+
+				if (problemText != null)
+				{
+					problemText.horizontalOverflow = HorizontalWrapMode.Wrap;
+					problemText.verticalOverflow = VerticalWrapMode.Truncate;
+				}
+			}
+
+			report.Note("problem line stretched, wrapped and truncated");
+
 			int sessionRowsWired = 0;
 
 			foreach (var sessionRow in sessionRows)
