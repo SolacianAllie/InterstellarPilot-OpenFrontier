@@ -72,6 +72,12 @@ namespace OpenFrontier.IP.Multiplayer
 		/// </remarks>
 		public event Action<UnitStateMessage> UnitStateReceived;
 
+		/// <summary>The host has said which world it is playing.</summary>
+		public event Action<WorldDescriptorMessage> WorldDescriptorReceived;
+
+		/// <summary>One piece of the host's world. May arrive many times.</summary>
+		public event Action<byte[]> WorldSnapshotChunkReceived;
+
 		/// <summary>
 		/// Attempts to join using a code the player typed.
 		/// </summary>
@@ -174,6 +180,27 @@ namespace OpenFrontier.IP.Multiplayer
 				}
 
 				UnitStateReceived?.Invoke(states);
+				return;
+			}
+
+			if (messageId == ProtocolVersion.WorldSnapshotChunkMessageId)
+			{
+				// Handed over raw and reassembled further up. The split
+				// already happened here and did its checking; doing it again
+				// per chunk would only cost a second parse for nothing.
+				WorldSnapshotChunkReceived?.Invoke(payload);
+				return;
+			}
+
+			if (messageId == ProtocolVersion.WorldDescriptorMessageId)
+			{
+				if (!WorldDescriptorMessage.TryFromBytes(payload, out WorldDescriptorMessage descriptor, out string descriptorError))
+				{
+					Debug.LogWarning("Multiplayer: unreadable world descriptor - " + descriptorError);
+					return;
+				}
+
+				WorldDescriptorReceived?.Invoke(descriptor);
 				return;
 			}
 

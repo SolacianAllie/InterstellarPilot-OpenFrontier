@@ -38,6 +38,19 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>How many unit states have arrived since play began.</summary>
 		public int StatesReceived { get; private set; }
 
+		/// <summary>
+		/// What the host said it was playing, once that has arrived.
+		/// </summary>
+		public WorldDescriptorMessage? HostWorld { get; private set; }
+
+		/// <summary>Raised with a sentence for the player when joining resolves.</summary>
+		public event Action<string> WorldReady;
+
+		/// <summary>Whether the host's world has finished arriving.</summary>
+		public bool HasWorld { get; private set; }
+
+		private SnapshotReassembler reassembler;
+
 		public bool IsConnected => Session != null && Session.State == JoinState.Connected;
 
 		/// <summary>Installs the service before any scene loads.</summary>
@@ -110,8 +123,66 @@ namespace OpenFrontier.IP.Multiplayer
 				UnitStateReceived?.Invoke(states);
 			};
 
+			client.WorldDescriptorReceived += descriptor =>
+			{
+				HostWorld = descriptor;
+
+				if (!descriptor.HasScenario)
+				{
+					Debug.Log("Multiplayer: the host did not name a scenario - "
+						+ "probably hosting from the main menu, so there is nothing to join yet.");
+					return;
+				}
+
+				// Checked here, while refusing costs nothing, rather than after
+				// a couple of megabytes has crossed the network to fail the
+				// same way.
+				if (OpenFrontier.IP.Engine.GameController.Instance.GetScenarioInfoById(descriptor.ScenarioInfoId) == null)
+				{
+					Failed?.Invoke("You do not have the scenario the host is playing. "
+						+ "It may be from a different version of the game.");
+					Disconnect();
+					return;
+				}
+			};
+
+			client.WorldSnapshotChunkReceived += chunk => OnWorldChunk(chunk);
+
 			Session = client;
 			client.Join(code);
+		}
+
+		private void OnWorldChunk(byte[] chunk)
+		{
+			// One reassembler for the life of the session. A joiner that
+			// abandoned a half-finished world and joined again gets a new
+			// one from here, because Disconnect clears it.
+			if (reassembler == null)
+			{
+				reassembler = new SnapshotReassembler();
+			}
+
+			if (!reassembler.Accept(chunk, out byte[] completed, out string error))
+			{
+				Debug.LogWarning("Multiplayer: discarding a world transfer - " + error);
+				reassembler.Clear();
+				return;
+			}
+
+			if (completed == null)
+			{
+				// A piece, not the world. Nothing to do, which is the normal
+				// case for most of the arrival.
+				return;
+			}
+
+			HasWorld = true;
+
+			ReceivedWorldLoader.Load(completed, reason =>
+			{
+				Debug.Log("Multiplayer: " + reason);
+				WorldReady?.Invoke(reason);
+			});
 		}
 
 		/// <summary>Leaves the session, if there is one.</summary>
@@ -124,6 +195,12 @@ namespace OpenFrontier.IP.Multiplayer
 
 			ClientSession leaving = Session;
 			Session = null;
+
+			// A half-received world is worse than none: it holds a megabyte
+			// or two of buffer for a transfer nobody is waiting on any more.
+			reassembler?.Clear();
+			reassembler = null;
+			HasWorld = false;
 
 			leaving.Dispose();
 		}
