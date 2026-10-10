@@ -106,6 +106,18 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Raised when a player leaves or is dropped.</summary>
 		public event Action<RemotePlayer, string> PlayerLeft;
 
+		/// <summary>
+		/// Raised when a player asks for one of their fleets to be given an
+		/// order.
+		/// </summary>
+		/// <remarks>
+		/// Carries the raw bytes rather than a decoded order, because
+		/// decoding one means knowing what the game calls things and this
+		/// file does not. Whoever listens does the reading, and refuses
+		/// anything it does not recognise.
+		/// </remarks>
+		public event Action<RemotePlayer, byte[]> FleetOrderRequested;
+
 		/// <summary>Everyone currently connected.</summary>
 		public IReadOnlyList<RemotePlayer> Players => players;
 
@@ -245,6 +257,20 @@ namespace OpenFrontier.IP.Multiplayer
 			if (messageId == ProtocolVersion.UnitOwnershipMessageId)
 			{
 				AnswerOwnershipClaim(player, body);
+				return;
+			}
+
+			if (messageId == ProtocolVersion.FleetOrderCommandMessageId)
+			{
+				// Raised and nothing more.
+				//
+				// This file holds no engine types and no reference to the
+				// game, on purpose: it is the part of the protocol that can be
+				// reasoned about - and tested - without anything running.
+				// Naming an order type here would tie knowing how to run a
+				// fleet order to knowing how a session is handed over, and
+				// the two have no business being in the same file.
+				FleetOrderRequested?.Invoke(player, body);
 				return;
 			}
 

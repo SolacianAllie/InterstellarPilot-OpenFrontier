@@ -8,6 +8,7 @@ using OpenFrontier.IP.Common.FleetOrders;
 using OpenFrontier.IP.Engine;
 using OpenFrontier.IP.Engine.AI.ActiveOrders;
 using OpenFrontier.IP.Engine.Factions;
+using OpenFrontier.IP.Engine.FleetOrders;
 using OpenFrontier.IP.Engine.Fleets.FleetOrders;
 using OpenFrontier.IP.UI.Screens.NewFleetOrder;
 using UnityEngine;
@@ -18,6 +19,76 @@ namespace OpenFrontier.IP.UI.Screens
 	public static class OrdersHelper
 	{
 		private static StringBuilder orderTextBuilder = new StringBuilder();
+
+		// The helper below exists for one reason: a client's order is not
+		// carried out here. It is offered to whoever is listening, and when
+		// nobody is - which is every singleplayer game - it returns false and
+		// the body below runs exactly as it always has.
+		//
+		// The orders ask first every time rather than branching on whether this
+		// is a client, because that decision belongs to whoever knows, and
+		// putting it in twenty places would mean twenty chances to get it
+		// wrong and to forget updating one of them.
+
+		private static FleetOrderIntent Intent(
+			FleetOrderKind kind,
+			Fleet fleet,
+			int targetUnit = 0,
+			int targetSector = 0,
+			float x = 0f,
+			float y = 0f,
+			float z = 0f,
+			bool stack = false)
+		{
+			return new FleetOrderIntent
+			{
+				Kind = kind,
+				FleetIds = OneFleet(fleet),
+				TargetUnitId = targetUnit,
+				TargetSectorId = targetSector,
+				TargetX = x,
+				TargetY = y,
+				TargetZ = z,
+				Stack = stack
+			};
+		}
+
+		private static List<int> OneFleet(Fleet fleet)
+		{
+			var ids = new List<int>(1);
+
+			if (fleet != null)
+			{
+				ids.Add(fleet.UniqueId);
+			}
+
+			return ids;
+		}
+
+		private static int Id(Unit unit)
+		{
+			return unit == null ? -1 : unit.UniqueId;
+		}
+
+		private static int Id(Sector sector)
+		{
+			return sector == null ? -1 : sector.UniqueId;
+		}
+
+		private static int Id(Wormhole wormhole)
+		{
+			// A wormhole is a component on a unit rather than a thing with an
+			// id of its own, so the id that crosses the wire is the unit's -
+			// and the host reads the wormhole back off it.
+			if (wormhole == null)
+			{
+				return -1;
+			}
+
+			Unit host = wormhole.GetComponent<Unit>();
+
+			return host == null ? -1 : host.UniqueId;
+		}
 
 		public static void SetFleetOrder(Fleet fleet, FleetOrder objective, bool stack)
 		{
@@ -85,6 +156,12 @@ namespace OpenFrontier.IP.UI.Screens
 
 		public static void OrderScavenge(Fleet fleet, Sector sector, bool stack)
 		{
+			if (FleetOrderIntents.TrySend(Intent(
+				FleetOrderKind.Scavenge, fleet, targetSector: Id(sector), stack: stack)))
+			{
+				return;
+			}
+
 			ScavengeOrder scavengeOrder = UnityObjectHelper.NewGameObject<ScavengeOrder>();
 			scavengeOrder.TargetSector = sector;
 			SetFleetOrder(fleet, scavengeOrder, stack: true);
@@ -132,6 +209,12 @@ namespace OpenFrontier.IP.UI.Screens
 
 		public static void OrderClaimUnit(Fleet fleet, Unit unit, bool stack)
 		{
+			if (FleetOrderIntents.TrySend(Intent(
+				FleetOrderKind.ClaimUnit, fleet, targetUnit: Id(unit), stack: stack)))
+			{
+				return;
+			}
+
 			ClaimUnitOrder claimUnitOrder = UnityObjectHelper.NewGameObject<ClaimUnitOrder>();
 			claimUnitOrder.TargetUnit = unit;
 			SetFleetOrder(fleet, claimUnitOrder, stack);
@@ -158,6 +241,12 @@ namespace OpenFrontier.IP.UI.Screens
 
 		public static void OrderCollectCargo(Fleet fleet, Unit unit, bool stack)
 		{
+			if (FleetOrderIntents.TrySend(Intent(
+				FleetOrderKind.CollectCargo, fleet, targetUnit: Id(unit), stack: stack)))
+			{
+				return;
+			}
+
 			CollectCargoOrder collectCargoOrder = UnityObjectHelper.NewGameObject<CollectCargoOrder>();
 			collectCargoOrder.TargetUnit = unit;
 			SetFleetOrder(fleet, collectCargoOrder, stack);
@@ -165,6 +254,12 @@ namespace OpenFrontier.IP.UI.Screens
 
 		public static void OrderExploreSector(Fleet fleet, Sector sector, bool stack)
 		{
+			if (FleetOrderIntents.TrySend(Intent(
+				FleetOrderKind.ExploreSector, fleet, targetSector: Id(sector), stack: stack)))
+			{
+				return;
+			}
+
 			ExploreSectorOrder exploreSectorOrder = UnityObjectHelper.NewGameObject<ExploreSectorOrder>();
 			exploreSectorOrder.Sector = sector;
 			exploreSectorOrder.AllowTimeout = false;
@@ -200,6 +295,12 @@ namespace OpenFrontier.IP.UI.Screens
 
 		public static void OrderReturnToBase(Fleet fleet, bool stack)
 		{
+			if (FleetOrderIntents.TrySend(Intent(
+				FleetOrderKind.ReturnToBase, fleet, stack: stack)))
+			{
+				return;
+			}
+
 			ReturnToBaseOrder returnToBaseOrder = UnityObjectHelper.NewGameObject<ReturnToBaseOrder>();
 			returnToBaseOrder.AllowTimeout = false;
 			SetFleetOrder(fleet, returnToBaseOrder, stack);
@@ -677,6 +778,13 @@ namespace OpenFrontier.IP.UI.Screens
 
 		public static void OrderDockAtTarget(Fleet orderedFleet, Unit targetUnit, bool stack)
 		{
+			if (FleetOrderIntents.TrySend(Intent(
+				FleetOrderKind.DockAtTarget, orderedFleet,
+				targetUnit: Id(targetUnit), stack: stack)))
+			{
+				return;
+			}
+
 			DockOrder dockOrder = UnityObjectHelper.NewGameObject<DockOrder>();
 			dockOrder.TargetDock = targetUnit;
 			dockOrder.CompletionMode = FleetOrderCompletionMode.Destroy;
@@ -766,6 +874,19 @@ namespace OpenFrontier.IP.UI.Screens
 
 		public static void OrderMoveToSectorTarget(Fleet fleet, SectorTarget sectorTarget, bool stack)
 		{
+			if (FleetOrderIntents.TrySend(Intent(
+				FleetOrderKind.MoveToSectorTarget,
+				fleet,
+				targetUnit: Id(sectorTarget == null ? null : sectorTarget.TargetUnit),
+				targetSector: Id(sectorTarget == null ? null : sectorTarget.Sector),
+				x: sectorTarget == null ? 0f : sectorTarget.SectorPosition.x,
+				y: sectorTarget == null ? 0f : sectorTarget.SectorPosition.y,
+				z: sectorTarget == null ? 0f : sectorTarget.SectorPosition.z,
+				stack: stack)))
+			{
+				return;
+			}
+
 			if (sectorTarget.TargetUnit != null && sectorTarget.TargetUnit.UnitType == UnitType.Waypoint)
 			{
 				sectorTarget = SectorTarget.FromSectorPosition(sectorTarget.GetTargetSector(), sectorTarget.GetTargetSectorPosition());
@@ -788,6 +909,12 @@ namespace OpenFrontier.IP.UI.Screens
 
 		public static void OrderEnterWormhole(Fleet fleet, Wormhole wormhole, bool stack)
 		{
+			if (FleetOrderIntents.TrySend(Intent(
+				FleetOrderKind.EnterWormhole, fleet, targetUnit: Id(wormhole))))
+			{
+				return;
+			}
+
 			EnterWormholeOrder enterWormholeOrder = UnityObjectHelper.NewGameObject<EnterWormholeOrder>();
 			enterWormholeOrder.TargetWormhole = wormhole;
 			enterWormholeOrder.AllowTimeout = true;

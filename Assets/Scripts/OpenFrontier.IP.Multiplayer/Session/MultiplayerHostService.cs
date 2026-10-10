@@ -366,6 +366,8 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// joiner sits connected, and nothing further ever arrives - which
 			// looks from the joiner's side exactly like a host that has gone
 			// quiet.
+			session.FleetOrderRequested += FleetOrderCommands.RunFor;
+
 			session.PlayerJoined += player =>
 			{
 				WorldSnapshotSender.Instance.SendTo(player, what =>

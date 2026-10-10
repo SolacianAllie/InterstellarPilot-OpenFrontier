@@ -137,5 +137,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>A joiner saying it has arrived and can be sent to.</summary>
 		public const int JoinerReadyMessageId = 12;
+
+		/// <summary>A player asking the host to give a fleet an order.</summary>
+		public const int FleetOrderCommandMessageId = 13;
 	}
 }

@@ -29,6 +29,10 @@ namespace OpenFrontier.IP.Multiplayer
 		private static void Install()
 		{
 			Authority.Provider = Instance;
+
+			// Same hook shape as the authority provider, for the same reason:
+			// the orders live in the game assembly and cannot reach across.
+			FleetOrderCommands.Install();
 		}
 
 		/// <summary>The one provider, since there is one copy of the world per process.</summary>
