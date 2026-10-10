@@ -216,7 +216,20 @@ namespace OpenFrontier.IP.Multiplayer
 			};
 
 			client.OwnershipAssigned += assignment =>
+			{
 				OwnershipView.ApplyAssignment(assignment.UnitId, assignment.OwnerToken, client.Token);
+
+				// Being given a ship back ends the handover. The host returns
+				// it by naming this player as owner, and until that happens
+				// the client would keep believing it handed the ship over -
+				// so it would keep not flying it, and the player would be
+				// stuck watching a ship their own stick does not answer to.
+				if (!string.IsNullOrEmpty(assignment.OwnerToken)
+					&& assignment.OwnerToken == client.Token)
+				{
+					NoteShipReturned(assignment.UnitId);
+				}
+			};
 
 			Session = client;
 			client.Join(code);
@@ -405,7 +418,25 @@ namespace OpenFrontier.IP.Multiplayer
 
 			int unitId = local.UniqueId;
 
-			if (engine.PlayerUnitAutoPilotEnabled)
+			// "The host is flying this" is the question, and it has two answers.
+			//
+			// The obvious one is whether this copy thinks the ship is on
+			// autopilot. It is the right question when the client built the
+			// order itself, and it is always NO here, because an order is sent
+			// rather than built: TrySend returns before any DockOrder exists,
+			// so IsPilottedByNpc has nothing to see and the client keeps
+			// flying a ship the host is already flying.
+			//
+			// Three writers on one transform. The host's fleet flies it, this
+			// copy simulates it, and this copy uploads what it simulated over
+			// the host's position - which reads as the ship being thrown about
+			// violently, on both machines, and neither of them able to say why.
+			//
+			// So the other answer is: did I just hand this ship to the host?
+			// Which is what a client knows, and cannot learn from the autopilot
+			// flag, because the flag is a thing about the local copy and the
+			// order was never local.
+			if (engine.PlayerUnitAutoPilotEnabled || handedOver.Contains(unitId))
 			{
 				// Onto autopilot: let it go, so the host flies it and starts
 				// broadcasting it back. Until the host says so this client
@@ -436,6 +467,38 @@ namespace OpenFrontier.IP.Multiplayer
 		}
 
 		private ClientShipUploader uploader;
+
+		/// <summary>
+		/// Ships this copy has handed to the host by giving them an order.
+		/// </summary>
+		/// <remarks>
+		/// A handover lasts until the host gives the ship back, which it does
+		/// when the fleet it put the ship in has nothing left to do. Until
+		/// then this copy does not simulate the ship and does not upload it,
+		/// so the host is the only one writing to it.
+		///
+		/// Cleared by <see cref="NoteShipReturned"/>, which the host's return
+		/// message arrives as. A handover with no way back would strand a
+		/// player watching a ship they cannot fly, so the return half is not
+		/// an optimisation - it is the other end of the same handover.
+		/// </remarks>
+		private static readonly System.Collections.Generic.HashSet<int> handedOver =
+			new System.Collections.Generic.HashSet<int>();
+
+		/// <summary>Says this copy has handed a ship to the host.</summary>
+		public static void NoteShipHandedOver(int unitId)
+		{
+			if (unitId > 0)
+			{
+				handedOver.Add(unitId);
+			}
+		}
+
+		/// <summary>Says the host has handed a ship back.</summary>
+		public static void NoteShipReturned(int unitId)
+		{
+			handedOver.Remove(unitId);
+		}
 
 		private void EnsureUploader()
 		{

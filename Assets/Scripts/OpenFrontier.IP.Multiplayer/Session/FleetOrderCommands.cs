@@ -109,6 +109,8 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				session.Send(ProtocolVersion.FleetOrderCommandMessageId, message.ToBytes());
 
+				NoteIfThisIsTheShipUnderTheStick(looseCount);
+
 				Debug.Log("Multiplayer: asked the host for " + intent.Kind + " on "
 					+ fleetCount + " fleet(s) and " + looseCount + " loose ship(es). "
 					+ "This copy selected: "
@@ -125,6 +127,48 @@ namespace OpenFrontier.IP.Multiplayer
 					+ e.Message + ". Nothing changed.");
 				return true;
 			}
+		}
+
+		/// <summary>
+		/// Notes a handover when the order is for the ship this copy is flying.
+		/// </summary>
+		/// <remarks>
+		/// Giving the ship under the stick an order is putting it on autopilot,
+		/// and autopilot is the host's to fly. The client has to let go, or
+		/// three things write to one transform: the host's fleet flies it,
+		/// this copy simulates it, and this copy uploads what it simulated over
+		/// the top. That is the ship being thrown about violently, seen from
+		/// both machines, with neither able to say why.
+		///
+		/// Only for loose ships, because those are the only ones this copy
+		/// can name. An order naming a fleet the host knows about belongs to
+		/// the host's fleet, and the host's fleet was never this copy's to fly.
+		///
+		/// The host gives the ship back when that fleet runs out of orders,
+		/// which is what clears this.
+		/// </remarks>
+		private static void NoteIfThisIsTheShipUnderTheStick(int looseCount)
+		{
+			if (looseCount <= 0)
+			{
+				return;
+			}
+
+			EngineASX engine = EngineASX.Instance;
+
+			if (engine == null)
+			{
+				return;
+			}
+
+			Unit mine = engine.LocalUnit;
+
+			if (mine == null || mine.IsDestroyed || !Authority.OwnsUnit(mine))
+			{
+				return;
+			}
+
+			MultiplayerClientService.NoteShipHandedOver(mine.UniqueId);
 		}
 
 		private static ClientSession Session =>
@@ -291,6 +335,98 @@ namespace OpenFrontier.IP.Multiplayer
 			command = WithFleetsForLooseShips(player, command);
 
 			ExecuteOnHost(command);
+
+			// Give the ship back when this fleet has nothing left to do.
+			//
+			// The handover is only half of a handover. The client let go of
+			// its ship because it was given an order, and will not take it
+			// back on its own initiative - it cannot know when the order
+			// finished, because the order was never in its copy. Without this
+			// the player watches a ship they cannot fly for the rest of the
+			// session.
+			//
+			// Keyed on the fleet rather than on a timer, because
+			// AllObjectivesRemoved is what the game itself uses for "this
+			// fleet has finished", so the ship comes back when the thing it
+			// was given to do is done, and not a moment before.
+			ReturnWhenTheFleetIsDone(MultiplayerHostService.Session, command);
+		}
+
+		/// <summary>
+		/// Hands back every ship of this order that a player was flying.
+		/// </summary>
+		/// <remarks>
+		/// Only ships that really were somebody's to fly when the order
+		/// arrived. A ship the host was already flying is left alone, and a
+		/// fleet with no remote ship in it is not subscribed to anything -
+		/// which is the common case, every time an AI fleet gets an order.
+		/// </remarks>
+		private static void ReturnWhenTheFleetIsDone(HostSession session, FleetOrderCommandMessage command)
+		{
+			if (command.FleetIds == null || command.FleetIds.Length == 0)
+			{
+				return;
+			}
+
+			EngineASX engine = EngineASX.Instance;
+
+			if (engine == null)
+			{
+				return;
+			}
+
+			for (int f = 0; f < command.FleetIds.Length; f++)
+			{
+				Fleet fleet = engine.GetFleetByid(command.FleetIds[f]);
+
+				if (fleet == null)
+				{
+					continue;
+				}
+
+				List<int> ids = new List<int>();
+				List<string> owners = new List<string>();
+
+				foreach (UnitComponentHolder holder in fleet.Ships)
+				{
+					Unit ship = holder == null ? null : holder.GetComponent<Unit>();
+
+					if (ship == null || ship.IsDestroyed)
+					{
+						continue;
+					}
+
+					string owner = session.Ownership.OwnerOf(ship.UniqueId);
+
+					if (!string.IsNullOrEmpty(owner))
+					{
+						ids.Add(ship.UniqueId);
+						owners.Add(owner);
+					}
+				}
+
+				if (ids.Count == 0)
+				{
+					continue;
+				}
+
+				List<int> ships = ids;
+				List<string> tokens = owners;
+				Fleet watched = fleet;
+
+				watched.AllObjectivesRemoved += delegate
+				{
+					for (int i = 0; i < ships.Count; i++)
+					{
+						session.Ownership.TryClaim(ships[i], tokens[i], out _);
+						session.SendToEveryone(ships[i], tokens[i]);
+					}
+
+					Debug.Log("Multiplayer: gave " + ships.Count + " ship(s) back to"
+						+ " the player who was flying them - the fleet they were put"
+						+ " in has nothing left to do");
+				};
+			}
 		}
 
 		/// <summary>
