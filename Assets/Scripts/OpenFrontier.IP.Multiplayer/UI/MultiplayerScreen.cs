@@ -95,6 +95,9 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// </remarks>
 		public Text SessionProblemLabel;
 
+		/// <summary>Whether the router is forwarding this session's port.</summary>
+		public Text SessionRouterLabel;
+
 		public Text TitleLabel;
 
 		private ClientSession client;
@@ -668,6 +671,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			if (SessionVersionLabel == null) missing.Add(nameof(SessionVersionLabel));
 			if (SessionProtocolLabel == null) missing.Add(nameof(SessionProtocolLabel));
 			if (SessionPlayersLabel == null) missing.Add(nameof(SessionPlayersLabel));
+			if (SessionRouterLabel == null) missing.Add(nameof(SessionRouterLabel));
 			if (SessionIdentityLabel == null) missing.Add(nameof(SessionIdentityLabel));
 			if (SessionProblemLabel == null) missing.Add(nameof(SessionProblemLabel));
 
@@ -924,6 +928,8 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			string token = PlayerIdentity.Token ?? string.Empty;
 			Set(SessionIdentityLabel, token.Length <= 8 ? token : token.Substring(0, 8));
 
+			Set(SessionRouterLabel, DescribePortMapping(MultiplayerHostService.PortMapping));
+
 			Set(SessionProblemLabel, MultiplayerHostService.LastProblem);
 		}
 
@@ -939,6 +945,38 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			if (label != null)
 			{
 				label.text = value ?? string.Empty;
+			}
+		}
+
+		/// <summary>
+		/// Says whether players outside this network can reach the host.
+		/// </summary>
+		/// <remarks>
+		/// Reported rather than assumed, and never phrased as a guarantee: a
+		/// router can drop the forward at any time, and a player told they are
+		/// reachable who is not has been told something worse than nothing.
+		/// </remarks>
+		private static string DescribePortMapping(UpnpResult mapping)
+		{
+			switch (mapping.Status)
+			{
+				case UpnpStatus.Asking:
+					return "Asking the router...";
+
+				case UpnpStatus.Mapped:
+					return "Forwarded: " + mapping.Port;
+
+				case UpnpStatus.NotAttempted:
+					return "Not hosting";
+
+				case UpnpStatus.NotNeeded:
+					return "No route out";
+
+				case UpnpStatus.Removed:
+					return "Closed";
+
+				default:
+					return "No";
 			}
 		}
 

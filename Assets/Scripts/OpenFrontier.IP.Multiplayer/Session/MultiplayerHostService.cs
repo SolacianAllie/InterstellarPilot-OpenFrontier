@@ -40,6 +40,20 @@ namespace OpenFrontier.IP.Multiplayer.UI
 		/// </remarks>
 		public static string LastProblem { get; private set; }
 
+		/// <summary>
+		/// What the network's gateway said when asked to forward this session.
+		/// </summary>
+		/// <remarks>
+		/// Reported rather than assumed. Whether a host is reachable from
+		/// outside their own network is the single most useful thing to know
+		/// when a join fails and cannot be worked out from inside the game,
+		/// so it is surfaced on the session panel rather than left in a log.
+		/// </remarks>
+		public static UpnpResult PortMapping { get; private set; }
+
+		/// <summary>Whether the current session's port is forwarded.</summary>
+		public static bool PortIsForwarded => PortMapping.Status == UpnpStatus.Mapped;
+
 		private float nextAttemptTime;
 
 		/// <summary>Seconds between attempts while hosting is wanted but failing.</summary>
@@ -187,11 +201,36 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				return;
 			}
 
+			// The preferred port first, so the join code is the same one every
+			// session and a saved host entry keeps working. Anything else is
+			// last resort: hosting on a random port beats not hosting, but it
+			// cannot be forwarded and its code goes stale on the next restart.
 			HostSession session = HostSession.Start(bindAddress, advertisedAddress, reason =>
 			{
 				LastProblem = reason;
 				Debug.LogWarning("Multiplayer: " + reason);
 			});
+
+			if (session == null)
+			{
+				LastProblem = null;
+
+				// Probably the preferred port: something else on this machine has it.
+				// Take any free port and carry on without a forward.
+				session = HostSession.Start(bindAddress, advertisedAddress, reason =>
+				{
+					LastProblem = reason;
+					Debug.LogWarning("Multiplayer: " + reason);
+				});
+
+				if (session != null)
+				{
+					Debug.LogWarning("Multiplayer: port " + IPAddressSelection.PreferredPort
+						+ " was taken, so this session is on an arbitrary port. It will not "
+						+ "be reachable from outside this network, and its code changes "
+						+ "whenever the game restarts.");
+				}
+			}
 
 			if (session == null)
 			{
@@ -208,6 +247,8 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// current one - both of which fail silently, showing a dialog that
 			// never catches up with a code that is already there.
 			HostingStarted?.Invoke(Session.JoinCode);
+
+			AskTheRouterToForward();
 
 			// The bound port, not the requested one: the session asks the OS
 			// for any free port, so logging the request prints a port of zero -
@@ -265,6 +306,59 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			Session.Dispose();
 			Session = null;
 			LastProblem = null;
+
+			// Before anything else: a forward left behind is a hole in the
+			// player's firewall that outlives the game, and most routers keep
+			// one until something removes it - which, for plenty of them, is
+			// nothing at all until the router is rebooted.
+			PortMapping = new UpnpResult { Status = UpnpStatus.NotAttempted };
+			UpnpPortMapper.Remove();
+		}
+
+		/// <summary>
+		/// Asks the gateway to forward this session's port, if it can.
+		/// </summary>
+		/// <remarks>
+		/// Entirely on its own thread and entirely optional. A router that is
+		/// slow, absent, or refuses has to cost the player nothing at all, so
+		/// nothing here can fail the session or hold up the code it is about
+		/// to be handed out on. The result is reported rather than assumed:
+		/// a player told they are reachable who is not has been told a lie.
+		/// </remarks>
+		private static void AskTheRouterToForward()
+		{
+			HostSession session = Session;
+
+			if (session == null)
+			{
+				return;
+			}
+
+			PortMapping = new UpnpResult { Status = UpnpStatus.Asking, Port = session.Port };
+
+			// Only the private address is useful to a router. On a machine holding
+			// a public address the advertised one is not something a gateway can
+			// forward to, and asking it to would just be refused.
+			IPAddressSelection.TryGetPrivateAddress(out IPAddress internalAddress);
+
+			UpnpPortMapper.Map(session.Port, internalAddress, result =>
+			{
+				// A late reply from a session that has already gone must not be
+				// allowed to resurrect the panel, or leave a forward behind that
+				// nothing will take down again.
+				if (Session == null)
+				{
+					UpnpPortMapper.Remove();
+					return;
+				}
+
+				PortMapping = result;
+
+				if (!string.IsNullOrEmpty(result.Detail))
+				{
+					Debug.Log("Multiplayer: " + result.Detail);
+				}
+			});
 		}
 
 		/// <summary>

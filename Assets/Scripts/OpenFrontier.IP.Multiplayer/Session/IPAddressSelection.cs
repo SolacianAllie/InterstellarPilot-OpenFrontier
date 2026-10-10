@@ -28,6 +28,21 @@ namespace OpenFrontier.IP.Multiplayer
 	/// </summary>
 	public static class IPAddressSelection
 	{
+		/// <summary>The port a session prefers to host on.</summary>
+		/// <remarks>
+		/// Fixed rather than left to the OS, which reverses the earlier choice - both
+		/// of the reasons have since turned up. A join code carries its port, so an
+		/// OS-assigned one meant every code stopped being valid the moment the host
+		/// restarted, and a saved host list is mostly stale entries. And a port forward
+		/// cannot be asked for in advance when nobody knows which port it will be.
+		///
+		/// Above 1024 so nothing needs privileges, and below the ephemeral range so
+		/// the OS is not already using it. If it is taken - a second copy of the game,
+		/// or another program - hosting falls back to any free port and goes without a
+		/// forward, which beats refusing to host at all.
+		/// </remarks>
+		public const int PreferredPort = 24890;
+
 		/// <summary>
 		/// Chooses where to listen, and which address goes into a join code.
 		/// </summary>
@@ -35,13 +50,13 @@ namespace OpenFrontier.IP.Multiplayer
 		/// These are two different questions, and until now they were answered
 		/// as one - which is why a machine holding both a WiFi address and a
 		/// public one could only ever be reached over WiFi.
-		/// 
+		///
 		/// The listener binds to every interface, so a session is reachable on
 		/// WiFi, on Ethernet, and on any public address the machine actually
 		/// holds. Binding to a single chosen address instead meant whichever
 		/// interface the picker happened to land on, and every other route in
 		/// was simply closed.
-		/// 
+		///
 		/// The advertised address stays singular, because a join code holds
 		/// exactly one, and stays LAN-first, because two players on the same
 		/// network is the case that always works and needs nothing set up.
@@ -72,6 +87,22 @@ namespace OpenFrontier.IP.Multiplayer
 			// can use, so a session is not worth starting.
 			problem = "Couldn't identify a network address other players can reach. "
 				+ "Connect to a network and try again.";
+		}
+
+		/// <summary>
+		/// The private address another machine on this network would reach us at.
+		/// </summary>
+		/// <remarks>
+		/// Separate from the advertised one because a port forward needs this and a
+		/// join code does not: the router forwards to a private address, while
+		/// players on the same network use whichever was advertised. They are usually
+		/// the same, but not on a machine that holds a public address too.
+		/// </remarks>
+		public static bool TryGetPrivateAddress(out IPAddress address)
+		{
+			TryGetReachableAddress(out address);
+		
+			return address != null && IsPrivate(address);
 		}
 
 		/// <summary>

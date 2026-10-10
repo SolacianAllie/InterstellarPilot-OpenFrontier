@@ -66,6 +66,7 @@ the save-only rows, which is why the captions here differ from the clone's.
 | `SessionProtocolLabel` | `TextSaveVersion` | `Protocol:` |
 | `SessionPlayersLabel` | `TextNetWorth` | `Players:` |
 | `SessionIdentityLabel` | `TextSector` | `Player:` |
+| `SessionRouterLabel` | `TextPilot` | `Router:` |
 
 `SessionCodeLabel` and `SessionHostingLabel` keep the two references the clone
 already carried (`TextFilenameValue` and `TextFileSizeValue`), so only their
@@ -73,6 +74,11 @@ captions changed.
 
 The panel gives way to `MultiSelectRoot` when more than one row is selected -
 the two share the same space and would otherwise be drawn on top of each other.
+
+`Router:` reports the UPnP port forward. It is the one row here that takes a
+few seconds to settle - the gateway is asked on a background thread after
+hosting starts - so it moves through "Asking the router...", "Forwarded: 24890",
+or "No" depending on what the router had to say.
 
 The screen heading lives in `TextScreenTitle`, not on the button: the button row
 is icon-only throughout, like the rest.

@@ -555,7 +555,8 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 				new { Row = "TextCreatedVersion", Value = "TextSaveCreatedVersionValue", Caption = "Game version:", Field = nameof(target.SessionVersionLabel) },
 				new { Row = "TextSaveVersion", Value = "TextSaveVersionValue", Caption = "Protocol:", Field = nameof(target.SessionProtocolLabel) },
 				new { Row = "TextNetWorth", Value = "TextNetWorthValue", Caption = "Players:", Field = nameof(target.SessionPlayersLabel) },
-				new { Row = "TextSector", Value = "TextSectorValue", Caption = "Player:", Field = nameof(target.SessionIdentityLabel) }
+				new { Row = "TextSector", Value = "TextSectorValue", Caption = "Player:", Field = nameof(target.SessionIdentityLabel) },
+			new { Row = "TextPilot", Value = "TextPilotValue", Caption = "Router:", Field = nameof(target.SessionRouterLabel) }
 			};
 
 			int sessionRowsWired = 0;
