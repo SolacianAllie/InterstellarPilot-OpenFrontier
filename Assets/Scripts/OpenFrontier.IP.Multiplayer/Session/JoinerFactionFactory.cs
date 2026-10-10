@@ -259,7 +259,16 @@ namespace OpenFrontier.IP.Multiplayer
 					return null;
 				}
 
-				unit.SetUniqueId(id);
+				// Through the engine, not SetUniqueId. The exporter reads the
+				// field so the joiner is told the right number, but everything
+				// that looks a unit up uses the engine's map, and a unit
+				// renumbered without being re-registered is a unit the host
+				// cannot find - which is what stopped a player's shuttle moving.
+				if (!EngineASX.Instance.ReassignUnitId(unit, id))
+				{
+					error = "Ship number " + id + " is already in this world.";
+					return null;
+				}
 
 				// The joiner's shuttle, and the ship the host is flying right
 				// now, described on adjacent lines. Both were made by the same

@@ -1720,6 +1720,52 @@ namespace OpenFrontier.IP.Engine
 		/// world saved before it may load with a faction at the old number.
 		/// </remarks>
 		/// <returns>False when the new id is already taken.</returns>
+		/// <summary>
+		/// Moves a registered unit to a different id, keeping the engine's map
+		/// in step.
+		/// </summary>
+		/// <remarks>
+		/// The map is private, and <see cref="Unit.SetUniqueId"/> only writes
+		/// a field - which is enough for the exporter, because the exporter
+		/// reads the field, and not enough for anything that looks a unit up by
+		/// its number. A unit renumbered without being re-registered is a unit
+		/// the world cannot find.
+		///
+		/// That is exactly what happened to a player's shuttle. It was created,
+		/// renumbered into the reserved band so that "a player made this" is
+		/// answerable from the number, and handed to the joiner. The exporter
+		/// found it, because the exporter reads the field - which is why the
+		/// joiner received a ship at that number - and every lookup found
+		/// nothing, because the lookup uses the map. The joiner flew a ship
+		/// the host did not have.
+		///
+		/// The counterpart to <see cref="ReassignFactionId"/>, and for the same
+		/// reason: numbering something from outside the engine has to be
+		/// something the engine can do.
+		///
+		/// The counter is deliberately not advanced, for the same reason as
+		/// there - the map is what stops a number being handed out twice.
+		/// </remarks>
+		/// <returns>False when the new id is already taken.</returns>
+		public bool ReassignUnitId(Unit unit, int newId)
+		{
+			if (unit == null)
+			{
+				return false;
+			}
+
+			if (unitIdMap.ContainsKey(newId))
+			{
+				return false;
+			}
+
+			unitIdMap.Remove(unit.UniqueId);
+			unit.SetUniqueId(newId);
+			unitIdMap[newId] = unit;
+
+			return true;
+		}
+
 		public bool ReassignFactionId(Faction faction, int newId)
 		{
 			if (faction == null)
