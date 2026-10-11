@@ -187,16 +187,26 @@ namespace OpenFrontier.IP.UI
 
 		public void UndockCurrentShip()
 		{
-			if (CanUndockCurrentShip())
-			{
-				PlayerCurrentUnit.Components.PilotPerson = engine.LocalPlayer.Person;
-				PlayerCurrentUnit.Components.UndockIfDocked();
-				EngineASX.Instance.HudCamera.ResetOrientation();
-			}
-			else
+			if (!CanUndockCurrentShip())
 			{
 				Debug.LogWarning("Dock button clicked but can't undock");
+				return;
 			}
+
+			// Asked before anything is done locally, for the same reason, and
+			// because this method is a second undock path rather than a call
+			// into UndockShip - which is why the relay was installed on one of
+			// them and the player pressed the other. Two paths to the same
+			// thing is the normal shape of a UI that grew a button at a time.
+			if (Authority.UndockRequest != null
+				&& Authority.UndockRequest(PlayerCurrentUnit.UniqueId))
+			{
+				return;
+			}
+
+			PlayerCurrentUnit.Components.PilotPerson = engine.LocalPlayer.Person;
+			PlayerCurrentUnit.Components.UndockIfDocked();
+			EngineASX.Instance.HudCamera.ResetOrientation();
 		}
 
 		public void UndockShip(UnitComponentHolder ship)
