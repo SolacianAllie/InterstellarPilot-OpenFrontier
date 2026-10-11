@@ -1961,11 +1961,29 @@ namespace OpenFrontier.IP.Engine
 			return aiPatrolPathsById.ContainsKey(id);
 		}
 
+		/// <summary>A unit has entered the world for the first time.</summary>
+		/// <remarks>
+		/// Raised once per unit, from the one place every unit passes through
+		/// on its way in. The rule this project works to is that the host
+		/// tells clients everything, and the obvious way to do that - find
+		/// every place a ship can be built and announce it from each - is a
+		/// list that is wrong the moment somebody builds a ship somewhere new.
+		///
+		/// So it is one seam instead, and the multiplayer side is the only
+		/// thing that listens. Singleplayer installs nothing and never sees it.
+		///
+		/// Note the unit has no sector yet: callers set unit.Sector after
+		/// registering, so a listener has to wait a frame before it can say
+		/// where the thing is.
+		/// </remarks>
+		public event System.Action<Unit> UnitCreated;
+
 		public void RegisterUnit(Unit unit)
 		{
 			if (!unitIdMap.ContainsKey(unit.UniqueId))
 			{
 				unitIdMap.Add(unit.UniqueId, unit);
+				UnitCreated?.Invoke(unit);
 				if (LogWrapper.LogMsgs)
 				{
 					LogWrapper.Log($"Engine registering unit: {unit} ID: {unit.UniqueId}", unit, 3);

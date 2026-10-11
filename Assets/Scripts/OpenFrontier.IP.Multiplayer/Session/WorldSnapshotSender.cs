@@ -126,6 +126,11 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			// switched on".
 			host.AddComponent<UnitStateBroadcaster>();
 
+			// Telling clients about ships that appear later, which the
+			// broadcaster above cannot do: it only tells a client about units
+			// both copies already have.
+			NewUnitBroadcaster.Install();
+
 			// Same object, same reason. A joiner's credits and hold come
 			// from the host too, and without this the client shows a balance
 			// it has already spent for as long as the session lasts.

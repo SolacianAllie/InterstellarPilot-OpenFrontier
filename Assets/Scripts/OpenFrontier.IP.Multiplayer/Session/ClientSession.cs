@@ -119,6 +119,9 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>The host saying which hangar a ship is in.</summary>
 		public event System.Action<DockedStateMessage> DockedStateReceived;
 
+		/// <summary>The host saying a ship now exists.</summary>
+		public event System.Action<NewUnitMessage> NewUnitReceived;
+
 		/// <summary>
 		/// Raised once connected, for the client to state who it is.
 		/// </summary>
@@ -363,6 +366,20 @@ namespace OpenFrontier.IP.Multiplayer
 				}
 
 				DockedStateReceived?.Invoke(docked);
+				return;
+			}
+
+			if (messageId == ProtocolVersion.NewUnitMessageId)
+			{
+				if (!NewUnitMessage.TryFromBytes(payload,
+					out NewUnitMessage created, out string createdError))
+				{
+					Debug.LogWarning("Multiplayer: unreadable new-ship message - "
+						+ createdError);
+					return;
+				}
+
+				NewUnitReceived?.Invoke(created);
 				return;
 			}
 

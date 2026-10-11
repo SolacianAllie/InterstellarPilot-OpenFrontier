@@ -55,11 +55,17 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>The host saying which hangar a ship is in.</summary>
 		public event Action<DockedStateMessage> DockedStateReceived;
 
+		/// <summary>The host saying a ship now exists.</summary>
+		public event Action<NewUnitMessage> NewUnitReceived;
+
 		/// <summary>How many unit states have arrived since play began.</summary>
 		public int StatesReceived { get; private set; }
 
 		/// <summary>Docked-state answers received from the host.</summary>
 		public int DockedStatesReceived { get; private set; }
+
+		/// <summary>New-ship announcements received from the host.</summary>
+		public int NewUnitsReceived { get; private set; }
 
 		/// <summary>
 		/// What the host said it was playing, once that has arrived.
@@ -160,6 +166,11 @@ namespace OpenFrontier.IP.Multiplayer
 			// of, and the two copies' UnitHangar.Items stayed different for
 			// the rest of the session with nothing to reconcile them.
 			host.AddComponent<DockedStateApplier>();
+
+			// And the one thing on a client that creates something rather
+			// than writing onto something: a ship the host says exists, built
+			// from the same prefab the host built it from.
+			host.AddComponent<NewUnitApplier>();
 		}
 
 		private void Awake()
@@ -226,6 +237,12 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				DockedStatesReceived++;
 				DockedStateReceived?.Invoke(docked);
+			};
+
+			client.NewUnitReceived += created =>
+			{
+				NewUnitsReceived++;
+				NewUnitReceived?.Invoke(created);
 			};
 
 			client.WorldDescriptorReceived += descriptor =>
