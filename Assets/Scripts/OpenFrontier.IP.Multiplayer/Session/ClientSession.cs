@@ -209,6 +209,51 @@ namespace OpenFrontier.IP.Multiplayer
 			channel.Send(FramedMessage.Create(ProtocolVersion.HelloMessageId, hello.ToBytes()));
 		}
 
+		private readonly System.Collections.Generic.HashSet<int> messageIdsSeen =
+			new System.Collections.Generic.HashSet<int>();
+
+		/// <summary>
+		/// What a message id is, in words a log can be read against.
+		/// </summary>
+		/// <remarks>
+		/// An id alone is a number, and "15" next to "docked state" in the
+		/// source is not the same as "15" next to what the player saw.
+		/// </remarks>
+		private static string NameOfMessage(int messageId)
+		{
+			if (messageId == ProtocolVersion.PlayerCommandMessageId)
+			{
+				return "a player asking for something";
+			}
+
+			if (messageId == ProtocolVersion.DockedStateMessageId)
+			{
+				return "which hangar a ship is in";
+			}
+
+			if (messageId == ProtocolVersion.UnitStateMessageId)
+			{
+				return "ship state";
+			}
+
+			if (messageId == ProtocolVersion.UnitOwnershipMessageId)
+			{
+				return "ship ownership";
+			}
+
+			if (messageId == ProtocolVersion.FactionStateMessageId)
+			{
+				return "faction state";
+			}
+
+			if (messageId == ProtocolVersion.FleetOrderCommandMessageId)
+			{
+				return "a fleet order";
+			}
+
+			return "unknown";
+		}
+
 		private void OnMessage(byte[] framed)
 		{
 			if (disposed)
@@ -220,6 +265,24 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				Abort("The host sent a malformed reply.");
 				return;
+			}
+
+			// Every id that arrives, once each, so that "the host never sent
+			// it" and "this copy never handled it" stop looking identical.
+			//
+			// Both readings used to produce a completely silent log. Docking
+			// was relayed, the host docked the ship and broadcast the answer,
+			// and the client logged neither receipt nor application - so the
+			// two ends could not be told apart from the outside, which is the
+			// same failure as a reason being dropped before it reaches a log.
+			if (!messageIdsSeen.Add(messageId))
+			{
+				// already said
+			}
+			else
+			{
+				Debug.Log("Multiplayer: received message id " + messageId
+					+ " (" + NameOfMessage(messageId) + ")");
 			}
 
 			// State first: it is the only message that arrives after the

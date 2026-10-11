@@ -42,7 +42,9 @@ namespace OpenFrontier.IP.Multiplayer
 
 		public static FactionStateApplier Instance { get; private set; }
 
-		private ClientSession session;
+		private MultiplayerClientService service;
+
+		private MultiplayerClientService connectedTo;
 
 		/// <summary>Messages that named a faction this copy does not have.</summary>
 		/// <remarks>
@@ -74,41 +76,66 @@ namespace OpenFrontier.IP.Multiplayer
 
 		private void OnEnable()
 		{
-			// Same arrangement as the unit state applier: subscribed rather
-			// than pushed to, because the two are installed at different times
-			// and either may already be up when the other appears.
 			Attach();
-			MultiplayerPump.AddedPumpTick += Attach;
+			Connect();
 		}
 
-		private void OnDisable()
+		/// <summary>
+		/// Binds to the client service, which exists before this does.
+		/// </summary>
+		/// <remarks>
+		/// Both are created together, MultiplayerClientService first, so this
+		/// usually succeeds on the first try - but "usually" is not a thing to
+		/// build on, so the service's Connected event retries it. That retry is
+		/// what the old pump-based version was relying on and never got.
+		/// </remarks>
+		private void Connect()
 		{
-			if (session != null)
-			{
-				session.FactionStateReceived -= Apply;
-			}
+			MultiplayerClientService current = MultiplayerClientService.Instance;
 
-			MultiplayerPump.AddedPumpTick -= Attach;
-		}
-
-		private void Attach()
-		{
-			ClientSession current = MultiplayerClientService.Instance == null
-				? null
-				: MultiplayerClientService.Instance.Session;
-
-			if (current == null || current == session)
+			if (current == null || current == connectedTo)
 			{
 				return;
 			}
 
-			if (session != null)
+			if (connectedTo != null)
 			{
-				session.FactionStateReceived -= Apply;
+				connectedTo.Connected -= Attach;
 			}
 
-			session = current;
-			session.FactionStateReceived += Apply;
+			connectedTo = current;
+			connectedTo.Connected += Attach;
+		}
+
+		/// <summary>
+		/// Subscribes to the service, which forwards from whichever session is
+		/// current. Never to the session itself.
+		/// </summary>
+		/// <remarks>
+		/// Subscribing to the session looks equivalent and is not: this
+		/// component is added before any session exists, so it would wait for
+		/// one to be woken later and, with nothing to wake it, would sit there
+		/// holding a subscription to nothing. The host was broadcasting the
+		/// answer the whole time.
+		/// </remarks>
+		private void Attach()
+		{
+			MultiplayerClientService current = MultiplayerClientService.Instance;
+
+			if (current == null || current == service)
+			{
+				return;
+			}
+
+			if (service != null)
+			{
+				service.FactionStateReceived -= Apply;
+			}
+
+			service = current;
+			service.FactionStateReceived += Apply;
+
+			Debug.Log("Multiplayer: faction-state applier is listening to the host");
 		}
 
 		private void Apply(FactionStateMessage message)

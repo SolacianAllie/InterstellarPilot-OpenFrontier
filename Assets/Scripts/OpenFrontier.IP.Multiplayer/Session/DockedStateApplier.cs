@@ -31,7 +31,9 @@ namespace OpenFrontier.IP.Multiplayer
 		private int appliedTotal;
 		private int unknownTotal;
 
-		private ClientSession session;
+		private MultiplayerClientService service;
+
+		private MultiplayerClientService connectedTo;
 
 		private static DockedStateApplier instance;
 
@@ -44,41 +46,66 @@ namespace OpenFrontier.IP.Multiplayer
 
 		private void OnEnable()
 		{
-			// Subscribed rather than pushed to, because this and the session
-			// are installed at different times and either may already be up
-			// when the other appears - same arrangement as the faction applier.
 			Attach();
-			MultiplayerPump.AddedPumpTick += Attach;
+			Connect();
 		}
 
-		private void OnDisable()
+		/// <summary>
+		/// Binds to the client service, which exists before this does.
+		/// </summary>
+		/// <remarks>
+		/// Both are created together, MultiplayerClientService first, so this
+		/// usually succeeds on the first try - but "usually" is not a thing to
+		/// build on, so the service's Connected event retries it. That retry is
+		/// what the old pump-based version was relying on and never got.
+		/// </remarks>
+		private void Connect()
 		{
-			if (session != null)
-			{
-				session.DockedStateReceived -= Apply;
-			}
+			MultiplayerClientService current = MultiplayerClientService.Instance;
 
-			MultiplayerPump.AddedPumpTick -= Attach;
-		}
-
-		private void Attach()
-		{
-			ClientSession current = MultiplayerClientService.Instance == null
-				? null
-				: MultiplayerClientService.Instance.Session;
-
-			if (current == null || current == session)
+			if (current == null || current == connectedTo)
 			{
 				return;
 			}
 
-			if (session != null)
+			if (connectedTo != null)
 			{
-				session.DockedStateReceived -= Apply;
+				connectedTo.Connected -= Attach;
 			}
 
-			session = current;
-			session.DockedStateReceived += Apply;
+			connectedTo = current;
+			connectedTo.Connected += Attach;
+		}
+
+		/// <summary>
+		/// Subscribes to the service, which forwards from whichever session is
+		/// current. Never to the session itself.
+		/// </summary>
+		/// <remarks>
+		/// Subscribing to the session looks equivalent and is not: this
+		/// component is added before any session exists, so it would wait for
+		/// one to be woken later and, with nothing to wake it, would sit there
+		/// holding a subscription to nothing. The host was broadcasting the
+		/// answer the whole time.
+		/// </remarks>
+		private void Attach()
+		{
+			MultiplayerClientService current = MultiplayerClientService.Instance;
+
+			if (current == null || current == service)
+			{
+				return;
+			}
+
+			if (service != null)
+			{
+				service.DockedStateReceived -= Apply;
+			}
+
+			service = current;
+			service.DockedStateReceived += Apply;
+
+			Debug.Log("Multiplayer: docked-state applier is listening to the host");
 		}
 
 		private void Apply(DockedStateMessage message)

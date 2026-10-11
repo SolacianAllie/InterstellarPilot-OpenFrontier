@@ -36,8 +36,30 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Where incoming unit states go.</summary>
 		public event Action<UnitStateMessage> UnitStateReceived;
 
+		/// <summary>The host saying how much money a faction has.</summary>
+		/// <remarks>
+		/// Raised here rather than off the session directly, and that is the
+		/// whole point. An applier is added to the same GameObject as this
+		/// service at BeforeSceneLoad, so this service already exists when it
+		/// subscribes - but the session does not, and will not for some time
+		/// after. An applier that waits for the session therefore depends on
+		/// being woken later, and two of them were: FactionStateApplier was
+		/// written against the session in the first place and has never run,
+		/// and DockedStateApplier copied it.
+		///
+		/// UnitStateApplier has always subscribed here and has always worked,
+		/// which is the difference in one line.
+		/// </remarks>
+		public event Action<FactionStateMessage> FactionStateReceived;
+
+		/// <summary>The host saying which hangar a ship is in.</summary>
+		public event Action<DockedStateMessage> DockedStateReceived;
+
 		/// <summary>How many unit states have arrived since play began.</summary>
 		public int StatesReceived { get; private set; }
+
+		/// <summary>Docked-state answers received from the host.</summary>
+		public int DockedStatesReceived { get; private set; }
 
 		/// <summary>
 		/// What the host said it was playing, once that has arrived.
@@ -196,6 +218,14 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				StatesReceived++;
 				UnitStateReceived?.Invoke(states);
+			};
+
+			client.FactionStateReceived += state => FactionStateReceived?.Invoke(state);
+
+			client.DockedStateReceived += docked =>
+			{
+				DockedStatesReceived++;
+				DockedStateReceived?.Invoke(docked);
 			};
 
 			client.WorldDescriptorReceived += descriptor =>
