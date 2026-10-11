@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using OpenFrontier.IP.Common;
 using OpenFrontier.IP.Engine;
 using OpenFrontier.IP.Engine.Claiming;
 using OpenFrontier.IP.Engine.Comms;
@@ -74,6 +75,25 @@ namespace OpenFrontier.IP.UI.Screens.Hud
 		public float CheckCanDockFrequency = 0.2f;
 
 		public Button ClaimShipButton;
+
+		/// <summary>
+		/// Shown on the claim button when the target is your own ship.
+		/// </summary>
+		/// <remarks>
+		/// One button with two meanings rather than two buttons, because every
+		/// menu in this game is a fixed set of prefab buttons and adding one is
+		/// prefab surgery - the thing that fails silently.
+		///
+		/// The two meanings are exact complements. ClaimUnitHelper will only
+		/// claim a ship that belongs to nobody; abandoning is only ever
+		/// allowed on a ship that belongs to you. So there is never a moment
+		/// where both are true and the button has to choose between two
+		/// arguments for being wrong.
+		///
+		/// Left null it keeps the claim icon and says so once, rather than
+		/// drawing nothing. The button still does the right thing either way.
+		/// </remarks>
+		public Sprite AbandonShipIcon;
 
 		public Button CommsButton;
 
@@ -1024,7 +1044,11 @@ namespace OpenFrontier.IP.UI.Screens.Hud
 				MatchTargetSpeedButton.interactable = currentTarget != null;
 			}
 			EnterShipButton.interactable = currentTarget != null && CanEnterUnit(currentTarget, lastDistToTarget);
-			ClaimShipButton.interactable = currentTarget != null && CanClaimUnit(currentTarget, lastDistToTarget);
+			ClaimShipButton.interactable = currentTarget != null
+				&& (CanClaimUnit(currentTarget, lastDistToTarget)
+					|| CanAbandonUnit(currentTarget));
+
+			RefreshClaimButtonIcon();
 			TargetOrdersButton.interactable = currentTarget != null && CanShowOrdersForUnit(currentTarget);
 		}
 
@@ -1268,6 +1292,20 @@ namespace OpenFrontier.IP.UI.Screens.Hud
 
 		private void ClaimCurrentTarget()
 		{
+			if (currentTarget == null)
+			{
+				return;
+			}
+
+			// Your own ship abandons; anything else claims. Checked in that
+			// order because abandoning is the one that changes the world and
+			// therefore has to go to the host.
+			if (CanAbandonUnit(currentTarget))
+			{
+				AbandonShip(currentTarget);
+				return;
+			}
+
 			if (CanClaimUnit(currentTarget, lastDistToTarget))
 			{
 				Eng.LocalFaction.ClaimUnit(currentTarget, null);
@@ -1275,10 +1313,157 @@ namespace OpenFrontier.IP.UI.Screens.Hud
 			}
 		}
 
+		/// <summary>
+		/// Whether this ship is the player's to abandon.
+		/// </summary>
+		/// <remarks>
+		/// Three things, and each is there for a reason.
+		///
+		/// Their faction, because abandoning a ship you do not own is not a
+		/// thing - it is the claim button's job, and the two cases cannot
+		/// both be true because a claimable ship belongs to nobody.
+		///
+		/// Their own person flying it, because abandoning hands the ship over
+		/// by taking the pilot out of it. A ship in a fleet has a different
+		/// pilot and a different meaning entirely - that is selling, and it
+		/// goes through the dock.
+		///
+		/// And not their last ship. Abandoning sets the pilot's CurrentUnit to
+		/// null, and nothing in this game handles a player with no ship: that
+		/// state does not exist anywhere outside the NPC code. With ship
+		/// buying not yet relayed, a player's shuttle is currently the only
+		/// ship they have, so allowing this would let a player strand
+		/// themselves with no ship and no way back.
+		///
+		/// Not reusing DitchUnitModule.CouldDitch, which is the other thing
+		/// that decides whether a ship may be ditched: that one returns true
+		/// only for a ship with an NPC pilot, so it is exactly false for the
+		/// ship a player is flying. It is the AI's gate, and asking it would
+		/// have made this button permanently inert.
+		/// </remarks>
+		private bool CanAbandonUnit(Unit unit)
+		{
+			if (unit == null || unit.IsDestroyed)
+			{
+				return false;
+			}
+
+			Faction theirs = Eng.LocalFaction;
+
+			if (theirs == null || unit.Faction != theirs)
+			{
+				return false;
+			}
+
+			if (unit.UnitType != UnitType.Ship || !unit.IsActiveInEngine)
+			{
+				return false;
+			}
+
+			Person pilot = unit.GetPilot();
+
+			if (pilot == null || pilot != Eng.LocalPlayer.Person)
+			{
+				return false;
+			}
+
+			// Never the last one. See above - there is no game state for a
+			// player with no ship.
+			return theirs.GetCountOfUnitType(UnitType.Ship) > 1;
+		}
+
+		/// <summary>
+		/// Asks the host to abandon a ship. The host decides.
+		/// </summary>
+		/// <remarks>
+		/// Abandoning changes the world: the ship stops belonging to anybody
+		/// and becomes free for either side to take. So it cannot happen on
+		/// this copy of the world - it has to be asked for, like every other
+		/// action a client takes.
+		///
+		/// Returns false on a host and in singleplayer, where the ship is
+		/// abandoned here as it always was.
+		/// </remarks>
+		private void AbandonShip(Unit unit)
+		{
+			if (Authority.AbandonShipRequest != null
+				&& Authority.AbandonShipRequest(unit.UniqueId))
+			{
+				return;
+			}
+
+			EngineASX.Instance.DitchUnitModule.DitchUnitWithAbandon(
+				unit, null, null, DamageDirectType.Direct);
+
+			TargetInfoUI.Invalidate();
+		}
+
 		private bool CanEnterUnit(Unit unit, float distance)
 		{
 			return WorldHelper.CanEnterUnit(PlayerUnit, unit, distance);
 		}
+
+		/// <summary>
+		/// Swaps the claim button's icon when the button means something else.
+		/// </summary>
+		/// <remarks>
+		/// Only the icon changes. The button, its position and its wiring are
+		/// the same object either way, which is the whole reason for doing it
+		/// this way rather than adding a second button - every menu in this
+		/// game is a fixed list of prefab buttons, and a hand-edited prefab
+		/// fails silently rather than loudly.
+		///
+		/// Says so once if the sprite was never assigned. Silently showing the
+		/// claim icon on an abandon button would be worse than showing nothing:
+		/// the player would be about to give away a ship.
+		/// </remarks>
+		private void RefreshClaimButtonIcon()
+		{
+			if (ClaimShipButton == null)
+			{
+				return;
+			}
+
+			bool abandoning = CanAbandonUnit(currentTarget);
+			Image image = ClaimShipButton.GetComponentInChildren<Image>();
+
+			if (image == null)
+			{
+				return;
+			}
+
+			// Captured rather than remembered from Awake, because there is no
+			// Awake here and adding one for this would be a larger change than
+			// it looks. The first refresh happens while the button still means
+			// "claim" - the player cannot be abandoning anything yet - so this
+			// always takes the claim sprite.
+			if (claimButtonIcon == null && !abandoning)
+			{
+				claimButtonIcon = image.sprite;
+			}
+
+			if (abandoning && AbandonShipIcon == null)
+			{
+				if (!warnedAboutAbandonIcon)
+				{
+					warnedAboutAbandonIcon = true;
+
+					Debug.LogWarning("The HUD's claim button means \"abandon ship\""
+						+ " on your own ship, but AbandonShipIcon has no sprite"
+						+ " assigned, so it is showing the claim icon instead."
+						+ " Assign one on the HudScreen component.");
+				}
+
+				return;
+			}
+
+			image.sprite = abandoning ? AbandonShipIcon : claimButtonIcon;
+		}
+
+		private bool warnedAboutAbandonIcon;
+
+		/// <summary>The claim button's own icon, captured on Awake.</summary>
+		private Sprite claimButtonIcon;
 
 		private bool CanClaimUnit(Unit unit, float distance)
 		{

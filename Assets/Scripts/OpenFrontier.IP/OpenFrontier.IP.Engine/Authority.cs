@@ -314,6 +314,20 @@ namespace OpenFrontier.IP.Engine
 		/// </remarks>
 		public static System.Func<int, bool> UndockRequest { get; set; }
 
+		/// <summary>
+		/// Asks the host to abandon a ship. Returns true if it was asked.
+		/// </summary>
+		/// <remarks>
+		/// Abandoning hands a ship over: it stops belonging to anybody and
+		/// becomes free for either side to take. That is a change to the world
+		/// and only the host may make one, so a client asks.
+		///
+		/// The mirror of the claim button and never true at the same time as
+		/// it - a ship can be claimed because it belongs to nobody, and
+		/// abandoned because it belongs to you.
+		/// </remarks>
+		public static System.Func<int, bool> AbandonShipRequest { get; set; }
+
 		/// <summary>Whether this copy simulates world-level things.</summary>
 		public static bool OwnsWorld()
 		{

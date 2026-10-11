@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using OpenFrontier.IP.Common;
 using OpenFrontier.IP.Engine;
 using OpenFrontier.IP.Engine.Factions;
 using OpenFrontier.IP.Multiplayer.UI;
@@ -36,6 +37,9 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Take a ship back out of a hangar.</summary>
 		public const byte UndockShip = 2;
 
+		/// <summary>Give a ship up so anybody may have it.</summary>
+		public const byte AbandonShip = 3;
+
 		private const int ArgShipId = 0;
 		private const int ArgDockUnitId = 1;
 
@@ -52,6 +56,7 @@ namespace OpenFrontier.IP.Multiplayer
 			Handlers.Clear();
 			Register(DockShip, "dock", Dock);
 			Register(UndockShip, "undock", Undock);
+			Register(AbandonShip, "abandon", Abandon);
 
 			// The engine's door. Left installed on a host as well as a client:
 			// SendIfClient answers false when this copy is not a client, so a
@@ -61,6 +66,9 @@ namespace OpenFrontier.IP.Multiplayer
 
 			Authority.UndockRequest = shipId =>
 				SendIfClient(UndockShip, new[] { shipId });
+
+			Authority.AbandonShipRequest = shipId =>
+				SendIfClient(AbandonShip, new[] { shipId });
 
 			if (MultiplayerHostService.Session != null)
 			{
@@ -260,6 +268,74 @@ namespace OpenFrontier.IP.Multiplayer
 			session.Broadcast(ProtocolVersion.DockedStateMessageId,
 				DockedStateMessage.Docked(ship.UniqueId, dockId,
 					bay == null ? -1 : bay.BayId).ToBytes());
+		}
+
+		/// <summary>
+		/// Gives a ship up, so that anybody may have it.
+		/// </summary>
+		/// <remarks>
+		/// The ship does not die. Abandoning is the pilot leaving it alive: the
+		/// faction becomes null, the ship floats on, and after a short claim
+		/// cooldown either side may take it. The UnitOwnerChangedMessage that
+		/// follows is what tells the clients that, and it is why the ship is
+		/// still there afterwards rather than exploding.
+		///
+		/// Two things are refused here rather than on the client, because the
+		/// client asking is not the same as the client being entitled to. It
+		/// must be a ship the player actually has, and it must not be the only
+		/// one: abandoning sets the pilot's CurrentUnit to null and nothing in
+		/// this game handles a player with no ship - that state does not exist
+		/// outside the NPC code - so the last one would strand them with
+		/// nothing to fly and no way to say so.
+		///
+		/// Both refusals say which rule and why, because "nothing happened" to
+		/// a player who pressed a button is the failure this whole command
+		/// channel exists to avoid.
+		/// </remarks>
+		private static void Abandon(RemotePlayer player, PlayerCommandMessage command)
+		{
+			HostSession session = MultiplayerHostService.Session;
+			Unit ship = TheirShip(player, command);
+
+			if (ship == null || session == null)
+			{
+				return;
+			}
+
+			if (ship.UnitType != UnitType.Ship)
+			{
+				Debug.LogWarning("Multiplayer: refused abandoning " + ship.UniqueId
+					+ " - it is not a ship.");
+
+				return;
+			}
+
+			Faction theirs = ship.Faction;
+
+			if (theirs == null)
+			{
+				Debug.LogWarning("Multiplayer: refused abandoning " + ship.UniqueId
+					+ " - it belongs to nobody already, so there is nothing to"
+					+ " give up. Claiming it is the other button.");
+
+				return;
+			}
+
+			if (theirs.GetCountOfUnitType(UnitType.Ship) <= 1)
+			{
+				Debug.LogWarning("Multiplayer: refused abandoning " + ship.UniqueId
+					+ " - it is the only ship that faction has, and nothing in this"
+					+ " game handles a player with no ship. Leave the last one.");
+
+				return;
+			}
+
+			EngineASX.Instance.DitchUnitModule.DitchUnitWithAbandon(
+				ship, null, null, DamageDirectType.Direct);
+
+			Debug.Log("Multiplayer: " + (player.DisplayName ?? player.Identity)
+				+ " abandoned ship " + ship.UniqueId + " - it now belongs to nobody"
+				+ " and can be claimed.");
 		}
 
 		private static void Undock(RemotePlayer player, PlayerCommandMessage command)
