@@ -38,6 +38,8 @@ namespace OpenFrontier.IP.Multiplayer
 
 		private int createdTotal;
 		private int alreadyHad;
+		private int destroyedTotal;
+		private int removedTotal;
 
 		private void Awake()
 		{
@@ -55,6 +57,7 @@ namespace OpenFrontier.IP.Multiplayer
 			if (service != null)
 			{
 				service.NewUnitReceived -= Apply;
+				service.UnitGoneReceived -= Apply;
 			}
 		}
 
@@ -88,12 +91,76 @@ namespace OpenFrontier.IP.Multiplayer
 			if (service != null)
 			{
 				service.NewUnitReceived -= Apply;
+				service.UnitGoneReceived -= Apply;
 			}
 
 			service = current;
 			service.NewUnitReceived += Apply;
+			service.UnitGoneReceived += Apply;
 
 			Debug.Log("Multiplayer: new-ship applier is listening to the host");
+		}
+
+		/// <summary>
+		/// Runs the same destruction the host ran, so the animation is native.
+		/// </summary>
+		/// <remarks>
+		/// Not "hide this object". KillAnonymously is the game's own path for
+		/// a destroyed unit, and it is what requests the animated explosion,
+		/// the debris and the sound - so calling it here gives a client the
+		/// same thing the host got rather than a description of it. That is
+		/// the rule the fleet orders already follow: the host does not
+		/// reimplement what happened, both copies call the identical code.
+		///
+		/// Which of the two is used matters in the direction that shows. A ship
+		/// that was shot down is killed here, and explodes. A ship that was
+		/// sold, dismantled, or expired is only removed, and does not - a
+		/// ship you sold must not explode. The host said which, and guessing
+		/// would be wrong on exactly the case a player would notice.
+		///
+		/// Kills are safe to apply twice: the second call finds isDestroyed
+		/// and does nothing, so a kill followed by the host's later removal
+		/// is one explosion rather than two.
+		/// </remarks>
+		private void Apply(UnitGoneMessage message)
+		{
+			EngineASX engine = EngineASX.Instance;
+
+			if (engine == null)
+			{
+				return;
+			}
+
+			Unit unit = engine.GetUnitByid(message.UnitId);
+
+			if (unit == null || unit.IsDestroyed)
+			{
+				return;
+			}
+
+			if (message.WasKilled)
+			{
+				if (unit.Destructable != null && unit.Destructable.KillAnonymously())
+				{
+					destroyedTotal++;
+
+					Debug.Log("Multiplayer: ship " + message.UnitId
+						+ " was destroyed here too, so the explosion is real."
+						+ " " + destroyedTotal + " so far.");
+
+					return;
+				}
+			}
+
+			// Removed, or killed and already dealt with. Either way the object
+			// goes, quietly.
+			unit.SafeDestroy();
+			removedTotal++;
+
+			Debug.Log("Multiplayer: ship " + message.UnitId
+				+ (message.WasKilled ? " is gone" : " was removed - sold, dismantled"
+					+ " or expired - and is gone here too, without an explosion")
+				+ ". " + removedTotal + " removed so far.");
 		}
 
 		private void Apply(NewUnitMessage message)

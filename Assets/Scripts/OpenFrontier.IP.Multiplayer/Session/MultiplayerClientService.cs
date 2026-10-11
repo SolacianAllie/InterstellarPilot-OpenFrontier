@@ -58,6 +58,9 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>The host saying a ship now exists.</summary>
 		public event Action<NewUnitMessage> NewUnitReceived;
 
+		/// <summary>The host saying a ship no longer exists.</summary>
+		public event Action<UnitGoneMessage> UnitGoneReceived;
+
 		/// <summary>How many unit states have arrived since play began.</summary>
 		public int StatesReceived { get; private set; }
 
@@ -66,6 +69,9 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>New-ship announcements received from the host.</summary>
 		public int NewUnitsReceived { get; private set; }
+
+		/// <summary>Departures received from the host.</summary>
+		public int UnitsGoneReceived { get; private set; }
 
 		/// <summary>
 		/// What the host said it was playing, once that has arrived.
@@ -243,6 +249,12 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				NewUnitsReceived++;
 				NewUnitReceived?.Invoke(created);
+			};
+
+			client.UnitGoneReceived += gone =>
+			{
+				UnitsGoneReceived++;
+				UnitGoneReceived?.Invoke(gone);
 			};
 
 			client.WorldDescriptorReceived += descriptor =>

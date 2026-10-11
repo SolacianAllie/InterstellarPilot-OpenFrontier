@@ -158,5 +158,13 @@ namespace OpenFrontier.IP.Multiplayer
 		/// client could not buy a ship: there was no way to say so.
 		/// </remarks>
 		public const int NewUnitMessageId = 16;
+
+		/// <summary>The host saying a ship is gone.</summary>
+		/// <remarks>
+		/// Mandatory because of NewUnitMessage: a client that builds
+		/// everything the host names accumulates copies, so a copy that is
+		/// never removed is a frozen corpse hanging in space.
+		/// </remarks>
+		public const int UnitGoneMessageId = 17;
 	}
 }

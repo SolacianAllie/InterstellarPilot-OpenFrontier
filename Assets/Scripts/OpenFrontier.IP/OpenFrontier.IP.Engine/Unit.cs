@@ -960,12 +960,25 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
+		/// <summary>A unit has left the world.</summary>
+		/// <remarks>
+		/// The mirror of EngineASX.UnitCreated, and from the same place in the
+		/// same spirit: the host tells clients everything, and the one place
+		/// a unit goes away is here rather than in a list of places.
+		///
+		/// Raised before the object is destroyed, so a listener can still see
+		/// what it was.
+		/// </remarks>
+		public event System.Action<Unit> UnitGone;
+
 		public void SafeDestroy()
 		{
 			if (LogWrapper.LogMsgs)
 			{
 				LogWrapper.Log($"{this}: DestroyGameObject", this, 2);
 			}
+
+			UnitGone?.Invoke(this);
 			CleanupUnit();
 			UnityEngine.Object.Destroy(gameObject);
 		}

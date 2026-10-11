@@ -309,6 +309,21 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
+		/// <summary>A unit has been destroyed, as opposed to merely removed.</summary>
+		/// <remarks>
+		/// Separate from Unit.UnitGone, and deliberately earlier. Removing a
+		/// ship is what happens when one is sold, dismantled, ditched or
+		/// expired, and none of those should look like a ship being shot
+		/// down. This is the shot-down path, and it fires here rather than at
+		/// the removal because the animated explosion plays in between: a
+		/// client told only at the end would set off the whole animation a
+		/// full animation-length late.
+		///
+		/// Raised on the unit, which the host already has, so a listener needs
+		/// nothing else to identify it.
+		/// </remarks>
+		public static event System.Action<Unit> UnitKilled;
+
 		public KillData KillUnitAndChildren(Unit attacker, Faction attackerFaction, DamageDirectType damageDirectType)
 		{
 			if (!isDestroyed)
@@ -371,6 +386,9 @@ namespace OpenFrontier.IP.Engine
 					activeUnit.DestructionAnimGameObject = animatedUnitExplosion;
 				}
 			}
+
+			// Said here, beside the explosion, rather than at the removal.
+			UnitKilled?.Invoke(unit);
 			DestroyedUnitArgs args = new DestroyedUnitArgs
 			{
 				Destroyer = attacker,

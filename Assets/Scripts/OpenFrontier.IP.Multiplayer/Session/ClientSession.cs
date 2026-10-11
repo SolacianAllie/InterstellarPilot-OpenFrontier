@@ -122,6 +122,9 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>The host saying a ship now exists.</summary>
 		public event System.Action<NewUnitMessage> NewUnitReceived;
 
+		/// <summary>The host saying a ship no longer exists.</summary>
+		public event System.Action<UnitGoneMessage> UnitGoneReceived;
+
 		/// <summary>
 		/// Raised once connected, for the client to state who it is.
 		/// </summary>
@@ -366,6 +369,20 @@ namespace OpenFrontier.IP.Multiplayer
 				}
 
 				DockedStateReceived?.Invoke(docked);
+				return;
+			}
+
+			if (messageId == ProtocolVersion.UnitGoneMessageId)
+			{
+				if (!UnitGoneMessage.TryFromBytes(payload,
+					out UnitGoneMessage gone, out string goneError))
+				{
+					Debug.LogWarning("Multiplayer: unreadable unit-gone message - "
+						+ goneError);
+					return;
+				}
+
+				UnitGoneReceived?.Invoke(gone);
 				return;
 			}
 
