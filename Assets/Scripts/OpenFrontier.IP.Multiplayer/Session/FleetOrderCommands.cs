@@ -699,6 +699,29 @@ namespace OpenFrontier.IP.Multiplayer
 					return false;
 				}
 
+				// An unowned ship, and the order is to claim it.
+				//
+				// Claiming a wreck is the one thing a player may order
+				// against a ship that is not theirs, because an abandoned
+				// ship has no faction at all - unit.Faction = null, the ship
+				// floats on, and either side may take it. Everything below
+				// this line assumes a ship belongs to exactly one faction and
+				// that faction is the sender's, which is true of every other
+				// order and false of this one.
+				//
+				// Narrow on purpose: unowned passes for ClaimUnit and nothing
+				// else, so this cannot become a way to order somebody else's
+				// derelict around.
+				//
+				// The engine agrees, which was worth checking rather than
+				// assuming: ActiveClaimUnitOrder returns true for a target
+				// whose faction is null and flies the fleet to it.
+				if (ship.Faction == null
+					&& (FleetOrderKind)command.Kind == FleetOrderKind.ClaimUnit)
+				{
+					continue;
+				}
+
 				if (theirs == null || ship.Faction != theirs)
 				{
 					Debug.LogWarning("Multiplayer: refused an order from "

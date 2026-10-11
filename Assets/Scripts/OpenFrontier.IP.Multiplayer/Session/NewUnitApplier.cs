@@ -40,6 +40,7 @@ namespace OpenFrontier.IP.Multiplayer
 		private int alreadyHad;
 		private int destroyedTotal;
 		private int removedTotal;
+		private int abandonedTotal;
 
 		private void Awake()
 		{
@@ -58,6 +59,7 @@ namespace OpenFrontier.IP.Multiplayer
 			{
 				service.NewUnitReceived -= Apply;
 				service.UnitGoneReceived -= Apply;
+				service.OwnerChangedReceived -= Apply;
 			}
 		}
 
@@ -97,6 +99,7 @@ namespace OpenFrontier.IP.Multiplayer
 			service = current;
 			service.NewUnitReceived += Apply;
 			service.UnitGoneReceived += Apply;
+			service.OwnerChangedReceived += Apply;
 
 			Debug.Log("Multiplayer: new-ship applier is listening to the host");
 		}
@@ -122,6 +125,78 @@ namespace OpenFrontier.IP.Multiplayer
 		/// and does nothing, so a kill followed by the host's later removal
 		/// is one explosion rather than two.
 		/// </remarks>
+		/// <summary>
+		/// Applies an ownership change, including a ship losing its owner.
+		/// </summary>
+		/// <remarks>
+		/// Abandonment is the case that makes this necessary and it is
+		/// invisible without it: a pilot abandons a ship, the ship survives
+		/// with no faction and becomes claimable, and a client that is not told
+		/// still has it owned by the faction that gave it up - so the one ship
+		/// in the game that is free to take is the one no client can take.
+		///
+		/// Set through the same property the host sets it through, so both
+		/// copies go through the same guard and the same bookkeeping. That
+		/// raises OwnerChanged again on this machine, which the broadcaster
+		/// would normally echo; it does not, because there is no session here
+		/// for it to send on.
+		/// </remarks>
+		private void Apply(UnitOwnerChangedMessage message)
+		{
+			EngineASX engine = EngineASX.Instance;
+
+			if (engine == null)
+			{
+				return;
+			}
+
+			Unit unit = engine.GetUnitByid(message.UnitId);
+
+			if (unit == null || unit.IsDestroyed)
+			{
+				return;
+			}
+
+			if (message.IsUnowned)
+			{
+				if (unit.Faction == null)
+				{
+					return;
+				}
+
+				unit.Faction = null;
+				abandonedTotal++;
+
+				Debug.Log("Multiplayer: ship " + message.UnitId
+					+ " was abandoned - it belongs to nobody here too, so it can"
+					+ " be claimed. " + abandonedTotal + " so far.");
+
+				return;
+			}
+
+			Faction faction = engine.GetFactionByid(message.FactionId);
+
+			if (faction == null)
+			{
+				Debug.LogWarning("Multiplayer: the host says ship " + message.UnitId
+					+ " now belongs to faction " + message.FactionId
+					+ ", which this build does not have. The two copies now"
+					+ " disagree about who owns it.");
+
+				return;
+			}
+
+			if (unit.Faction == faction)
+			{
+				return;
+			}
+
+			unit.Faction = faction;
+
+			Debug.Log("Multiplayer: ship " + message.UnitId
+				+ " now belongs to faction " + message.FactionId + " here too.");
+		}
+
 		private void Apply(UnitGoneMessage message)
 		{
 			EngineASX engine = EngineASX.Instance;
