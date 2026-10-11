@@ -150,5 +150,13 @@ namespace OpenFrontier.IP.Multiplayer
 
 		/// <summary>The host saying which hangar a ship is in, if any.</summary>
 		public const int DockedStateMessageId = 15;
+
+		/// <summary>The host saying a ship now exists.</summary>
+		/// <remarks>
+		/// The first message that can bring something into existence. Every
+		/// other one describes a thing both copies already had, which is why a
+		/// client could not buy a ship: there was no way to say so.
+		/// </remarks>
+		public const int NewUnitMessageId = 16;
 	}
 }
