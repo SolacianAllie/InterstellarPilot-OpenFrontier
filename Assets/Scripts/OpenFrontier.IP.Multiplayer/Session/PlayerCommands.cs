@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using OpenFrontier.IP.Engine.Claiming;
 using OpenFrontier.IP.Common;
 using OpenFrontier.IP.Engine;
 using OpenFrontier.IP.Engine.Factions;
@@ -40,8 +41,13 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>Give a ship up so anybody may have it.</summary>
 		public const byte AbandonShip = 3;
 
+		/// <summary>Buy a ship from a station.</summary>
+		public const byte BuyShip = 4;
+
 		private const int ArgShipId = 0;
 		private const int ArgDockUnitId = 1;
+		private const int ArgUnitClassId = 2;
+		private const int ArgQuantity = 3;
 
 		private sealed class Entry
 		{
@@ -57,6 +63,7 @@ namespace OpenFrontier.IP.Multiplayer
 			Register(DockShip, "dock", Dock);
 			Register(UndockShip, "undock", Undock);
 			Register(AbandonShip, "abandon", Abandon);
+			Register(BuyShip, "buy ship", BuyShipFrom);
 
 			// The engine's door. Left installed on a host as well as a client:
 			// SendIfClient answers false when this copy is not a client, so a
@@ -69,6 +76,9 @@ namespace OpenFrontier.IP.Multiplayer
 
 			Authority.AbandonShipRequest = shipId =>
 				SendIfClient(AbandonShip, new[] { shipId });
+
+			Authority.BuyShipRequest = (dockUnitId, unitClassId, quantity) =>
+				SendIfClient(BuyShip, new[] { dockUnitId, unitClassId, quantity });
 
 			if (MultiplayerHostService.Session != null)
 			{
@@ -268,6 +278,182 @@ namespace OpenFrontier.IP.Multiplayer
 			session.Broadcast(ProtocolVersion.DockedStateMessageId,
 				DockedStateMessage.Docked(ship.UniqueId, dockId,
 					bay == null ? -1 : bay.BayId).ToBytes());
+		}
+
+		/// <summary>
+		/// Buys a ship on behalf of a player, and tells everyone about it.
+		/// </summary>
+		/// <remarks>
+		/// The first thing that brings a new object into the world because a
+		/// player asked, rather than because the economy did. It is also the
+		/// same code doing both jobs, which is the point: the AI building a
+		/// ship raises EngineASX.UnitCreated and this raises it too, so both
+		/// reach clients by the same road with no separate case.
+		///
+		/// Everything is checked before anything is charged, and the price is
+		/// computed here from the same static helper the price label uses
+		/// rather than taken from the request. A client that worked out a
+		/// price is not a price anybody can check, and the host is the only
+		/// side whose answer counts.
+		///
+		/// The id comes from the player band, not the engine's counter. That
+		/// was a standing bug: a ship bought from a trader used to be created
+		/// by the counter at around 100500, so it did not pass the test for
+		/// being a player's ship and the two copies disagreed about which
+		/// ships existed.
+		/// </remarks>
+		private static void BuyShipFrom(RemotePlayer player, PlayerCommandMessage command)
+		{
+			EngineASX engine = EngineASX.Instance;
+
+			if (engine == null)
+			{
+				return;
+			}
+
+			Unit ship = TheirShip(player, command);
+
+			if (ship == null)
+			{
+				return;
+			}
+
+			// They have to actually be at the counter. Without this a player
+			// could buy from any station in the galaxy from anywhere, which is
+			// not what pressing a button on a docked ship means.
+			UnitHangarBay bay = ship.Components.DockedInHangarBay;
+
+			if (bay == null || bay.Hangar == null)
+			{
+				Debug.LogWarning("Multiplayer: refused a purchase by "
+					+ (player.DisplayName ?? player.Identity)
+					+ " - ship " + ship.UniqueId + " is not docked at anything.");
+
+				return;
+			}
+
+			Unit dock = bay.Hangar == null || bay.Hangar.UnitComponents == null
+				? null
+				: bay.Hangar.UnitComponents.Unit;
+
+			if (dock == null)
+			{
+				Debug.LogWarning("Multiplayer: refused a purchase - the hangar"
+					+ " ship " + ship.UniqueId + " is in does not name a station.");
+
+				return;
+			}
+
+			UnitShipTrader trader = dock.ShipTrader;
+
+			if (trader == null)
+			{
+				Debug.LogWarning("Multiplayer: refused a purchase at unit "
+					+ dock.UniqueId + " - it has no ship trader.");
+
+				return;
+			}
+
+			int unitClassId = command.IntAt(ArgUnitClassId);
+			UnitClass unitClass = engine.GetUnitClassById(unitClassId);
+
+			if (unitClass == null)
+			{
+				Debug.LogWarning("Multiplayer: refused a purchase - unit class "
+					+ unitClassId + " does not exist here.");
+
+				return;
+			}
+
+			if (!trader.Sells(unitClass))
+			{
+				Debug.LogWarning("Multiplayer: refused a purchase of a "
+					+ unitClass.GetSeriesName() + " - station " + dock.UniqueId
+					+ " does not sell those.");
+
+				return;
+			}
+
+			Faction theirs = ship.Faction;
+			int quantity = command.IntAt(ArgQuantity, 1);
+
+			if (quantity < 1)
+			{
+				quantity = 1;
+			}
+
+			// The price the label would have shown, computed the same way.
+			int each = OpenFrontier.IP.UI.Screens.ShipBuyScreen
+				.GetItemSaleCostPerUnit(
+					engine, unitClass.SaleCost, dock.Faction, theirs);
+
+			int total = each * quantity;
+
+			if (theirs == null)
+			{
+				Debug.LogWarning("Multiplayer: refused a purchase - the buyer has no faction.");
+
+				return;
+			}
+
+			if (!theirs.IsAffordableConsideringReserve(total))
+			{
+				Debug.LogWarning("Multiplayer: refused a purchase of "
+					+ quantity + " x " + unitClass.GetSeriesName() + " for "
+					+ total + " credits - " + theirs.Name + " has "
+					+ theirs.Credits + " and the reserve counts too.");
+
+				return;
+			}
+
+			theirs.Credits -= total;
+
+			List<Unit> bought = new List<Unit>();
+
+			for (int i = 0; i < quantity; i++)
+			{
+				Unit created = WorldHelper.SpawnUnitAndInstallComponents(
+					unitClass.UnitPrefab, dock.Sector, addCargoLoadout: true);
+
+				if (created == null)
+				{
+					continue;
+				}
+
+				// From the player band, so that this and every other copy agree
+				// that it is a player's ship. The engine counter would put it
+				// around 100500, where none of the band tests can see it.
+				int wanted = PlayerIdScheme.NextUnitId();
+
+				if (wanted > 0)
+				{
+					engine.ReassignUnitId(created, wanted);
+				}
+
+				created.Faction = theirs;
+				created.Sector = dock.Sector;
+
+				if (!created.Components.TryDockInHangar(
+					dock.Components.HangarComponent))
+				{
+					created.TransformForUndockFrom(dock);
+				}
+
+				created.UpdateGasCloud();
+				bought.Add(created);
+			}
+
+			if (bought.Count == 0)
+			{
+				Debug.LogWarning("Multiplayer: refused a purchase - no ship could be"
+					+ " built at station " + dock.UniqueId + ". Nothing was charged.");
+
+				return;
+			}
+
+			Debug.Log("Multiplayer: " + (player.DisplayName ?? player.Identity)
+				+ " bought " + bought.Count + " x " + unitClass.GetSeriesName()
+				+ " from station " + dock.UniqueId + " for " + total + " credits.");
 		}
 
 		/// <summary>

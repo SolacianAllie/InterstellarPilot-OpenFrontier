@@ -328,6 +328,21 @@ namespace OpenFrontier.IP.Engine
 		/// </remarks>
 		public static System.Func<int, bool> AbandonShipRequest { get; set; }
 
+		/// <summary>
+		/// Asks the host to buy a ship. Returns true if it was asked.
+		/// </summary>
+		/// <remarks>
+		/// Buying creates a ship and spends money, and neither is something a
+		/// copy of the world that is not the one may do. The host prices it,
+		/// charges it, builds it, and tells everyone.
+		///
+		/// Carries the dock and the class rather than a price, because a price
+		/// the client worked out is not a price anybody can check. The host
+		/// recomputes it from the same static helper the price label uses, so
+		/// the two cannot drift.
+		/// </remarks>
+		public static System.Func<int, int, int, bool> BuyShipRequest { get; set; }
+
 		/// <summary>Whether this copy simulates world-level things.</summary>
 		public static bool OwnsWorld()
 		{
