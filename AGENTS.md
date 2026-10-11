@@ -3,6 +3,42 @@
 Only non-obvious traps live here — things you cannot learn from the project
 structure. Add new ones as they are found.
 
+## Verify, don't assume — before you build on a guess
+
+**Before acting on any assumption about how something works, read the code and
+confirm it.** This applies in write mode too, and it is not a courtesy for
+small things: it is the rule that saves the build cycles.
+
+Why it is written down: being wrong about how the game works cost more time
+this session than any bug did. Concretely, on one feature:
+
+- Assumed docking was refused in the right place. It was refused in a
+  primitive that `NpcPilot`, `Fleet`, `FleetSpawn` and the world seeders all
+  call — so a client could not undock an NPC and could not load a world whose
+  ships were saved docked. Found by listing the callers *after* shipping it.
+- Assumed there was one undock button. There were two, in two different
+  screens, and the relay went on one. Found by sweeping for callers after a
+  failed test.
+- Assumed "use the local faction's template" would show credits. Reading the
+  panel showed the template difference is two rows and Wealth was identical for
+  everyone — the premise was wrong before a line was written.
+- Assumed ditching destroyed a ship. Reading it showed `unit.Faction = null`
+  and the ship persists, unowned and claimable — which is a third case that
+  did not exist in the design.
+
+**How to do it cheaply, before writing anything:**
+
+- `grep -rn "<method>(" Assets/Scripts --include=*.cs` — every caller, not the
+  one that seemed obvious. Two of the four mistakes above were exactly this.
+- Read the *whole* method, not the part you assumed. The template case was one
+  expression inside a block I had not read to the end.
+- When a claim depends on two systems meeting (a client's request and the
+  host's validator), check **both**. Assuming one implies the other is how the
+  unowned-ship claim looked finished while the host would have refused it.
+
+A cheap read is minutes. A wrong assumption costs a two-person rebuild and a
+play session, and leaves a log that cannot explain itself.
+
 ## The editor's focus-in segfault is Unity's, not ours
 
 `signo:11 code:1`, 33 frames, all native, zero managed. Identical twice:

@@ -166,5 +166,13 @@ namespace OpenFrontier.IP.Multiplayer
 		/// never removed is a frozen corpse hanging in space.
 		/// </remarks>
 		public const int UnitGoneMessageId = 17;
+
+		/// <summary>The host saying a ship's owner changed, or went away.</summary>
+		/// <remarks>
+		/// The third thing, and the one that is neither appearing nor going:
+		/// a ship that is abandoned still exists, it just belongs to nobody,
+		/// and that is the moment it becomes claimable.
+		/// </remarks>
+		public const int UnitOwnerChangedMessageId = 18;
 	}
 }

@@ -125,6 +125,9 @@ namespace OpenFrontier.IP.Multiplayer
 		/// <summary>The host saying a ship no longer exists.</summary>
 		public event System.Action<UnitGoneMessage> UnitGoneReceived;
 
+		/// <summary>The host saying a ship changed hands, or was abandoned.</summary>
+		public event System.Action<UnitOwnerChangedMessage> OwnerChangedReceived;
+
 		/// <summary>
 		/// Raised once connected, for the client to state who it is.
 		/// </summary>
@@ -369,6 +372,20 @@ namespace OpenFrontier.IP.Multiplayer
 				}
 
 				DockedStateReceived?.Invoke(docked);
+				return;
+			}
+
+			if (messageId == ProtocolVersion.UnitOwnerChangedMessageId)
+			{
+				if (!UnitOwnerChangedMessage.TryFromBytes(payload,
+					out UnitOwnerChangedMessage ownerChange, out string ownerError))
+				{
+					Debug.LogWarning("Multiplayer: unreadable owner-change message - "
+						+ ownerError);
+					return;
+				}
+
+				OwnerChangedReceived?.Invoke(ownerChange);
 				return;
 			}
 

@@ -93,6 +93,8 @@ namespace OpenFrontier.IP.Engine
 
 		public int UniqueId => uniqueId;
 
+		public event System.Action<Unit, Faction> OwnerChanged;
+
 		public Faction Faction
 		{
 			get
@@ -103,6 +105,19 @@ namespace OpenFrontier.IP.Engine
 			{
 				if (faction != value)
 				{
+					/// <summary>A ship has changed hands, or been abandoned.</summary>
+					/// <remarks>
+					/// Raised from the one place ownership changes, which is
+					/// the setter's own guard - so it fires once per real
+					/// change and never for the same faction being reassigned.
+					///
+					/// Abandoning a ship is the case that makes this worth a
+					/// message of its own: the ship survives with no owner and
+					/// becomes claimable, which is neither arriving nor dying.
+					/// Capture and salvage take the same path.
+					/// </remarks>
+					OwnerChanged?.Invoke(this, value);
+
 					if (this != null && LogWrapper.LogMsgs)
 					{
 						LogWrapper.Log(string.Format("{0}: I'm Changing faction from {1} to {2}", this, (faction != null) ? faction.ToString() : "NULL", (value != null) ? value.ToString() : "NULL"), this, 2);

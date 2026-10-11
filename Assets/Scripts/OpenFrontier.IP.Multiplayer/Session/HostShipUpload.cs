@@ -287,11 +287,26 @@ namespace OpenFrontier.IP.Multiplayer
 
 			if (unit.Faction == null)
 			{
-				Debug.LogWarning("Multiplayer: refusing ship " + unitId
-					+ " to " + claimantToken + " - the ship exists but has no faction,"
-					+ " so there is no way to tell whose it is.");
+				// Unowned, which means claimable - the opposite of what this
+				// used to say.
+				//
+				// Refusing was right about the case it was written for and
+				// wrong about the case it actually hit. It went in to stop a
+				// client claiming a ship the host had never heard of, but that
+				// is the null-unit branch above, and this branch is a ship that
+				// exists and belongs to nobody. Abandoning a ship does exactly
+				// that - unit.Faction = null, and the ship floats on free for
+				// anybody to take - so refusing here made the one ship in the
+				// game that is meant to be claimable the one ship nobody could
+				// claim.
+				//
+				// Said out loud, because "claimed a wreck" and "claimed
+				// somebody's ship" look identical in the ownership table
+				// afterwards and only one of them is a bug.
+				Debug.Log("Multiplayer: ship " + unitId + " belongs to nobody, so "
+					+ claimantToken + " may have it");
 
-				return false;
+				return true;
 			}
 
 			if (unit.Faction != engine.LocalFaction)
