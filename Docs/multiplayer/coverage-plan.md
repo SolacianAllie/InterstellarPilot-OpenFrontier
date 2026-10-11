@@ -38,6 +38,54 @@ compiled.
 | B7 | Not done — needs E3. Hull/shield/capacitor are not on the wire. |
 | B8 | Partly done — the README's DONE claim is corrected and points at the coverage plan. |
 
+### Replication — decided: the host tells clients everything
+
+**The rule, in the user's words:** *the host should tell clients everything it
+can, so that the remote players see the universe the same way the host does,
+but interact with the universe they see, by asking the host.*
+
+It settles a question that was open — whether a client may create only units its
+own faction owns, or any unit the host names. Everything. The alternative had a
+special case in it, and special cases are what this project has been paying for.
+
+It also makes the destroy half **mandatory rather than optional**: a client that
+creates everything the host names accumulates copies, and a copy that is never
+removed is a frozen corpse hanging in space.
+
+#### What is not replicated today, and how visible each one is
+
+| | Where | How it looks to a player |
+|---|---|---|
+| **AI ships built after join** | `UnitStateApplier:308` — unknown unit, `continue` | Invisible. The host builds it, the client drops the state. |
+| **AI ships destroyed after join** | `UnitStateBroadcaster:542` — `gone` is the host's own bookkeeping; nothing is sent | A frozen corpse. It stops moving and stays. |
+| **Every AI faction's numbers** | `FactionStatePusher` sends `FindFaction(token)` — the recipient's own faction only | Wealth, Power, Reputation frozen at snapshot values. |
+| **Opinions and attitudes** | in no message | Opinion bars frozen; AI hostility never changes. |
+| **Intel** | in no message | What the player knows never changes. |
+
+#### The gate was still correct
+
+`FactionAIBase.Update` being gated is not the cause and should not be reverted.
+Before it, every client ran a second, divergent simulation of the galaxy economy
+— two wrong answers. After it, they are frozen — one wrong answer. What is
+missing is replication, not the gate. Removing the gate would give two galaxies'
+economies running and neither reaching anybody.
+
+#### The message list this implies
+
+| | | |
+|---|---|---|
+| `NewUnitMessage` (16) | any unit the host names: id, class, faction, sector, transform | Unblocks AI ships appearing **and** ship purchasing (D1) — the same primitive for both. |
+| `UnitGoneMessage` (17) | an id | Mandatory, given "everything". Small. |
+| Faction credits for all factions | the pusher's loop, change-detected per recipient | Turns every AI faction's Wealth from a frozen word into a live number. |
+| Attitudes | not started | Opinion bars, AI hostility. |
+| Intel | not started | What the player is allowed to know. |
+
+**Scope note that makes the first one tractable:** a unit the host creates today
+is created fresh, so its class id reproduces it — both copies instantiate the
+same prefab from the same tables. The mutations that would *not* be reproduced
+are damage and refits, neither of which is replicated yet anyway. So class id is
+sufficient now and the boundary is known.
+
 ### Stream C — command channel: **STARTED**
 
 | | |
