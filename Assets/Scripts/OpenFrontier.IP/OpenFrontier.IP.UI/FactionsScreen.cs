@@ -254,18 +254,74 @@ namespace OpenFrontier.IP.UI
 				RefreshCommsButtonEnabled();
 				RefreshFriendsLabel();
 				RefreshEnemiesLabel();
+				bool playedBySomebody = SomebodyElseIsPlayingToo()
+					&& CurrentItem.IsAPlayersFaction;
+
 				FactionReputationRoot.SetActive(value: true);
-				FactionTypeRoot.SetActive(!CurrentItem.IsPlayerFaction);
-				FactionHomeSectorRoot.SetActive(!CurrentItem.IsPlayerFaction);
+				FactionTypeRoot.SetActive(!playedBySomebody);
+				FactionHomeSectorRoot.SetActive(!playedBySomebody);
 				FactionInfoNameLabel.text = CurrentItem.Name;
 				FactionInfoDescriptionLabel.text = CurrentItem.Description;
-				FactionWealthLabel.text = CurrentItem.GetWealthLevelDescription();
+
+				// A number for a faction a person is playing, a description for
+				// one nobody is. And the number is the point: "Destitute" is a
+				// word, and a word cannot be wrong in a way you can see, so two
+				// copies of a faction that both said Destitute while holding
+				//// different amounts of money looked identical.
+				//
+				// Worth knowing when reading it: this is one-sided. The host
+				// pushes each player their OWN faction's credits, so the host
+				// sees a live number for the joiner and the joiner sees
+				// whatever the world snapshot carried for the host. That
+				// asymmetry is the display working, not failing.
+				FactionWealthLabel.text = playedBySomebody
+					? TextFormattingHelper.FormatCredits(
+						CurrentItem.Credits, includeSuffix: true)
+					: CurrentItem.GetWealthLevelDescription();
 				FactionPowerLabel.text = CurrentItem.GetPowerLevelDescription();
 				FactionReputationLabel.text = CurrentItem.GetReputationDescription();
 				FactionHomeSectorLabel.text = CurrentItem.GetHomeSectorNameForPlayer();
 				FactionLeaderLabel.text = ((CurrentItem.LeaderPerson != null) ? CurrentItem.LeaderPerson.GetNameAndTitleOrFullRank(shortName: false) : "-");
 				FactionTypeLabel.text = CurrentItem.GetFactionTypeDescription();
 			}
+		}
+
+		/// <summary>Whether this world has more than one player in it.</summary>
+		/// <remarks>
+		/// The second half of a condition that has to have two halves.
+		/// IsAPlayersFaction is true for your own faction in a singleplayer
+		/// game - it falls back to "is this mine" - so testing that alone would
+		/// change the panel for somebody who never opens the multiplayer menu,
+		/// which is the one thing this whole project is not allowed to do.
+		///
+		/// Asking whether there is anybody else here first makes singleplayer
+		/// unchanged by construction rather than by remembering to check.
+		/// </remarks>
+		private bool SomebodyElseIsPlayingToo()
+		{
+			EngineASX engine = EngineASX.Instance;
+
+			if (engine == null || engine.Factions == null)
+			{
+				return false;
+			}
+
+			int playerFactions = 0;
+
+			for (int i = 0; i < engine.Factions.Count; i++)
+			{
+				if (engine.Factions[i] != null && engine.Factions[i].IsAPlayersFaction)
+				{
+					playerFactions++;
+
+					if (playerFactions > 1)
+					{
+						return true;
+					}
+				}
+			}
+
+			return false;
 		}
 
 		private string GetFactionList(List<Faction> factions)
