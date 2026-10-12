@@ -253,7 +253,7 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 			// one action.
 			if (currentBay != null && currentBay.InstalledComponent != null
 				&& currentBay.Category == ComponentCategory.CoreInternal
-				&& !currentBay.AllowEmpty)
+				&& !currentBay.MayBeEmptied)
 			{
 				ComponentClass replacement = FindCoreInternalReplacement(currentBay);
 
@@ -586,7 +586,7 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 				bool replacementFound = true;
 
 				if (currentBay.InstalledComponent != null && currentBay.Category == ComponentCategory.CoreInternal
-					&& !currentBay.AllowEmpty)
+					&& !currentBay.MayBeEmptied)
 				{
 					ComponentClass replacement = FindCoreInternalReplacement(currentBay);
 					replacementFound = (replacement != null && IsComponentAffordable(replacement));

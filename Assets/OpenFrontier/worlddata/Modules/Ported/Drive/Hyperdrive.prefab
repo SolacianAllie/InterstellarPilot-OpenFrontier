@@ -62,7 +62,7 @@ MonoBehaviour:
   Name: Hyperdrive I
   RepairCostFactor: 1
   UniqueId: 200135
-  Category: 3
+  Category: 2
   Class: 0
   Quality: 0
   IsPointDefence: 0

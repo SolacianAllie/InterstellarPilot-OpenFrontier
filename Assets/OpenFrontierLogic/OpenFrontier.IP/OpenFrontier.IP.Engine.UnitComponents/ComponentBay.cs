@@ -111,13 +111,37 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// can be authored now and the consequence attached later, rather than
 		/// the other way round.
 		///
-		/// Off by default, so every existing bay behaves exactly as before. Set it
-		/// per bay rather than per bay *type*, because whether a drive housing
-		/// may be empty is a decision about that particular slot on that
-		/// particular ship.
+		/// Off by default, so every existing bay behaves exactly as before.
+		///
+		/// Only ever honoured on a frame shift drive housing, which is the one
+		/// Core Internal that may be empty. The check lives in MayBeEmptied so
+		/// the rule cannot be undone by ticking the wrong box: a reactor or
+		/// bulkhead bay with AllowEmpty set is still a bay that has to hold
+		/// something.
 		/// </remarks>
-		[Tooltip("Lets this Core Internal slot be emptied. For a drive housing - a ship with no frame shift can still travel, it just cannot jump.")]
+		[Tooltip("Lets this Frame Shift Drive Core Internal slot be emptied. A ship with no frame shift can still travel, it just cannot jump. Has no effect on any other bay type.")]
 		public bool AllowEmpty;
+
+		/// <summary>
+		/// Whether this bay can be left with nothing in it.
+		/// </summary>
+		/// <remarks>
+		/// The frame shift drive is the only Core Internal that may be empty -
+		/// a ship with no drive can still travel, it just cannot jump. Every
+		/// other Core Internal has to hold something, so this is checked against
+		/// the bay's type rather than trusted from the flag alone.
+		///
+		/// Safe on legacy bays: they carry no AllowEmpty, and an Optional
+		/// Internal is already sellable through the ordinary path.
+		/// </remarks>
+		public bool MayBeEmptied
+		{
+			get
+			{
+				return AllowEmpty && BayType != null
+					&& BayType.BayType == OpenFrontier.IP.Engine.UnitComponents.BayType.FrameShiftDrive;
+			}
+		}
 
 		public bool OverrideUnitClassRating;
 
