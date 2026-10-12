@@ -34,13 +34,13 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		public override ComponentClass ComponentClass => PowerDistributorClass;
 
-		[SerializeField]
+		// Deliberately not [SerializeField]. Pips are session state: they start
+		// at 2/2/2 every time a ship is loaded and are not written to saves.
+		// Refitting or reloading the ship resets the bias, which is the intent.
 		private float systemsPips = PipsPerSectorDefault;
 
-		[SerializeField]
 		private float enginesPips = PipsPerSectorDefault;
 
-		[SerializeField]
 		private float weaponsPips = PipsPerSectorDefault;
 
 		/// <summary>
