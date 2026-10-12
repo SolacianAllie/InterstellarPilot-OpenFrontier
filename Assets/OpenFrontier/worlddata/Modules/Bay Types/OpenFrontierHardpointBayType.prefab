@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 4730242686860875}
   - component: {fileID: 114724804207875695}
   m_Layer: 0
-  m_Name: OpenFrontierTurretBayType
+  m_Name: OpenFrontierHardpointBayType
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -47,7 +47,7 @@ MonoBehaviour:
   UniqueId: 1500
   UseCustomBayNames: 1
   BayType: 6
-  FriendlyName: Turret
+  FriendlyName: Hardpoint
   IgnoreInTradeUI: 0
   OrderInTradeUI: 10
   ShowInInfoUI: 1
