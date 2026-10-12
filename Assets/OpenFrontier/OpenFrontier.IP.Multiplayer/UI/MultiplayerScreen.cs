@@ -816,7 +816,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 				"MultiplayerScreen is not fully wired. Unassigned: "
 				+ string.Join(", ", missing)
 				+ ". This prefab was cloned from LoadGameScreen, so its fields still have that "
-				+ "screen's names; see Assets/GameObject/MultiplayerScreen.README.md for the mapping.");
+				+ "screen's names; see Assets/Extracted/GameObject/MultiplayerScreen.README.md for the mapping.");
 
 			return false;
 		}
@@ -969,7 +969,7 @@ namespace OpenFrontier.IP.Multiplayer.UI
 			Debug.LogError(
 				"The host list's row prefab '" + rowPrefab.name + "' has no SavedHostItemUI, so no "
 					+ "rows can be shown. Run Tools > Multiplayer > Transfer Screen References to put "
-					+ "it there - see Assets/GameObject/MultiplayerScreen.README.md.", this);
+					+ "it there - see Assets/Extracted/GameObject/MultiplayerScreen.README.md.", this);
 
 			return false;
 		}

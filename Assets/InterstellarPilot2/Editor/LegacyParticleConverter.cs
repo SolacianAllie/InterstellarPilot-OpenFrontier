@@ -15,22 +15,22 @@ namespace OpenFrontier.EditorTools
 	{
 		static readonly string[] Paths =
 		{
-			"Assets/Material/MaterialAsteroidClusterTypeHDistant.mat",
-			"Assets/Material/MaterialAsteroidClusterTypeADistant.mat",
-			"Assets/Material/MaterialWormholeBilboard.mat",
-			"Assets/Material/MaterialGasCloudExtremeDarkBilboard.mat",
-			"Assets/Material/ShieldHit32MaterialNew.mat",
-			"Assets/Material/MaterialWormholeParticles.mat",
-			"Assets/Material/MaterialWormholeUnstableBilboard.mat",
-			"Assets/Material/MaterialGasCloudBilboard.mat",
-			"Assets/Material/MaterialStarParticle.mat",
-			"Assets/Material/wormhole_capMaterial.mat",
+			"Assets/InterstellarPilot2/Extracted/Material/MaterialAsteroidClusterTypeHDistant.mat",
+			"Assets/InterstellarPilot2/Extracted/Material/MaterialAsteroidClusterTypeADistant.mat",
+			"Assets/InterstellarPilot2/Extracted/Material/MaterialWormholeBilboard.mat",
+			"Assets/InterstellarPilot2/Extracted/Material/MaterialGasCloudExtremeDarkBilboard.mat",
+			"Assets/InterstellarPilot2/Extracted/Material/ShieldHit32MaterialNew.mat",
+			"Assets/InterstellarPilot2/Extracted/Material/MaterialWormholeParticles.mat",
+			"Assets/InterstellarPilot2/Extracted/Material/MaterialWormholeUnstableBilboard.mat",
+			"Assets/InterstellarPilot2/Extracted/Material/MaterialGasCloudBilboard.mat",
+			"Assets/InterstellarPilot2/Extracted/Material/MaterialStarParticle.mat",
+			"Assets/InterstellarPilot2/Extracted/Material/wormhole_capMaterial.mat",
 		};
 
 		[MenuItem("OpenFrontier/Repair Star Particle Material Ref")]
 		public static void RepairStarParticleMaterial()
 		{
-			const string matPath = "Assets/Material/MaterialStarParticle.mat";
+			const string matPath = "Assets/InterstellarPilot2/Extracted/Material/MaterialStarParticle.mat";
 			var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
 			var sb = new StringBuilder();
 			sb.AppendLine($"load {matPath}: {(mat == null ? "NULL (import broken!)" : "OK - shader " + mat.shader.name)}");
@@ -41,8 +41,8 @@ namespace OpenFrontier.EditorTools
 			}
 			string[] prefabs =
 			{
-				"Assets/Resources/prefabs/worlddata/engine/StarParticles.prefab",
-				"Assets/Resources/prefabs/worlddata/engine/cameras/GameCamera.prefab",
+				"Assets/InterstellarPilot2/Resources/prefabs/worlddata/engine/StarParticles.prefab",
+				"Assets/InterstellarPilot2/Resources/prefabs/worlddata/engine/cameras/GameCamera.prefab",
 			};
 			foreach (var p in prefabs)
 			{

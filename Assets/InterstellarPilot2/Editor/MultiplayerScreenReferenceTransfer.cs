@@ -27,7 +27,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 	/// </summary>
 	public static class MultiplayerScreenReferenceTransfer
 	{
-		private const string PrefabPath = "Assets/GameObject/MultiplayerScreen.prefab";
+		private const string PrefabPath = "Assets/InterstellarPilot2/Extracted/GameObject/MultiplayerScreen.prefab";
 
 		/// <summary>
 		/// How long the whole operation is allowed to take.
@@ -263,7 +263,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen target,
 			Report report)
 		{
-			const string screenPath = "Assets/GameObject/JoinCodeScreen.prefab";
+			const string screenPath = "Assets/InterstellarPilot2/Extracted/GameObject/JoinCodeScreen.prefab";
 			GameObject dialog = AssetDatabase.LoadAssetAtPath<GameObject>(screenPath);
 
 			if (dialog == null)
@@ -299,7 +299,7 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 			OpenFrontier.IP.Multiplayer.UI.MultiplayerScreen target,
 			Report report)
 		{
-			const string itemPath = "Assets/GameObject/MultiplayerGameItem.prefab";
+			const string itemPath = "Assets/InterstellarPilot2/Extracted/GameObject/MultiplayerGameItem.prefab";
 			GameObject rowPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(itemPath);
 
 			if (rowPrefab == null)
@@ -788,8 +788,8 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		private static Report TransferJoinCodeScreen()
 		{
 			Report report = new Report();
-			const string screenPath = "Assets/GameObject/JoinCodeScreen.prefab";
-			const string sourcePath = "Assets/GameObject/RenameUnitScene.prefab";
+			const string screenPath = "Assets/InterstellarPilot2/Extracted/GameObject/JoinCodeScreen.prefab";
+			const string sourcePath = "Assets/InterstellarPilot2/Extracted/GameObject/RenameUnitScene.prefab";
 
 			if (AssetDatabase.LoadAssetAtPath<GameObject>(screenPath) == null)
 			{
@@ -1289,8 +1289,8 @@ namespace OpenFrontier.IP.Multiplayer.EditorTools
 		private static Report TransferItemPrefab()
 		{
 			Report report = new Report();
-			const string itemPath = "Assets/GameObject/MultiplayerGameItem.prefab";
-			const string sourcePath = "Assets/GameObject/LoadGameItem.prefab";
+			const string itemPath = "Assets/InterstellarPilot2/Extracted/GameObject/MultiplayerGameItem.prefab";
+			const string sourcePath = "Assets/InterstellarPilot2/Extracted/GameObject/LoadGameItem.prefab";
 
 			if (AssetDatabase.LoadAssetAtPath<GameObject>(itemPath) != null)
 			{

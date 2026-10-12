@@ -8,7 +8,7 @@ namespace OpenFrontier.EditorTools
 {
 	public static class UrpBootstrap
 	{
-		const string SettingsDir = "Assets/Settings";
+		const string SettingsDir = "Assets/InterstellarPilot2/Settings";
 		const string PipelinePath = SettingsDir + "/OpenFrontier-URP.asset";
 		const string RendererPath = SettingsDir + "/OpenFrontier-URP-Renderer.asset";
 		
