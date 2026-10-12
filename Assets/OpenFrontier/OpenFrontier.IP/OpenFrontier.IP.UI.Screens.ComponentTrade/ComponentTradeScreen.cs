@@ -1,10 +1,12 @@
 using System.Linq;
+using System.Collections.Generic;
 using OpenFrontier.IP.Common.Factions;
 using OpenFrontier.IP.Engine;
 using OpenFrontier.IP.Engine.Factions;
 using OpenFrontier.IP.Engine.UnitComponents;
 using OpenFrontier.IP.UI.Extensions;
 using OpenFrontier.Unity.Utils;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -45,6 +47,24 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 		public Text InstalledLabel;
 
 		public ComponentTradeItemList AvailableComponentsList;
+
+		/// <summary>
+		/// Picks which family of hardware the bay list is showing.
+		/// </summary>
+		/// <remarks>
+		/// Optional, and null means "do not offer the choice" - the unit variant
+		/// editor reuses this screen with a fixed set of bays and should not
+		/// grow a filter nobody asked for. Left null it also costs nothing: the
+		/// list is then built exactly as it was, all bays, which is what the
+		/// editor wants anyway.
+		/// </remarks>
+		public TMP_Dropdown BayTierDropdown;
+
+		/// <summary>
+		/// The family on screen. Defaults to Legacy, which is what every bay in
+		/// the game is today, so the list is unchanged until bays are classified.
+		/// </summary>
+		private BayTier selectedBayTier = BayTier.Legacy;
 
 		public GameObject SelectedComponentRoot;
 
@@ -293,11 +313,111 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 			InstalledItemInfoButton.onClick.AddListener(InstalledItemInfoButtonActivated);
 			AvailableComponentsList.SelectedItemChanged += AvailableComponentsListSelectedItemChanged;
 			BayList.SelectedItemChanged += BayList_SelectedItemChanged;
+
+			if (BayTierDropdown != null)
+			{
+				PopulateBayTierDropdown();
+				BayTierDropdown.onValueChanged.AddListener(BayTierDropdown_Changed);
+			}
 		}
 
-		private void BayList_SelectedItemChanged(ScrollList<ComponentBay> sender, ComponentBay oldItem, ComponentBay newItem)
+		/// <summary>
+		/// Fills the filter from the enum, so the list of options cannot fall
+		/// out of step with what the code accepts.
+		/// </summary>
+		/// <remarks>
+		/// Order is the declaration order of BayTier, which puts Legacy first -
+		/// the one every existing bay is, and so the one that has to be selected
+		/// on open or the first run of the game loses its shields.
+		/// </remarks>
+		private void PopulateBayTierDropdown()
 		{
-			CurrentBay = newItem;
+			if (BayTierDropdown == null || BayTierDropdown.options.Count == System.Enum.GetValues(typeof(BayTier)).Length)
+			{
+				return;
+			}
+
+			BayTierDropdown.ClearOptions();
+
+			List<TMP_Dropdown.OptionData> options = new List<TMP_Dropdown.OptionData>();
+
+			foreach (BayTier tier in System.Enum.GetValues(typeof(BayTier)))
+			{
+				options.Add(new TMP_Dropdown.OptionData(BayTierLabel(tier)));
+			}
+
+			BayTierDropdown.AddOptions(options);
+			BayTierDropdown.value = (int)selectedBayTier;
+		}
+
+		/// <summary>
+		/// What a tier is called in the dropdown.
+		/// </summary>
+		/// <remarks>
+		/// On purpose, because "OptionalInternal" is not a word and
+		/// "UtilityMount" reads as a file format. Spaced and pluralised to match
+		/// how the rest of this UI labels things.
+		/// </remarks>
+		private static string BayTierLabel(BayTier tier)
+		{
+			switch (tier)
+			{
+				case BayTier.Legacy:
+					return "LEGACY";
+
+				case BayTier.Hardpoint:
+					return "Hardpoints";
+
+				case BayTier.CoreInternal:
+					return "Core Internals";
+
+				case BayTier.OptionalInternal:
+					return "Optional Internals";
+
+				case BayTier.UtilityMount:
+					return "Utility Mounts";
+
+				default:
+					return tier.ToString();
+			}
+		}
+
+		private void BayTierDropdown_Changed(int index)
+		{
+			System.Array tiers = System.Enum.GetValues(typeof(BayTier));
+			if (index < 0 || index >= tiers.Length)
+			{
+				return;
+			}
+
+			selectedBayTier = (BayTier)tiers.GetValue(index);
+			RefreshBayList();
+			AutoSelectBayIfNull();
+		}
+
+		private void BayList_SelectedItemChanged(ScrollList<object> sender, object oldItem, object newItem)
+		{
+			// The list holds headings as well as bays. A heading is not a bay,
+			// so this is the one place the cast can come back empty, and what it
+			// gets instead of a bay is nothing.
+			//
+			// It is reachable and not just theoretically: ScrollList's
+			// TrySelectFirstItem takes activeItems[0], and the first row of a
+			// filtered list is a heading. Its toggle is made
+			// non-interactable so a pointer cannot get here, but a
+			// programmatic selection still can.
+			ComponentBay bay = newItem as ComponentBay;
+			CurrentBay = bay;
+
+			if (bay == null)
+			{
+				// Move to a real bay rather than sitting on a heading with the
+				// details panel empty and the right-hand list showing the last
+				// bay's contents.
+				AutoSelectNextBay();
+				return;
+			}
+
 			RefreshCurrentBayInfo();
 			AvailableComponentsList.Refresh();
 			AvailableComponentsList.ResetScrollPosition();
@@ -351,16 +471,13 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 
 		private void RefreshBayList()
 		{
-			ComponentBay[] selectableBays = GetSelectableBays();
-
-			// Grouping is marked here rather than inside SetItems, because the
-			// order that makes it work is the one GetSelectableBays already
-			// produced - sorted by BayType.OrderInTradeUI, then name - so bays
-			// of a type are already next to each other and only the boundaries
-			// are missing.
-			BayList.SetGroupStarts(ShipComponentsHelper.GetGroupStartBays(selectableBays));
-
-			BayList.SetItems(selectableBays);
+			// The list holds one of two things per row - a bay, or a heading
+			// above a run of bays of the same type - so it is built rather than
+			// passed straight through. The order it needs is the one
+			// GetSelectableBays already produced, and the tier is a hard
+			// filter: the dropdown chooses what is on screen rather than
+			// rearranging it.
+			BayList.SetItems(ShipComponentsHelper.BuildBayListItems(GetSelectableBays(), selectedBayTier));
 		}
 
 		private void RefreshCurrentBayInfo()

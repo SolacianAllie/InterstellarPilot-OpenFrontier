@@ -36,6 +36,24 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// </remarks>
 		public HardpointSize Size = HardpointSize.Small;
 
+		/// <summary>
+		/// Which family of hardware this slot is: weapon, ship system, or a
+		/// mount. Decides what may go in it and what the trade screen groups it
+		/// under.
+		/// </summary>
+		/// <remarks>
+		/// On the bay rather than on the bay type, for the same reason Size is:
+		/// a ship can have weapon slots and system slots at once, and two ships
+		/// of the same class can disagree about what a given slot is for. The
+		/// bay type says what the slot IS - shield, engine - and this says what
+		/// the rules around it are.
+		///
+		/// Legacy by default, so every existing bay lands somewhere real and
+		/// the trade screen opens on a category that shows all of them. See
+		/// BayTier for why zero is a named value rather than the first family.
+		/// </remarks>
+		public BayTier Tier = BayTier.Legacy;
+
 		public ComponentClass InstalledComponentClass
 		{
 			get

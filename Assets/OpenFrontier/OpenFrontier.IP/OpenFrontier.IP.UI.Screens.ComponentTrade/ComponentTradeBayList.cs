@@ -1,35 +1,23 @@
-using System.Collections.Generic;
 using OpenFrontier.IP.Engine.UnitComponents;
 
 namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 {
-	public class ComponentTradeBayList : ScrollList<ComponentBay>
+	/// <summary>
+	/// The list of bays, with headings mixed in.
+	/// </summary>
+	/// <remarks>
+	/// Typed to object rather than ComponentBay because the list holds two
+	/// kinds of thing: bays, which can be picked, and
+	/// <see cref="ComponentBayGroupHeader"/>, which cannot. This is a
+	/// specialization of ScrollList&lt;T&gt;, not a change to ScrollList&lt;T&gt;
+	/// itself, so every other list in the game is untouched.
+	///
+	/// The alternative - keeping ScrollList&lt;ComponentBay&gt; and passing null
+	/// for a heading - was rejected because it turns every read of Item in
+	/// every row into a null check and makes "select a bay that does not exist"
+	/// a thing that can happen. An item here is never null.
+	/// </remarks>
+	public class ComponentTradeBayList : ScrollList<object>
 	{
-		private HashSet<ComponentBay> groupStarts = new HashSet<ComponentBay>();
-
-		/// <summary>
-		/// Records which bays begin a new group of same-typed bays.
-		/// </summary>
-		/// <remarks>
-		/// Held by the list rather than by each row because rows are pooled: a
-		/// row GameObject gets reused for a different bay as the list scrolls,
-		/// so anything stashed on the row itself would be stale by the time it
-		/// was looked at. The list is the one thing that outlives the rows.
-		///
-		/// Deliberately not an extra row in the list. ScrollList&lt;T&gt; is typed
-		/// to ComponentBay and every row reads Item.GetFriendlyName(), so a
-		/// header row would need a union type or a null-Item code path through
-		/// a control shared by every list in the game. Drawing the rule inside
-		/// the row that starts the group gets the same reading without that.
-		/// </remarks>
-		public void SetGroupStarts(HashSet<ComponentBay> starts)
-		{
-			groupStarts = starts ?? new HashSet<ComponentBay>();
-		}
-
-		public bool StartsGroup(ComponentBay bay)
-		{
-			return bay != null && groupStarts.Contains(bay);
-		}
 	}
 }

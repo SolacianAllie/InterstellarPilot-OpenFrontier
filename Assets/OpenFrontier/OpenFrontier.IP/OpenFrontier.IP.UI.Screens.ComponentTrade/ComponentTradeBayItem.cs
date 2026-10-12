@@ -5,35 +5,33 @@ using UnityEngine.UI;
 
 namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 {
-	public class ComponentTradeBayItem : ScrollListItem<ComponentBay>
+	/// <summary>
+	/// One row in the bay list, which is either a bay or a heading above a
+	/// group of bays.
+	/// </summary>
+	/// <remarks>
+	/// The same prefab does both, chosen by what the list handed it. A heading
+	/// gets a short band with just the type name; a bay gets exactly what it
+	/// got before this existed. Doing it with one prefab rather than two means
+	/// the heading cannot drift out of step with the rows it sits above - same
+	/// background, same font, same skin.
+	///
+	/// Everything the heading path changes is put back explicitly on the bay
+	/// path, because rows are pooled and reused. A row that drew a heading and
+	/// is then handed a bay has to be fully restored, not merely have the
+	/// heading turned off, or a stale grey icon frame follows the list down the
+	/// screen.
+	/// </remarks>
+	public class ComponentTradeBayItem : ScrollListItem<object>
 	{
-		/// <summary>
-		/// Turns the group rules off everywhere, without undoing anything.
-		/// </summary>
-		/// <remarks>
-		/// The other way out is to revert the commit - this exists so the look
-		/// can be judged first and thrown away with one edit if it is wrong.
-		///
-		/// A static rather than a serialized field on purpose. A new serialized
-		/// field is not in the prefab, so its inspector value would silently
-		/// not persist - you would move it, see the change, reload, and it
-		/// would be back where it started, which is a worse way to spend an
-		/// afternoon than editing two numbers here.
-		/// </remarks>
-		public static bool GroupDividersEnabled = true;
+		// A heading is a caption, not a row of content, so it is shorter than
+		// the 55px the bay rows use. Both come from the LayoutElement on the
+		// prefab root, which the VerticalLayoutGroup on the ItemContainer
+		// honours - so changing it here is what resizes the row.
+		private const float HeaderHeight = 26f;
 
-		// A 55px row, measured off the prefab: name text spans -3..-28,
-		// installed text -30..-55, and the icon owns the left 45px. So the
-		// only clear horizontal band is the top 3px, and only clear of the
-		// icon in the text column. Hence a rule 48px in from the left, which
-		// is also where the text starts - so it lines up with the names
-		// instead of cutting across the pictures.
-		private const float DividerHeight = 2f;
-		private const float DividerTopInset = 1f;
-		private const float DividerSideInset = 48f;
-
-		private static readonly Color DividerColor = new Color(0.45f, 0.8f, 0.85f, 0.55f);
-		private static readonly Color GroupFirstNameColor = new Color(0.62f, 0.92f, 0.95f, 1f);
+		private static readonly Color HeaderTextColor = new Color(0.62f, 0.92f, 0.95f, 1f);
+		private static readonly Color HeaderBackgroundTint = new Color(0.55f, 0.72f, 0.85f, 0.16f);
 
 		public Image FiringArcImage;
 
@@ -47,129 +45,173 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 
 		private Color defaultNameTextColor = Color.white;
 
-		private Image groupDivider;
+		private Image background;
+
+		private Color defaultBackgroundColor = Color.white;
+
+		private LayoutElement layoutElement;
+
+		private float defaultMinHeight = -1f;
+
+		private float defaultPreferredHeight = -1f;
+
+		private float defaultNameTextY;
 
 		protected override void awake()
 		{
 			base.awake();
 			defaultNameTextColor = NameText.color;
+			defaultNameTextY = NameText.rectTransform.anchoredPosition.y;
+
+			// Found rather than wired in the prefab, so this works on a prefab
+			// that does not have the field and does not become a null reference
+			// that fails by doing nothing. A missing one just means the heading
+			// gets no tint, which is survivable; a dropped serialized field is
+			// the failure mode this project has already been bitten by.
+			background = GetComponent<Image>();
+			if (background != null)
+			{
+				defaultBackgroundColor = background.color;
+			}
+
+			layoutElement = GetComponent<LayoutElement>();
+			if (layoutElement != null)
+			{
+				defaultMinHeight = layoutElement.minHeight;
+				defaultPreferredHeight = layoutElement.preferredHeight;
+			}
 		}
 
 		public override void Refresh()
 		{
 			base.Refresh();
-			NameText.text = Item.GetFriendlyName();
-			InstalledText.text = ((Item.InstalledComponent != null) ? Item.InstalledComponent.ComponentClass.GetFriendlyName() : "[None]");
-			NameText.color = GetNameColor();
-			IconImage.sprite = EngineASX.Instance.EngineResources.GetBayComponentOrAmmoSprite(Item);
-			RefreshFiringArcSprite();
-			RefreshGroupDivider();
-		}
 
-		/// <summary>
-		/// An empty bay is grey, and stays grey even where it starts a group.
-		/// </summary>
-		/// <remarks>
-		/// Nothing installed is the more useful signal of the two - "this
-		/// hardpoint is empty" is what a player is looking for - so the group
-		/// accent only ever layers on top of an occupied bay. Every row that
-		/// does not start a group gets exactly the colour it got before this
-		/// existed.
-		/// </remarks>
-		private Color GetNameColor()
-		{
-			if (Item.InstalledComponent == null)
+			ComponentBayGroupHeader header = Item as ComponentBayGroupHeader;
+			if (header != null)
 			{
-				return NothingInstalledColor;
-			}
-
-			return StartsGroup() ? GroupFirstNameColor : defaultNameTextColor;
-		}
-
-		private bool StartsGroup()
-		{
-			ComponentTradeBayList list = ParentList as ComponentTradeBayList;
-			return (list != null && list.StartsGroup(Item));
-		}
-
-		private void RefreshGroupDivider()
-		{
-			if (!GroupDividersEnabled || !StartsGroup())
-			{
-				if (groupDivider != null)
-				{
-					groupDivider.enabled = false;
-				}
-
+				RefreshAsHeader(header);
 				return;
 			}
 
-			if (groupDivider == null)
+			ComponentBay bay = Item as ComponentBay;
+			if (bay == null)
 			{
-				groupDivider = CreateGroupDivider();
+				// Nothing this row knows how to draw. Left blank rather than
+				// throwing, because a row that throws inside a pooled list
+				// takes the rest of the list with it.
+				RefreshAsBlank();
+				return;
 			}
 
-			if (groupDivider != null)
+			RefreshAsBay(bay);
+		}
+
+		private void RefreshAsHeader(ComponentBayGroupHeader header)
+		{
+			SetRowHeight(HeaderHeight);
+
+			// Not just so it looks unselected - a non-interactable toggle is
+			// what stops the pointer reaching OnToggleValueChanged, which is
+			// the only route from a click to selecting a row.
+			if (Toggle != null)
 			{
-				groupDivider.enabled = true;
+				Toggle.interactable = false;
 			}
+
+			NameText.text = header.Text;
+			NameText.color = HeaderTextColor;
+
+			// anchoredPosition rather than the prefab's -3, because the
+			// heading is a different height and the value that centres it in
+			// one does not centre it in the other.
+			NameText.rectTransform.anchoredPosition = new Vector2(NameText.rectTransform.anchoredPosition.x, 0f);
+
+			InstalledText.text = string.Empty;
+
+			if (IconImage != null)
+			{
+				IconImage.gameObject.SetActive(false);
+			}
+
+			FiringArcImage.enabled = false;
+
+			if (background != null)
+			{
+				background.color = defaultBackgroundColor * HeaderBackgroundTint;
+			}
+		}
+
+		private void RefreshAsBay(ComponentBay bay)
+		{
+			SetRowHeight(-1f);
+
+			if (Toggle != null)
+			{
+				Toggle.interactable = true;
+			}
+
+			if (IconImage != null)
+			{
+				IconImage.gameObject.SetActive(true);
+			}
+
+			NameText.text = bay.GetFriendlyName();
+			NameText.rectTransform.anchoredPosition = new Vector2(NameText.rectTransform.anchoredPosition.x, defaultNameTextY);
+
+			InstalledText.text = ((bay.InstalledComponent != null) ? bay.InstalledComponent.ComponentClass.GetFriendlyName() : "[None]");
+			NameText.color = ((bay.InstalledComponent != null) ? defaultNameTextColor : NothingInstalledColor);
+
+			IconImage.sprite = EngineASX.Instance.EngineResources.GetBayComponentOrAmmoSprite(bay);
+
+			if (background != null)
+			{
+				background.color = defaultBackgroundColor;
+			}
+
+			RefreshFiringArcSprite(bay);
+		}
+
+		private void RefreshAsBlank()
+		{
+			SetRowHeight(-1f);
+
+			if (Toggle != null)
+			{
+				Toggle.interactable = false;
+			}
+
+			if (IconImage != null)
+			{
+				IconImage.gameObject.SetActive(false);
+			}
+
+			NameText.text = string.Empty;
+			InstalledText.text = string.Empty;
+			FiringArcImage.enabled = false;
 		}
 
 		/// <summary>
-		/// Builds the rule in code rather than putting it in the prefab.
+		/// Pass -1 to go back to whatever the prefab asked for.
 		/// </summary>
-		/// <remarks>
-		/// Because a prefab is hand-edited here, and a hand-edited prefab that
-		/// drops a field does not break the build - the reference just reads as
-		/// null and whatever was wired to it stops happening while looking
-		/// perfectly fine. That has happened on this project. Building the one
-		/// object at runtime means there is no reference to drop, and the
-		/// rollback stays "revert a commit" instead of "unwind a prefab by
-		/// hand".
-		///
-		/// No sprite on purpose. Image.OnPopulateMesh hands a null sprite
-		/// straight to Graphic, which fills the rect with the colour - checked
-		/// in the uGUI source rather than assumed, because a line that renders
-		/// nothing is invisible and not obviously broken.
-		///
-		/// Anchored to the row's top edge, which is safe: the row's height comes
-		/// from the LayoutElement on the prefab root (MinHeight and
-		/// PreferredHeight both 55), not from its contents, so adding a child
-		/// cannot change how tall the row is.
-		/// </remarks>
-		private Image CreateGroupDivider()
+		private void SetRowHeight(float height)
 		{
-			GameObject dividerObject = new GameObject("GroupDivider", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-			dividerObject.layer = gameObject.layer;
-			dividerObject.transform.SetParent(transform, worldPositionStays: false);
+			if (layoutElement == null)
+			{
+				return;
+			}
 
-			RectTransform rect = dividerObject.GetComponent<RectTransform>();
-			rect.anchorMin = new Vector2(0f, 1f);
-			rect.anchorMax = new Vector2(1f, 1f);
-			rect.pivot = new Vector2(0.5f, 1f);
-			rect.offsetMin = new Vector2(DividerSideInset, -(DividerTopInset + DividerHeight));
-			rect.offsetMax = new Vector2(-DividerSideInset, -DividerTopInset);
-
-			Image image = dividerObject.GetComponent<Image>();
-			image.color = DividerColor;
-
-			// The rule is decoration sitting inside a row the player clicks.
-			// Left raycastable it would eat taps near the top of every group
-			// leader, which is the one row in each group most likely to be the
-			// one they were reaching for.
-			image.raycastTarget = false;
-
-			return image;
+			layoutElement.minHeight = (height < 0f) ? defaultMinHeight : height;
+			layoutElement.preferredHeight = (height < 0f) ? defaultPreferredHeight : height;
 		}
 
-		private void RefreshFiringArcSprite()
+		private void RefreshFiringArcSprite(ComponentBay bay)
 		{
-			bool flag = Item.ShouldShowFiringArcSprite(showIf360degrees: true);
+			bool flag = bay.ShouldShowFiringArcSprite(showIf360degrees: true);
 			FiringArcImage.enabled = flag;
 			if (flag)
 			{
-				FiringArcImage.transform.localRotation = Quaternion.Euler(new Vector3(0f, 0f, 0f - Item.transform.localRotation.eulerAngles.y));
-				FiringArcImage.sprite = Item.GetFiringArcSprite();
+				FiringArcImage.transform.localRotation = Quaternion.Euler(new Vector3(0f, 0f, 0f - bay.transform.localRotation.eulerAngles.y));
+				FiringArcImage.sprite = bay.GetFiringArcSprite();
 			}
 		}
 	}
