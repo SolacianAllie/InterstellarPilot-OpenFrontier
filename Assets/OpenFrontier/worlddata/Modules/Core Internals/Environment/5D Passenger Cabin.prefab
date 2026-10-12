@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &909108163532389406
+--- !u!1 &1157860865066291140
 GameObject:
   serializedVersion: 6
   m_ObjectHideFlags: 0
@@ -8,22 +8,22 @@ GameObject:
   m_PrefabInstance: {{fileID: 0}}
   m_PrefabAsset: {{fileID: 0}}
   m_Component:
-  - component: {{fileID: 394826760134464297}}
-  - component: {{fileID: 1283742119091181193}}
+  - component: {{fileID: 1200577345221980578}}
+  - component: {{fileID: 589759103127163681}}
   m_Layer: 0
-  m_Name: C3 Economy Passenger Module
+  m_Name: 5D Passenger Cabin
   m_TagString: Untagged
   m_Icon: {{fileID: 0}}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &394826760134464297
+--- !u!4 &1200577345221980578
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {{fileID: 0}}
   m_PrefabInstance: {{fileID: 0}}
   m_PrefabAsset: {{fileID: 0}}
-  m_GameObject: {{fileID: 909108163532389406}}
+  m_GameObject: {{fileID: 1157860865066291140}}
   m_LocalRotation: {{x: 0, y: 0, z: 0, w: 1}}
   m_LocalPosition: {{x: 0, y: 0, z: 0}}
   m_LocalScale: {{x: 1, y: 1, z: 1}}
@@ -32,13 +32,13 @@ Transform:
   m_Father: {{fileID: 0}}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {{x: 0, y: -0, z: -0}}
---- !u!114 &1283742119091181193
+--- !u!114 &589759103127163681
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {{fileID: 0}}
   m_PrefabInstance: {{fileID: 0}}
   m_PrefabAsset: {{fileID: 0}}
-  m_GameObject: {{fileID: 909108163532389406}}
+  m_GameObject: {{fileID: 1157860865066291140}}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {{fileID: 11500000, guid: 6812fe1a489abc5b2469373a6a7b7c00, type: 3}}
@@ -48,21 +48,21 @@ MonoBehaviour:
   ShortIconName:
   IconSpriteNameOverride:
   AllowBuy: 1
-  BaseCost: 8675
+  BaseCost: 92362
   ComponentBayType: {{fileID: 114724804207875695, guid: c1b21e01754e8aa840f768627e814198, type: 2}}
   ComponentPrefab: {{fileID: 0}}
   ComponentType: {{fileID: 114724804207875695, guid: 7b1178ff451caab4d947cfe42fc53429, type: 2}}
-  Description: Class 3 Economy passenger module. Carries 4 passengers. Mass 5.00 T.
+  Description: Business cabin. Carries 10 passengers. Mass 20.00 T.
   EnergyChargeRate: 0
   IgnoreFiringArc: 0
   Manufacturer: {{fileID: 0}}
   MaxHealthPoints: 50
   MaxHullType: 64
   MinHullType: 0
-  Name: C3 Economy Passenger Module
+  Name: 5D Passenger Cabin
   RepairCostFactor: 1
-  UniqueId: 200143
+  UniqueId: 200149
   Category: 2
-  Class: 2
-  Quality: 0
-  PassengerCapacity: 4
+  Class: 4
+  Quality: 1
+  PassengerCapacity: 10

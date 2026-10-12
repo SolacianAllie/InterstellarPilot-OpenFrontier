@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &19218505691787414
+--- !u!1 &380347170422265794
 GameObject:
   serializedVersion: 6
   m_ObjectHideFlags: 0
@@ -8,22 +8,22 @@ GameObject:
   m_PrefabInstance: {{fileID: 0}}
   m_PrefabAsset: {{fileID: 0}}
   m_Component:
-  - component: {{fileID: 117303942488427184}}
-  - component: {{fileID: 1296628549185277176}}
+  - component: {{fileID: 533149793673201295}}
+  - component: {{fileID: 611653223776809002}}
   m_Layer: 0
-  m_Name: C2 Economy Passenger Module
+  m_Name: 6C Passenger Cabin
   m_TagString: Untagged
   m_Icon: {{fileID: 0}}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &117303942488427184
+--- !u!4 &533149793673201295
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {{fileID: 0}}
   m_PrefabInstance: {{fileID: 0}}
   m_PrefabAsset: {{fileID: 0}}
-  m_GameObject: {{fileID: 19218505691787414}}
+  m_GameObject: {{fileID: 380347170422265794}}
   m_LocalRotation: {{x: 0, y: 0, z: 0, w: 1}}
   m_LocalPosition: {{x: 0, y: 0, z: 0}}
   m_LocalScale: {{x: 1, y: 1, z: 1}}
@@ -32,13 +32,13 @@ Transform:
   m_Father: {{fileID: 0}}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {{x: 0, y: -0, z: -0}}
---- !u!114 &1296628549185277176
+--- !u!114 &611653223776809002
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {{fileID: 0}}
   m_PrefabInstance: {{fileID: 0}}
   m_PrefabAsset: {{fileID: 0}}
-  m_GameObject: {{fileID: 19218505691787414}}
+  m_GameObject: {{fileID: 380347170422265794}}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {{fileID: 11500000, guid: 6812fe1a489abc5b2469373a6a7b7c00, type: 3}}
@@ -48,21 +48,21 @@ MonoBehaviour:
   ShortIconName:
   IconSpriteNameOverride:
   AllowBuy: 1
-  BaseCost: 4312
+  BaseCost: 552698
   ComponentBayType: {{fileID: 114724804207875695, guid: c1b21e01754e8aa840f768627e814198, type: 2}}
   ComponentPrefab: {{fileID: 0}}
   ComponentType: {{fileID: 114724804207875695, guid: 7b1178ff451caab4d947cfe42fc53429, type: 2}}
-  Description: Class 2 Economy passenger module. Carries 2 passengers. Mass 2.50 T.
+  Description: First cabin. Carries 12 passengers. Mass 40.00 T.
   EnergyChargeRate: 0
   IgnoreFiringArc: 0
   Manufacturer: {{fileID: 0}}
   MaxHealthPoints: 50
   MaxHullType: 64
   MinHullType: 0
-  Name: C2 Economy Passenger Module
+  Name: 6C Passenger Cabin
   RepairCostFactor: 1
-  UniqueId: 200142
+  UniqueId: 200153
   Category: 2
-  Class: 1
-  Quality: 0
-  PassengerCapacity: 2
+  Class: 5
+  Quality: 2
+  PassengerCapacity: 12

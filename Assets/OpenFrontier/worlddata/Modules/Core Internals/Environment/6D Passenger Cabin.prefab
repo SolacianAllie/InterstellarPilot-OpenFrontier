@@ -11,7 +11,7 @@ GameObject:
   - component: {{fileID: 1821839891053197054}}
   - component: {{fileID: 246379436160957274}}
   m_Layer: 0
-  m_Name: C6 Business Passenger Module
+  m_Name: 6D Passenger Cabin
   m_TagString: Untagged
   m_Icon: {{fileID: 0}}
   m_NavMeshLayer: 0
@@ -52,14 +52,14 @@ MonoBehaviour:
   ComponentBayType: {{fileID: 114724804207875695, guid: c1b21e01754e8aa840f768627e814198, type: 2}}
   ComponentPrefab: {{fileID: 0}}
   ComponentType: {{fileID: 114724804207875695, guid: 7b1178ff451caab4d947cfe42fc53429, type: 2}}
-  Description: Class 6 Business passenger module. Carries 16 passengers. Mass 40.00 T.
+  Description: Business cabin. Carries 16 passengers. Mass 40.00 T.
   EnergyChargeRate: 0
   IgnoreFiringArc: 0
   Manufacturer: {{fileID: 0}}
   MaxHealthPoints: 50
   MaxHullType: 64
   MinHullType: 0
-  Name: C6 Business Passenger Module
+  Name: 6D Passenger Cabin
   RepairCostFactor: 1
   UniqueId: 200150
   Category: 2
