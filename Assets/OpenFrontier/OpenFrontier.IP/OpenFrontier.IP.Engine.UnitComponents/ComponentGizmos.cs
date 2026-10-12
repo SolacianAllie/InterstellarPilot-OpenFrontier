@@ -69,6 +69,15 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 			if (turretClass == null)
 			{
+				// Nothing in it. Only worth saying for a slot that could
+				// hold a weapon - an empty capacitor bay is a perfectly
+				// ordinary thing, and marking every one of them would make
+				// the one that matters invisible.
+				if (HoldsTurrets(bay))
+				{
+					DrawEmptyHardpoint(bay);
+				}
+
 				return;
 			}
 
@@ -79,11 +88,21 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 					bay.transform.forward,
 					bay.WeaponArc.y,
 					turretClass.MaxFiringRange);
-			}
 
-			DrawRangeRing(
-				bay.transform.position, turretClass.MaxFiringRange,
-				new Color(1f, 0.6f, 0.15f, 0.5f));
+				DrawRangeRing(
+					bay.transform.position, turretClass.MaxFiringRange,
+					new Color(1f, 0.6f, 0.15f, 0.5f));
+			}
+			else
+			{
+				// Can shoot in any direction at all, so there is no wedge to
+				// draw. Green, because that is the colour DrawFiringArc uses
+				// for an unrestricted arc, and a weapon that ignores its arc
+				// should not look like a broken one.
+				DrawRangeRing(
+					bay.transform.position, turretClass.MaxFiringRange,
+					new Color(0.4f, 1f, 0.4f, 0.7f));
+			}
 
 			if (turretClass.MinFiringRange > 0f)
 			{
@@ -91,6 +110,63 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 					bay.transform.position, turretClass.MinFiringRange,
 					new Color(1f, 0.25f, 0.25f, 0.7f));
 			}
+		}
+
+		/// <summary>
+		/// Whether this slot could hold a weapon, empty or not.
+		/// </summary>
+		/// <remarks>
+		/// Read off the data rather than guessed from the BayType enum, which
+		/// has five values that take a TurretClass and not the two that seemed
+		/// obvious: Turret and Mining are most of them, but Countermeasure,
+		/// Tractor and Mine each hold one or two as well. Guessing the two
+		/// would have left every countermeasure and tractor hardpoint on a
+		/// ship unmarked while it was being edited - which is most of the point
+		/// of drawing this at all.
+		///
+		/// Counted from all 25 TurretClass prefabs and their ComponentBayType
+		/// references. If a new weapon type appears on a new kind of slot, this
+		/// is the list that has to learn about it.
+		/// </remarks>
+		private static bool HoldsTurrets(ComponentBay bay)
+		{
+			if (bay == null || bay.BayType == null)
+			{
+				return false;
+			}
+
+			switch (bay.BayType.BayType)
+			{
+				case BayType.Turret:
+				case BayType.Mining:
+				case BayType.Countermeasure:
+				case BayType.TractorBeam:
+				case BayType.Mine:
+					return true;
+
+				default:
+					return false;
+			}
+		}
+
+		/// <summary>
+		/// Marks a weapon slot with nothing in it.
+		/// </summary>
+		/// <remarks>
+		/// A sphere, and the only sphere this file draws. The size is a cube,
+		/// the arc is orange, the ranges are flat rings - so a small red ball
+		/// is unmistakably the fourth thing, which is what it means.
+		///
+		/// Red because it is the one thing here that is wrong. An empty
+		/// capacitor bay is normal and gets no marker at all; an empty
+		/// hardpoint is not, and drawing it is the whole reason for this.
+		/// </remarks>
+		private static void DrawEmptyHardpoint(ComponentBay bay)
+		{
+			int size = (int)bay.Size + 1;
+
+			Gizmos.color = new Color(1f, 0.25f, 0.25f, 0.95f);
+			Gizmos.DrawWireSphere(bay.transform.position, size * 0.35f);
 		}
 
 		/// <summary>
