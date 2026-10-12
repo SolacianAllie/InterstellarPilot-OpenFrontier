@@ -234,8 +234,97 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 
 		public void SellInstalled()
 		{
+			// A Core Internal is not really sold, it is replaced - with the
+			// plainest version of the same part, so selling a thruster leaves a
+			// thruster behind rather than an empty mount.
+			//
+			// Routed through BuyNewComponent rather than done as two steps,
+			// because that already does exactly this: it trades the old one in
+			// without refunding, installs the new one, and takes the difference
+			// as a single transaction. Anything else here would credit the sell
+			// and debit the buy separately and show the player two entries for
+			// one action.
+			if (currentBay != null && currentBay.InstalledComponent != null
+				&& currentBay.Tier == BayTier.CoreInternal)
+			{
+				ComponentClass replacement = FindCoreInternalReplacement(currentBay);
+
+				if (replacement == null)
+				{
+					Debug.LogWarning($"Not selling out of {currentBay.name} on {unit.GetFriendlyName()}: " +
+						$"it is a Core Internal and no purchasable " +
+						$"{currentBay.InstalledComponent.ComponentClass.ComponentType.FriendlyName} fits it, " +
+						"so replacing it would leave the slot empty.", this);
+					return;
+				}
+
+				if (!IsComponentAffordable(replacement))
+				{
+					Debug.LogWarning($"Not selling out of {currentBay.name} on {unit.GetFriendlyName()}: " +
+						$"it is a Core Internal, and the plainest replacement " +
+						$"({replacement.GetFriendlyName()}) costs " +
+						$"{GetBuyPrice(replacement)} Cr, which is not affordable. " +
+						"Selling would leave the slot empty.", this);
+					return;
+				}
+
+				BuyNewComponent(currentBay, replacement);
+				Refresh();
+				return;
+			}
+
 			SellInstalledComponent(currentBay, !IgnoreCost);
 			Refresh();
+		}
+
+		/// <summary>
+		/// The plainest module of the same kind that still fits, for a Core
+		/// Internal that has to be refilled rather than emptied.
+		/// </summary>
+		/// <remarks>
+		/// Same ComponentType as what is being removed, so a thruster comes back
+		/// as a thruster and not as whatever else happens to fit the bay. Lowest
+		/// ModuleRating first - E is the plainest - then lowest price, so two
+		/// E-rated parts of the same kind resolve to the cheaper one.
+		///
+		/// Enumerated here rather than taken from the right-hand list, because
+		/// that list is filtered by the "Show Compatible Only" toggle and can be
+		/// holding parts the ship is not actually allowed to take. This asks
+		/// with considerRating forced on, because the player is not choosing
+		/// here and the replacement must be genuinely valid.
+		///
+		/// Returns null when nothing fits, which the caller treats as a refusal
+		/// rather than as permission to leave a core slot empty.
+		/// </remarks>
+		private ComponentClass FindCoreInternalReplacement(ComponentBay bay)
+		{
+			ComponentType type = bay.InstalledComponent.ComponentClass.ComponentType;
+			ComponentClass worst = null;
+			int worstPrice = 0;
+
+			foreach (ComponentClass candidate in Eng.ComponentClasses)
+			{
+				if (candidate == null || !candidate.AllowBuy || candidate.ComponentType != type)
+				{
+					continue;
+				}
+
+				if (!IsComponentCompatible(bay, candidate, true, out _))
+				{
+					continue;
+				}
+
+				int price = GetBuyPrice(candidate);
+
+				if (worst == null || candidate.ModuleRating < worst.ModuleRating
+					|| (candidate.ModuleRating == worst.ModuleRating && price < worstPrice))
+				{
+					worst = candidate;
+					worstPrice = price;
+				}
+			}
+
+			return worst;
 		}
 
 		public ComponentBay[] GetSelectableBays()
@@ -476,6 +565,25 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 				RefreshBayNameLabel(currentBay);
 				RefreshInstalledComponentInfo(currentBay.InstalledComponent);
 				SellRoot.gameObject.SetActive(currentBay.InstalledComponent != null && currentBay.InstalledComponent.ComponentClass.ComponentType.AllowSell);
+
+				// Greyed out rather than silently dead when the sell would be
+				// refused. SellInstalled logs the reason and changes nothing, and
+				// a button that looks available but does nothing is worse than
+				// one that visibly will not work.
+				//
+				// Searched once, and only for a Core Internal. This runs every
+				// frame from update(), and the search walks every component class
+				// in the game, so doing it twice here would be a hundred-odd
+				// comparisons per frame for no reason.
+				bool replacementFound = true;
+
+				if (currentBay.InstalledComponent != null && currentBay.Tier == BayTier.CoreInternal)
+				{
+					ComponentClass replacement = FindCoreInternalReplacement(currentBay);
+					replacementFound = (replacement != null && IsComponentAffordable(replacement));
+				}
+
+				SellButton.interactable = replacementFound;
 				SelectedComponentRoot.gameObject.SetActive(AvailableComponentsList.FirstSelectedItem != null);
 				if (AvailableComponentsList.FirstSelectedItem != null)
 				{
