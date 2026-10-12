@@ -5,15 +5,15 @@ Three things live here, and the top level says which is which:
 ```
 Assets/
   InterstellarPilot2/    the original game, exactly as it came out of extraction
-  OpenFrontier/          this project's twelve assemblies
-  NewAssets/             assets written or commissioned to replace the above
+  OpenFrontier/          assets written or commissioned to replace the above
+  OpenFrontierLogic/     this project's twelve assemblies
 ```
 
 `InterstellarPilot2/` is the extraction dump. The tool wrote everything by
 *asset type* rather than by what it is, which is why it has folders called
 `Texture2D/`, `Mesh/` and `Sprite/` instead of `ships/`, `stations/` and
 `music/`. `Scripts/Assembly-CSharp` inside it is the original game's own loose
-scripts; the twelve assemblies beside `OpenFrontier/` are this project's.
+scripts; the twelve assemblies under `OpenFrontierLogic/` are this project's.
 
 That split is the point. A file is either the old game's or ours, and never
 ambiguously both.
@@ -103,7 +103,7 @@ would do it properly. Until then the type-named layout stands on its own.
 
 `/tmp/opencode/harness` compiles each assembly separately against the editor's
 real DLLs, and it used to hardcode `Assets/Scripts/`. It now points at
-`Assets/OpenFrontier/` and `Assets/InterstellarPilot2/Scripts/`, and the codec
-tests' `sync.py` links from the new paths too. If the layout changes again,
+`Assets/OpenFrontierLogic/` and `Assets/InterstellarPilot2/Scripts/`, and the
+codec tests' `sync.py` links from there too. If the layout changes again,
 those two files are what will silently report "0 problems across 0 files" —
 which looks exactly like passing.

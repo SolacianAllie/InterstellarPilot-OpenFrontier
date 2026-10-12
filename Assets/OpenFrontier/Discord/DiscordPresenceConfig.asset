@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d845b25bc434de0bcf95ea5cc988c93, type: 3}
+  m_Name: DiscordPresenceConfig
+  m_EditorClassIdentifier: 
+  ApplicationId: 1557818000009207900
+  imageMappings:
+  - className: Bar
+    assetKey: bar1
+  - className: Adv. Shipyard
+    assetKey: shipyard
+  - className: Shipyard
+    assetKey: shipyard
+  - className: Sector HQ
+    assetKey: outpost
+  - className: Outpost
+    assetKey: outpost
+  - className: Equipment Shop
+    assetKey: outpost
+  - className: Repair Shop
+    assetKey: outpost
+  - className: Trade Station
+    assetKey: tradestation
+  - className: Small Satellite
+    assetKey: smallsatellite
+  - className: Storage Locker
+    assetKey: storagelocker
+  - className: Refinery
+    assetKey: refinery
+  - className: Light Weapons Platform
+    assetKey: weaponsplatform
+  - className: Medium Weapons Platform
+    assetKey: weaponsplatform
+  - className: Orbital Farm
+    assetKey: factory
+  - className: Brewery
+    assetKey: factory
+  - className: Hospital
+    assetKey: factory
+  - className: Jewellery Factory
+    assetKey: factory
+  - className: Laboratory
+    assetKey: factory
+  - className: Light Arms Factory
+    assetKey: factory
+  - className: Hypersleep Pod Factory
+    assetKey: factory
+  - className: Rations Factory
+    assetKey: factory
+  - className: Scrapyard
+    assetKey: factory
+  - className: Vehicle Plant
+    assetKey: factory
