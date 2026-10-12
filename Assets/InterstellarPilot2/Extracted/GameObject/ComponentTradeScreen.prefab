@@ -1259,7 +1259,7 @@ MonoBehaviour:
   InstalledItemInfoButton: {fileID: 114092105871539913}
   InstalledLabel: {fileID: 114056248600188076}
   AvailableComponentsList: {fileID: 114325787665662832}
-  BayTierDropdown: {fileID: 7745508273694661001}
+  CategoryDropdown: {fileID: 7745508273694661001}
   SelectedComponentRoot: {fileID: 1919942235722503}
   SelectedItemInfoButton: {fileID: 114632179142322292}
   SelectedLabel: {fileID: 114401429660297866}
