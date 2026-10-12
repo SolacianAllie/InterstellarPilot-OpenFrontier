@@ -1,0 +1,99 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1709254077376921
+GameObject:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Component:
+  - component: {fileID: 4730242686860875}
+  - component: {fileID: 114724804207875695}
+  m_Layer: 0
+  m_Name: SmallCloakIV
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4730242686860875
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -8.07991, y: -2.644806, z: 4.0322943}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &114724804207875695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7af893e1e2bf8860171ddcd47b3e1e9f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  RechargePriority: 0
+  ShortIconName:
+  IconSpriteNameOverride:
+  AllowBuy: 1
+  BaseCost: 80000
+  ComponentBayType: {fileID: 114724804207875695, guid: 2d288f9a146d9be93af173a07327cdb9, type: 2}
+  ComponentPrefab: {fileID: 0}
+  ComponentType: {fileID: 114724804207875695, guid: 0ba7e17933480624da9de5e7eb207e7c, type: 2}
+  Description: An advanced cloaking device with reduced cloaking / decloaking time. This version is even more responsive and has increased damage protection.
+  EnergyChargeRate: 4
+  IgnoreFiringArc: 1
+  Manufacturer: {fileID: 0}
+  MaxHealthPoints: 100
+  MaxHullType: 4
+  MinHullType: 1
+  Name: Sml Cloak Mk IV
+  RepairCostFactor: 1
+  UniqueId: 200141
+  Category: 4
+  Class: 3
+  Quality: 0
+  IsPointDefence: 0
+  ManualCombatRating: -1
+  ManualDamagePerSecond: -1
+  CalculatedDamagePerSecond: 0
+  CalculatedCombatRating: 0
+  UsesAmmo: 0
+  AIConventionalWeapon: 0
+  AiFireProbabilityPower: 0.5
+  AIMaxTimeBeforeFire: 240
+  AIMinTimeBeforeFire: 5
+  AIPointDefenseEffectiveness: 1
+  DefaultTurretGroup: 4
+  EnergyCost: 50.625
+  EnergyCostPerSecond: 0
+  EnergyToDamageConversion: 1
+  FireAudioPrefab: {fileID: 0}
+  FireChargeAudioPrefab: {fileID: 0}
+  FireLoopAudioSource: {fileID: 0}
+  FirePrewarmTime: 0
+  InaccuracyPower: 2
+  MaxFiringRange: 100
+  InaccuracyMultiplier: 1
+  MinAppliedDamage: 0.8
+  MinFiringRange: 0
+  RequiresTarget: 0
+  RestrictAIUsage: 0
+  AutoTurretFireCooldown: 0
+  ShieldDamageType: 0
+  TurretPrefab: {fileID: 0}
+  CloakTime: 1.2
+  DecloakTime: 0.9
+  DetectionMultiplier: 0.0125

@@ -1,0 +1,117 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1709254077376921
+GameObject:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Component:
+  - component: {fileID: 4730242686860875}
+  - component: {fileID: 114724804207875695}
+  - component: {fileID: 114618682377417806}
+  m_Layer: 0
+  m_Name: TurretClassCountermeasure1
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &4730242686860875
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3.5027914, y: 95.43573, z: -82.20643}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &114724804207875695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17e556ca05fe0fc5c4575dd165512db7, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  RechargePriority: 10
+  ShortIconName:
+  IconSpriteNameOverride: ecm
+  AllowBuy: 1
+  BaseCost: 3200
+  ComponentBayType: {fileID: 114724804207875695, guid: 94ca4de291c827a613bd1f5ad5ff62c2, type: 2}
+  ComponentPrefab: {fileID: 0}
+  ComponentType: {fileID: 114724804207875695, guid: 6ce7f133dce48a647a1bad0a70ba9341, type: 2}
+  Description: This is a standard countermeasure deployment device found on nearly all ship models. This Countermeasure I can deploy ECMs rapidly to disrupt incoming missiles
+  EnergyChargeRate: 8.4375
+  IgnoreFiringArc: 1
+  Manufacturer: {fileID: 0}
+  MaxHealthPoints: 50
+  MaxHullType: 64
+  MinHullType: 1
+  Name: Countermeasure I
+  RepairCostFactor: 0.05
+  UniqueId: 200005
+  Category: 1
+  Class: 0
+  Quality: 0
+  IsPointDefence: 0
+  ManualCombatRating: 10
+  ManualDamagePerSecond: -1
+  CalculatedDamagePerSecond: 0
+  CalculatedCombatRating: 0
+  UsesAmmo: 1
+  AIConventionalWeapon: 0
+  AiFireProbabilityPower: 0.8
+  AIMaxTimeBeforeFire: 80
+  AIMinTimeBeforeFire: 5
+  AIPointDefenseEffectiveness: 1
+  DefaultTurretGroup: -1
+  EnergyCost: 8.4375
+  EnergyCostPerSecond: 0
+  EnergyToDamageConversion: 1
+  FireAudioPrefab: {fileID: 1709254077376921, guid: a3c64276f8386c34fad4526deae47683, type: 2}
+  FireChargeAudioPrefab: {fileID: 0}
+  FireLoopAudioSource: {fileID: 0}
+  FirePrewarmTime: 0
+  InaccuracyPower: 0.5
+  MaxFiringRange: 1000
+  InaccuracyMultiplier: 1
+  MinAppliedDamage: 0.8
+  MinFiringRange: 80
+  RequiresTarget: 0
+  RestrictAIUsage: 0
+  AutoTurretFireCooldown: 0
+  ShieldDamageType: 0
+  TurretPrefab: {fileID: 0}
+  CompatibleProjectiles:
+  - {fileID: 114724804207875695, guid: 2ffc420159926c54d8e9175bfd50d984, type: 2}
+  - {fileID: 114724804207875695, guid: 7ac2facf5284d9b4b92b1364c5039392, type: 2}
+  ProjectileTurretType: 2
+  UseSubTargetPositions: 0
+--- !u!114 &114618682377417806
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb3b5f3a99b0d2c61186b9096480dc45, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  Items:
+  - CargoClass: {fileID: 114724804207875695, guid: 27ae4e7af7ce5504e8c0567c1388e285, type: 2}
+    Quantity: 5

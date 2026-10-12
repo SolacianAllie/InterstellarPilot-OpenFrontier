@@ -1,0 +1,100 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1709254077376921
+GameObject:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Component:
+  - component: {fileID: 4730242686860875}
+  - component: {fileID: 114724804207875695}
+  m_Layer: 0
+  m_Name: TurretClassPlasmaPulse3
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &4730242686860875
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -3.5027914, y: 95.43573, z: -82.20643}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &114724804207875695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17e556ca05fe0fc5c4575dd165512db7, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  RechargePriority: -1
+  ShortIconName: III
+  IconSpriteNameOverride: plasma_3
+  AllowBuy: 1
+  BaseCost: 29000
+  ComponentBayType: {fileID: 114724804207875695, guid: 94ca4de291c827a613bd1f5ad5ff62c2, type: 2}
+  ComponentPrefab: {fileID: 0}
+  ComponentType: {fileID: 114724804207875695, guid: 87d8a80425a9a1846a9ad45e0a82ede6, type: 2}
+  Description: This weapon pushes the range and damage limits of plasma based weaponry. It is not effective against fast-moving vessels due to its slow projectile.
+  EnergyChargeRate: 28.130625
+  IgnoreFiringArc: 0
+  Manufacturer: {fileID: 0}
+  MaxHealthPoints: 50
+  MaxHullType: 64
+  MinHullType: 8
+  Name: Plasma Pulse III
+  RepairCostFactor: 1
+  UniqueId: 200021
+  Category: 1
+  Class: 2
+  Quality: 0
+  IsPointDefence: 0
+  ManualCombatRating: -1
+  ManualDamagePerSecond: -1
+  CalculatedDamagePerSecond: 34.60067
+  CalculatedCombatRating: 34.60067
+  UsesAmmo: 0
+  AIConventionalWeapon: 1
+  AiFireProbabilityPower: 0.5
+  AIMaxTimeBeforeFire: 240
+  AIMinTimeBeforeFire: 5
+  AIPointDefenseEffectiveness: 1
+  DefaultTurretGroup: 0
+  EnergyCost: 421.875
+  EnergyCostPerSecond: 0
+  EnergyToDamageConversion: 1.23
+  FireAudioPrefab: {fileID: 1709254077376921, guid: a6dfe8b2062db9343ad383f3b90521e7, type: 2}
+  FireChargeAudioPrefab: {fileID: 0}
+  FireLoopAudioSource: {fileID: 0}
+  FirePrewarmTime: 1
+  InaccuracyPower: 6
+  MaxFiringRange: 475
+  InaccuracyMultiplier: 1
+  MinAppliedDamage: 0.8
+  MinFiringRange: 5
+  RequiresTarget: 1
+  RestrictAIUsage: 0
+  AutoTurretFireCooldown: 0
+  ShieldDamageType: 0
+  TurretPrefab: {fileID: 0}
+  CompatibleProjectiles:
+  - {fileID: 114724804207875695, guid: 532fdfb72a835a045a9c3529fa78a7cc, type: 2}
+  ProjectileTurretType: 0
+  UseSubTargetPositions: 0

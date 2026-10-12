@@ -1,0 +1,107 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1709254077376921
+GameObject:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Component:
+  - component: {fileID: 4730242686860875}
+  - component: {fileID: 114724804207875695}
+  m_Layer: 0
+  m_Name: TurretClassLaserMining2
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &4730242686860875
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.15278625, y: -2.2562943, z: 11.142189}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &114724804207875695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38ee3812efb0e2bb3cead102a8554411, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  RechargePriority: 0
+  ShortIconName: MII
+  IconSpriteNameOverride: laser_m2
+  AllowBuy: 1
+  BaseCost: 86000
+  ComponentBayType: {fileID: 114724804207875695, guid: 94ca4de291c827a613bd1f5ad5ff62c2, type: 2}
+  ComponentPrefab: {fileID: 0}
+  ComponentType: {fileID: 114724804207875695, guid: 6ab32a6823fe3434fbaf5cf2290cf04b, type: 2}
+  Description: This mining laser substantially improves asteroid yield rates.
+  EnergyChargeRate: 70.318115
+  IgnoreFiringArc: 1
+  Manufacturer: {fileID: 0}
+  MaxHealthPoints: 50
+  MaxHullType: 64
+  MinHullType: 4
+  Name: Adv. Mining Laser
+  RepairCostFactor: 1
+  UniqueId: 200012
+  Category: 1
+  Class: 0
+  Quality: 0
+  IsPointDefence: 0
+  ManualCombatRating: -1
+  ManualDamagePerSecond: -1
+  CalculatedDamagePerSecond: 0
+  CalculatedCombatRating: 0
+  UsesAmmo: 0
+  AIConventionalWeapon: 0
+  AiFireProbabilityPower: 0.5
+  AIMaxTimeBeforeFire: 240
+  AIMinTimeBeforeFire: 5
+  AIPointDefenseEffectiveness: 4
+  DefaultTurretGroup: 0
+  EnergyCost: 210.9375
+  EnergyCostPerSecond: 0
+  EnergyToDamageConversion: 0.1
+  FireAudioPrefab: {fileID: 1709254077376921, guid: 5cd472da94455cc458d591ab734bec68, type: 2}
+  FireChargeAudioPrefab: {fileID: 0}
+  FireLoopAudioSource: {fileID: 0}
+  FirePrewarmTime: 1
+  InaccuracyPower: 1
+  MaxFiringRange: 300
+  InaccuracyMultiplier: 1
+  MinAppliedDamage: 0.8
+  MinFiringRange: 0
+  RequiresTarget: 1
+  RestrictAIUsage: 0
+  AutoTurretFireCooldown: 0
+  ShieldDamageType: 0
+  TurretPrefab: {fileID: 0}
+  duration: 1.25
+  fadeOutTime: 0.25
+  FiringTimeout: 2
+  ImpactPrefabs: []
+  LaserLineRendererPrefab: {fileID: 1709254077376921, guid: 80d99635387e5de4e9e31c706b7afbb4, type: 2}
+  LaserMaterialScaleRate: {x: -1, y: 0}
+  LaserMoveSpd: 300
+  LaserTextureRealWorldSize: 20
+  MaxRangeMaxDamageMultiplier: 0.2
+  MaxRangeMinDamageMultiplier: 0.15
+  MiningDamageMultiplier: 1.5

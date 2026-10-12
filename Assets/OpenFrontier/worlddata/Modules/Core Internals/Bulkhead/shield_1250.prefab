@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1709254077376921
+GameObject:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Component:
+  - component: {fileID: 4730242686860875}
+  - component: {fileID: 114724804207875695}
+  m_Layer: 0
+  m_Name: shield_1250
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4730242686860875
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 210.08403, y: 173.6989, z: 215.43802}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &114724804207875695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5bf4ec25d4169a157051c2a8186e5a14, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  RechargePriority: 0
+  ShortIconName:
+  IconSpriteNameOverride:
+  AllowBuy: 1
+  BaseCost: -1
+  ComponentBayType: {fileID: 114724804207875695, guid: d8be4a03606de5adeeac1a43d57e03c2, type: 2}
+  ComponentPrefab: {fileID: 0}
+  ComponentType: {fileID: 114724804207875695, guid: a41ccfddd2f4a514aa832721dadfb0ff, type: 2}
+  Description:
+  EnergyChargeRate: 0
+  IgnoreFiringArc: 0
+  Manufacturer: {fileID: 0}
+  MaxHealthPoints: 50
+  MaxHullType: 64
+  MinHullType: 8
+  Name:
+  RepairCostFactor: 1
+  UniqueId: 200029
+  Category: 2
+  Class: 0
+  Quality: 0
+  Capacities:
+  - 1250
+  - 1250
+  - 1250
+  - 1250
+  - 1250
+  - 1250
+  RegenEnergyCost: 0.5
+  RegenRateMultiplier: 0.5
+  ShieldRestoreMultiplier: 0.5
+  TotalCapacity: 7500
