@@ -191,16 +191,49 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 			Vector3 left = Quaternion.AngleAxis(-half, Vector3.up) * forward * range;
 			Vector3 right = Quaternion.AngleAxis(half, Vector3.up) * forward * range;
 
-			Gizmos.color = new Color(1f, 0.55f, 0.1f, 0.18f);
-			Gizmos.DrawTriangle(centre, centre + left, centre + right);
+			// The fill, as a fan of lines rather than a solid triangle.
+			//
+			// Gizmos has no DrawTriangle. It has DrawLine, DrawLineStrip,
+			// DrawMesh, DrawCube and a handful of others, and a filled wedge
+			// wants a polygon - which is why this was written against a method
+			// that does not exist.
+			//
+			// A mesh would fill it properly, but Gizmos.DrawMesh wants one per
+			// call and a gizmo runs every frame while the object stays
+			// selected, so that means a mesh built every frame or a cache with
+			// a leak in it. Lines cost nothing, allocate nothing, and one
+			// every few degrees reads as solid from any angle you would edit
+			// a ship from.
+			int slices = Mathf.Clamp(Mathf.CeilToInt(arcDegrees / 4f), 3, 180);
+
+			Gizmos.color = new Color(1f, 0.55f, 0.1f, 0.09f);
+
+			for (int i = 0; i <= slices; i++)
+			{
+				float angle = -half + (arcDegrees * i / slices);
+				Vector3 edge = Quaternion.AngleAxis(angle, Vector3.up) * forward * range;
+
+				Gizmos.DrawLine(centre, centre + edge);
+			}
+
+			// The far edge, so the arc's width is readable at a glance and not
+			// only where it meets the turret.
+			int arcSlices = Mathf.Clamp(Mathf.CeilToInt(arcDegrees / 4f), 3, 180);
+			Vector3 previous = centre + left;
+
+			for (int i = 1; i <= arcSlices; i++)
+			{
+				float angle = -half + (arcDegrees * i / arcSlices);
+				Vector3 point = centre
+					+ Quaternion.AngleAxis(angle, Vector3.up) * forward * range;
+
+				Gizmos.DrawLine(previous, point);
+				previous = point;
+			}
 
 			Gizmos.color = new Color(1f, 0.6f, 0.15f, 1f);
 			Gizmos.DrawLine(centre, centre + left);
 			Gizmos.DrawLine(centre, centre + right);
-
-			// The far edge, so the arc's width is readable at a glance and not
-			// only where it meets the turret.
-			Gizmos.DrawLine(centre + left, centre + right);
 
 			// The centre line, which is the axis the arc is measured from.
 			Gizmos.color = new Color(1f, 0.6f, 0.15f, 0.45f);

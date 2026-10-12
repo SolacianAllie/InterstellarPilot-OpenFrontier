@@ -125,6 +125,36 @@ editor's own compile can still differ, because the harness does not define
 every symbol the editor defines — verify with `grep -c "error CS" Logs/Editor.log`
 after the editor refocuses (should be 0).
 
+## A green harness run can have compiled almost nothing
+
+`gen.main()` **writes the csproj files every time it runs**, so it is not a
+passive reader: if its paths are wrong, it regenerates projects that point at
+nothing, finds fewer assemblies, and the build loop iterates over almost
+nothing.
+
+That happened. After the asset move, `gen.py` still pointed at `Assets/Scripts`,
+which no longer existed. The harness reported **ALL CHECKS PASSED** — for
+several commits — having compiled **one project out of thirteen**. Nothing was
+red, because every test it did run passed.
+
+A build that is trusted and wrong is worse than one that is broken and ignored,
+so `check.sh` now counts projects built against `.asmdef` files on disk and
+fails loudly if they disagree. It also has a **stale check**: a `.cs` file that
+is in no generated csproj was never compiled by anything, which is how a
+`Gizmos.DrawTriangle` — a method that does not exist — reached the editor
+while the harness said everything was fine.
+
+Both guards were verified by breaking `gen.py` on purpose and watching them
+fail. If either ever fires, **do not work around it** — the honest reading is
+that the harness has stopped seeing your code.
+
+Two hardcoded paths in `gen.py` that moved with the layout and had to be
+changed: the assembly roots (`ASSETS`) and the vendored plugin DLL folder
+(`Assets/Plugins`, now under `InterstellarPilot2`). A stale one of those does
+not error, it silently builds less.
+
+---
+
 ## Verification workflow
 
 1. Harness build (fast, catches 99% of issues)
