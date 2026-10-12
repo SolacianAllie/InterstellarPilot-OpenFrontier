@@ -4,44 +4,44 @@
 GameObject:
   serializedVersion: 6
   m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {{fileID: 0}}
-  m_PrefabInstance: {{fileID: 0}}
-  m_PrefabAsset: {{fileID: 0}}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
   m_Component:
-  - component: {{fileID: 1802248105267921050}}
-  - component: {{fileID: 1843960855070322887}}
+  - component: {fileID: 1802248105267921050}
+  - component: {fileID: 1843960855070322887}
   m_Layer: 0
   m_Name: 6B Passenger Cabin
   m_TagString: Untagged
-  m_Icon: {{fileID: 0}}
+  m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
 --- !u!4 &1802248105267921050
 Transform:
   m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {{fileID: 0}}
-  m_PrefabInstance: {{fileID: 0}}
-  m_PrefabAsset: {{fileID: 0}}
-  m_GameObject: {{fileID: 1739195384762867814}}
-  m_LocalRotation: {{x: 0, y: 0, z: 0, w: 1}}
-  m_LocalPosition: {{x: 0, y: 0, z: 0}}
-  m_LocalScale: {{x: 1, y: 1, z: 1}}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1739195384762867814}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {{fileID: 0}}
+  m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {{x: 0, y: -0, z: -0}}
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
 --- !u!114 &1843960855070322887
 MonoBehaviour:
   m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {{fileID: 0}}
-  m_PrefabInstance: {{fileID: 0}}
-  m_PrefabAsset: {{fileID: 0}}
-  m_GameObject: {{fileID: 1739195384762867814}}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1739195384762867814}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {{fileID: 11500000, guid: 6812fe1a489abc5b2469373a6a7b7c00, type: 3}}
+  m_Script: {fileID: 11500000, guid: 6812fe1a489abc5b2469373a6a7b7c00, type: 3}
   m_Name:
   m_EditorClassIdentifier:
   RechargePriority: 0
@@ -49,13 +49,13 @@ MonoBehaviour:
   IconSpriteNameOverride:
   AllowBuy: 1
   BaseCost: 4849930
-  ComponentBayType: {{fileID: 114724804207875695, guid: c1b21e01754e8aa840f768627e814198, type: 2}}
-  ComponentPrefab: {{fileID: 0}}
-  ComponentType: {{fileID: 114724804207875695, guid: 7b1178ff451caab4d947cfe42fc53429, type: 2}}
+  ComponentBayType: {fileID: 114724804207875695, guid: c1b21e01754e8aa840f768627e814198, type: 2}
+  ComponentPrefab: {fileID: 0}
+  ComponentType: {fileID: 114724804207875695, guid: 7b1178ff451caab4d947cfe42fc53429, type: 2}
   Description: Luxury cabin. Carries 8 passengers. Mass 40.00 T.
   EnergyChargeRate: 0
   IgnoreFiringArc: 0
-  Manufacturer: {{fileID: 0}}
+  Manufacturer: {fileID: 0}
   MaxHealthPoints: 50
   MaxHullType: 64
   MinHullType: 0
