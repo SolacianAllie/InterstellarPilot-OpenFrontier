@@ -43,6 +43,37 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		public int UniqueId;
 
+		/// <summary>
+		/// How big this component is. Will not fit a smaller slot.
+		/// </summary>
+		/// <remarks>
+		/// Small by default, which makes every one of the 141 existing
+		/// components small with nothing to migrate: a field added to a
+		/// MonoBehaviour reads as zero from every prefab that predates it, and
+		/// Small is zero.
+		/// </remarks>
+		public HardpointSize Size = HardpointSize.Small;
+
+		/// <summary>
+		/// How capable this is, in eight steps. Described, not yet enforced.
+		/// </summary>
+		/// <remarks>
+		/// The internal-module ladder, for capacitors, generators, shields and
+		/// engines rather than weapons. Not gating anything yet, because which
+		/// class a 250-unit shield belongs in is a balance decision and there are
+		/// 141 of them to decide.
+		/// </remarks>
+		public ModuleClass ModuleClass = ModuleClass.Class1;
+
+		/// <summary>
+		/// How well made this is, E through A. Described, not yet enforced.
+		/// </summary>
+		/// <remarks>
+		/// E by default, so an untouched asset claims nothing rather than
+		/// coming out as A-rated.
+		/// </remarks>
+		public ModuleRating ModuleRating = ModuleRating.E;
+
 		public bool CanChangeUserPowered => ComponentType.CanSetUserPower;
 
 		public virtual bool IsWeapon => false;

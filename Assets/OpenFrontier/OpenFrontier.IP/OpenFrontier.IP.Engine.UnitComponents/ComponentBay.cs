@@ -22,6 +22,20 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		public Vector3 WeaponArc = new Vector3(0f, 90f, 0f);
 
+		/// <summary>
+		/// How big this slot is. A component that does not fit will not install.
+		/// </summary>
+		/// <remarks>
+		/// On the bay rather than on the bay *type*, deliberately: a ship has
+		/// small hardpoints and large ones at the same time, which is the entire
+		/// point of having sizes. Putting it on ComponentBayType would give
+		/// every turret slot on every ship the same size.
+		///
+		/// Small by default, so every existing ship is unchanged until
+		/// something is deliberately made bigger.
+		/// </remarks>
+		public HardpointSize Size = HardpointSize.Small;
+
 		public ComponentClass InstalledComponentClass
 		{
 			get
@@ -232,7 +246,22 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		public bool IsComponentCorrectType(ComponentClass componentClass)
 		{
-			return componentClass.ComponentBayType == BayType;
+			if (componentClass.ComponentBayType != BayType)
+			{
+				return false;
+			}
+
+			// Size, which is the whole reason sizes exist.
+			//
+			// One-sided on purpose: a big slot will take a small thing, a small
+			// slot will not take a big one. The strict version - requiring them
+			// to match exactly - would stop a large hardpoint carrying a small
+			// weapon, which no one designing a ship wants, and would make every
+			// ship prefab need matching sizes on every slot before it worked.
+			//
+			// Nothing is refused today, because everything is Small and Small
+			// fits Small. This is in place for when sizes stop being cosmetic.
+			return componentClass.Size <= Size;
 		}
 
 		public bool IsComponentCorrectRating(ComponentClass componentClass)
