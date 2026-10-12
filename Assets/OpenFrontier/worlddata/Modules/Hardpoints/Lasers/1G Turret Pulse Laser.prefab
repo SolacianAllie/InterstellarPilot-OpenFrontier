@@ -1,0 +1,116 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1154923747343434946
+GameObject:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Component:
+  - component: {fileID: 138399536294857268}
+  - component: {fileID: 1440848003125026896}
+  m_Layer: 0
+  m_Name: 1G Turret Pulse Laser
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &138399536294857268
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1154923747343434946}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.15278625, y: -2.2562943, z: 11.142189}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &1440848003125026896
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1154923747343434946}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 38ee3812efb0e2bb3cead102a8554411, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  RechargePriority: 0
+  ShortIconName: I
+  IconSpriteNameOverride: laser_1
+  AllowBuy: 1
+  BaseCost: 26000
+  ComponentBayType: {fileID: 114724804207875695, guid: 94ca4de291c827a613bd1f5ad5ff62c2, type: 2}
+  ComponentPrefab: {fileID: 0}
+  ComponentType: {fileID: 114724804207875695, guid: 87d8a80425a9a1846a9ad45e0a82ede6, type: 2}
+  Description: 
+  EnergyChargeRate: 0.38
+  IgnoreFiringArc: 0
+  Manufacturer: {fileID: 0}
+  MaxHealthPoints: 40
+  MaxHullType: 64
+  MinHullType: 0
+  Name: 1G Turret Pulse Laser
+  RepairCostFactor: 1
+  Mass: 2
+  UniqueId: 300024
+  Category: 1
+  Class: 0
+  Quality: 6
+  IsPointDefence: 0
+  ManualCombatRating: -1
+  ManualDamagePerSecond: -1
+  CalculatedDamagePerSecond: 13.5
+  CalculatedCombatRating: 13.5
+  UsesAmmo: 0
+  AIConventionalWeapon: 1
+  AiFireProbabilityPower: 0.5
+  AIMaxTimeBeforeFire: 240
+  AIMinTimeBeforeFire: 5
+  AIPointDefenseEffectiveness: 4
+  DefaultTurretGroup: 0
+  EnergyCost: 0.19
+  EnergyCostPerSecond: 0
+  EnergyToDamageConversion: 1
+  FireAudioPrefab: {fileID: 1709254077376921, guid: 471d20a84a2b62142876b68428cd6048, type: 2}
+  FireChargeAudioPrefab: {fileID: 0}
+  FireLoopAudioSource: {fileID: 0}
+  FirePrewarmTime: 1
+  InaccuracyPower: 1
+  MaxFiringRange: 275
+  InaccuracyMultiplier: 1
+  MinAppliedDamage: 0.8
+  MinFiringRange: 0
+  RequiresTarget: 1
+  RestrictAIUsage: 0
+  AutoTurretFireCooldown: 0
+  ShieldDamageType: 1
+  TurretPrefab: {fileID: 0}
+  duration: 1.25
+  fadeOutTime: 0.25
+  FiringTimeout: 2
+  ThermalLoad: 0.19
+  ArmourPiercing: 20
+  RateOfFire: 3.33
+  DamagePerSecond: 3.97
+  DamagePerShot: 1.19
+  MountMode: 2
+  ImpactPrefabs:
+  - {fileID: 198724804207875695, guid: ea3150e13250dc0469a7faa97a55232d, type: 2}
+  - {fileID: 198724804207875695, guid: 0bedcd0412764f34ea0d6cf9dcbd8675, type: 2}
+  LaserLineRendererPrefab: {fileID: 1709254077376921, guid: 682a2a7c16e041643bbfc84aebab971b, type: 2}
+  LaserMaterialScaleRate: {x: -1, y: 0}
+  LaserMoveSpd: 600
+  LaserTextureRealWorldSize: 20
+  MaxRangeMaxDamageMultiplier: 0.2
+  MaxRangeMinDamageMultiplier: 0.15
+  MiningDamageMultiplier: 0.0025

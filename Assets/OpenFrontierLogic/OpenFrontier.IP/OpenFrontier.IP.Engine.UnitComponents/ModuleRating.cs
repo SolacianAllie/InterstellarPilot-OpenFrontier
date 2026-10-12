@@ -16,6 +16,10 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 	/// assets that nobody chose. E is the honest default: it claims nothing.
 	///
 	/// Not enforced yet, for the reason given on <see cref="ModuleClass"/>.
+	///
+	/// F and G exist because the Elite weapon tables run past A. They are
+	/// appended, never inserted: A is still 4, so the 133 assets that serialize
+	/// a Quality keep the rating they were authored with.
 	/// </remarks>
 	public enum ModuleRating
 	{
@@ -23,6 +27,8 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		D = 1,
 		C = 2,
 		B = 3,
-		A = 4
+		A = 4,
+		F = 5,
+		G = 6
 	}
 }

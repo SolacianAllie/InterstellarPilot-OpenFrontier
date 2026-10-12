@@ -13,6 +13,24 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		[Tooltip("How long this weapon must cool down between shots.")]
 		public float FiringTimeout = 5f;
 
+		[Tooltip("How a weapon of this class is mounted. Fixed fires straight ahead and cannot aim, Gimbal tracks within a limited arc, Turret tracks freely. Stored for now and not yet acted on.")]
+		public WeaponMountMode MountMode = WeaponMountMode.Turret;
+
+		[Tooltip("Damage one shot does before armour and range. The Elite tables give this per shot for pulse and burst weapons.")]
+		public float DamagePerShot;
+
+		[Tooltip("Sustained damage per second. Continuous weapons such as the beam laser have no rate of fire, so this is their only damage figure.")]
+		public float DamagePerSecond;
+
+		[Tooltip("Shots per second. Zero for a continuous weapon, which has no rate of fire.")]
+		public float RateOfFire;
+
+		[Tooltip("How well this weapon punches through armour, on the Elite 0 to 100 scale. Higher ignores more of a target's armour.")]
+		public float ArmourPiercing;
+
+		[Tooltip("Heat this weapon adds per shot. Nothing reads it yet - there is no heat system - but the Elite tables give it for every thermal weapon.")]
+		public float ThermalLoad;
+
 		[Tooltip("Effects spawned where a shot lands.")]
 		public ParticleSystem[] ImpactPrefabs;
 
