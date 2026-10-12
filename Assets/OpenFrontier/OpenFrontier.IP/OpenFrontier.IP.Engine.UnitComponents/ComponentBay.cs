@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace OpenFrontier.IP.Engine.UnitComponents
 {
@@ -14,7 +15,78 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		private ComponentBase installedComponent;
 
-		public ShipHullType MaxClass = ShipHullType.Fighter;
+		/// <summary>
+		/// The ship class this bay evaluates against, when
+		/// <see cref="OverrideUnitClassRating"/> is set.
+		/// </summary>
+		/// <remarks>
+		/// Renamed from MaxClass, and the rename is not cosmetic. "MaxClass"
+		/// said nothing about ship, and there is now a Class on this bay that
+		/// means something else entirely - the module class a component must be
+		/// to fit. Two fields both called a class, on the same inspector row,
+		/// one a hull rating and one a part number, is how the wrong one gets
+		/// edited.
+		///
+		/// FormerlySerializedAs is not optional here. Unity matches serialized
+		/// data to fields by name, so a plain rename resets every value in
+		/// every prefab to the field initializer - Fighter - and this field is
+		/// live on all 1,237 bays with six values in use, on 330 of which
+		/// OverrideUnitClassRating is set and this number is what the bay
+		/// compares against. That reset would be silent: no missing-reference
+		/// error, no warning, just 330 slots quietly rating every ship as a
+		/// fighter and accepting or refusing the wrong components.
+		///
+		/// It is genuinely a maximum. IsComponentCorrectRating does
+		/// `num <= maxHullType` against this value, so it bounds the top of the
+		/// range the component declares.
+		/// </remarks>
+		[FormerlySerializedAs("MaxClass")]
+		public ShipHullType MaxShipClass = ShipHullType.Fighter;
+
+		/// <summary>
+		/// The largest class of component this slot takes. Anything equal to or
+		/// below it fits; anything above is refused.
+		/// </summary>
+		/// <remarks>
+		/// Pairs with ComponentClass.ModuleClass. It is a ceiling, not a pin: a
+		/// Class8 bay takes Class1 through Class8, and a Class2 bay takes Class1
+		/// and Class2 only. A slot never accepts something bigger than itself,
+		/// which is the whole point of having a ceiling at all.
+		///
+		/// RequireExactFit is what turns a ceiling into a pin, for a slot that
+		/// is meant to hold one specific part.
+		///
+		/// Class1 by default, and Class1 is what all 141 components are, because
+		/// a new field reads as zero from every prefab that predates it and
+		/// ModuleClass.Class1 is zero. So a Class1 bay accepts every component
+		/// in the game today, exactly as before this field existed. Order of
+		/// operations matters here: label the parts first, then raise the
+		/// ceilings, or the ceilings start refusing parts nobody has named yet.
+		/// </remarks>
+		public ModuleClass Class = ModuleClass.Class1;
+
+		/// <summary>
+		/// Pin this slot to one exact size and one exact class, instead of
+		/// accepting anything at or below them.
+		/// </summary>
+		/// <remarks>
+		/// Off by default, so nothing changes until it is switched on per bay.
+		/// The loose rule - small fits big, low class fits high class - is right
+		/// for a weapon hardpoint, where a large mount carrying a light cannon is
+		/// a sensible thing to want, and wrong for a slot meant to take one
+		/// specific part, which is what this is for.
+		///
+		/// Governs size and class together because they answer the same
+		/// question - how big a part belongs in this - and a slot that is pinned
+		/// is pinned in both. Splitting them would allow a Core Internal to be
+		/// pinned by class while still quietly taking anything that fits, which
+		/// is not a pin.
+		///
+		/// Same zero-default reasoning as everything else added here: a new
+		/// field on a MonoBehaviour reads as false from every prefab that
+		/// predates it, and false is the behaviour that already ships.
+		/// </remarks>
+		public bool RequireExactFit;
 
 		public bool OverrideUnitClassRating;
 
@@ -288,17 +360,29 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 				return false;
 			}
 
-			// Size, which is the whole reason sizes exist.
+			// Size and class are the same kind of question and get the same answer, so
+			// they are checked together.
 			//
-			// One-sided on purpose: a big slot will take a small thing, a small
-			// slot will not take a big one. The strict version - requiring them
-			// to match exactly - would stop a large hardpoint carrying a small
-			// weapon, which no one designing a ship wants, and would make every
-			// ship prefab need matching sizes on every slot before it worked.
+			// Both are maxima by default. A slot takes a part of its own size or
+			// smaller, and a part of its own class or lower, never higher. A
+			// Class8 hardpoint therefore takes anything from Class1 up, which is
+			// what a big mount is for, and a Class2 bay refuses a Class5 module
+			// rather than pretending to hold it.
 			//
-			// Nothing is refused today, because everything is Small and Small
-			// fits Small. This is in place for when sizes stop being cosmetic.
-			return componentClass.Size <= Size;
+			// RequireExactFit turns both into equality, for a slot meant to take
+			// one specific part. It then refuses a smaller size as well, which is
+			// the point of it: a Core Internal set to class 5 that would accept a
+			// class 3 module is not pinned to anything.
+			//
+			// Nothing is refused today. Every bay is Small and Class1, every
+			// component is Small and Class1, and the flag is off on all 1,237
+			// bays, so both comparisons hold for everything in the game.
+			if (RequireExactFit)
+			{
+				return componentClass.Size == Size && componentClass.ModuleClass == Class;
+			}
+
+			return componentClass.Size <= Size && componentClass.ModuleClass <= Class;
 		}
 
 		public bool IsComponentCorrectRating(ComponentClass componentClass)
@@ -313,7 +397,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 			int num = (int)unitHullType;
 			if (OverrideUnitClassRating)
 			{
-				num = (int)MaxClass;
+				num = (int)MaxShipClass;
 			}
 			if (num >= minHullType)
 			{
@@ -326,7 +410,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		{
 			if (OverrideUnitClassRating)
 			{
-				return MaxClass;
+				return MaxShipClass;
 			}
 			return installedHullType;
 		}
