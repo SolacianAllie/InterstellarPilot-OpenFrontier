@@ -88,6 +88,31 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// </remarks>
 		public bool RequireExactFit;
 
+		/// <summary>
+		/// Lets this slot be emptied, even when it is a Core Internal.
+		/// </summary>
+		/// <remarks>
+		/// A Core Internal is replaced rather than sold - see
+		/// ComponentTradeScreen.SellInstalled - so it can never be left empty.
+		/// That is the right rule for a reactor or a bulkhead and the wrong one
+		/// for a drive housing: a ship with no frame shift drive fitted should
+		/// still be able to travel, and simply lose the ability to jump to a
+		/// sector of its choosing, leaving by wormhole instead.
+		///
+		/// What this flag does NOT do yet: nothing reads it except the sell
+		/// path. There is no travel rule anywhere that checks for a fitted
+		/// drive, so an empty housing currently costs a ship nothing at all -
+		/// it is only a slot that may be sold out of. It is here so the slot
+		/// can be authored now and the consequence attached later, rather than
+		/// the other way round.
+		///
+		/// Off by default, so every existing bay behaves exactly as before. Set it
+		/// per bay rather than per bay *type*, because whether a drive housing
+		/// may be empty is a decision about that particular slot on that
+		/// particular ship.
+		/// </remarks>
+		public bool AllowEmpty;
+
 		public bool OverrideUnitClassRating;
 
 		private UnitComponentHolder unitComponents;

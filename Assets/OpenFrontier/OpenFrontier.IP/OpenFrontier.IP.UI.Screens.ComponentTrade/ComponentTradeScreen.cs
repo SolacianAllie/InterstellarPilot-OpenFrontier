@@ -238,6 +238,12 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 			// plainest version of the same part, so selling a thruster leaves a
 			// thruster behind rather than an empty mount.
 			//
+			// Unless the slot says otherwise. A drive housing may be left empty:
+			// a ship with no frame shift should still be able to travel and lose
+			// only its ability to jump. Nothing enforces that yet - see
+			// ComponentBay.AllowEmpty - so right now this only means the slot can
+			// be sold out of.
+			//
 			// Routed through BuyNewComponent rather than done as two steps,
 			// because that already does exactly this: it trades the old one in
 			// without refunding, installs the new one, and takes the difference
@@ -245,7 +251,8 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 			// and debit the buy separately and show the player two entries for
 			// one action.
 			if (currentBay != null && currentBay.InstalledComponent != null
-				&& currentBay.Category == ComponentCategory.CoreInternal)
+				&& currentBay.Category == ComponentCategory.CoreInternal
+				&& !currentBay.AllowEmpty)
 			{
 				ComponentClass replacement = FindCoreInternalReplacement(currentBay);
 
@@ -577,7 +584,8 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 				// comparisons per frame for no reason.
 				bool replacementFound = true;
 
-				if (currentBay.InstalledComponent != null && currentBay.Category == ComponentCategory.CoreInternal)
+				if (currentBay.InstalledComponent != null && currentBay.Category == ComponentCategory.CoreInternal
+					&& !currentBay.AllowEmpty)
 				{
 					ComponentClass replacement = FindCoreInternalReplacement(currentBay);
 					replacementFound = (replacement != null && IsComponentAffordable(replacement));
