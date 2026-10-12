@@ -10,6 +10,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		private const int costMin = 100;
 
+		[Tooltip("How much energy this capacitor stores.")]
 		public float Capacity = 100f;
 
 		public override string GetFriendlyName()

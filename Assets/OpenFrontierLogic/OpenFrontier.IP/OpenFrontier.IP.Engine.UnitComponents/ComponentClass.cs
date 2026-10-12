@@ -5,43 +5,60 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 {
 	public class ComponentClass : MonoBehaviour
 	{
+		[Tooltip("Order components recharge in when the unit's energy is short. Lower numbers recharge first.")]
 		public int RechargePriority;
 
+		[Tooltip("The letter or symbol shown in the turret grid for a part that has no icon of its own.")]
 		public string ShortIconName;
 
+		[Tooltip("Names a specific icon sprite instead of the one derived from the component type.")]
 		public string IconSpriteNameOverride;
 
 		public const int CostRounding = 25;
 
+		[Tooltip("Whether this part can be bought at a station. Untick to make it something only the game can fit.")]
 		public bool AllowBuy = true;
 
+		[Tooltip("Base price, before any faction's buy and sell multipliers are applied to it.")]
 		public int BaseCost = 1000;
 
 		[Tooltip("The kind of slot this part fits. Matched by identity, not by category: it fits only a slot whose Bay Type is this exact asset.")]
 		public ComponentBayType ComponentBayType;
 
+		[Tooltip("Optional prefab used instead of building the component in code. Leave as None unless you have a reason.")]
 		public ComponentBase ComponentPrefab;
 
+		[Tooltip("What this part does - capacitor, engine, shield. Also decides how many of one kind a unit may carry.")]
 		public ComponentType ComponentType;
 
+		[Tooltip("Shown in the component info panel.")]
 		public string Description = string.Empty;
 
+		[Tooltip("Energy a turret draws per second while it is idle.")]
 		public float EnergyChargeRate;
 
+		[Tooltip("Lets this weapon fire in any direction, ignoring the arc its bay is set to.")]
 		public bool IgnoreFiringArc;
 
+		[Tooltip("Faction credited as the maker. Cosmetic.")]
 		public Faction Manufacturer;
 
+		[Tooltip("Hit points this part has before it is destroyed.")]
 		public float MaxHealthPoints = 50f;
 
+		[Tooltip("Largest ship class this part may be fitted to. The ship must be at or below this.")]
 		public ShipHullType MaxHullType = ShipHullType.Station;
 
+		[Tooltip("Smallest ship class this part may be fitted to. The ship must be at or above this.")]
 		public ShipHullType MinHullType = ShipHullType.Fighter;
 
+		[Tooltip("Display name. Leave empty to fall back to the asset's file name.")]
 		public string Name = string.Empty;
 
+		[Tooltip("Multiplier on the cost of repairing this part.")]
 		public float RepairCostFactor = 1f;
 
+		[Tooltip("Identifies this part class. Must be unique across the game - saves and the trade UI both look parts up by it.")]
 		public int UniqueId;
 
 		/// <summary>

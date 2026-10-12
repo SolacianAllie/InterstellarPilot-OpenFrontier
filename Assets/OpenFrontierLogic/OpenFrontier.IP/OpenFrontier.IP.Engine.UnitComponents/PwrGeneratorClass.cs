@@ -10,6 +10,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		private const int costMin = 500;
 
+		[Tooltip("Energy produced per second.")]
 		public float PowerGenRate = 100f;
 
 		public override string GetFriendlyName()

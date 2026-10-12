@@ -4,6 +4,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 {
 	public class PassengerModuleClass : ComponentClass
 	{
+		[Tooltip("How many passengers this module carries.")]
 		public int PassengerCapacity = 1;
 
 		protected override ComponentBase createComponent(GameObject target)

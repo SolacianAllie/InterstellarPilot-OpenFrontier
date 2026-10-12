@@ -10,14 +10,19 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		private const float baseCharge = 25f;
 
+		[Tooltip("Shield strength at each rating tier, weakest first.")]
 		public float[] Capacities = new float[6];
 
+		[Tooltip("Energy that one point of regenerated shield costs.")]
 		public float RegenEnergyCost = 1.5f;
 
+		[Tooltip("Scales how quickly this shield comes back after damage.")]
 		public float RegenRateMultiplier = 10f;
 
+		[Tooltip("Scales how much incoming damage the shield puts back as regeneration.")]
 		public float ShieldRestoreMultiplier = 1f;
 
+		[Tooltip("Total shield strength. Worked out from Capacities.")]
 		public float TotalCapacity = -1f;
 
 		public override string GetFriendlyName()

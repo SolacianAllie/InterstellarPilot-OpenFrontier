@@ -12,6 +12,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		private const float costMin = 750f;
 
+		[Tooltip("Thrust this engine produces.")]
 		public float EnginePower;
 
 		public static float CalculateMaxSpeed(float enginePower, float drag, float mass)
