@@ -352,6 +352,14 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 		private void RefreshBayList()
 		{
 			ComponentBay[] selectableBays = GetSelectableBays();
+
+			// Grouping is marked here rather than inside SetItems, because the
+			// order that makes it work is the one GetSelectableBays already
+			// produced - sorted by BayType.OrderInTradeUI, then name - so bays
+			// of a type are already next to each other and only the boundaries
+			// are missing.
+			BayList.SetGroupStarts(ShipComponentsHelper.GetGroupStartBays(selectableBays));
+
 			BayList.SetItems(selectableBays);
 		}
 
