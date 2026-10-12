@@ -79,7 +79,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		public ModuleRating Quality = ModuleRating.E;
 
 		/// <summary>
-		/// Which family this part belongs to, matching the bay it can go in.
+		/// Which family this part belongs to. It fits only slots of the same family.
 		/// </summary>
 		/// <remarks>
 		/// On the part as well as on the bay, because that is what makes the
@@ -89,17 +89,19 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// takes core internals" across two different bay types that both
 		/// happen to accept, say, shields.
 		///
-		/// With this on both sides, IsComponentCorrectType will refuse a part
-		/// whose category does not match its slot's - but only once BOTH have
-		/// been classified. While either side is still Legacy the check is
-		/// skipped, which is deliberate: it means a half-finished migration
-		/// keeps working. Classify the parts first and the ceilings later, and
-		/// the intermediate state is permissive; classify the bays first and
-		/// every slot on the ship silently becomes unfillable, with nothing in
-		/// the log to say why.
+		/// The comparison is exact, and Legacy is a family like any other:
+		/// legacy parts fit legacy slots and nothing else. That is deliberate
+		/// rather than convenient. The old parts are being retired rather than
+		/// migrated, so a slot given a real category takes only parts of that
+		/// category and stays visibly empty until some are built for it. An
+		/// exemption for Legacy would let old parts drift into new slots and
+		/// quietly be the thing a new bay is still full of.
 		///
-		/// Legacy by default, which is what all 141 parts and all 1,237 bays
-		/// are today, so nothing is refused until something is labelled.
+		/// The consequence to know about: setting a bay's category before
+		/// building parts for it makes that bay unfillable immediately, and
+		/// InstallBayDefaultComponent installs its InitialComponentClass
+		/// without checking compatibility at all, so a prefab left mismatched
+		/// gets its old part installed anyway and says nothing about it.
 		/// </remarks>
 		public ComponentCategory Category = ComponentCategory.Legacy;
 

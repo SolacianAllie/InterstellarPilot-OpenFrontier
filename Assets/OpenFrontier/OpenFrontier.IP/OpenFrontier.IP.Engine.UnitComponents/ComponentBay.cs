@@ -360,21 +360,23 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 				return false;
 			}
 
-			// Category, and only once both sides have been labelled.
+			// Category. Strict, with no exemption for Legacy.
 			//
-			// Legacy is not a family - it is "nobody has said yet" - so an
-			// unclassified part fits any slot and an unclassified slot takes any
-			// part. That is what keeps a half-finished migration from locking
-			// every ship in the game: label the parts first, raise the slots
-			// second, and at no point is there a moment where a Core Internal
-			// bay refuses every reactor because the reactors are still Legacy.
+			// An earlier version skipped this check while either side was still
+			// Legacy, so that a half-finished pass could not lock every ship in
+			// the game. That was the wrong instinct here: the legacy parts are
+			// being retired, not migrated, so legacy fitting only legacy is the
+			// point. A bay given a real category takes only parts of that
+			// category, and stays empty until some exist.
 			//
-			// Once both are real, a core internal takes core internals and
-			// nothing else. ComponentBayType cannot express that on its own -
-			// it says what shape the slot is, not what the hardware is for.
-			if (Category != ComponentCategory.Legacy
-				&& componentClass.Category != ComponentCategory.Legacy
-				&& componentClass.Category != Category)
+			// ComponentBayType cannot carry this. It says what shape the slot is
+			// - an engine mount, a shield mount - not what the hardware is for,
+			// and it cannot express a rule that spans two bay types both of
+			// which happen to accept, say, shields.
+			//
+			// Nothing in the game is refused today: all 1,237 bays and all 141
+			// components are Legacy.
+			if (componentClass.Category != Category)
 			{
 				return false;
 			}
