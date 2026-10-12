@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &1394592244126084429
+--- !u!1 &1739195384762867814
 GameObject:
   serializedVersion: 6
   m_ObjectHideFlags: 0
@@ -8,22 +8,22 @@ GameObject:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Component:
-  - component: {fileID: 887191816691820400}
-  - component: {fileID: 1335829970014256837}
+  - component: {fileID: 1802248105267921050}
+  - component: {fileID: 1843960855070322887}
   m_Layer: 0
-  m_Name: 5C Passenger Cabin
+  m_Name: 6B Passenger Cabin
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &887191816691820400
+--- !u!4 &1802248105267921050
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1394592244126084429}
+  m_GameObject: {fileID: 1739195384762867814}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -32,13 +32,13 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
---- !u!114 &1335829970014256837
+--- !u!114 &1843960855070322887
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1394592244126084429}
+  m_GameObject: {fileID: 1739195384762867814}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6812fe1a489abc5b2469373a6a7b7c00, type: 3}
@@ -48,21 +48,21 @@ MonoBehaviour:
   ShortIconName:
   IconSpriteNameOverride:
   AllowBuy: 1
-  BaseCost: 340526
+  BaseCost: 4849930
   ComponentBayType: {fileID: 114724804207875695, guid: c1b21e01754e8aa840f768627e814198, type: 2}
   ComponentPrefab: {fileID: 0}
   ComponentType: {fileID: 114724804207875695, guid: 7b1178ff451caab4d947cfe42fc53429, type: 2}
-  Description: First cabin. Carries 6 passengers. Mass 20.00 T.
+  Description: Luxury cabin. Carries 8 passengers. Mass 40.00 T.
   EnergyChargeRate: 0
   IgnoreFiringArc: 0
   Manufacturer: {fileID: 0}
   MaxHealthPoints: 50
   MaxHullType: 64
   MinHullType: 0
-  Name: 5C Passenger Cabin
+  Name: 6B Passenger Cabin
   RepairCostFactor: 1
-  UniqueId: 200152
-  Category: 2
-  Class: 4
-  Quality: 2
-  PassengerCapacity: 6
+  UniqueId: 200155
+  Category: 3
+  Class: 5
+  Quality: 3
+  PassengerCapacity: 8
