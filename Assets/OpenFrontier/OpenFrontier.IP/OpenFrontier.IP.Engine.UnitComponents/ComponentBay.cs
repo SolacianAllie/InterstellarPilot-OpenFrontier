@@ -244,6 +244,25 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 			return false;
 		}
 
+		/// <summary>
+		/// Draws this slot's size, and what it can shoot.
+		/// </summary>
+		/// <remarks>
+		/// Here rather than on the turret component because here is where the
+		/// numbers are: WeaponArc and Size are both ComponentBay fields, and
+		/// this is the object you select to change them. Gizmos only draw for
+		/// the selected object, so hanging the arc off the turret meant that
+		/// selecting a bay - the thing you are actually editing - showed
+		/// nothing at all.
+		///
+		/// Drawn on a prefab as well as in a game, since a ship is edited as a
+		/// prefab and has no installed component until it is instantiated.
+		/// </remarks>
+		private void OnDrawGizmosSelected()
+		{
+			ComponentGizmos.DrawBay(this);
+		}
+
 		public bool IsComponentCorrectType(ComponentClass componentClass)
 		{
 			if (componentClass.ComponentBayType != BayType)

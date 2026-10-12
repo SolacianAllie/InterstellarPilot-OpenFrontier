@@ -462,37 +462,16 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// turns the scene view into a bowl of orange, and this is for editing
 		/// one component at a time.
 		/// </remarks>
+		/// <summary>
+		/// Draws the same thing the bay does, so selecting either works.
+		/// </summary>
+		/// <remarks>
+		/// Drawing it twice is free when both are not selected, which is
+		/// almost always, and neither is worth guarding.
+		/// </remarks>
 		private void OnDrawGizmosSelected()
 		{
-			if (Bay == null || TurretClass == null)
-			{
-				return;
-			}
-
-			Vector3 centre = transform.position;
-			Vector3 forward = Bay.transform != null ? Bay.transform.forward : transform.forward;
-
-			// A turret whose class ignores the arc can shoot in any direction
-			// at all, so drawing a wedge would claim a limit it does not have.
-			if (!TurretClass.IgnoreFiringArc)
-			{
-				ComponentGizmos.DrawFiringArc(
-					centre, forward, Bay.WeaponArc.y, TurretClass.MaxFiringRange);
-			}
-
-			float max = TurretClass.MaxFiringRange;
-			float min = TurretClass.MinFiringRange;
-
-			ComponentGizmos.DrawRangeRing(centre, max, new Color(1f, 0.6f, 0.15f, 0.5f));
-
-			// The dead zone inside MinFiringRange is real - the engine refuses
-			// anything closer - and it is the number most likely to be changed
-			// by accident.
-			if (min > 0f)
-			{
-				ComponentGizmos.DrawRangeRing(
-					centre, min, new Color(1f, 0.25f, 0.25f, 0.7f));
-			}
+			ComponentGizmos.DrawBay(Bay);
 		}
 
 		public void UpdateAutoFire(float elapsedTime)

@@ -27,6 +27,113 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 	public static class ComponentGizmos
 	{
 		/// <summary>
+		/// Draws everything worth seeing about a slot: its size, and the arc
+		/// and reach of whatever is in it.
+		/// </summary>
+		/// <remarks>
+		/// On the bay rather than the turret, because the bay is where the
+		/// editable numbers live - WeaponArc and Size are both ComponentBay
+		/// fields - and because a bay is what you select when you want to
+		/// change them. Gizmos are per selected object, so a drawing hung off
+		/// the turret component only appears when the turret is selected, and
+		/// nobody selects the turret when the thing they are changing is the
+		/// slot it sits in.
+		///
+		/// Works on a prefab as well as a live ship: a ship being edited has
+		/// no installed component yet, only the one it would start with, so
+		/// both are looked at.
+		/// </remarks>
+		public static void DrawBay(ComponentBay bay)
+		{
+			if (bay == null)
+			{
+				return;
+			}
+
+			DrawBaySize(bay);
+
+			// What the slot would hold, or does hold. Same thing on a prefab.
+			ComponentClass componentClass = bay.InstalledComponentClass != null
+				? bay.InstalledComponentClass
+				: bay.InitialComponentClass;
+
+			if (componentClass == null)
+			{
+				return;
+			}
+
+			// Only weapons have an arc and a range; a capacitor bay has
+			// neither, and drawing a wedge for one would claim a limit it
+			// does not have.
+			TurretClass turretClass = componentClass as TurretClass;
+
+			if (turretClass == null)
+			{
+				return;
+			}
+
+			if (!componentClass.IgnoreFiringArc)
+			{
+				DrawFiringArc(
+					bay.transform.position,
+					bay.transform.forward,
+					bay.WeaponArc.y,
+					turretClass.MaxFiringRange);
+			}
+
+			DrawRangeRing(
+				bay.transform.position, turretClass.MaxFiringRange,
+				new Color(1f, 0.6f, 0.15f, 0.5f));
+
+			if (turretClass.MinFiringRange > 0f)
+			{
+				DrawRangeRing(
+					bay.transform.position, turretClass.MinFiringRange,
+					new Color(1f, 0.25f, 0.25f, 0.7f));
+			}
+		}
+
+		/// <summary>
+		/// Draws a slot's size, so slots can be told apart at a glance.
+		/// </summary>
+		/// <remarks>
+		/// Gizmos carry no text, so the only way to say which size a slot is
+		/// is to make bigger slots visibly bigger. One unit per size, so the
+		/// four are told apart from each other rather than from the arc, which
+		/// is drawn much larger and is about a different thing.
+		///
+		/// Deliberately small and drawn in cool colours: this is the size, and
+		/// the arc is orange. Two things about a slot that are easy to confuse
+		/// is one too many.
+		/// </remarks>
+		private static void DrawBaySize(ComponentBay bay)
+		{
+			int size = (int)bay.Size + 1;
+
+			Gizmos.color = ColourForSize(bay.Size);
+			Gizmos.DrawWireCube(bay.transform.position, Vector3.one * size * 0.4f);
+		}
+
+		/// <summary>A colour per size, so they are told apart without a label.</summary>
+		private static Color ColourForSize(HardpointSize size)
+		{
+			switch (size)
+			{
+				case HardpointSize.Medium:
+					return new Color(0.4f, 0.85f, 1f, 0.9f);
+
+				case HardpointSize.Large:
+					return new Color(0.6f, 0.6f, 1f, 0.9f);
+
+				case HardpointSize.Huge:
+					return new Color(0.85f, 0.5f, 1f, 0.95f);
+
+				default:
+					return new Color(0.5f, 1f, 0.75f, 0.9f);
+			}
+		}
+
+		/// <summary>
 		/// Draws the wedge a turret can actually shoot into.
 		/// </summary>
 		/// <param name="centre">Where the turret is.</param>
