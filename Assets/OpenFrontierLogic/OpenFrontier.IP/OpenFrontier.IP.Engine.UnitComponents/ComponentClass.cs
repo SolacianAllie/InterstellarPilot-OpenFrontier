@@ -17,6 +17,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		public int BaseCost = 1000;
 
+		[Tooltip("The kind of slot this part fits. Matched by identity, not by category: it fits only a slot whose Bay Type is this exact asset.")]
 		public ComponentBayType ComponentBayType;
 
 		public ComponentBase ComponentPrefab;
@@ -52,6 +53,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// class a 250-unit shield belongs in is a balance decision and there are
 		/// 141 of them to decide.
 		/// </remarks>
+		[Tooltip("This part's class. A slot takes a part of its own class or lower, unless Require Exact Fit is on and they must match.")]
 		public ModuleClass Class = ModuleClass.Class1;
 
 		/// <summary>
@@ -65,6 +67,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// quality, and having one field say ModuleRating and the other say
 		/// nothing was going to read as two separate scales.
 		/// </remarks>
+		[Tooltip("How well made this is, E being the plainest through to A. Descriptive only - nothing refuses a part because of its quality yet.")]
 		public ModuleRating Quality = ModuleRating.E;
 
 		/// <summary>
@@ -92,6 +95,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// without checking compatibility at all, so a prefab left mismatched
 		/// gets its old part installed anyway and says nothing about it.
 		/// </remarks>
+		[Tooltip("Which family this part belongs to. It fits only slots of the same category, so a LEGACY part fits LEGACY slots and nothing else.")]
 		public ComponentCategory Category = ComponentCategory.Legacy;
 
 		public bool CanChangeUserPowered => ComponentType.CanSetUserPower;

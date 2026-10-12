@@ -8,6 +8,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		public bool UseCustomBayNames;
 
+		[Tooltip("Which kind of slot this is. Append-only - stored as a number, so inserting a value in the middle silently changes every existing one.")]
 		public BayType BayType = BayType.Turret;
 
 		public string FriendlyName;

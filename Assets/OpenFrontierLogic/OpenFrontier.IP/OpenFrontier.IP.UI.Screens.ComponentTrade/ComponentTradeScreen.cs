@@ -58,6 +58,7 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 		/// list is then built exactly as it was, all bays, which is what the
 		/// editor wants anyway.
 		/// </remarks>
+		[Tooltip("Chooses which family of hardware the bay list shows. LEGACY is every slot not yet classified, and is what the list opens on.")]
 		public TMP_Dropdown CategoryDropdown;
 
 		/// <summary>

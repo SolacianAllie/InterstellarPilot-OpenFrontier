@@ -9,8 +9,10 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		private bool hasInit;
 
+		[Tooltip("Must be unique within this unit: saves store per-slot state by this number, and a duplicate resolves silently to the first match.")]
 		public int Id = -1;
 
+		[Tooltip("Fitted when the unit is created, with no compatibility check - one that does not fit this slot is fitted anyway, silently.")]
 		public ComponentClass InitialComponentClass;
 
 		private ComponentBase installedComponent;
@@ -41,6 +43,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// range the component declares.
 		/// </remarks>
 		[FormerlySerializedAs("MaxClass")]
+		[Tooltip("The ship class this slot assumes, used only when Override Unit Class Rating is ticked. Ignored otherwise.")]
 		public ShipHullType MaxShipClass = ShipHullType.Fighter;
 
 		/// <summary>
@@ -63,6 +66,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// operations matters here: label the parts first, then raise the
 		/// ceilings, or the ceilings start refusing parts nobody has named yet.
 		/// </remarks>
+		[Tooltip("The highest class of module this slot takes: a Class5 slot fits Class1 to Class5 and refuses anything above.")]
 		public ModuleClass Class = ModuleClass.Class1;
 
 		/// <summary>
@@ -86,6 +90,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// field on a MonoBehaviour reads as false from every prefab that
 		/// predates it, and false is the behaviour that already ships.
 		/// </remarks>
+		[Tooltip("Pin this slot to one exact class instead of anything at or below it. For a slot meant to hold one specific part.")]
 		public bool RequireExactFit;
 
 		/// <summary>
@@ -111,6 +116,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// may be empty is a decision about that particular slot on that
 		/// particular ship.
 		/// </remarks>
+		[Tooltip("Lets this Core Internal slot be emptied. For a drive housing - a ship with no frame shift can still travel, it just cannot jump.")]
 		public bool AllowEmpty;
 
 		public bool OverrideUnitClassRating;
@@ -135,6 +141,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// the trade screen opens on a category that shows all of them. See
 		/// ComponentCategory for why zero is a named value rather than the first family.
 		/// </remarks>
+		[Tooltip("Which family this slot is. The trade screen groups by this, and a slot only accepts parts of the same category. LEGACY is anything not yet classified.")]
 		public ComponentCategory Category = ComponentCategory.Legacy;
 
 		public ComponentClass InstalledComponentClass
