@@ -50,7 +50,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 				return;
 			}
 
-			DrawBaySize(bay);
+			DrawBayClass(bay);
 
 			// What the slot would hold, or does hold. Same thing on a prefab.
 			ComponentClass componentClass = bay.InstalledComponentClass != null
@@ -163,50 +163,59 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// </remarks>
 		private static void DrawEmptyHardpoint(ComponentBay bay)
 		{
-			int size = (int)bay.Size + 1;
+			int scale = (int)bay.Class + 1;
 
 			Gizmos.color = new Color(1f, 0.25f, 0.25f, 0.95f);
-			Gizmos.DrawWireSphere(bay.transform.position, size * 0.35f);
+			Gizmos.DrawWireSphere(bay.transform.position, scale * 0.25f);
 		}
 
 		/// <summary>
-		/// Draws a slot's size, so slots can be told apart at a glance.
+		/// Draws a slot's class, so slots can be told apart at a glance.
 		/// </summary>
 		/// <remarks>
-		/// Gizmos carry no text, so the only way to say which size a slot is
-		/// is to make bigger slots visibly bigger. One unit per size, so the
-		/// four are told apart from each other rather than from the arc, which
-		/// is drawn much larger and is about a different thing.
+		/// Gizmos carry no text, so the only way to say what class a slot is
+		/// is to make higher classes visibly bigger and a different colour.
 		///
-		/// Deliberately small and drawn in cool colours: this is the size, and
+		/// This used to draw a size, which meant two numbers describing the
+		/// same thing - a bay's size and its class were both ceilings that
+		/// refused the same parts, so a mismatched pair made a slot unfillable
+		/// for reasons that could not be seen. Class subsumes it, at twice the
+		/// resolution, and this now shows the one number that actually decides
+		/// what fits.
+		///
+		/// Deliberately small and drawn in cool colours: this is the class, and
 		/// the arc is orange. Two things about a slot that are easy to confuse
 		/// is one too many.
 		/// </remarks>
-		private static void DrawBaySize(ComponentBay bay)
+		private static void DrawBayClass(ComponentBay bay)
 		{
-			int size = (int)bay.Size + 1;
+			int scale = (int)bay.Class + 1;
 
-			Gizmos.color = ColourForSize(bay.Size);
-			Gizmos.DrawWireCube(bay.transform.position, Vector3.one * size * 0.4f);
+			Gizmos.color = ColourForClass(bay.Class);
+			Gizmos.DrawWireCube(bay.transform.position, Vector3.one * scale * 0.25f);
 		}
 
-		/// <summary>A colour per size, so they are told apart without a label.</summary>
-		private static Color ColourForSize(HardpointSize size)
+		/// <summary>
+		/// A colour per class, green through magenta, so the eight are told
+		/// apart without a label.
+		/// </summary>
+		/// <remarks>
+		/// Interpolated across the hue rather than eight hand-picked colours, so
+		/// the ramp cannot be edited out of order and a ninth class would still
+		/// land sensibly. Four hand-picked colours is what this replaced; eight
+		/// was always going to need this.
+		/// </remarks>
+		private static Color ColourForClass(ModuleClass moduleClass)
 		{
-			switch (size)
-			{
-				case HardpointSize.Medium:
-					return new Color(0.4f, 0.85f, 1f, 0.9f);
+			const int HighestClass = 7;
 
-				case HardpointSize.Large:
-					return new Color(0.6f, 0.6f, 1f, 0.9f);
+			int index = Mathf.Clamp((int)moduleClass, 0, HighestClass);
+			float hue = Mathf.Lerp(0.33f, 0.85f, index / (float)HighestClass);
 
-				case HardpointSize.Huge:
-					return new Color(0.85f, 0.5f, 1f, 0.95f);
+			Color colour = Color.HSVToRGB(hue, 0.65f, 1f);
+			colour.a = 0.9f;
 
-				default:
-					return new Color(0.5f, 1f, 0.75f, 0.9f);
-			}
+			return colour;
 		}
 
 		/// <summary>

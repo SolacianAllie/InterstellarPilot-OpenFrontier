@@ -95,27 +95,13 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		public Vector3 WeaponArc = new Vector3(0f, 90f, 0f);
 
 		/// <summary>
-		/// How big this slot is. A component that does not fit will not install.
-		/// </summary>
-		/// <remarks>
-		/// On the bay rather than on the bay *type*, deliberately: a ship has
-		/// small hardpoints and large ones at the same time, which is the entire
-		/// point of having sizes. Putting it on ComponentBayType would give
-		/// every turret slot on every ship the same size.
-		///
-		/// Small by default, so every existing ship is unchanged until
-		/// something is deliberately made bigger.
-		/// </remarks>
-		public HardpointSize Size = HardpointSize.Small;
-
-		/// <summary>
 		/// Which family of hardware this slot is: weapon, ship system, or a
 		/// mount. Decides what may go in it and what the trade screen groups it
 		/// under.
 		/// </summary>
 		/// <remarks>
-		/// On the bay rather than on the bay type, for the same reason Size is:
-		/// a ship can have weapon slots and system slots at once, and two ships
+		/// On the bay rather than on the bay type: a ship can have weapon slots
+		/// and system slots at once, and two ships
 		/// of the same class can disagree about what a given slot is for. The
 		/// bay type says what the slot IS - shield, engine - and this says what
 		/// the rules around it are.
@@ -381,29 +367,25 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 				return false;
 			}
 
-			// Size and class are the same kind of question and get the same answer, so
-			// they are checked together.
+			// Class is a ceiling by default: a slot takes a part of its own
+			// class or lower, never higher. A Class8 hardpoint therefore takes
+			// anything from Class1 up, which is what a big mount is for, and a
+			// Class2 bay refuses a Class5 module rather than pretending to hold
+			// it.
 			//
-			// Both are maxima by default. A slot takes a part of its own size or
-			// smaller, and a part of its own class or lower, never higher. A
-			// Class8 hardpoint therefore takes anything from Class1 up, which is
-			// what a big mount is for, and a Class2 bay refuses a Class5 module
-			// rather than pretending to hold it.
-			//
-			// RequireExactFit turns both into equality, for a slot meant to take
-			// one specific part. It then refuses a smaller size as well, which is
+			// RequireExactFit turns that into equality, for a slot meant to take
+			// one specific part. It then refuses a lower class as well, which is
 			// the point of it: a Core Internal set to class 5 that would accept a
 			// class 3 module is not pinned to anything.
 			//
-			// Nothing is refused today. Every bay is Small and Class1, every
-			// component is Small and Class1, and the flag is off on all 1,237
-			// bays, so both comparisons hold for everything in the game.
+			// Nothing is refused today. Every bay is Class1, every component is
+			// Class1, and the flag is off on all 1,237 bays.
 			if (RequireExactFit)
 			{
-				return componentClass.Size == Size && componentClass.Class == Class;
+				return componentClass.Class == Class;
 			}
 
-			return componentClass.Size <= Size && componentClass.Class <= Class;
+			return componentClass.Class <= Class;
 		}
 
 		public bool IsComponentCorrectRating(ComponentClass componentClass)

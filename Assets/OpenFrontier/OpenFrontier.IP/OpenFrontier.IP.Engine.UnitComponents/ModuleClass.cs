@@ -8,8 +8,9 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 	/// capacitors, generators, shields, engines, drives. Class 1 is the
 	/// smallest and class 8 the largest.
 	///
-	/// Starts at zero for the same reason <see cref="HardpointSize"/> does, so
-	/// every existing component reads as class 1 without being touched.
+	/// Starts at zero so every existing component reads as class 1 without being
+	/// touched. That mattered most while Size still existed as a second ceiling
+	/// beside this one; now class is the only size axis there is.
 	///
 	/// Not enforced yet. Nothing refuses a class 8 module because it went into
 	/// a class 2 slot, and that is deliberate: the numbers that would decide
