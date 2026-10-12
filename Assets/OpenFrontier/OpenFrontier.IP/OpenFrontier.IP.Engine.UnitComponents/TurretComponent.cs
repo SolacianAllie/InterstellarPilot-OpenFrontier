@@ -438,6 +438,63 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 			return Mathf.Abs(Geometry.WrapDegreesForBearing(Quaternion.LookRotation(direction, Vector3.up).eulerAngles.y)) <= Bay.WeaponArc.y / 2f;
 		}
 
+		/// <summary>
+		/// Draws the arc this turret can shoot into, and how far it reaches.
+		/// </summary>
+		/// <remarks>
+		/// WeaponArc.y is a number in an inspector and nothing else, and it
+		/// decides whether this turret can ever hit anything. There was no way
+		/// to see it, so editing one was guesswork and a wrong value was
+		/// invisible until the turret sat there refusing to fire.
+		///
+		/// The bay's own forward is the centre of the arc, not the ship's,
+		/// because that is what the test measures against - so a bay rotated
+		/// to face aft draws its arc aft, which is the single most confusing
+		/// thing to get wrong here and the reason it is drawn from Bay rather
+		/// than from Unit.
+		///
+		/// The wedge is horizontal. That is not a simplification: the test
+		/// wraps the direction's Y bearing and compares it to the arc, with no
+		/// pitch anywhere in it, so a vertical cone would show a constraint the
+		/// game does not have.
+		///
+		/// Selected-only. Every component on every ship drawing its own arc
+		/// turns the scene view into a bowl of orange, and this is for editing
+		/// one component at a time.
+		/// </remarks>
+		private void OnDrawGizmosSelected()
+		{
+			if (Bay == null || TurretClass == null)
+			{
+				return;
+			}
+
+			Vector3 centre = transform.position;
+			Vector3 forward = Bay.transform != null ? Bay.transform.forward : transform.forward;
+
+			// A turret whose class ignores the arc can shoot in any direction
+			// at all, so drawing a wedge would claim a limit it does not have.
+			if (!TurretClass.IgnoreFiringArc)
+			{
+				ComponentGizmos.DrawFiringArc(
+					centre, forward, Bay.WeaponArc.y, TurretClass.MaxFiringRange);
+			}
+
+			float max = TurretClass.MaxFiringRange;
+			float min = TurretClass.MinFiringRange;
+
+			ComponentGizmos.DrawRangeRing(centre, max, new Color(1f, 0.6f, 0.15f, 0.5f));
+
+			// The dead zone inside MinFiringRange is real - the engine refuses
+			// anything closer - and it is the number most likely to be changed
+			// by accident.
+			if (min > 0f)
+			{
+				ComponentGizmos.DrawRangeRing(
+					centre, min, new Color(1f, 0.25f, 0.25f, 0.7f));
+			}
+		}
+
 		public void UpdateAutoFire(float elapsedTime)
 		{
 			if (autoTurret == null)
