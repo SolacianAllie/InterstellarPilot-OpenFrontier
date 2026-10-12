@@ -1,8 +1,9 @@
 namespace OpenFrontier.IP.Engine.UnitComponents
 {
 	/// <summary>
-	/// Which family of hardware a bay belongs to, and so what may be fitted
-	/// to it and what happens when that thing is taken back out.
+	/// Which family of hardware this is - a slot, or a part that fits one -
+	/// and so what may be fitted to it and what happens when that is taken
+	/// back out.
 	/// </summary>
 	/// <remarks>
 	/// The four families are meant to be answers to different questions, which
@@ -33,7 +34,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 	/// classify is visible rather than hidden. When it reaches zero this can
 	/// go, along with the option in the dropdown.
 	/// </remarks>
-	public enum BayTier
+	public enum ComponentCategory
 	{
 		/// <summary>
 		/// Not classified yet. What every bay in the game is today.

@@ -31,13 +31,13 @@ namespace OpenFrontier.IP.UI.Screens
 		/// Order inside the family is the one GetUnitVisibleBays produced, so
 		/// like things still sit together.
 		/// </remarks>
-		public static List<ComponentBay> GetBaysOfTier(IEnumerable<ComponentBay> orderedBays, BayTier tier)
+		public static List<ComponentBay> GetBaysOfCategory(IEnumerable<ComponentBay> orderedBays, ComponentCategory category)
 		{
 			List<ComponentBay> bays = new List<ComponentBay>();
 
 			foreach (ComponentBay bay in orderedBays)
 			{
-				if (bay != null && bay.Tier == tier)
+				if (bay != null && bay.Category == category)
 				{
 					bays.Add(bay);
 				}

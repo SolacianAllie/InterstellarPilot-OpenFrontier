@@ -48,7 +48,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// below it fits; anything above is refused.
 		/// </summary>
 		/// <remarks>
-		/// Pairs with ComponentClass.ModuleClass. It is a ceiling, not a pin: a
+		/// Pairs with ComponentClass.Class. It is a ceiling, not a pin: a
 		/// Class8 bay takes Class1 through Class8, and a Class2 bay takes Class1
 		/// and Class2 only. A slot never accepts something bigger than itself,
 		/// which is the whole point of having a ceiling at all.
@@ -122,9 +122,9 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		///
 		/// Legacy by default, so every existing bay lands somewhere real and
 		/// the trade screen opens on a category that shows all of them. See
-		/// BayTier for why zero is a named value rather than the first family.
+		/// ComponentCategory for why zero is a named value rather than the first family.
 		/// </remarks>
-		public BayTier Tier = BayTier.Legacy;
+		public ComponentCategory Category = ComponentCategory.Legacy;
 
 		public ComponentClass InstalledComponentClass
 		{
@@ -360,6 +360,25 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 				return false;
 			}
 
+			// Category, and only once both sides have been labelled.
+			//
+			// Legacy is not a family - it is "nobody has said yet" - so an
+			// unclassified part fits any slot and an unclassified slot takes any
+			// part. That is what keeps a half-finished migration from locking
+			// every ship in the game: label the parts first, raise the slots
+			// second, and at no point is there a moment where a Core Internal
+			// bay refuses every reactor because the reactors are still Legacy.
+			//
+			// Once both are real, a core internal takes core internals and
+			// nothing else. ComponentBayType cannot express that on its own -
+			// it says what shape the slot is, not what the hardware is for.
+			if (Category != ComponentCategory.Legacy
+				&& componentClass.Category != ComponentCategory.Legacy
+				&& componentClass.Category != Category)
+			{
+				return false;
+			}
+
 			// Size and class are the same kind of question and get the same answer, so
 			// they are checked together.
 			//
@@ -379,10 +398,10 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 			// bays, so both comparisons hold for everything in the game.
 			if (RequireExactFit)
 			{
-				return componentClass.Size == Size && componentClass.ModuleClass == Class;
+				return componentClass.Size == Size && componentClass.Class == Class;
 			}
 
-			return componentClass.Size <= Size && componentClass.ModuleClass <= Class;
+			return componentClass.Size <= Size && componentClass.Class <= Class;
 		}
 
 		public bool IsComponentCorrectRating(ComponentClass componentClass)
