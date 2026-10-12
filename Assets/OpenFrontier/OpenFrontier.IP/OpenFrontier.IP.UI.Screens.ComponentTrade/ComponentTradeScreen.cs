@@ -343,11 +343,47 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 
 			foreach (BayTier tier in System.Enum.GetValues(typeof(BayTier)))
 			{
-				options.Add(new TMP_Dropdown.OptionData(ShipComponentsHelper.GetBayTierLabel(tier)));
+				options.Add(new TMP_Dropdown.OptionData(BayTierLabel(tier)));
 			}
 
 			BayTierDropdown.AddOptions(options);
 			BayTierDropdown.value = (int)selectedBayTier;
+		}
+
+		/// <summary>
+		/// What a family is called in the dropdown.
+		/// </summary>
+		/// <remarks>
+		/// Spelled out by hand because the enum names are not words:
+		/// "OptionalInternal" is not something a player reads, and "UtilityMount"
+		/// reads as a file format.
+		///
+		/// The dropdown is the only label now. An earlier version also put a
+		/// heading in the list saying the same thing, which said it twice and
+		/// took a row to do it.
+		/// </remarks>
+		private static string BayTierLabel(BayTier tier)
+		{
+			switch (tier)
+			{
+				case BayTier.Legacy:
+					return "LEGACY";
+
+				case BayTier.Hardpoint:
+					return "Hardpoints";
+
+				case BayTier.CoreInternal:
+					return "Core Internals";
+
+				case BayTier.OptionalInternal:
+					return "Optional Internals";
+
+				case BayTier.UtilityMount:
+					return "Utility Mounts";
+
+				default:
+					return tier.ToString();
+			}
 		}
 
 		/// <summary>
@@ -371,29 +407,9 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 			AutoSelectBayIfNull();
 		}
 
-		private void BayList_SelectedItemChanged(ScrollList<object> sender, object oldItem, object newItem)
+		private void BayList_SelectedItemChanged(ScrollList<ComponentBay> sender, ComponentBay oldItem, ComponentBay newItem)
 		{
-			// The list holds headings as well as bays. A heading is not a bay,
-			// so this is the one place the cast can come back empty, and what it
-			// gets instead of a bay is nothing.
-			//
-			// It is reachable and not just theoretically: ScrollList's
-			// TrySelectFirstItem takes activeItems[0], and the first row of a
-			// filtered list is a heading. Its toggle is made
-			// non-interactable so a pointer cannot get here, but a
-			// programmatic selection still can.
-			ComponentBay bay = newItem as ComponentBay;
-			CurrentBay = bay;
-
-			if (bay == null)
-			{
-				// Move to a real bay rather than sitting on a heading with the
-				// details panel empty and the right-hand list showing the last
-				// bay's contents.
-				AutoSelectNextBay();
-				return;
-			}
-
+			CurrentBay = newItem;
 			RefreshCurrentBayInfo();
 			AvailableComponentsList.Refresh();
 			AvailableComponentsList.ResetScrollPosition();
@@ -447,13 +463,9 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 
 		private void RefreshBayList()
 		{
-			// The list holds one of two things per row - a bay, or a heading
-			// above a run of bays of the same type - so it is built rather than
-			// passed straight through. The order it needs is the one
-			// GetSelectableBays already produced, and the tier is a hard
-			// filter: the dropdown chooses what is on screen rather than
-			// rearranging it.
-			BayList.SetItems(ShipComponentsHelper.BuildBayListItems(GetSelectableBays(), selectedBayTier));
+			// The dropdown chooses which family is on screen; the order inside
+			// it is the one GetSelectableBays already produced.
+			BayList.SetItems(ShipComponentsHelper.GetBaysOfTier(GetSelectableBays(), selectedBayTier));
 		}
 
 		private void RefreshCurrentBayInfo()
