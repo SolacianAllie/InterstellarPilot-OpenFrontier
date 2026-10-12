@@ -343,7 +343,7 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 
 			foreach (BayTier tier in System.Enum.GetValues(typeof(BayTier)))
 			{
-				options.Add(new TMP_Dropdown.OptionData(BayTierLabel(tier)));
+				options.Add(new TMP_Dropdown.OptionData(ShipComponentsHelper.GetBayTierLabel(tier)));
 			}
 
 			BayTierDropdown.AddOptions(options);
@@ -351,37 +351,13 @@ namespace OpenFrontier.IP.UI.Screens.ComponentTrade
 		}
 
 		/// <summary>
-		/// What a tier is called in the dropdown.
+		/// What a tier is called, in the dropdown and in the heading alike.
 		/// </summary>
 		/// <remarks>
-		/// On purpose, because "OptionalInternal" is not a word and
-		/// "UtilityMount" reads as a file format. Spaced and pluralised to match
-		/// how the rest of this UI labels things.
+		/// One function for both, deliberately. A heading that said "CORE
+		/// INTERNALS" under a dropdown that said "CoreInternal" would be two
+		/// spellings of one thing, and the second would drift.
 		/// </remarks>
-		private static string BayTierLabel(BayTier tier)
-		{
-			switch (tier)
-			{
-				case BayTier.Legacy:
-					return "LEGACY";
-
-				case BayTier.Hardpoint:
-					return "Hardpoints";
-
-				case BayTier.CoreInternal:
-					return "Core Internals";
-
-				case BayTier.OptionalInternal:
-					return "Optional Internals";
-
-				case BayTier.UtilityMount:
-					return "Utility Mounts";
-
-				default:
-					return tier.ToString();
-			}
-		}
-
 		private void BayTierDropdown_Changed(int index)
 		{
 			System.Array tiers = System.Enum.GetValues(typeof(BayTier));
