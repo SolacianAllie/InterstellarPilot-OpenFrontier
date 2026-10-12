@@ -28,7 +28,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 			{
 				num -= capacitor.NormalizedDamage * Engine.GameSettings.ComponentDamageEffectSettings.DamagedCapacitorChargeMaxAffect * num;
 			}
-			capacitor.Charge += num;
+			capacitor.Charge += num * UnitComponents.SystemsPowerMultiplier;
 		}
 
 		protected override void onAttachedToUnit(UnitComponentHolder unit)

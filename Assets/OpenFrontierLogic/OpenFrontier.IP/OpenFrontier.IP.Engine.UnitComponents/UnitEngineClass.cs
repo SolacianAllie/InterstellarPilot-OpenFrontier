@@ -41,7 +41,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		public float GetCurrentMaxSpeed(Unit unit)
 		{
-			return EnginePower / unit.UnitClass.Drag / unit.Mass;
+			return EnginePower / unit.UnitClass.Drag / unit.Mass * unit.Components.EnginesPowerMultiplier;
 		}
 
 		public float GetDefaultMaxSpeed(UnitClass unitClass)

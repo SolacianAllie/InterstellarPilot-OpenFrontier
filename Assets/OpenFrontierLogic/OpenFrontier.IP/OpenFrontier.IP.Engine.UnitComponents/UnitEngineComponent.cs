@@ -54,7 +54,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 			{
 				num *= 1f - normalizedDamage * Engine.GameSettings.ComponentDamageEffectSettings.DamagedEngineMaxPowerDrawEffect;
 			}
-			return num / unit.UnitClass.Drag / unit.Mass;
+			return num / unit.UnitClass.Drag / unit.Mass * unit.Components.EnginesPowerMultiplier;
 		}
 
 		public float CalculateRelativeForceAndReduceCapacitor(bool reduceChargeEnergy, float deltaTime)

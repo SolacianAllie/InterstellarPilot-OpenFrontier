@@ -327,7 +327,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		{
 			if (!isCharged && CanChargeTurret())
 			{
-				chargeTurret(elapsedTime);
+				chargeTurret(elapsedTime * UnitComponents.WeaponsPowerMultiplier);
 			}
 		}
 

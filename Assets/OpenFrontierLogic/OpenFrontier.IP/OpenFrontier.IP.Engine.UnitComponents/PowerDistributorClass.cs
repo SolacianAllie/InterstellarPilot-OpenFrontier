@@ -23,9 +23,9 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 
 		protected override ComponentBase createComponent(GameObject target)
 		{
-			CoreInternalComponent coreInternalComponent = target.AddComponent<CoreInternalComponent>();
-			coreInternalComponent.ModuleClass = this;
-			return coreInternalComponent;
+			PowerDistributorComponent powerDistributorComponent = target.AddComponent<PowerDistributorComponent>();
+			powerDistributorComponent.PowerDistributorClass = this;
+			return powerDistributorComponent;
 		}
 	}
 }

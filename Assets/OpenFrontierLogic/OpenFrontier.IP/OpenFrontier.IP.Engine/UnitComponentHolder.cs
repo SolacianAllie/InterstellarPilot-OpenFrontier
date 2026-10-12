@@ -457,6 +457,25 @@ namespace OpenFrontier.IP.Engine
 		public List<ComponentBay> Bays => bays;
 
 		/// <summary>
+		/// The fitted power distributor, or null on a ship that has none.
+		/// </summary>
+		/// <remarks>
+		/// Every ship in the legacy game has no distributor at all, so the three
+		/// multipliers below are exactly 1.0 for every existing ship and none of
+		/// this reaches the current game until a new-system ship is fitted.
+		/// </remarks>
+		public PowerDistributorComponent PowerDistributor { get; set; }
+
+		public float SystemsPowerMultiplier =>
+			PowerDistributor != null ? PowerDistributor.SystemsMultiplier : 1f;
+
+		public float EnginesPowerMultiplier =>
+			PowerDistributor != null ? PowerDistributor.EnginesMultiplier : 1f;
+
+		public float WeaponsPowerMultiplier =>
+			PowerDistributor != null ? PowerDistributor.WeaponsMultiplier : 1f;
+
+		/// <summary>
 		/// Sums the mass of everything fitted and hands it to the unit.
 		/// </summary>
 		/// <remarks>
