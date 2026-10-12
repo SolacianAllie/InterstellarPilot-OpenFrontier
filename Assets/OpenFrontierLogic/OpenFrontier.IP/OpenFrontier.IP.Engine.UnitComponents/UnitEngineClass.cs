@@ -15,6 +15,15 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		[Tooltip("Thrust this engine produces.")]
 		public float EnginePower;
 
+		[Tooltip("Energy drawn per second while these thrusters are online.")]
+		public float PowerDraw;
+
+		[Tooltip("Ship mass these thrusters are tuned for. Heavier than this and they are sluggish.")]
+		public float OptimalMass;
+
+		[Tooltip("Heaviest ship these thrusters can still move. Past this they cannot get the ship out of a slow crawl.")]
+		public float MaximumMass;
+
 		public static float CalculateMaxSpeed(float enginePower, float drag, float mass)
 		{
 			return enginePower / drag / mass;

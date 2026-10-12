@@ -13,6 +13,9 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		[Tooltip("Energy produced per second.")]
 		public float PowerGenRate = 100f;
 
+		[Tooltip("Fraction of the energy produced that survives as heat. Lower is a cooler, more efficient plant.")]
+		public float HeatEfficiency = 1f;
+
 		public override string GetFriendlyName()
 		{
 			return $"Generator {PowerGenRate:N2}";
