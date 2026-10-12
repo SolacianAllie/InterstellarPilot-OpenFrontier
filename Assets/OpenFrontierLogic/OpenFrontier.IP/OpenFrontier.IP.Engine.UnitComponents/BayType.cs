@@ -61,6 +61,15 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		EnvironmentControl = 17,
 		PowerCoupling = 18,
 		SensorSuite = 19,
-		FuelStore = 20
+		FuelStore = 20,
+
+		/// <summary>
+		/// A bay for passenger cabins, which is a compartment the Elite
+		/// Dangerous reference does not have - there, life support is what
+		/// carries passengers. Ours keeps the two apart because Environment
+		/// Control is the life support compartment, and a bay only accepts a
+		/// component whose Category matches exactly.
+		/// </summary>
+		PassengerCabin = 21
 	}
 }

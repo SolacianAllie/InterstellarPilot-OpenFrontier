@@ -49,7 +49,7 @@ MonoBehaviour:
   IconSpriteNameOverride:
   AllowBuy: 1
   BaseCost: 4849930
-  ComponentBayType: {fileID: 114724804207875695, guid: c1b21e01754e8aa840f768627e814198, type: 2}
+  ComponentBayType: {fileID: 114724804207875695, guid: e3de96c3f9684ea88eb86262fe8b222b, type: 2}
   ComponentPrefab: {fileID: 0}
   ComponentType: {fileID: 114724804207875695, guid: 7b1178ff451caab4d947cfe42fc53429, type: 2}
   Description: Luxury cabin. Carries 8 passengers. Mass 40.00 T.
