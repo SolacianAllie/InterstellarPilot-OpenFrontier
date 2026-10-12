@@ -327,6 +327,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 			gameObject.transform.localPosition = Vector3.zero;
 			gameObject.transform.localRotation = Quaternion.identity;
 			component.Init(this);
+			unitComponents?.RecalculateComponentMass();
 			return component;
 		}
 
@@ -464,6 +465,11 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 				}
 				InstalledComponent = null;
 			}
+
+			// InstalledComponent is cleared above even though the GameObject
+			// survives until the end of the frame, so the weight is right now
+			// rather than next frame.
+			unitComponents?.RecalculateComponentMass();
 		}
 
 		private void OnDestroy()

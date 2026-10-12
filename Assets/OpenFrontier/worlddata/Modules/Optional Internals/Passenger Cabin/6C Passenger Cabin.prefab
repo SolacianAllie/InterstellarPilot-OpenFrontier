@@ -57,6 +57,7 @@ MonoBehaviour:
   IgnoreFiringArc: 0
   Manufacturer: {fileID: 0}
   MaxHealthPoints: 50
+  Mass: 40
   MaxHullType: 64
   MinHullType: 0
   Name: 6C Passenger Cabin

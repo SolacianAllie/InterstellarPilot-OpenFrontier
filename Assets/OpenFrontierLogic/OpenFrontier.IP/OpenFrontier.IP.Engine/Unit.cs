@@ -26,6 +26,14 @@ namespace OpenFrontier.IP.Engine
 
 		public float Mass = 1f;
 
+		/// <summary>
+		/// This unit's mass before any component mass is added. Only meaningful
+		/// once hasBareMass is set; until then Mass is still the bare value.
+		/// </summary>
+		private float bareMass;
+
+		private bool hasBareMass;
+
 		private float detectionRadius;
 
 		internal float LastTimeEnteredWormhole = -100f;
@@ -1319,6 +1327,39 @@ namespace OpenFrontier.IP.Engine
 			{
 				rBody.mass = Mass;
 			}
+		}
+
+		/// <summary>
+		/// Adds the mass of the components fitted to this unit onto its own.
+		/// </summary>
+		/// <remarks>
+		/// Called when components change, not every frame - the component list
+		/// is what changed.
+		///
+		/// The bare Mass value is left alone until something actually carries
+		/// mass, and the bare value is remembered on first use. That matters
+		/// because Mass is a serialized field: it comes from the ship prefab and
+		/// from saves, and there is no component mass anywhere in the game
+		/// today. A ship that has only ever held legacy parts never enters this
+		/// code, so its mass cannot drift. A ship that has held a weighted part
+		/// keeps its original value underneath and goes back to it if the part
+		/// is sold.
+		/// </remarks>
+		public void ApplyComponentMass(float totalComponentMass)
+		{
+			if (!hasBareMass)
+			{
+				if (totalComponentMass <= 0f)
+				{
+					return;
+				}
+
+				bareMass = Mass;
+				hasBareMass = true;
+			}
+
+			Mass = bareMass + totalComponentMass;
+			ResetMass();
 		}
 
 		public float GetMass()

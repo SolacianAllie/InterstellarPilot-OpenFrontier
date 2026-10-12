@@ -46,6 +46,9 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		[Tooltip("Hit points this part has before it is destroyed.")]
 		public float MaxHealthPoints = 50f;
 
+		[Tooltip("Tonnage this part adds to its ship. Speed and acceleration are both divided by total mass, so a heavy part makes the whole ship slower. Zero on every legacy part, which is why fitting one changes nothing.")]
+		public float Mass;
+
 		[Tooltip("Largest ship class this part may be fitted to. The ship must be at or below this.")]
 		public ShipHullType MaxHullType = ShipHullType.Station;
 

@@ -456,6 +456,41 @@ namespace OpenFrontier.IP.Engine
 
 		public List<ComponentBay> Bays => bays;
 
+		/// <summary>
+		/// Sums the mass of everything fitted and hands it to the unit.
+		/// </summary>
+		/// <remarks>
+		/// Iterates the bays rather than unitComponents. Destroying a component
+		/// nulls the bay's InstalledComponent immediately, but the GameObject
+		/// lives until the end of the frame, so a destroyed part would still be
+		/// in the component list and the ship would weigh too much for that
+		/// frame.
+		///
+		/// Mass is a field on ComponentClass and defaults to zero, so the 137
+		/// legacy parts add nothing and a legacy ship is left untouched. There
+		/// is no category test here on purpose - the value decides, not the
+		/// classification.
+		/// </remarks>
+		public void RecalculateComponentMass()
+		{
+			float total = 0f;
+
+			for (int i = 0; i < bays.Count; i++)
+			{
+				ComponentClass installed = bays[i].InstalledComponentClass;
+
+				if (installed != null)
+				{
+					total += installed.Mass;
+				}
+			}
+
+			if (unit != null)
+			{
+				unit.ApplyComponentMass(total);
+			}
+		}
+
 		public int ShipNameId => shipNameId;
 
 		public ActiveUnitComponents ActiveUnitComponents

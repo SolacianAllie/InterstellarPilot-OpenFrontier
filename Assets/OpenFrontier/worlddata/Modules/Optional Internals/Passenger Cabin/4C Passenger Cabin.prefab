@@ -57,6 +57,7 @@ MonoBehaviour:
   IgnoreFiringArc: 0
   Manufacturer: {fileID: 0}
   MaxHealthPoints: 50
+  Mass: 10
   MaxHullType: 64
   MinHullType: 0
   Name: 4C Passenger Cabin
