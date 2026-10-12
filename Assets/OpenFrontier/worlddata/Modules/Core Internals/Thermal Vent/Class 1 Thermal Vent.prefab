@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &855111611366499635
+GameObject:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Component:
+  - component: {fileID: 866543035056355239}
+  - component: {fileID: 446296660694120657}
+  m_Layer: 0
+  m_Name: Class 1 Thermal Vent
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!4 &866543035056355239
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 855111611366499635}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.15278625, y: -2.2562943, z: 11.142189}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &446296660694120657
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 855111611366499635}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ebbbf22c52344d3e811f96972365daf5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  RechargePriority: 0
+  ShortIconName: I
+  IconSpriteNameOverride: laser_1
+  AllowBuy: 0
+  BaseCost: 1064
+  ComponentBayType: {fileID: 114724804207875695, guid: 1156b54e1e6c4cd19cf41a95030cf888, type: 2}
+  ComponentPrefab: {fileID: 0}
+  ComponentType: {fileID: 114724804207875695, guid: 3b67429389e644f4979acf41b0c98979, type: 2}
+  Description: Hull equipment. Sheds 1.33 heat per second, scaled by the Systems pips.
+  EnergyChargeRate: 1.05
+  IgnoreFiringArc: 0
+  Manufacturer: {fileID: 0}
+  MaxHealthPoints: 40
+  MaxHullType: 64
+  MinHullType: 0
+  Name: Class 1 Thermal Vent
+  RepairCostFactor: 1
+  VentRate: 1.33
+  Mass: 2.5
+  UniqueId: 310000
+  Category: 2
+  Class: 0
+  Quality: 0
+  ImpactPrefabs:
+  - {fileID: 198724804207875695, guid: ea3150e13250dc0469a7faa97a55232d, type: 2}
+  - {fileID: 198724804207875695, guid: 0bedcd0412764f34ea0d6cf9dcbd8675, type: 2}

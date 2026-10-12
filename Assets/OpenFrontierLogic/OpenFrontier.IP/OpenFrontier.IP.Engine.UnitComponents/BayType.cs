@@ -70,6 +70,18 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		/// Control is the life support compartment, and a bay only accepts a
 		/// component whose Category matches exactly.
 		/// </summary>
-		PassengerCabin = 21
+		PassengerCabin = 21,
+
+		/// <summary>
+		/// A heat vent. Ships need these to shed the heat their weapons and
+		/// engines make, and a ship that has lost them runs hot.
+		/// </summary>
+		/// <remarks>
+		/// Hidden from the trade screen so a player cannot buy or sell one -
+		/// vents are hull equipment. It stays visible in the ship components
+		/// view, because a player needs to be able to see how much venting a
+		/// ship has and whether any of it is damaged.
+		/// </remarks>
+		ThermalVent = 22
 	}
 }

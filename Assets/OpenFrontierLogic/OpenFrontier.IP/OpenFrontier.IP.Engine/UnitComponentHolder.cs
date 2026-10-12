@@ -476,6 +476,46 @@ namespace OpenFrontier.IP.Engine
 			PowerDistributor != null ? PowerDistributor.WeaponsMultiplier : 1f;
 
 		/// <summary>
+		/// How much heat per second this ship can shed, before the Systems pips
+		/// are applied.
+		/// </summary>
+		/// <remarks>
+		/// Walks the bays for the same reason RecalculateComponentMass does: a
+		/// destroyed component leaves the component list until the end of the
+		/// frame but clears its bay immediately, so a lost vent would keep
+		/// venting for a frame otherwise.
+		///
+		/// Vents sum - two of them shed twice what one does.
+		///
+		/// Nothing reads this yet, because there is no heat system. It is here
+		/// so the number exists before the thing that consumes it does, and so
+		/// that losing a vent to a lucky hit is already a loss.
+		/// </remarks>
+		public float TotalVentRate
+		{
+			get
+			{
+				float total = 0f;
+
+				for (int i = 0; i < bays.Count; i++)
+				{
+					if (bays[i].InstalledComponentClass is ThermalVentClass vent)
+					{
+						total += vent.VentRate;
+					}
+				}
+
+				return total;
+			}
+		}
+
+		/// <summary>
+		/// Total venting once the Systems pips are applied. A ship that has put
+		/// its power into engines or weapons sheds heat more slowly.
+		/// </summary>
+		public float EffectiveVentRate => TotalVentRate * SystemsPowerMultiplier;
+
+		/// <summary>
 		/// Sums the mass of everything fitted and hands it to the unit.
 		/// </summary>
 		/// <remarks>
