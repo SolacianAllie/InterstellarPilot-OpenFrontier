@@ -8,7 +8,7 @@ MonoImporter:
   - OpticalAlarm: {fileID: 8300000, guid: 57f3091b9a905fa03b94c81a7088194d, type: 3}
   - OpticalClosingIn: {fileID: 0}
   - IRAAlert: {fileID: 8300000, guid: e03e6c8f01e7e28c79b2c8ac83d718e7, type: 3}
-  - IRAArm: {fileID: 8300000, guid: 3fc0bb9cc5aba056eac914e0846bb09e, type: 3}
+  - IRAAlarm: {fileID: 8300000, guid: 3fc0bb9cc5aba056eac914e0846bb09e, type: 3}
   - IRAClosingIn: {fileID: 0}
   - SarhAlert: {fileID: 8300000, guid: 7fb1b2d74c1932821884b5d91aff31b4, type: 3}
   - SarhAlarm: {fileID: 8300000, guid: 791a2ce6a30bb5a50b2e50d1688ff39c, type: 3}
