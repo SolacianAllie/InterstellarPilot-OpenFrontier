@@ -74,6 +74,11 @@ namespace OpenFrontier.IP.UI
 
 		public AudioClip ArhClosingIn;
 
+		[Header("How loud")]
+		[Tooltip("Loudness of every warning clip, 0 to 1. The alerts stack when a salvo arrives, so they add up fast and want to sit well below full.")]
+		[Range(0f, 1f)]
+		public float Volume = 0.5f;
+
 		[Header("When to escalate")]
 		[Tooltip("Distance at which a missile counts as closing in, in metres. This is the half that actually works - see the note on ClosingInTime.")]
 		public float ClosingInDistance = 500f;
@@ -141,6 +146,7 @@ namespace OpenFrontier.IP.UI
 			source.playOnAwake = false;
 			source.loop = false;
 			source.spatialBlend = 0f;
+			source.volume = Volume;
 			return source;
 		}
 

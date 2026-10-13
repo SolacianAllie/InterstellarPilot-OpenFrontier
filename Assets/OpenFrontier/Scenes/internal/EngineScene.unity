@@ -7067,6 +7067,7 @@ MonoBehaviour:
   ArhAlert: {fileID: 8300000, guid: 8e09203d172814df189aacb8f2609fff, type: 3}
   ArhAlarm: {fileID: 8300000, guid: 791a2ce6a30bb5a50b2e50d1688ff39c, type: 3}
   ArhClosingIn: {fileID: 8300000, guid: 9b6955a6e48af18a0919149b172bd0bb, type: 3}
+  Volume: 0.5
   ClosingInDistance: 500
   ClosingInTime: 4
   AlertHoldTime: 1.5
