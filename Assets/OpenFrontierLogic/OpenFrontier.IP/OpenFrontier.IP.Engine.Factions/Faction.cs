@@ -1018,9 +1018,20 @@ namespace OpenFrontier.IP.Engine.Factions
 				// Only this side is protected. The AI side is left alone on
 				// purpose: that restraint is correct, and leaving it alone is
 				// what stops the two views fighting each other every frame.
-				if (PlayerFactions.IsPlayerFaction(UniqueId))
+				//
+				// IsPlayerFaction, the property, not PlayerFactions.IsPlayerFaction,
+				// the id-band test. The property asks "is this the faction the
+				// local player is flying", which is true of a skirmish team
+				// numbered 100000 just as much as of one numbered 900380616. The
+				// band test asks whether anybody at a keyboard owns it, which in
+				// a skirmish nobody does - so the guard never fired, the syncer
+				// went on wiping the player's own hostility every frame, and the
+				// symptom was AI fighting each other while being neutral toward
+				// the player. Exactly the shape of that bug: the only faction
+				// affected is the one the question should have been about.
+				if (IsPlayerFaction)
 				{
-					UnityEngine.Debug.Log("[DIAG] SyncNeutrality SKIPPED for player faction " + Name + "(" + UniqueId + ")");
+					UnityEngine.Debug.Log("[DIAG] SyncNeutrality SKIPPED for " + Name + "(" + UniqueId + ")");
 					SetOpinionWith(faction, opinion);
 					return;
 				}
