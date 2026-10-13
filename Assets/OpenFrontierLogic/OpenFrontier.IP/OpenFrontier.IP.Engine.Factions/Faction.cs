@@ -1002,6 +1002,8 @@ namespace OpenFrontier.IP.Engine.Factions
 			Neutrality neutralityWithInternal2 = GetNeutralityWithInternal(faction);
 			if (neutralityWithInternal != neutralityWithInternal2)
 			{
+				UnityEngine.Debug.Log("[DIAG] SyncNeutrality " + Name + "(" + UniqueId + ") was " + neutralityWithInternal2
+					+ ", adopting " + faction.Name + "'s view: " + neutralityWithInternal);
 				SetNeutralityWith(faction, neutralityWithInternal);
 			}
 			SetOpinionWith(faction, opinion);

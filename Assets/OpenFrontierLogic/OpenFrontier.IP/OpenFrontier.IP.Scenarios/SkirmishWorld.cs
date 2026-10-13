@@ -168,6 +168,10 @@ namespace OpenFrontier.IP.Scenarios
 					if (i != j)
 					{
 						activeAIFactions[i].SetAsHostileTo(activeAIFactions[j], permanentWar: true);
+						UnityEngine.Debug.Log("[DIAG] Skirmish set " + activeAIFactions[i].Name + "(" + activeAIFactions[i].UniqueId + ")"
+							+ " -> " + activeAIFactions[j].Name + "(" + activeAIFactions[j].UniqueId + ")"
+							+ " neutrality now " + activeAIFactions[i].GetNeutralityWithInternal(activeAIFactions[j])
+							+ " / reverse " + activeAIFactions[j].GetNeutralityWithInternal(activeAIFactions[i]));
 					}
 				}
 			}
