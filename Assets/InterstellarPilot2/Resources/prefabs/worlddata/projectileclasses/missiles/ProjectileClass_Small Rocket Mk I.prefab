@@ -66,6 +66,7 @@ MonoBehaviour:
   HomingLostTargetDotThreshold: 0.25
   IsHoming: 0
   IsMine: 0
+  GuidanceType: 0
   MaxMoveRange: 2000
   MiningDamageMultiplier: 0.1
   MoveSpeed: 160
