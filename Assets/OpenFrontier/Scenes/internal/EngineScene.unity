@@ -7068,6 +7068,13 @@ MonoBehaviour:
   ArhAlarm: {fileID: 8300000, guid: 791a2ce6a30bb5a50b2e50d1688ff39c, type: 3}
   ArhClosingIn: {fileID: 8300000, guid: 9b6955a6e48af18a0919149b172bd0bb, type: 3}
   Volume: 0.5
+  OpticalFlash: {r: 1, g: 1, b: 1, a: 1}
+  IRFlash: {r: 1, g: 0.85, b: 0.4, a: 1}
+  SarhFlash: {r: 1, g: 0.55, b: 0.2, a: 1}
+  ArhFlash: {r: 1, g: 0.2, b: 0.15, a: 1}
+  FlashPeak: {r: 1, g: 1, b: 1, a: 1}
+  FlashSpeedAlarm: 1.5
+  FlashSpeedClosingIn: 6
   ClosingInDistance: 500
   ClosingInTime: 4
   AlertHoldTime: 1.5

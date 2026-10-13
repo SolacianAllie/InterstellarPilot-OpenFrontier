@@ -79,6 +79,25 @@ namespace OpenFrontier.IP.UI
 		[Range(0f, 1f)]
 		public float Volume = 0.5f;
 
+		[Header("How the radar flashes")]
+		[Tooltip("Colour the missile-lock indicator pulses from, per guidance type. Ordered quietest to loudest, so a redder flash means a better-guided missile. ARH is the loudest tier and the only one that escalates, so it is the brightest.")]
+		public Color OpticalFlash = new Color(1f, 1f, 1f, 1f);
+
+		public Color IRFlash = new Color(1f, 0.85f, 0.4f, 1f);
+
+		public Color SarhFlash = new Color(1f, 0.55f, 0.2f, 1f);
+
+		public Color ArhFlash = new Color(1f, 0.2f, 0.15f, 1f);
+
+		[Tooltip("Colour it pulses to. Kept bright so the pulse reads as a flash rather than a fade to grey.")]
+		public Color FlashPeak = Color.white;
+
+		[Tooltip("Pulses per second while a missile is inbound but not yet close.")]
+		public float FlashSpeedAlarm = 1.5f;
+
+		[Tooltip("Pulses per second once an ARH is inside ClosingInDistance. Only ARH has a close-in tone, so this only ever runs for ARH.")]
+		public float FlashSpeedClosingIn = 6f;
+
 		[Header("When to escalate")]
 		[Tooltip("Distance at which a missile counts as closing in, in metres. This is the half that actually works - see the note on ClosingInTime.")]
 		public float ClosingInDistance = 500f;
@@ -132,6 +151,106 @@ namespace OpenFrontier.IP.UI
 		/// <summary>Which guidance type is sounding, and so what is threatening you.</summary>
 		public MissileGuidanceType Sounding => sounding;
 
+		/// <summary>
+		/// The sine pulse every missile-lock indicator in the HUD reads from.
+		/// </summary>
+		/// <remarks>
+		/// This is the same SpriteSineColor the compass and the lock buttons
+		/// already share, so driving it from here moves every indicator at once
+		/// and they cannot drift from what is being heard - the flash is a
+		/// readout of the same guidance type and stage that chose the clip.
+		/// Null until the HUD exists, which is why it is resolved lazily.
+		/// </remarks>
+		private SpriteSineColor HudSine
+		{
+			get
+			{
+				if (EngineASX.LoadedAndReady && EngineASX.Instance.Hud != null && EngineASX.Instance.Hud.MissileLockButtonsController != null)
+				{
+					return EngineASX.Instance.Hud.MissileLockButtonsController.SpriteSineColor;
+				}
+				return null;
+			}
+		}
+
+		private Color FlashColorFor(MissileGuidanceType type)
+		{
+			switch (type)
+			{
+				case MissileGuidanceType.IR: return IRFlash;
+				case MissileGuidanceType.SARH: return SarhFlash;
+				case MissileGuidanceType.ARH: return ArhFlash;
+				default: return OpticalFlash;
+			}
+		}
+
+		/// <summary>
+		/// Points the shared pulse at the current threat, or restores it when
+		/// nothing is inbound.
+		/// </summary>
+		private void UpdateFlash()
+		{
+			SpriteSineColor sine = HudSine;
+
+			if (sine == null)
+			{
+				return;
+			}
+
+			if (stage == WarningStage.Clear)
+			{
+				if (flashRestored)
+				{
+					return;
+				}
+
+				// Put back whatever the prefab shipped with rather than a guessed
+				// value, so the idle indicator looks exactly as it did before any
+				// of this ran.
+				sine.from = flashOriginalFrom;
+				sine.to = flashOriginalTo;
+				sine.Speed = flashOriginalSpeed;
+				flashRestored = true;
+				return;
+			}
+
+			flashRestored = false;
+			sine.from = FlashColorFor(loopGuidance);
+			sine.to = FlashPeak;
+			sine.Speed = stage == WarningStage.ClosingIn ? FlashSpeedClosingIn : FlashSpeedAlarm;
+		}
+
+		/// <summary>Captures the prefab's pulse the first time the HUD is reachable.</summary>
+		private void CaptureFlashDefaults()
+		{
+			if (flashCaptured)
+			{
+				return;
+			}
+
+			SpriteSineColor sine = HudSine;
+
+			if (sine == null)
+			{
+				return;
+			}
+
+			flashOriginalFrom = sine.from;
+			flashOriginalTo = sine.to;
+			flashOriginalSpeed = sine.Speed;
+			flashCaptured = true;
+		}
+
+		private bool flashCaptured;
+
+		private bool flashRestored = true;
+
+		private Color flashOriginalFrom;
+
+		private Color flashOriginalTo;
+
+		private float flashOriginalSpeed = 1f;
+
 		private void Awake()
 		{
 			// Two sources, which is all this needs. One for the acquire
@@ -159,6 +278,10 @@ namespace OpenFrontier.IP.UI
 		{
 			Unsubscribe();
 			GoQuiet();
+			// Update does not run while disabled, so without this the indicator
+			// would stay on the threat colour after the screen goes away.
+			CaptureFlashDefaults();
+			UpdateFlash();
 		}
 
 		/// <summary>
@@ -267,16 +390,21 @@ namespace OpenFrontier.IP.UI
 
 			if (stage == WarningStage.Clear)
 			{
+				CaptureFlashDefaults();
+				UpdateFlash();
 				return;
 			}
 
 			if (Time.time > clearAt)
 			{
 				GoQuiet();
+				CaptureFlashDefaults();
+				UpdateFlash();
 				return;
 			}
 
 			UpdateStage();
+			UpdateFlash();
 		}
 
 		/// <summary>
