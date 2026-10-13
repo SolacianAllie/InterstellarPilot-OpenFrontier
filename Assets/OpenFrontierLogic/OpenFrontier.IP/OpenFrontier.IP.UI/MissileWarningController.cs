@@ -87,6 +87,9 @@ namespace OpenFrontier.IP.UI
 		[Tooltip("How long after the last lock is released the alarm is left running, so a missile breaking off does not cut the sound dead.")]
 		public float ReleaseGraceTime = 0.5f;
 
+		[Tooltip("Shortest gap between two missile alerts, so a salvo of the same kind is announced once rather than ten times.")]
+		public float AlertRepeatTime = 0.35f;
+
 		/// <summary>The three clips for one guidance type.</summary>
 		private AudioClip[] ClipsFor(MissileGuidanceType type)
 		{
@@ -111,8 +114,12 @@ namespace OpenFrontier.IP.UI
 
 		private float clearAt;
 
-		/// <summary>The guidance type whose clips are playing.</summary>
+		/// <summary>The guidance type of the alert most recently played.</summary>
 		private MissileGuidanceType sounding = MissileGuidanceType.Optical;
+
+		/// <summary>The guidance type the loop is playing. Tracked apart from the
+		/// alert's so a change of one does not restart the other.</summary>
+		private MissileGuidanceType loopGuidance = MissileGuidanceType.Optical;
 
 		/// <summary>Which layer is currently sounding. For tests and the HUD.</summary>
 		public WarningStage Stage => stage;
@@ -190,6 +197,9 @@ namespace OpenFrontier.IP.UI
 
 		private bool subscribed;
 
+		/// <summary>When an alert last played, per any type.</summary>
+		private float lastAlertAt = float.MinValue;
+
 		private void OnGotLock(MissileLockController sender, Unit entity)
 		{
 			if (IsPlayerShip(entity))
@@ -211,17 +221,20 @@ namespace OpenFrontier.IP.UI
 			}
 
 			clearAt = float.MaxValue;
-			sounding = GuidanceOf(missile);
 
-			// One-shot over the top of whatever loop is already running, so two
-			// missiles arriving together name both rather than cutting the
-			// first one's alert off.
-			AudioClip alert = ClipsFor(sounding)[0];
+			MissileGuidanceType type = GuidanceOf(missile);
+			AudioClip alert = ClipsFor(type)[0];
 
-			if (alert != null)
+			// Rate limited per guidance type. Ten missiles of one kind arriving
+			// together is one piece of information, not ten, and AudioSource.Play
+			// restarts a busy source, so without this the tone was chopped into
+			// fragments and that is what read as the audio glitching.
+			if (alert != null && Time.time - lastAlertAt >= AlertRepeatTime)
 			{
+				sounding = type;
 				alertSource.clip = alert;
 				alertSource.Play();
+				lastAlertAt = Time.time;
 			}
 
 			alertUntil = Time.time + AlertHoldTime;
@@ -292,13 +305,12 @@ namespace OpenFrontier.IP.UI
 
 			float distance = Vector3.Distance(player.transform.position, worst.transform.position);
 
-			if (GuidanceOf(worst) != sounding)
+			if (GuidanceOf(worst) != loopGuidance)
 			{
 				// Something better-guided arrived, or the one sounding died. The
-				// loop follows it; the alert was already played per missile and
-				// is deliberately not repeated here.
-				sounding = GuidanceOf(worst);
-				PlayFor(sounding);
+				// loop follows it. The alert is deliberately not replayed: every
+				// missile already announced itself when it acquired.
+				SwitchLoop(GuidanceOf(worst));
 			}
 
 			SetStage(IsClosingIn(worst, distance)
@@ -349,26 +361,34 @@ namespace OpenFrontier.IP.UI
 				: MissileGuidanceType.Optical;
 		}
 
-		/// <summary>Swaps all three layers to one guidance type's clips.</summary>
-		private void PlayFor(MissileGuidanceType type)
+		/// <summary>Points the loop at one guidance type's clips.</summary>
+		/// <remarks>
+		/// Deliberately does not touch the alert and does not reset stage or
+		/// clearAt. It used to call GoQuiet, which cleared clearAt to 0, so the
+		/// next Update saw Time.time > 0 and silenced the loop it had just
+		/// started - and GoQuiet also killed the alert mid-tone, which is what
+		/// made a burst of missiles sound like the audio was glitching.
+		/// </remarks>
+		private void SwitchLoop(MissileGuidanceType type)
 		{
+			loopGuidance = type;
 			AudioClip[] clips = ClipsFor(type);
+			WarningStage stage = this.stage;
 
-			GoQuiet();
-			sounding = type;
+			alarmSource.Stop();
+			closingSource.Stop();
 
-			if (clips[0] != null)
+			AudioClip loop = stage == WarningStage.ClosingIn ? clips[2] : clips[1];
+
+			if (loop == null)
 			{
-				alertSource.clip = clips[0];
-				alertSource.Play();
+				return;
 			}
 
-			if (clips[1] != null)
-			{
-				alarmSource.clip = clips[1];
-				alarmSource.loop = true;
-				alarmSource.Play();
-			}
+			AudioSource source = stage == WarningStage.ClosingIn ? closingSource : alarmSource;
+			source.clip = loop;
+			source.loop = true;
+			source.Play();
 		}
 
 		/// <summary>
