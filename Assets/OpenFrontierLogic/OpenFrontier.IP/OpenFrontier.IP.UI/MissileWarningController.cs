@@ -103,23 +103,52 @@ namespace OpenFrontier.IP.UI
 
 		private void OnEnable()
 		{
-			if (EngineASX.LoadedAndReady)
-			{
-				EngineASX.Instance.MissileLockController.EntityGotMissileLock += OnGotLock;
-				EngineASX.Instance.MissileLockController.EntityLostMissleLock += OnLostLock;
-			}
+			TrySubscribe();
 		}
 
 		private void OnDisable()
 		{
-			if (EngineASX.LoadedAndReady)
-			{
-				EngineASX.Instance.MissileLockController.EntityGotMissileLock -= OnGotLock;
-				EngineASX.Instance.MissileLockController.EntityLostMissleLock -= OnLostLock;
-			}
-
+			Unsubscribe();
 			GoQuiet();
 		}
+
+		/// <summary>
+		/// Subscribes to the lock events, if the engine is up and we are not
+		/// already listening.
+		/// </summary>
+		/// <remarks>
+		/// This is retried from Update rather than being done once in OnEnable.
+		/// OnEnable runs when the GameObject becomes active, which is scene load
+		/// - and EngineASX is not ready then, so a single guarded call in
+		/// OnEnable never subscribed, the controller silently listened to
+		/// nothing, and the symptom was silence with everything wired and the
+		/// clips assigned.
+		/// </remarks>
+		private void TrySubscribe()
+		{
+			if (subscribed || !EngineASX.LoadedAndReady)
+			{
+				return;
+			}
+
+			EngineASX.Instance.MissileLockController.EntityGotMissileLock += OnGotLock;
+			EngineASX.Instance.MissileLockController.EntityLostMissleLock += OnLostLock;
+			subscribed = true;
+		}
+
+		private void Unsubscribe()
+		{
+			if (!subscribed)
+			{
+				return;
+			}
+
+			EngineASX.Instance.MissileLockController.EntityGotMissileLock -= OnGotLock;
+			EngineASX.Instance.MissileLockController.EntityLostMissleLock -= OnLostLock;
+			subscribed = false;
+		}
+
+		private bool subscribed;
 
 		private void OnGotLock(MissileLockController sender, Unit entity)
 		{
@@ -148,7 +177,14 @@ namespace OpenFrontier.IP.UI
 
 		private void Update()
 		{
-			if (!EngineASX.LoadedAndReady || stage == WarningStage.Clear)
+			if (!EngineASX.LoadedAndReady)
+			{
+				return;
+			}
+
+			TrySubscribe();
+
+			if (stage == WarningStage.Clear)
 			{
 				return;
 			}
