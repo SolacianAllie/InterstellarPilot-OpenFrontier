@@ -1002,6 +1002,29 @@ namespace OpenFrontier.IP.Engine.Factions
 			Neutrality neutralityWithInternal2 = GetNeutralityWithInternal(faction);
 			if (neutralityWithInternal != neutralityWithInternal2)
 			{
+				// Do not force symmetry when this faction belongs to a person.
+				//
+				// This exists to make a disagreement between two AI views resolve
+				// to one value, because between AI an asymmetric relation is a
+				// bug. Against a player it is the whole point: the AI
+				// deliberately declines to hold a hostile relation toward a
+				// player faction, so its view is Neutral, and copying that onto
+				// the player wiped the player's own hostility every frame. A
+				// combat mode that puts the player against AI ended up with
+				// everyone neutral - which read as the factions never having been
+				// made hostile, when SetFactionsAtWar had worked and this undid
+				// it a frame later.
+				//
+				// Only this side is protected. The AI side is left alone on
+				// purpose: that restraint is correct, and leaving it alone is
+				// what stops the two views fighting each other every frame.
+				if (PlayerFactions.IsPlayerFaction(UniqueId))
+				{
+					UnityEngine.Debug.Log("[DIAG] SyncNeutrality SKIPPED for player faction " + Name + "(" + UniqueId + ")");
+					SetOpinionWith(faction, opinion);
+					return;
+				}
+
 				UnityEngine.Debug.Log("[DIAG] SyncNeutrality " + Name + "(" + UniqueId + ") was " + neutralityWithInternal2
 					+ ", adopting " + faction.Name + "'s view: " + neutralityWithInternal);
 				SetNeutralityWith(faction, neutralityWithInternal);
