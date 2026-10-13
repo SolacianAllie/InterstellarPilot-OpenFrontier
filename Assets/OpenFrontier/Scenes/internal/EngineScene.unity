@@ -1296,8 +1296,8 @@ GameObject:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Component:
+  - component: {fileID: 237}
   - component: {fileID: 119}
-  - component: {fileID: 205}
   m_Layer: 10
   m_Name: MissileLockAudioController
   m_TagString: Untagged
@@ -6324,22 +6324,6 @@ MonoBehaviour:
   CellSize: 40
   CellsAcross: 32
   MaxColliders: 100
---- !u!114 &205
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 70}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2584a24062eb70e01b880aafd44791b7, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  missileLockAudioClip: {fileID: 8300000, guid: 5c161bae762bf92429e753b5895f9c55, type: 3}
-  MissileLockSoundMaxRepeatTime: 1.5
-  MissileLockSoundMinRepeatTime: 0.05
-  MissileLockSoundRefDist: 1000
 --- !u!114 &206
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7059,3 +7043,22 @@ MonoBehaviour:
   camUnitDistance: -1
   SpectateTarget: {fileID: 0}
   LastTimeChangedTarget: 0
+--- !u!114 &237
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 70}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6abc9f4e3d0c487da2ea67c7b4f2f002, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  AlertClip: {fileID: 0}
+  AlarmLoopClip: {fileID: 0}
+  ClosingInLoopClip: {fileID: 0}
+  ClosingInDistance: 1500
+  ClosingInTime: 4
+  AlertHoldTime: 1.5
+  ReleaseGraceTime: 0.5
