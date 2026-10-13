@@ -246,7 +246,7 @@ namespace OpenFrontier.IP.UI
 		{
 			Unit player = EngineASX.Instance.PlayerUnit;
 
-			if (player == null || !player.IsActiveInEngine || !player.IsOwnedByPlayer)
+			if (player == null || !player.IsActiveInEngine || !player.IsPlayerCurrentUnit)
 			{
 				GoQuiet();
 				return;
@@ -366,9 +366,20 @@ namespace OpenFrontier.IP.UI
 			return distance / speed <= ClosingInTime;
 		}
 
+		/// <summary>
+		/// Whether this is the ship the local player is actually flying.
+		/// </summary>
+		/// <remarks>
+		/// Not IsOwnedByPlayer, which is `faction == LocalFaction` and so is
+		/// true for every human in a multiplayer session. The lock event fires
+		/// for any unit that gets locked, so the warning was firing when an ally
+		/// was fired at, and playing that ship's missile assets - which carry no
+		/// GuidanceType and read as Optical from the enum default. That is why
+		/// every missile in the game sounded optical.
+		/// </remarks>
 		private static bool IsPlayerShip(Unit unit)
 		{
-			return unit != null && unit.IsOwnedByPlayer && unit.IsActiveInEngine;
+			return unit != null && unit.IsPlayerCurrentUnit && unit.IsActiveInEngine;
 		}
 
 		private void PlayAlert()
