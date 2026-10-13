@@ -7071,4 +7071,3 @@ MonoBehaviour:
   ClosingInTime: 4
   AlertHoldTime: 1.5
   ReleaseGraceTime: 0.5
-  AlertRepeatTime: 0.35

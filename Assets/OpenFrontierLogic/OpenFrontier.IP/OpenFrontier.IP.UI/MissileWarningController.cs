@@ -87,8 +87,6 @@ namespace OpenFrontier.IP.UI
 		[Tooltip("How long after the last lock is released the alarm is left running, so a missile breaking off does not cut the sound dead.")]
 		public float ReleaseGraceTime = 0.5f;
 
-		[Tooltip("Shortest gap between two missile alerts, so a salvo of the same kind is announced once rather than ten times.")]
-		public float AlertRepeatTime = 0.35f;
 
 		/// <summary>The three clips for one guidance type.</summary>
 		private AudioClip[] ClipsFor(MissileGuidanceType type)
@@ -197,8 +195,6 @@ namespace OpenFrontier.IP.UI
 
 		private bool subscribed;
 
-		/// <summary>When an alert last played, per any type.</summary>
-		private float lastAlertAt = float.MinValue;
 
 		private void OnGotLock(MissileLockController sender, Unit entity)
 		{
@@ -225,15 +221,13 @@ namespace OpenFrontier.IP.UI
 			MissileGuidanceType type = GuidanceOf(missile);
 			AudioClip alert = ClipsFor(type)[0];
 
-			// Rate limited per guidance type. Ten missiles of one kind arriving
-			// together is one piece of information, not ten, and AudioSource.Play
-			// restarts a busy source, so without this the tone was chopped into
-			// fragments and that is what read as the audio glitching.
-			if (alert != null && Time.time - lastAlertAt >= AlertRepeatTime)
+			// Every missile announces itself. PlayOneShot does not restart a busy
+			// source, so a salvo overlaps instead of chopping one tone into
+			// fragments - which is why no rate limit is needed here any more.
+			if (alert != null)
 			{
 				sounding = type;
 				acquireSource.PlayOneShot(alert);
-				lastAlertAt = Time.time;
 			}
 
 			alertUntil = Time.time + AlertHoldTime;
