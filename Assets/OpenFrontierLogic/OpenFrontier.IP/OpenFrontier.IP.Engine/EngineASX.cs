@@ -1766,54 +1766,6 @@ namespace OpenFrontier.IP.Engine
 			return true;
 		}
 
-		public bool ReassignFactionId(Faction faction, int newId)
-		{
-			if (faction == null)
-			{
-				return false;
-			}
-
-			if (factionIdMap.ContainsKey(newId))
-			{
-				return false;
-			}
-
-			// The old id goes first so the same faction can be re-keyed onto a
-			// number it already holds.
-			factionIdMap.Remove(faction.UniqueId);
-
-			faction.UniqueId = newId;
-			factionIdMap[newId] = faction;
-
-			// The counter is deliberately NOT advanced past the new number.
-			//
-			// It used to be, to stop the new id being handed out again. That
-			// is unnecessary: GetUniqueFactionId already walks forward while
-			// ContainsFactionById is true, and this faction is now in the map
-			// under its new id, so that scan cannot return it.
-			//
-			// It was also very harmful. The ids multiplayer moves factions to
-			// live in a reserved band near 900,000,000, so advancing the
-			// counter to just past one of them placed every faction the world
-			// generator went on to create inside that same band - the band
-			// that is meant to identify things a player made. The player's
-			// faction adopter runs at startup in every singleplayer game, so
-			// this was not a corner case: it was the ordinary path, and
-			// IsPlayerMade answered true for ordinary AI factions from then
-			// on. The corrupted counter was written into every save and read
-			// back on load, so it survived a restart too.
-			//
-			// The counter's only job is to avoid handing out an id that is
-			// already taken, and the map is what tells it. Moving a faction
-			// does not change how many factions exist.
-			//
-			// Nor can this collide by going the other way. A faction id below
-			// the counter is unreachable, because nothing walks the counter
-			// backwards, and a reassignment is refused outright when the new
-			// id is already in the map.
-			return true;
-		}
-
 		public CargoClass GetCargoClassById(int id)
 		{
 			CargoClass value = null;
