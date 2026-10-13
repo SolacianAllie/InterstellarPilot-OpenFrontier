@@ -408,7 +408,20 @@ namespace OpenFrontier.IP.UI
 				return;
 			}
 
-			UpdateStage();
+			try
+			{
+				UpdateStage();
+			}
+			catch (System.Exception e)
+			{
+				// Nothing in here may be allowed to strand a looping sound. A
+				// throw used to abort the stage update before it reached
+				// GoQuiet, which left the alarm playing forever with no way to
+				// stop it short of quitting the scene.
+				Debug.LogException(e, this);
+				GoQuiet();
+			}
+
 			UpdateFlash();
 		}
 
@@ -509,9 +522,29 @@ namespace OpenFrontier.IP.UI
 			float worstDist = 0f;
 			var type = MissileGuidanceType.Optical;
 
-			foreach (Missile missile in EngineASX.Instance.MissileLockController.GetMissileLocks(player))
+			if (player == null || !EngineASX.LoadedAndReady || EngineASX.Instance.MissileLockController == null)
 			{
-				if (missile == null || missile.IsDisrupted)
+				return null;
+			}
+
+			// GetMissileLocks returns null, not an empty list, when nothing is
+			// locked on. Iterating it directly threw a NullReferenceException
+			// every frame from Update, which meant the release check below was
+			// never reached, GoQuiet was never called, and the alarm loop ran on
+			// after death or a ship change - the very thing it was written to
+			// prevent.
+			List<Missile> locks = EngineASX.Instance.MissileLockController.GetMissileLocks(player);
+
+			if (locks == null)
+			{
+				return null;
+			}
+
+			foreach (Missile missile in locks)
+			{
+				// A lock can outlive the missile it points at for a frame, while
+				// the object is being destroyed.
+				if (missile == null || missile.IsDisrupted || missile.transform == null || player.transform == null)
 				{
 					continue;
 				}
