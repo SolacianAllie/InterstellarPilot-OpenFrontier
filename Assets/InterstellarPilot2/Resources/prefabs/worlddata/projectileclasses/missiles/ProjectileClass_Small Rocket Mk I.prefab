@@ -67,7 +67,7 @@ MonoBehaviour:
   IsHoming: 0
   IsMine: 0
   GuidanceType: 0
-  MaxMoveRange: 2000
+  MaxMoveRange: 4000
   MiningDamageMultiplier: 0.1
   MoveSpeed: 160
   ParentExplosionToTarget: 0
@@ -75,7 +75,7 @@ MonoBehaviour:
   RotateTowardsTarget: 1
   SetDamageUsingEnergyCost: 0
   ShieldDamageType: 0
-  ThrustPower: 160
+  ThrustPower: 200
   MinThrust: 0.8
   TimedDestruction: 1
   TimedExplosionInaccuracy: 8

@@ -44,8 +44,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b6b4adad8116709bc780106eed9f715, type: 3}
   m_Name:
   m_EditorClassIdentifier:
-  EffectiveFiringRangeStationery: 10000
-  EffectiveFiringRangeAgainstMobile: 10000
+  EffectiveFiringRangeStationery: 12000
+  EffectiveFiringRangeAgainstMobile: 12000
   IsWeapon: 1
   Name: LS1 Test Missile
   IsConventionalWeapon: 1
@@ -67,7 +67,7 @@ MonoBehaviour:
   IsHoming: 1
   IsMine: 0
   GuidanceType: 0
-  MaxMoveRange: 1500
+  MaxMoveRange: 12000
   MiningDamageMultiplier: 0.1
   MoveSpeed: 0
   ParentExplosionToTarget: 0
@@ -75,7 +75,7 @@ MonoBehaviour:
   RotateTowardsTarget: 0
   SetDamageUsingEnergyCost: 0
   ShieldDamageType: 0
-  ThrustPower: 120
+  ThrustPower: 320
   MinThrust: 0.2
   TimedDestruction: 0
   TimedExplosionInaccuracy: 8
@@ -83,7 +83,7 @@ MonoBehaviour:
   InheritParentVelocity: 1
   InheritParentVelocityMultiplier: 1
   InaccuracyMultiplier: 1
-  MissileIntelligentGuidanceMaxDist: 200
+  MissileIntelligentGuidanceMaxDist: 1500
   MissileIntelligentGuidance: 1
   MinTimeBeforeGuidanceActivation: 1
   MaxTimeBeforeGuidanceActivation: 2
