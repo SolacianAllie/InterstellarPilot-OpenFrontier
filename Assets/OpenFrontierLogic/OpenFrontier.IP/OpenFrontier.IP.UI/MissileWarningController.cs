@@ -102,11 +102,13 @@ namespace OpenFrontier.IP.UI
 			}
 		}
 
-		private AudioSource alertSource;
+		/// <summary>One-shots. PlayOneShot, so several can overlap and none of
+		/// them cuts another off.</summary>
+		private AudioSource acquireSource;
 
-		private AudioSource alarmSource;
-
-		private AudioSource closingSource;
+		/// <summary>The one loop. The alarm and the close-in tone are mutually
+		/// exclusive, so they swap the clip rather than each needing a source.</summary>
+		private AudioSource loopSource;
 
 		private WarningStage stage = WarningStage.Clear;
 
@@ -129,12 +131,10 @@ namespace OpenFrontier.IP.UI
 
 		private void Awake()
 		{
-			// Three sources on one GameObject. PlayOneShot on a shared camera
-			// source would work for one-shots and cannot overlap loops, which is
-			// the entire point of having layers.
-			alertSource = AddSource("MissileAlert");
-			alarmSource = AddSource("MissileAlarm");
-			closingSource = AddSource("MissileClosingIn");
+			// Two sources, which is all this needs. One for the acquire
+			// one-shots, one for whichever loop is currently running.
+			acquireSource = AddSource("MissileAcquire");
+			loopSource = AddSource("MissileLoop");
 		}
 
 		private AudioSource AddSource(string name)
@@ -232,8 +232,7 @@ namespace OpenFrontier.IP.UI
 			if (alert != null && Time.time - lastAlertAt >= AlertRepeatTime)
 			{
 				sounding = type;
-				alertSource.clip = alert;
-				alertSource.Play();
+				acquireSource.PlayOneShot(alert);
 				lastAlertAt = Time.time;
 			}
 
@@ -372,23 +371,17 @@ namespace OpenFrontier.IP.UI
 		private void SwitchLoop(MissileGuidanceType type)
 		{
 			loopGuidance = type;
-			AudioClip[] clips = ClipsFor(type);
-			WarningStage stage = this.stage;
 
-			alarmSource.Stop();
-			closingSource.Stop();
+			loopSource.Stop();
 
-			AudioClip loop = stage == WarningStage.ClosingIn ? clips[2] : clips[1];
+			AudioClip loop = ClipsFor(type)[stage == WarningStage.ClosingIn ? 2 : 1];
 
-			if (loop == null)
+			if (loop != null)
 			{
-				return;
+				loopSource.clip = loop;
+				loopSource.loop = true;
+				loopSource.Play();
 			}
-
-			AudioSource source = stage == WarningStage.ClosingIn ? closingSource : alarmSource;
-			source.clip = loop;
-			source.loop = true;
-			source.Play();
 		}
 
 		/// <summary>
@@ -443,8 +436,7 @@ namespace OpenFrontier.IP.UI
 
 			if (alert != null)
 			{
-				alertSource.clip = alert;
-				alertSource.Play();
+				acquireSource.PlayOneShot(alert);
 			}
 		}
 
@@ -469,29 +461,15 @@ namespace OpenFrontier.IP.UI
 
 		private void StartLoop(WarningStage next)
 		{
-			AudioClip[] clips = ClipsFor(sounding);
+			AudioClip loop = ClipsFor(loopGuidance)[next == WarningStage.ClosingIn ? 2 : 1];
 
-			if (next == WarningStage.ClosingIn)
+			loopSource.Stop();
+
+			if (loop != null)
 			{
-				alarmSource.Stop();
-
-				if (clips[2] != null)
-				{
-					closingSource.clip = clips[2];
-					closingSource.loop = true;
-					closingSource.Play();
-				}
-			}
-			else if (clips[1] != null)
-			{
-				closingSource.Stop();
-
-				if (!alarmSource.isPlaying)
-				{
-					alarmSource.clip = clips[1];
-					alarmSource.loop = true;
-					alarmSource.Play();
-				}
+				loopSource.clip = loop;
+				loopSource.loop = true;
+				loopSource.Play();
 			}
 		}
 
@@ -500,9 +478,8 @@ namespace OpenFrontier.IP.UI
 			stage = WarningStage.Clear;
 			alertUntil = 0f;
 			clearAt = 0f;
-			alarmSource.Stop();
-			closingSource.Stop();
-			alertSource.Stop();
+			loopSource.Stop();
+			acquireSource.Stop();
 		}
 	}
 }
