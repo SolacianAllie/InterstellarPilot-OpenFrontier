@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using OpenFrontier.IP.Engine;
 using OpenFrontier.IP.Engine.UnitComponents;
 using UnityEngine;
@@ -383,6 +384,10 @@ namespace OpenFrontier.IP.UI
 		{
 			if (!EngineASX.LoadedAndReady)
 			{
+				// The engine going away means the session is over - which is what
+				// death does. Every cleanup path is below this line, so returning
+				// here left the tone looping forever with nothing left to stop it.
+				GoQuiet();
 				return;
 			}
 
@@ -424,6 +429,19 @@ namespace OpenFrontier.IP.UI
 
 			if (worst == null)
 			{
+				// Nothing is actually tracking us. Release the alarm ourselves
+				// rather than waiting to be told, because we are not always
+				// told: RemoveMissileLocks drops a unit's locks when it is
+				// destroyed without firing EntityLostMissleLock, so dying or
+				// switching ships left clearAt at MaxValue and the alarm ran on
+				// forever. The lock list is the authority, not the event.
+				List<Missile> locks = EngineASX.Instance.MissileLockController.GetMissileLocks(player);
+
+				if ((locks == null || locks.Count == 0) && clearAt == float.MaxValue)
+				{
+					clearAt = Time.time + ReleaseGraceTime;
+				}
+
 				// locked but not yet tracking, or briefly out of the lookup.
 				// Hold the alarm rather than dropping to silence and back.
 				SetStage(WarningStage.Alarm);
