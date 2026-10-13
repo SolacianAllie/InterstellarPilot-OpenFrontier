@@ -3,9 +3,12 @@ guid: 6abc9f4e3d0c487da2ea67c7b4f2f002
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - AlertClip: {fileID: 8300000, guid: e03e6c8f01e7e28c79b2c8ac83d718e7, type: 3}
+  - AlarmLoopClip: {fileID: 8300000, guid: 3fc0bb9cc5aba056eac914e0846bb09e, type: 3}
+  - ClosingInLoopClip: {fileID: 8300000, guid: 9b6955a6e48af18a0919149b172bd0bb, type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
-  userData:
-  assetBundleName:
-  assetBundleVariant:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

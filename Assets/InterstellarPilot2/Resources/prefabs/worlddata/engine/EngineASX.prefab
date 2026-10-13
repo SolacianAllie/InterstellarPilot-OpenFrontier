@@ -6599,7 +6599,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1722951815217645}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2584a24062eb70e01b880aafd44791b7, type: 3}
   m_Name:
@@ -6667,3 +6667,22 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   CustomWaypointPrefab: {fileID: 114724804207875695, guid: bcb3c415fa9b28b45b276af764cfba57, type: 2}
   MissionWaypointPrefab: {fileID: 114724804207875695, guid: 2dfe99aaead02ec468f9d6c20044c2fc, type: 2}
+--- !u!114 &1
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1722951815217645}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6abc9f4e3d0c487da2ea67c7b4f2f002, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  AlertClip: {fileID: 0}
+  AlarmLoopClip: {fileID: 0}
+  ClosingInLoopClip: {fileID: 0}
+  ClosingInDistance: 1500
+  ClosingInTime: 4
+  AlertHoldTime: 1.5
+  ReleaseGraceTime: 0.5

@@ -1,5 +1,4 @@
 using OpenFrontier.IP.Engine;
-using OpenFrontier.IP.Engine.UnitComponents;
 using UnityEngine;
 
 namespace OpenFrontier.IP.UI
@@ -124,7 +123,7 @@ namespace OpenFrontier.IP.UI
 
 		private void OnGotLock(MissileLockController sender, Unit entity)
 		{
-			if (!IsPlayerShip(entity) || !IsNewSystemThreat(entity))
+			if (!IsPlayerShip(entity))
 			{
 				return;
 			}
@@ -223,34 +222,6 @@ namespace OpenFrontier.IP.UI
 		private static bool IsPlayerShip(Unit unit)
 		{
 			return unit != null && unit.IsOwnedByPlayer && unit.IsActiveInEngine;
-		}
-
-		/// <summary>
-		/// Whether this ship carries at least one new-system weapon, which is
-		/// what opts it into the new warning.
-		/// </summary>
-		private static bool IsNewSystemThreat(Unit unit)
-		{
-			// The lock event carries the locked unit and not the missile, so
-			// this asks the launcher instead. A ship with no new-system weapons
-			/// at all keeps the old cue.
-			if (unit.Components == null)
-			{
-				return false;
-			}
-
-			foreach (ComponentBase component in unit.Components.UnitComponents)
-			{
-				ComponentClass componentClass = component.ComponentClass;
-
-				if (componentClass != null
-					&& componentClass.Category != ComponentCategory.Legacy)
-				{
-					return true;
-				}
-			}
-
-			return false;
 		}
 
 		private void PlayAlert()
