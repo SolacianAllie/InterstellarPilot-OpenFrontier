@@ -2556,18 +2556,7 @@ namespace OpenFrontier.IP.Engine
 				{
 					return AttitudeNeutralColor;
 				}
-				// Either side being at war is enough to draw it as a war.
-				//
-				// The relation is a view held by each faction and the two can
-				// disagree: a faction that has declared war on you does not
-				// thereby become hostile in your view of it, and the AI side
-				// declines to hold a hostile relation toward a player faction at
-				// all. Asking only in the given direction therefore drew a war
-				// the player is fighting as neutral - the compass brackets, the
-				// sector map and the faction list all read cyan while the ships
-				// on screen were shooting at each other.
-				if (faction1.IsHostileToOrAlwaysHostileTo(faction2)
-					|| faction2.IsHostileToOrAlwaysHostileTo(faction1))
+				if (faction1.IsHostileToOrAlwaysHostileTo(faction2))
 				{
 					return HostilityColor;
 				}
@@ -4007,7 +3996,6 @@ namespace OpenFrontier.IP.Engine
 				if (localPlayer.Faction != null)
 				{
 					factionNeutralitySyncer.SyncFor(localPlayer.Faction);
-					ReportPlayerHostility(localPlayer.Faction);
 				}
 			}
 			if (IsPlayerPilot && activeSector != LocalUnitSector)
@@ -4076,42 +4064,6 @@ namespace OpenFrontier.IP.Engine
 			if (localRootUnit != null && localRootUnit.UnitType == UnitType.Ship && !localRootUnit.IsOwnedByPlayer)
 			{
 				instance.LocalFaction.Intel.DiscoverUnit(localRootUnit);
-			}
-		}
-
-		private float diagHostilityAt;
-
-		/// <summary>
-		/// DIAG only. Once a second, for ten seconds, say who the player's
-		/// faction is and is not hostile to, with the fields that decide it.
-		/// </summary>
-		private void ReportPlayerHostility(Faction mine)
-		{
-			float now = Time.time;
-
-			if (now < diagHostilityAt || now > diagHostilityAt + 10f)
-			{
-				return;
-			}
-
-			diagHostilityAt = now + 1f;
-			UnityEngine.Debug.Log("[DIAG] t+" + now.ToString("F0") + " " + mine.Name + "(" + mine.UniqueId + ") relations:");
-
-			foreach (FactionAttitude att in mine.Relations)
-			{
-				if (att == null || att.TargetFaction == null)
-				{
-					continue;
-				}
-
-				UnityEngine.Debug.Log("[DIAG]   vs " + att.TargetFaction.Name + "(" + att.TargetFaction.UniqueId + ")"
-					+ " neutrality=" + att.Neutrality
-					+ " hostile=" + mine.IsHostileTo(att.TargetFaction)
-					+ " theirView=" + att.TargetFaction.GetNeutralityWithInternal(mine)
-					+ " restricted=" + att.RestrictHostilityTimeout
-					+ " endTime=" + att.HostilityEndTime.ToString("F1")
-					+ " scenarioNow=" + ScenarioElapsedTime.ToString("F1")
-					+ " theyArePlayer=" + PlayerFactions.IsPlayerFaction(att.TargetFaction.UniqueId));
 			}
 		}
 

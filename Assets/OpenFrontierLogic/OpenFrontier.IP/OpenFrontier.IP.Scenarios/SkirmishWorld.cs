@@ -81,7 +81,6 @@ namespace OpenFrontier.IP.Scenarios
 			}
 			CreateTeamsAndShips();
 			SetupDiplomacy();
-			diagRecheckAt = Time.time + 3f;
 			PromotePilotsFromShipSeeder.Seed(includePlayerFaction: true, autoCreateLeaderIfNone: true, updateDebugInfo: false);
 			PopulatePlayerCompatibleCargoClasses();
 			foreach (Faction faction in EngineASX.Instance.Factions)
@@ -169,47 +168,7 @@ namespace OpenFrontier.IP.Scenarios
 					if (i != j)
 					{
 						activeAIFactions[i].SetAsHostileTo(activeAIFactions[j], permanentWar: true);
-						UnityEngine.Debug.Log("[DIAG] Skirmish set " + activeAIFactions[i].Name + "(" + activeAIFactions[i].UniqueId + ")"
-							+ " -> " + activeAIFactions[j].Name + "(" + activeAIFactions[j].UniqueId + ")"
-							+ " neutrality now " + activeAIFactions[i].GetNeutralityWithInternal(activeAIFactions[j])
-							+ " / reverse " + activeAIFactions[j].GetNeutralityWithInternal(activeAIFactions[i]));
 					}
-				}
-			}
-		}
-
-		private float diagRecheckAt;
-
-		private bool diagDone;
-
-		private void LateUpdate()
-		{
-			if (diagDone || Time.time < diagRecheckAt)
-			{
-				return;
-			}
-
-			diagDone = true;
-
-			for (int i = 0; i < activeAIFactions.Count; i++)
-			{
-				for (int j = 0; j < activeAIFactions.Count; j++)
-				{
-					if (i == j)
-					{
-						continue;
-					}
-
-					FactionAttitude att = activeAIFactions[i].GetAttitude(activeAIFactions[j]);
-					UnityEngine.Debug.Log("[DIAG] T+" + Time.timeSinceLevelLoad.ToString("F1") + "s "
-						+ activeAIFactions[i].Name + "(" + activeAIFactions[i].UniqueId + ")->"
-						+ activeAIFactions[j].Name + "(" + activeAIFactions[j].UniqueId + ") "
-						+ "neutrality=" + activeAIFactions[i].GetNeutralityWithInternal(activeAIFactions[j])
-						+ " hostile=" + activeAIFactions[i].IsHostileTo(activeAIFactions[j])
-						+ " restricted=" + (att != null && att.RestrictHostilityTimeout)
-						+ " endTime=" + (att != null ? att.HostilityEndTime.ToString("F1") : "?")
-						+ " now=" + EngineASX.Instance.ScenarioElapsedTime.ToString("F1")
-						+ " isPlayerFaction=" + activeAIFactions[i].IsPlayerFaction);
 				}
 			}
 		}
@@ -227,13 +186,6 @@ namespace OpenFrontier.IP.Scenarios
 				Faction faction = UnityObjectHelper.InstantiateAndGetComponent(AIFactionPrefab);
 				faction.ShortName = (faction.Name = $"Team {num2 + 1}");
 				faction.Init();
-				// A skirmish team is an ordinary combatant and must be able to
-				// answer an attack with a war. The prefab has this off, which in
-				// a normal world is right - the player's own faction should not
-				// start a war over a pot shot - and here it means no team ever
-				// does, because UpdateHostilities is skipped for the player's
-				// faction unless the world asks for dynamic attitudes.
-				faction.DynamicFactionAttitudes = true;
 				faction.Virtue = UnityEngine.Random.Range(0f, 1f);
 				faction.AutoNameGameObject();
 				faction.PilotRankingSystem = PilotRankingSystem;

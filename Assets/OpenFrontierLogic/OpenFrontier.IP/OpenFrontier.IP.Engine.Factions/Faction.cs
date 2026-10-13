@@ -1002,42 +1002,6 @@ namespace OpenFrontier.IP.Engine.Factions
 			Neutrality neutralityWithInternal2 = GetNeutralityWithInternal(faction);
 			if (neutralityWithInternal != neutralityWithInternal2)
 			{
-				// Do not force symmetry when this faction belongs to a person.
-				//
-				// This exists to make a disagreement between two AI views resolve
-				// to one value, because between AI an asymmetric relation is a
-				// bug. Against a player it is the whole point: the AI
-				// deliberately declines to hold a hostile relation toward a
-				// player faction, so its view is Neutral, and copying that onto
-				// the player wiped the player's own hostility every frame. A
-				// combat mode that puts the player against AI ended up with
-				// everyone neutral - which read as the factions never having been
-				// made hostile, when SetFactionsAtWar had worked and this undid
-				// it a frame later.
-				//
-				// Only this side is protected. The AI side is left alone on
-				// purpose: that restraint is correct, and leaving it alone is
-				// what stops the two views fighting each other every frame.
-				//
-				// IsPlayerFaction, the property, not PlayerFactions.IsPlayerFaction,
-				// the id-band test. The property asks "is this the faction the
-				// local player is flying", which is true of a skirmish team
-				// numbered 100000 just as much as of one numbered 900380616. The
-				// band test asks whether anybody at a keyboard owns it, which in
-				// a skirmish nobody does - so the guard never fired, the syncer
-				// went on wiping the player's own hostility every frame, and the
-				// symptom was AI fighting each other while being neutral toward
-				// the player. Exactly the shape of that bug: the only faction
-				// affected is the one the question should have been about.
-				if (IsPlayerFaction)
-				{
-					UnityEngine.Debug.Log("[DIAG] SyncNeutrality SKIPPED for " + Name + "(" + UniqueId + ")");
-					SetOpinionWith(faction, opinion);
-					return;
-				}
-
-				UnityEngine.Debug.Log("[DIAG] SyncNeutrality " + Name + "(" + UniqueId + ") was " + neutralityWithInternal2
-					+ ", adopting " + faction.Name + "'s view: " + neutralityWithInternal);
 				SetNeutralityWith(faction, neutralityWithInternal);
 			}
 			SetOpinionWith(faction, opinion);
@@ -1909,19 +1873,7 @@ namespace OpenFrontier.IP.Engine.Factions
 			if ((IsPlayerFaction || DynamicFactionAttitudes) && Time.time > nextRecentAttacksChkTime)
 			{
 				UpdateRecentDamageReceived();
-
-				// The player's faction used to skip hostility outright, which is
-				// right in an ordinary game - nobody wants their own faction
-				// declaring war on the galaxy because a pirate took a pot shot -
-				// and wrong in a combat mode, where the player's team is just
-				// another faction that has to be able to fight back. It
-				// accumulated damage and never evaluated it, so it could never
-				// go hostile, while every AI beside it could.
-				//
-				// DynamicFactionAttitudes is the world saying it wants relations
-				// to move on their own, which is exactly a skirmish, so it is
-				// the test for whether this faction is expected to fight.
-				if (!IsPlayerFaction || DynamicFactionAttitudes)
+				if (!IsPlayerFaction)
 				{
 					UpdateHostilities();
 				}
