@@ -28,7 +28,6 @@ namespace OpenFrontier.IP.Multiplayer
 		{
 			ReservedIds.Policy = new PlayerBandPolicy();
 			PlayerFactions.Test = new PlayerBandFactionTest();
-			PlayerFactions.TreatEveryFactionAsAi = false;
 
 			Debug.Log("Multiplayer: the engine will not hand out ids in the player"
 				+ " bands - factions " + PlayerIdScheme.FactionIdBase + "-"
