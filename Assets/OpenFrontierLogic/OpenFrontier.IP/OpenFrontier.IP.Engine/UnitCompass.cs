@@ -110,25 +110,45 @@ namespace OpenFrontier.IP.Engine
 
 		private void AddScannedTargets(SectorObject missionPathSceneObject, SectorObject customPathSceneObject, Vector3 defaultScale, Vector3 currentTargetScale)
 		{
+			// Locked missiles first, and by identity, so the scan below can skip
+			// them. A missile locked onto the player is also hostile and armed and
+			// within 10000, so it already passed ShouldShowCompassPointForUnit at
+			// priority ~50 - and the queue has no dedupe, so without this skip it
+			// was enqueued twice and drew two arrows for one missile.
+			List<Missile> missileLocks = EngineASX.Instance.MissileLockController.GetMissileLocks(EngineASX.Instance.LocalUnit);
+			HashSet<Unit> lockedMissiles = null;
+
+			if (missileLocks != null && missileLocks.Count > 0)
+			{
+				lockedMissiles = new HashSet<Unit>();
+
+				foreach (Missile missile in missileLocks)
+				{
+					if (missile.Projectile.Unit.IsValid)
+					{
+						lockedMissiles.Add(missile.Projectile.Unit);
+					}
+				}
+			}
+
 			foreach (HudScannerUnit item in engine.Hud.AutoScanner.ScannedUnitCache)
 			{
 				Unit unit = item.Unit;
-				if (unit != null && unit != missionPathSceneObject && unit != customPathSceneObject && ShouldShowCompassPointForUnit(unit, item.DistanceFromLocalUnitIgnoringY, out var priority))
+				if (unit != null && unit != missionPathSceneObject && unit != customPathSceneObject && (lockedMissiles == null || !lockedMissiles.Contains(unit)) && ShouldShowCompassPointForUnit(unit, item.DistanceFromLocalUnitIgnoringY, out var priority))
 				{
 					compassPointQueue.Enqueue(unit, priority);
 				}
 			}
-			List<Missile> missileLocks = EngineASX.Instance.MissileLockController.GetMissileLocks(EngineASX.Instance.LocalUnit);
-			if (missileLocks == null || missileLocks.Count <= 0)
+
+			if (lockedMissiles == null)
 			{
 				return;
 			}
-			foreach (Missile item2 in missileLocks)
+
+			// Above everything, including the current target at 100.
+			foreach (Unit lockedMissile in lockedMissiles)
 			{
-				if (item2.Projectile.Unit.IsValid)
-				{
-					compassPointQueue.Enqueue(item2.Projectile.Unit, 1000f);
-				}
+				compassPointQueue.Enqueue(lockedMissile, 1000f);
 			}
 		}
 
@@ -151,7 +171,38 @@ namespace OpenFrontier.IP.Engine
 			item.UnitClass = unit.UnitClass;
 			item.IsSpeaking = UnitIsSpeaking(unit);
 			item.IsSelectedTarget = EngineASX.Instance.Hud.CurrentTarget == unit;
+			item.IsMissileLockedOnTarget = IsMissileLockedOnTarget(unit);
 			CompassPoints.Add(item);
+		}
+
+		/// <summary>
+		/// Whether this unit is a missile that has locked onto the ship the
+		/// compass is drawn for.
+		/// </summary>
+		/// <remarks>
+		/// The same test HudAutoPickTarget uses to decide an auto-pick target,
+		/// so the compass and auto-target cannot disagree about which missiles
+		/// are actually coming for you. Disrupted missiles are excluded: they
+		/// are still travelling toward the player but no longer going to arrive,
+		/// and pulsing the lock icon for one is a lie.
+		/// </remarks>
+		private bool IsMissileLockedOnTarget(Unit unit)
+		{
+			if (unit == null || TargetUnit == null || unit.UnitType != UnitType.Projectile)
+			{
+				return false;
+			}
+
+			Projectile projectile = unit.GetComponent<Projectile>();
+
+			if (projectile == null || !projectile.IsMissile)
+			{
+				return false;
+			}
+
+			Missile missile = projectile.GetComponent<Missile>();
+
+			return missile != null && missile.Target == TargetUnit && !missile.IsDisrupted && missile.HasAquiredTarget;
 		}
 
 		public float GetDistanceFromUnit(UnitClass unitClass)
@@ -207,7 +258,7 @@ namespace OpenFrontier.IP.Engine
 				unitCompassItem.WaypointTypeImage.enabled = flag;
 				unitCompassItem.SelectedImage.enabled = compassPoint.IsSelectedTarget;
 				unitCompassItem.UnitTypeImage.enabled = compassPoint.UnitClass != null;
-				unitCompassItem.MissileLockImage.enabled = compassPoint.UnitClass != null && compassPoint.UnitClass.UnitType == UnitType.Projectile;
+				unitCompassItem.MissileLockImage.enabled = compassPoint.IsMissileLockedOnTarget;
 				if (compassPoint.UnitClass != null)
 				{
 					unitCompassItem.UnitTypeImage.sprite = EngineASX.Instance.EngineResources.GetUnitClassThumbnailIconSpriteOrDefault(compassPoint.UnitClass);
