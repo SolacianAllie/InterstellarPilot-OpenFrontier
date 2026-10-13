@@ -4,9 +4,18 @@ MonoImporter:
   externalObjects: {}
   serializedVersion: 2
   defaultReferences:
-  - AlertClip: {fileID: 8300000, guid: e03e6c8f01e7e28c79b2c8ac83d718e7, type: 3}
-  - AlarmLoopClip: {fileID: 8300000, guid: 3fc0bb9cc5aba056eac914e0846bb09e, type: 3}
-  - ClosingInLoopClip: {fileID: 8300000, guid: 9b6955a6e48af18a0919149b172bd0bb, type: 3}
+  - OpticalAlert: {fileID: 8300000, guid: 77e6ac4e60b80d64eb392d583b2eb5dd, type: 3}
+  - OpticalAlarm: {fileID: 8300000, guid: 57f3091b9a905fa03b94c81a7088194d, type: 3}
+  - OpticalClosingIn: {fileID: 8300000, guid: 57f3091b9a905fa03b94c81a7088194d, type: 3}
+  - IRAAlert: {fileID: 8300000, guid: e03e6c8f01e7e28c79b2c8ac83d718e7, type: 3}
+  - IRAAlarm: {fileID: 8300000, guid: 3fc0bb9cc5aba056eac914e0846bb09e, type: 3}
+  - IRAClosingIn: {fileID: 8300000, guid: 9b6955a6e48af18a0919149b172bd0bb, type: 3}
+  - SarhAlert: {fileID: 8300000, guid: 7fb1b2d74c1932821884b5d91aff31b4, type: 3}
+  - SarhAlarm: {fileID: 8300000, guid: 791a2ce6a30bb5a50b2e50d1688ff39c, type: 3}
+  - SarhClosingIn: {fileID: 8300000, guid: 9b6955a6e48af18a0919149b172bd0bb, type: 3}
+  - ArhAlert: {fileID: 8300000, guid: 8e09203d172814df189aacb8f2609fff, type: 3}
+  - ArhAlarm: {fileID: 8300000, guid: 791a2ce6a30bb5a50b2e50d1688ff39c, type: 3}
+  - ArhClosingIn: {fileID: 8300000, guid: 9b6955a6e48af18a0919149b172bd0bb, type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 
