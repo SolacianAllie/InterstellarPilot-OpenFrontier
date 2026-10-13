@@ -105,10 +105,74 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		public void ApplyForce()
 		{
 			float num = CalculateRelativeForceAndReduceCapacitor(reduceChargeEnergy: true, Time.deltaTime);
+
 			if (num != 0f)
 			{
-				unitRigidBody.AddRelativeForce(Vector3.forward * num, ForceMode.Impulse);
+				unitRigidBody.AddRelativeForce(Vector3.forward * num * BoostMultiplier, ForceMode.Impulse);
+				AddFlightHeat(Time.deltaTime);
 			}
+		}
+
+		/// <summary>
+		/// How much harder the thrusters are pushing right now.
+		/// </summary>
+		/// <remarks>
+		/// A booster doubles thrust for a moment and then the timer runs out
+		/// and this falls back to 1. Not serialized: a boost is a thing you do
+		/// in a fight, not a thing a ship keeps, so loading a save mid-boost
+		/// gives you a normal ship.
+		/// </remarks>
+		public float BoostMultiplier =>
+			boostRemaining > 0f ? EngineClass.BoostPowerMultiplier : 1f;
+
+		private float boostRemaining;
+
+		/// <summary>Seconds of boost left, or zero.</summary>
+		public float BoostRemaining => boostRemaining;
+
+		public bool CanBoost => boostRemaining <= 0f && EngineClass.CanBoost;
+
+		/// <summary>
+		/// Starts a boost if one is not already running.
+		/// </summary>
+		/// <returns>False if the thrusters cannot boost, or one is already going.</returns>
+		public bool StartBoost()
+		{
+			if (!CanBoost)
+			{
+				return false;
+			}
+
+			boostRemaining = EngineClass.BoostDuration;
+			return true;
+		}
+
+		/// <summary>
+		/// Counts the boost down and sheds heat, called once a frame while the
+		/// ship is being flown.
+		/// </summary>
+		public void TickBoost(float elapsedTime)
+		{
+			if (boostRemaining > 0f)
+			{
+				boostRemaining = Mathf.Max(0f, boostRemaining - elapsedTime);
+			}
+		}
+
+		/// <summary>
+		/// Thrusters make a little heat just by running, and more of it while
+		/// boosting. Small next to what a thermal weapon does, but it means a
+		/// ship under full burn for a long time still has to manage something.
+		/// </summary>
+		private void AddFlightHeat(float elapsedTime)
+		{
+			if (UnitComponents == null)
+			{
+				return;
+			}
+
+			Unit.AddComponentHeat(EngineClass.ThermalLoad * BoostMultiplier
+				* elapsedTime);
 		}
 
 		private void UpdateUnitRigidBody()

@@ -24,6 +24,18 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		[Tooltip("Heaviest ship these thrusters can still move. Past this they cannot get the ship out of a slow crawl.")]
 		public float MaximumMass;
 
+		[Tooltip("Heat per second this thruster makes just by running. Small next to a thermal weapon, but a ship under full burn for a long time still has to manage something. Zero on every legacy engine, which is why fitting one changes nothing until there is a heat system.")]
+		public float ThermalLoad;
+
+		[Tooltip("Whether this thruster can be boosted. Booster thrusters can; ordinary ones cannot.")]
+		public bool CanBoost;
+
+		[Tooltip("How much harder the thrusters push while boosting. 2 means double, which is what the Elite-style boosters use.")]
+		public float BoostPowerMultiplier = 2f;
+
+		[Tooltip("Seconds a boost lasts once it is triggered.")]
+		public float BoostDuration;
+
 		public static float CalculateMaxSpeed(float enginePower, float drag, float mass)
 		{
 			return enginePower / drag / mass;

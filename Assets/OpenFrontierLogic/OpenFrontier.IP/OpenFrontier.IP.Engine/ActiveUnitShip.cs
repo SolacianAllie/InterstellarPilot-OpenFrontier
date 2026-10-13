@@ -138,6 +138,8 @@ namespace OpenFrontier.IP.Engine
 
 		private void UpdateEngineComponent(UnitEngineComponent unitEngine)
 		{
+			unitEngine.TickBoost(Time.deltaTime);
+
 			if (unitEngine.IsPoweredAndEnergySupplied && Unit != null && Unit.IsActiveInEngine && Unit.RBody != null)
 			{
 				unitEngine.ApplyForce();

@@ -1196,6 +1196,10 @@ namespace OpenFrontier.IP.Engine
 				break;
 			case ConstructionState.Constructed:
 				UpdateComponents(num);
+
+				// Heat drains after the components have added to it this frame,
+				// so a shot's heat has one frame of vent before the bar moves.
+				unit.TickHeat(num);
 				if (PilotPerson != null && PilotPerson.NpcPilot != null)
 				{
 					PilotPerson.NpcPilot.Tick(num);

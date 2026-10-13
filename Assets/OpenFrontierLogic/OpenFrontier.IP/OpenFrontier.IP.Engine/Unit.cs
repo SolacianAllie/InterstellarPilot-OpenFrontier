@@ -1329,6 +1329,60 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
+		// Deliberately not [SerializeField], for the same reason the power
+		// distributor's pips are not: heat is session state. A ship loads cold.
+
+		private float heat;
+
+		/// <summary>
+		/// How hot this ship is, 0 to 1.
+		/// </summary>
+		/// <remarks>
+		/// Sources add heat and the vents take it away, once a frame. Nothing
+		/// reads this yet - there is no heat system - so the number accumulates
+		/// and stays where it is. It is here so the sources have somewhere to
+		/// go before the thing that drains it exists, and so a ship can be
+		/// asked how hot it is once something does.
+		/// </remarks>
+		public float Heat => heat;
+
+		public void AddComponentHeat(float amount)
+		{
+			heat = Mathf.Clamp01(heat + amount);
+		}
+
+		/// <summary>
+		/// Sheds heat through the ship's thermal vents, scaled by the Systems
+		/// pips. Called once a frame.
+		/// </summary>
+		public void TickHeat(float elapsedTime)
+		{
+			if (heat <= 0f)
+			{
+				return;
+			}
+
+			if (Components != null)
+			{
+				heat = Mathf.Clamp01(heat - Components.EffectiveVentRate * elapsedTime);
+			}
+			else
+			{
+				heat = Mathf.Clamp01(heat - BaseVenting * elapsedTime);
+			}
+		}
+
+		/// <summary>
+		/// Heat per second a ship sheds with no vents at all.
+		/// </summary>
+		/// <remarks>
+		/// Without this a ship that fits no thermal vents can never cool once it
+		/// is warm, and overheat damage becomes an unrecoverable death spiral.
+		/// Small on purpose: enough that an unvented ship recovers slowly if it
+		/// stops its guns, not enough to make vents optional.
+		/// </remarks>
+		public const float BaseVenting = 0.05f;
+
 		/// <summary>
 		/// Adds the mass of the components fitted to this unit onto its own.
 		/// </summary>
