@@ -44,8 +44,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b6b4adad8116709bc780106eed9f715, type: 3}
   m_Name:
   m_EditorClassIdentifier:
-  EffectiveFiringRangeStationery: 10000
-  EffectiveFiringRangeAgainstMobile: 10000
+  EffectiveFiringRangeStationery: 30000
+  EffectiveFiringRangeAgainstMobile: 30000
   IsWeapon: 1
   Name: Interceptor Missile
   IsConventionalWeapon: 1
@@ -66,7 +66,7 @@ MonoBehaviour:
   HomingLostTargetDotThreshold: 0.5
   IsHoming: 1
   IsMine: 0
-  MaxMoveRange: 4800
+  MaxMoveRange: 14400
   MiningDamageMultiplier: 0.1
   MoveSpeed: 0
   ParentExplosionToTarget: 0

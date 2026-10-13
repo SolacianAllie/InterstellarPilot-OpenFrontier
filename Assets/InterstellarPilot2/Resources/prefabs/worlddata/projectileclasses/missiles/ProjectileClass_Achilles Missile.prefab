@@ -66,7 +66,7 @@ MonoBehaviour:
   HomingLostTargetDotThreshold: 0.5
   IsHoming: 1
   IsMine: 0
-  MaxMoveRange: 4200
+  MaxMoveRange: 8400
   MiningDamageMultiplier: 0.1
   MoveSpeed: 0
   ParentExplosionToTarget: 0
