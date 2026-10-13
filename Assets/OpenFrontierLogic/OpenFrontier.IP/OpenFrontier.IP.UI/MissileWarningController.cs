@@ -170,6 +170,7 @@ namespace OpenFrontier.IP.UI
 			}
 
 			EngineASX.Instance.MissileLockController.EntityGotMissileLock += OnGotLock;
+			EngineASX.Instance.MissileLockController.EntityGotMissile += OnGotMissile;
 			EngineASX.Instance.MissileLockController.EntityLostMissleLock += OnLostLock;
 			subscribed = true;
 		}
@@ -182,6 +183,7 @@ namespace OpenFrontier.IP.UI
 			}
 
 			EngineASX.Instance.MissileLockController.EntityGotMissileLock -= OnGotLock;
+			EngineASX.Instance.MissileLockController.EntityGotMissile -= OnGotMissile;
 			EngineASX.Instance.MissileLockController.EntityLostMissleLock -= OnLostLock;
 			subscribed = false;
 		}
@@ -190,20 +192,46 @@ namespace OpenFrontier.IP.UI
 
 		private void OnGotLock(MissileLockController sender, Unit entity)
 		{
-			if (!IsPlayerShip(entity))
+			if (IsPlayerShip(entity))
+			{
+				clearAt = float.MaxValue;
+			}
+		}
+
+		/// <summary>
+		/// Every missile fires its own alert, so the player hears what is coming
+		/// each time. The loop is not re-triggered here - UpdateStage gives the
+		/// loop to the highest-priority missile and leaves it there.
+		/// </summary>
+		private void OnGotMissile(MissileLockController sender, Unit entity, Missile missile)
+		{
+			if (!IsPlayerShip(entity) || missile == null)
 			{
 				return;
 			}
 
-			if (stage == WarningStage.Clear)
+			clearAt = float.MaxValue;
+			sounding = GuidanceOf(missile);
+
+			// One-shot over the top of whatever loop is already running, so two
+			// missiles arriving together name both rather than cutting the
+			// first one's alert off.
+			AudioClip alert = ClipsFor(sounding)[0];
+
+			if (alert != null)
 			{
-				Missile first = WorstThreat(entity);
-				sounding = first != null ? GuidanceOf(first) : MissileGuidanceType.Optical;
-				PlayFor(sounding);
-				alertUntil = Time.time + AlertHoldTime;
+				alertSource.clip = alert;
+				alertSource.Play();
 			}
 
-			clearAt = float.MaxValue;
+			alertUntil = Time.time + AlertHoldTime;
+
+			// The first arrival owns the loop until something worse turns up.
+			if (stage == WarningStage.Clear)
+			{
+				stage = WarningStage.Alert;
+				StartLoop(WarningStage.Alarm);
+			}
 		}
 
 		private void OnLostLock(MissileLockController sender, Unit entity)
@@ -266,9 +294,9 @@ namespace OpenFrontier.IP.UI
 
 			if (GuidanceOf(worst) != sounding)
 			{
-				// A better-guided missile arrived, or the one that was sounding
-				// died. Re-pick the layers so the worst thing on the scope is
-				// what is being heard.
+				// Something better-guided arrived, or the one sounding died. The
+				// loop follows it; the alert was already played per missile and
+				// is deliberately not repeated here.
 				sounding = GuidanceOf(worst);
 				PlayFor(sounding);
 			}

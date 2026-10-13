@@ -7,11 +7,23 @@ namespace OpenFrontier.IP.Engine
 	{
 		public delegate void MissileLockHandler(MissileLockController sender, Unit entity);
 
+		/// <summary>Same, but naming the missile that acquired.</summary>
+		public delegate void MissileLockHandlerWithMissile(MissileLockController sender, Unit entity, Missile missile);
+
 		internal Dictionary<int, List<Missile>> missileLocks = new Dictionary<int, List<Missile>>(10);
 
 		public event MissileLockHandler EntityGotMissileLock;
 
 		public event MissileLockHandler EntityLostMissleLock;
+
+		/// <summary>Fires for every missile that acquires, not just the first.</summary>
+		/// <remarks>
+		/// EntityGotMissileLock only fires when a unit had no locks at all, so a
+		/// second missile joining is silent. The warning needs to hear about
+		/// each one - each fires its own alert, naming what it is - even though
+		/// only the worst of them is worth a loop.
+		/// </remarks>
+		public event MissileLockHandlerWithMissile EntityGotMissile;
 
 		public bool HasMissileLock(Unit unit)
 		{
@@ -88,6 +100,12 @@ namespace OpenFrontier.IP.Engine
 				}
 			}
 			value.Add(projectile);
+
+			if (EntityGotMissile != null)
+			{
+				EntityGotMissile(this, target, projectile);
+			}
+
 			if (target.NpcPilot != null)
 			{
 				target.NpcPilot.NotifyMissileLock(projectile, value.Count);
