@@ -75,10 +75,10 @@ namespace OpenFrontier.IP.UI
 		public AudioClip ArhClosingIn;
 
 		[Header("When to escalate")]
-		[Tooltip("Distance at which a missile counts as closing in, in metres. A short-range slow missile escalates on this.")]
-		public float ClosingInDistance = 1500f;
+		[Tooltip("Distance at which a missile counts as closing in, in metres. This is the half that actually works - see the note on ClosingInTime.")]
+		public float ClosingInDistance = 500f;
 
-		[Tooltip("Seconds to impact at which a missile counts as closing in. A fast long-range missile escalates on this, while it is still far away.")]
+		[Tooltip("Seconds to impact at which a missile counts as closing in. Currently inert: every homing missile has MoveSpeed 0, so time to impact cannot be computed. It starts working if a missile is given a real MoveSpeed.")]
 		public float ClosingInTime = 4f;
 
 		[Tooltip("Seconds the alert tone takes to fade out on its own if no missile has actually locked yet.")]
@@ -382,6 +382,10 @@ namespace OpenFrontier.IP.UI
 				return true;
 			}
 
+			// MoveSpeed is 0 on every homing missile in the base game, so this
+			// half never fires and closing-in has always been decided by distance
+			// alone. Kept because it is the right rule, and because it starts
+			// working the moment a missile is given a real speed.
 			float speed = missile.ProjectileClass != null
 				? missile.ProjectileClass.MoveSpeed
 				: 0f;
