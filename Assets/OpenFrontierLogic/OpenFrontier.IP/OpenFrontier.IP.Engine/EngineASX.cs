@@ -2556,7 +2556,18 @@ namespace OpenFrontier.IP.Engine
 				{
 					return AttitudeNeutralColor;
 				}
-				if (faction1.IsHostileToOrAlwaysHostileTo(faction2))
+				// Either side being at war is enough to draw it as a war.
+				//
+				// The relation is a view held by each faction and the two can
+				// disagree: a faction that has declared war on you does not
+				// thereby become hostile in your view of it, and the AI side
+				// declines to hold a hostile relation toward a player faction at
+				// all. Asking only in the given direction therefore drew a war
+				// the player is fighting as neutral - the compass brackets, the
+				// sector map and the faction list all read cyan while the ships
+				// on screen were shooting at each other.
+				if (faction1.IsHostileToOrAlwaysHostileTo(faction2)
+					|| faction2.IsHostileToOrAlwaysHostileTo(faction1))
 				{
 					return HostilityColor;
 				}
