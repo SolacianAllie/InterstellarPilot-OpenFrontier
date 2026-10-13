@@ -312,9 +312,40 @@ namespace OpenFrontier.IP.UI
 				SwitchLoop(GuidanceOf(worst));
 			}
 
-			SetStage(IsClosingIn(worst, distance)
+			SetStage(IsClosingIn(worst, distance) && HasClosingInTone(loopGuidance)
 				? WarningStage.ClosingIn
 				: WarningStage.Alarm);
+		}
+
+		/// <summary>
+		/// Whether this guidance type has a close-in tone at all. Only ARH has
+		/// one, so it is the only type that escalates - the others hold their
+		/// alarm all the way in rather than changing tone.
+		/// </summary>
+		/// <remarks>
+		/// This also stops the silent hole. Without the check, a type with no
+		/// closing-in clip still advanced the stage, StartLoop stopped the
+		/// source, found a null clip and played nothing - so every non-ARH
+		/// missile went quiet at the 500-unit mark instead of escalating, and
+		/// the alarm never came back.
+		/// </remarks>
+		private bool HasClosingInTone(MissileGuidanceType type)
+		{
+			return ClipsFor(type)[2] != null;
+		}
+
+		/// <summary>
+		/// The loop clip for a stage, falling back to that type's alarm.
+		/// </summary>
+		/// <remarks>
+		/// Belt and braces behind HasClosingInTone: whatever routes in here,
+		/// a missing clip degrades to the alarm rather than to silence.
+		/// </remarks>
+		private AudioClip LoopClipFor(MissileGuidanceType type, WarningStage stage)
+		{
+			AudioClip[] clips = ClipsFor(type);
+			AudioClip loop = stage == WarningStage.ClosingIn ? clips[2] : clips[1];
+			return loop != null ? loop : clips[1];
 		}
 
 		/// <summary>
@@ -374,7 +405,7 @@ namespace OpenFrontier.IP.UI
 
 			loopSource.Stop();
 
-			AudioClip loop = ClipsFor(type)[stage == WarningStage.ClosingIn ? 2 : 1];
+			AudioClip loop = LoopClipFor(type, stage);
 
 			if (loop != null)
 			{
@@ -461,7 +492,7 @@ namespace OpenFrontier.IP.UI
 
 		private void StartLoop(WarningStage next)
 		{
-			AudioClip loop = ClipsFor(loopGuidance)[next == WarningStage.ClosingIn ? 2 : 1];
+			AudioClip loop = LoopClipFor(loopGuidance, next);
 
 			loopSource.Stop();
 
