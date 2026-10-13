@@ -81,6 +81,7 @@ namespace OpenFrontier.IP.Scenarios
 			}
 			CreateTeamsAndShips();
 			SetupDiplomacy();
+			diagRecheckAt = Time.time + 3f;
 			PromotePilotsFromShipSeeder.Seed(includePlayerFaction: true, autoCreateLeaderIfNone: true, updateDebugInfo: false);
 			PopulatePlayerCompatibleCargoClasses();
 			foreach (Faction faction in EngineASX.Instance.Factions)
@@ -173,6 +174,42 @@ namespace OpenFrontier.IP.Scenarios
 							+ " neutrality now " + activeAIFactions[i].GetNeutralityWithInternal(activeAIFactions[j])
 							+ " / reverse " + activeAIFactions[j].GetNeutralityWithInternal(activeAIFactions[i]));
 					}
+				}
+			}
+		}
+
+		private float diagRecheckAt;
+
+		private bool diagDone;
+
+		private void LateUpdate()
+		{
+			if (diagDone || Time.time < diagRecheckAt)
+			{
+				return;
+			}
+
+			diagDone = true;
+
+			for (int i = 0; i < activeAIFactions.Count; i++)
+			{
+				for (int j = 0; j < activeAIFactions.Count; j++)
+				{
+					if (i == j)
+					{
+						continue;
+					}
+
+					FactionAttitude att = activeAIFactions[i].GetAttitude(activeAIFactions[j]);
+					UnityEngine.Debug.Log("[DIAG] T+" + Time.timeSinceLevelLoad.ToString("F1") + "s "
+						+ activeAIFactions[i].Name + "(" + activeAIFactions[i].UniqueId + ")->"
+						+ activeAIFactions[j].Name + "(" + activeAIFactions[j].UniqueId + ") "
+						+ "neutrality=" + activeAIFactions[i].GetNeutralityWithInternal(activeAIFactions[j])
+						+ " hostile=" + activeAIFactions[i].IsHostileTo(activeAIFactions[j])
+						+ " restricted=" + (att != null && att.RestrictHostilityTimeout)
+						+ " endTime=" + (att != null ? att.HostilityEndTime.ToString("F1") : "?")
+						+ " now=" + EngineASX.Instance.ScenarioElapsedTime.ToString("F1")
+						+ " isPlayerFaction=" + activeAIFactions[i].IsPlayerFaction);
 				}
 			}
 		}
