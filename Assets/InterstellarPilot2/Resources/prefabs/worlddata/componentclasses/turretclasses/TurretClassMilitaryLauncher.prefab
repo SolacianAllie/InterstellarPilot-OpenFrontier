@@ -83,7 +83,7 @@ MonoBehaviour:
   FireLoopAudioSource: {fileID: 0}
   FirePrewarmTime: 0
   InaccuracyPower: 1
-  MaxFiringRange: 900
+  MaxFiringRange: 20000
   InaccuracyMultiplier: 1
   MinAppliedDamage: 0.8
   MinFiringRange: 180
