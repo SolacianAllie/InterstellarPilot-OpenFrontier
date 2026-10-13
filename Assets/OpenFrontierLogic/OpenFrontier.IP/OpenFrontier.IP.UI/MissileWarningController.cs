@@ -1,4 +1,5 @@
 using OpenFrontier.IP.Engine;
+using OpenFrontier.IP.Engine.UnitComponents;
 using UnityEngine;
 
 namespace OpenFrontier.IP.UI
@@ -44,15 +45,34 @@ namespace OpenFrontier.IP.UI
 			ClosingIn = 3
 		}
 
-		[Header("Sound layers")]
-		[Tooltip("Played once as each missile acquires a lock on the player.")]
-		public AudioClip AlertClip;
+		[Header("Sound layers, per guidance type")]
+		[Tooltip("Optical. The quietest set - a weapon that only sees a target by sight.")]
+		public AudioClip OpticalAlert;
 
-		[Tooltip("Looped while a missile is on its way.")]
-		public AudioClip AlarmLoopClip;
+		public AudioClip OpticalAlarm;
 
-		[Tooltip("Looped once a missile is closing in. The urgent one.")]
-		public AudioClip ClosingInLoopClip;
+		public AudioClip OpticalClosingIn;
+
+		[Tooltip("Infrared. Sees a target by its own heat.")]
+		public AudioClip IRAAlert;
+
+		public AudioClip IRAAlarm;
+
+		public AudioClip IRAClosingIn;
+
+		[Tooltip("Semi-active radar. Needs the target to light it up.")]
+		public AudioClip SarhAlert;
+
+		public AudioClip SarhAlarm;
+
+		public AudioClip SarhClosingIn;
+
+		[Tooltip("Active radar. The loudest set - it finds you on its own.")]
+		public AudioClip ArhAlert;
+
+		public AudioClip ArhAlarm;
+
+		public AudioClip ArhClosingIn;
 
 		[Header("When to escalate")]
 		[Tooltip("Distance at which a missile counts as closing in, in metres. A short-range slow missile escalates on this.")]
@@ -67,6 +87,18 @@ namespace OpenFrontier.IP.UI
 		[Tooltip("How long after the last lock is released the alarm is left running, so a missile breaking off does not cut the sound dead.")]
 		public float ReleaseGraceTime = 0.5f;
 
+		/// <summary>The three clips for one guidance type.</summary>
+		private AudioClip[] ClipsFor(MissileGuidanceType type)
+		{
+			switch (type)
+			{
+				case MissileGuidanceType.IR: return new[] { IRAAlert, IRAAlarm, IRAClosingIn };
+				case MissileGuidanceType.SARH: return new[] { SarhAlert, SarhAlarm, SarhClosingIn };
+				case MissileGuidanceType.ARH: return new[] { ArhAlert, ArhAlarm, ArhClosingIn };
+				default: return new[] { OpticalAlert, OpticalAlarm, OpticalClosingIn };
+			}
+		}
+
 		private AudioSource alertSource;
 
 		private AudioSource alarmSource;
@@ -79,8 +111,14 @@ namespace OpenFrontier.IP.UI
 
 		private float clearAt;
 
+		/// <summary>The guidance type whose clips are playing.</summary>
+		private MissileGuidanceType sounding = MissileGuidanceType.Optical;
+
 		/// <summary>Which layer is currently sounding. For tests and the HUD.</summary>
 		public WarningStage Stage => stage;
+
+		/// <summary>Which guidance type is sounding, and so what is threatening you.</summary>
+		public MissileGuidanceType Sounding => sounding;
 
 		private void Awake()
 		{
@@ -159,7 +197,10 @@ namespace OpenFrontier.IP.UI
 
 			if (stage == WarningStage.Clear)
 			{
-				PlayAlert();
+				Missile first = WorstThreat(entity);
+				sounding = first != null ? GuidanceOf(first) : MissileGuidanceType.Optical;
+				PlayFor(sounding);
+				alertUntil = Time.time + AlertHoldTime;
 			}
 
 			clearAt = float.MaxValue;
@@ -211,10 +252,9 @@ namespace OpenFrontier.IP.UI
 				return;
 			}
 
-			float distance;
-			Missile nearest = player.GetNearestNonDisruptedMissileLock(out distance);
+			Missile worst = WorstThreat(player);
 
-			if (nearest == null)
+			if (worst == null)
 			{
 				// locked but not yet tracking, or briefly out of the lookup.
 				// Hold the alarm rather than dropping to silence and back.
@@ -222,13 +262,84 @@ namespace OpenFrontier.IP.UI
 				return;
 			}
 
-			if (IsClosingIn(nearest, distance))
+			float distance = Vector3.Distance(player.transform.position, worst.transform.position);
+
+			if (GuidanceOf(worst) != sounding)
 			{
-				SetStage(WarningStage.ClosingIn);
+				// A better-guided missile arrived, or the one that was sounding
+				// died. Re-pick the layers so the worst thing on the scope is
+				// what is being heard.
+				sounding = GuidanceOf(worst);
+				PlayFor(sounding);
 			}
-			else
+
+			SetStage(IsClosingIn(worst, distance)
+				? WarningStage.ClosingIn
+				: WarningStage.Alarm);
+		}
+
+		/// <summary>
+		/// The most dangerous thing locked on, which is not the nearest thing.
+		/// </summary>
+		/// <remarks>
+		/// Optical, IR, SARH, ARH - the highest type wins, because that is what
+		/// tells the player what they are about to be hit by. Ties on the same
+		/// type go to whichever is closer, so two ARH missiles escalate
+		/// together on the nearer one.
+		/// </remarks>
+		private static Missile WorstThreat(Unit player)
+		{
+			Missile worst = null;
+			float worstDist = 0f;
+			var type = MissileGuidanceType.Optical;
+
+			foreach (Missile missile in EngineASX.Instance.MissileLockController.GetMissileLocks(player))
 			{
-				SetStage(WarningStage.Alarm);
+				if (missile == null || missile.IsDisrupted)
+				{
+					continue;
+				}
+
+				float dist = Vector3.Distance(player.transform.position, missile.transform.position);
+				var t = GuidanceOf(missile);
+
+				if (worst == null || t > type || (t == type && dist < worstDist))
+				{
+					worst = missile;
+					worstDist = dist;
+					type = t;
+				}
+			}
+
+			return worst;
+		}
+
+		private static MissileGuidanceType GuidanceOf(Missile missile)
+		{
+			return missile.ProjectileClass != null
+				? missile.ProjectileClass.GuidanceType
+				: MissileGuidanceType.Optical;
+		}
+
+		/// <summary>Swaps all three layers to one guidance type's clips.</summary>
+		private void PlayFor(MissileGuidanceType type)
+		{
+			AudioClip[] clips = ClipsFor(type);
+
+			GoQuiet();
+			sounding = type;
+
+			if (clips[0] != null)
+			{
+				alertSource.clip = clips[0];
+				alertSource.Play();
+			}
+
+			if (clips[1] != null)
+			{
+				alarmSource.clip = clips[1];
+				alarmSource.loop = true;
+				alarmSource.Play();
 			}
 		}
 
@@ -265,9 +376,11 @@ namespace OpenFrontier.IP.UI
 			alertUntil = Time.time + AlertHoldTime;
 			stage = WarningStage.Alert;
 
-			if (AlertClip != null)
+			AudioClip alert = ClipsFor(sounding)[0];
+
+			if (alert != null)
 			{
-				alertSource.clip = AlertClip;
+				alertSource.clip = alert;
 				alertSource.Play();
 			}
 		}
@@ -293,24 +406,26 @@ namespace OpenFrontier.IP.UI
 
 		private void StartLoop(WarningStage next)
 		{
+			AudioClip[] clips = ClipsFor(sounding);
+
 			if (next == WarningStage.ClosingIn)
 			{
 				alarmSource.Stop();
 
-				if (ClosingInLoopClip != null)
+				if (clips[2] != null)
 				{
-					closingSource.clip = ClosingInLoopClip;
+					closingSource.clip = clips[2];
 					closingSource.loop = true;
 					closingSource.Play();
 				}
 			}
-			else if (AlarmLoopClip != null)
+			else if (clips[1] != null)
 			{
 				closingSource.Stop();
 
 				if (!alarmSource.isPlaying)
 				{
-					alarmSource.clip = AlarmLoopClip;
+					alarmSource.clip = clips[1];
 					alarmSource.loop = true;
 					alarmSource.Play();
 				}

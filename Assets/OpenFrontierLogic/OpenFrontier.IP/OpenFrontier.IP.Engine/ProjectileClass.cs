@@ -50,6 +50,17 @@ namespace OpenFrontier.IP.Engine
 
 		public bool IsMine;
 
+		/// <summary>
+		/// How this missile finds its target, worst to best: Optical, IR, SARH,
+		/// ARH. Decides the warning the player gets, and Optical gets none.
+		/// </summary>
+		/// <remarks>
+		/// Defaults to Optical, so every missile that predates this field is
+		/// untyped and nothing changes. The order is the order - a higher value
+		/// wins when several missiles are locked on at once.
+		/// </remarks>
+		public MissileGuidanceType GuidanceType = MissileGuidanceType.Optical;
+
 		public float MaxMoveRange = 200f;
 
 		public float MiningDamageMultiplier = 0.1f;

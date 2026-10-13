@@ -1299,7 +1299,7 @@ GameObject:
   - component: {fileID: 237}
   - component: {fileID: 119}
   m_Layer: 10
-  m_Name: MissileLockAudioController
+  m_Name: MissileWarning
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7055,9 +7055,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6abc9f4e3d0c487da2ea67c7b4f2f002, type: 3}
   m_Name:
   m_EditorClassIdentifier:
-  AlertClip: {fileID: 0}
-  AlarmLoopClip: {fileID: 0}
-  ClosingInLoopClip: {fileID: 0}
+  OpticalAlert: {fileID: 0}
+  OpticalAlarm: {fileID: 0}
+  OpticalClosingIn: {fileID: 0}
+  IRAAlert: {fileID: 0}
+  IRAAlarm: {fileID: 0}
+  IRAClosingIn: {fileID: 0}
+  SarhAlert: {fileID: 0}
+  SarhAlarm: {fileID: 0}
+  SarhClosingIn: {fileID: 0}
+  ArhAlert: {fileID: 0}
+  ArhAlarm: {fileID: 0}
+  ArhClosingIn: {fileID: 0}
   ClosingInDistance: 1500
   ClosingInTime: 4
   AlertHoldTime: 1.5
