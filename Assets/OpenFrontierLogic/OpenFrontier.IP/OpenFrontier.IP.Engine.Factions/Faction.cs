@@ -1909,7 +1909,19 @@ namespace OpenFrontier.IP.Engine.Factions
 			if ((IsPlayerFaction || DynamicFactionAttitudes) && Time.time > nextRecentAttacksChkTime)
 			{
 				UpdateRecentDamageReceived();
-				if (!IsPlayerFaction)
+
+				// The player's faction used to skip hostility outright, which is
+				// right in an ordinary game - nobody wants their own faction
+				// declaring war on the galaxy because a pirate took a pot shot -
+				// and wrong in a combat mode, where the player's team is just
+				// another faction that has to be able to fight back. It
+				// accumulated damage and never evaluated it, so it could never
+				// go hostile, while every AI beside it could.
+				//
+				// DynamicFactionAttitudes is the world saying it wants relations
+				// to move on their own, which is exactly a skirmish, so it is
+				// the test for whether this faction is expected to fight.
+				if (!IsPlayerFaction || DynamicFactionAttitudes)
 				{
 					UpdateHostilities();
 				}

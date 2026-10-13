@@ -227,6 +227,13 @@ namespace OpenFrontier.IP.Scenarios
 				Faction faction = UnityObjectHelper.InstantiateAndGetComponent(AIFactionPrefab);
 				faction.ShortName = (faction.Name = $"Team {num2 + 1}");
 				faction.Init();
+				// A skirmish team is an ordinary combatant and must be able to
+				// answer an attack with a war. The prefab has this off, which in
+				// a normal world is right - the player's own faction should not
+				// start a war over a pot shot - and here it means no team ever
+				// does, because UpdateHostilities is skipped for the player's
+				// faction unless the world asks for dynamic attitudes.
+				faction.DynamicFactionAttitudes = true;
 				faction.Virtue = UnityEngine.Random.Range(0f, 1f);
 				faction.AutoNameGameObject();
 				faction.PilotRankingSystem = PilotRankingSystem;
