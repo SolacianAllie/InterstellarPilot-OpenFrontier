@@ -6,66 +6,66 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/ui/menu/LandingScene.unity
+    path: Assets/OpenFrontier/Scenes/ui/menu/LandingScene.unity
     guid: 762046074113c304da1e429f0abd1133
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/internal/EngineScene.unity
+    path: Assets/OpenFrontier/Scenes/internal/EngineScene.unity
     guid: 358ee10925007c646935da84e77a81a0
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/ui/menu/MenuScreenScene.unity
+    path: Assets/OpenFrontier/Scenes/ui/menu/MenuScreenScene.unity
     guid: 4e292ae32d2f12f40aed45307d48c879
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Skirmish/Skirmish.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Skirmish/Skirmish.unity
     guid: 43e437a6cb5e7654795a9fbb3414e4ad
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Tutorials/tutorial1_flight_controls.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Tutorials/tutorial1_flight_controls.unity
     guid: 40a11a732864dc84bb05260dbc2a9df2
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Tutorials/tutorial2_weapons.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Tutorials/tutorial2_weapons.unity
     guid: 756d7b44e3d206c4ba50106971347cdf
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Tutorials/tutorial3_tractor.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Tutorials/tutorial3_tractor.unity
     guid: 4ee6f1a6dfc44b742aaaa6efb7244c8f
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Tutorials/tutorial4_cloak.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Tutorials/tutorial4_cloak.unity
     guid: 9fd2d4edce80aff459a7841f9a4d9123
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/ui/menu/UIControllerScene.unity
+    path: Assets/OpenFrontier/Scenes/ui/menu/UIControllerScene.unity
     guid: c5dac8b9c8480ac479974f9db451ae3b
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/ui/menu/LoadingScene.unity
+    path: Assets/OpenFrontier/Scenes/ui/menu/LoadingScene.unity
     guid: 629e026757f01b641a8b5dc16119a023
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Tutorials/tutorial5_countermeasures.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Tutorials/tutorial5_countermeasures.unity
     guid: 610780d6170478340899b3b2d134accb
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Missions/surprise_attack.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Missions/surprise_attack.unity
     guid: 79990fe4c5c0927428a9347cf34af9ed
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Missions/breakdown.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Missions/breakdown.unity
     guid: 95ae11db0d72f4e45a31156aeb5f012a
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Missions/find_favero.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Missions/find_favero.unity
     guid: 844fa00238b498747a9b61edf63d0461
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Missions/the_list.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Missions/the_list.unity
     guid: 2bd94babe7b5a7044b4a45a484159b47
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Universe/unchartered_space.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Universe/unchartered_space.unity
     guid: c693450901cf20f4597c2bdf53413fad
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Missions/trade_route.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Missions/trade_route.unity
     guid: 4e301a01e57fa804f91dc39f8e4fc008
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Universe/a_wormhole_too_far.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Universe/a_wormhole_too_far.unity
     guid: c08e32e6108396f47a3e514ab3298c3b
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/Universe/NewSandboxGame.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/Universe/NewSandboxGame.unity
     guid: b7233b9b05a42c64e904111e526ca323
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/ui/menu/UIScaleScene.unity
+    path: Assets/OpenFrontier/Scenes/ui/menu/UIScaleScene.unity
     guid: 3f44b251221e3c24a8dbafb6f0c695d4
   - enabled: 1
-    path: Assets/InterstellarPilot2/Scenes/scenarios/CustomScenarioScene.unity
+    path: Assets/OpenFrontier/Scenes/scenarios/CustomScenarioScene.unity
     guid: 77470f923cd652243b4fcde9d240a216
   m_configObjects: {}

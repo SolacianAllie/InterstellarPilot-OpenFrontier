@@ -86,6 +86,66 @@ same prefab from the same tables. The mutations that would *not* be reproduced
 are damage and refits, neither of which is replicated yet anyway. So class id is
 sufficient now and the boundary is known.
 
+### The Skirmish rollback, and what it cost
+
+Written 2026-10-14, after the reserved faction ids broke Skirmish and the
+faction work was reverted. So the next session starts from the tree rather than
+from memory.
+
+**The cause was never the id band.** It was a **neutrality syncer** that
+periodically rewrites faction relations and was wiping a player faction's own
+hostility — read from a different world as the cause of a Skirmish bug, then
+guarded on the id band when the question was about the *local* player. That
+syncer is a background system that mutates state on its own, and the audit in
+§6 mapped **player actions**. It did not map the engine doing things to
+factions while nobody is looking, and that gap is what cost the session.
+
+#### Still in the tree — verified present, not assumed
+
+| | where |
+|---|---|
+| `Authority`, `AuthorityGate`, `ClientAuthorityProvider` | the authority seam, intact |
+| `PlayerIdScheme`, `IsPlayerMadeUnit` | the reserved bands, 9 files |
+| `IsAPlayersFaction` | display-only test, 3 files |
+| `TwoPlayersAreShootingAtEachOther` | **live** — `Faction.cs:2027`, called at `:2050` |
+| `SetSharedSessionFor` | god-mode fix, 2 files |
+| `ReassignUnitId` | kept; its callers intact |
+| All of `Session/` | `PlayerCommands`, `NewUnitBroadcaster`, `NewUnitApplier`, `DockedStateApplier`, `FactionStateApplier` |
+| All of `Protocol/` | ids 14–18: command channel, docked state, new unit, unit gone, owner changed |
+
+#### Gone, and what each one was for
+
+| Lost | What it did |
+|---|---|
+| `PlayerFactionAdopter.cs` (168 lines) | How a client adopts the faction the host made for it. Without it, **the client has no player faction at all** — so `PlayerIdScheme` currently reserves bands nothing uses. |
+| `EngineASX.ReassignFactionId` (48 lines) | Gave a joiner's faction its band id. The counterpart of `ReassignUnitId`. |
+| `SkirmishWorld.cs` changes (48 lines) | The Skirmish exemption, rolled back with everything else. |
+| `Faction.cs` / `EngineASX.cs` changes | 146 lines of neutrality-sync work that was guarding the wrong thing. |
+
+#### Two things to check before anything else
+
+1. **`ReassignUnitId`'s doc comment still says `<see cref="ReassignFactionId"/>`
+   at `EngineASX.cs:1742`, and that method no longer exists.** A dangling cref
+   — a warning today, noise later.
+2. **Nothing calls `PlayerIdScheme` for factions any more**, so the 900,000,000
+   band is reserved and empty. That is the right state to rework *from* — the
+   bands are the one part of the faction work that was sound.
+
+#### What to rework, in order
+
+1. The **neutrality syncer**, and a rule that a player's deliberate hostility is
+   never overwritten by a periodic sync. This is the actual bug; everything
+   else was a wrong guess about it.
+2. **`PlayerFactionAdopter`** — the client needs a faction with a band id before
+   anything else can be tested, because ship ownership, order validation and the
+   ownership checks all ask `PlayerFactions.IsPlayerFaction`.
+3. Then, and only then, the parts that were working and are now untestable:
+   the abandon/claim gates (`NamesOnlyTheirOwn`, `MayBeClaimed`), which all
+   resolve against a faction the client no longer has.
+
+**Do not rebuild the auto-war suppression.** `TwoPlayersAreShootingAtEachOther`
+survived and is still called.
+
 ### Stream C — command channel: **STARTED**
 
 | | |
