@@ -28,9 +28,10 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			public float EndingOnset;
 			public float LeadingSilence;
 			public bool IsCombatSection;
+			public bool Loops;
 		}
 
-		/// <summary>86 tracks, measured from the audio.</summary>
+		/// <summary>87 tracks, measured from the audio.</summary>
 		public static readonly List<Entry> Tracks = new List<Entry>
 		{
 			new Entry
@@ -43,6 +44,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 67.498f,
 				LeadingSilence = 1.646f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -54,6 +56,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 54.154f,
 				LeadingSilence = 0.000f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -65,6 +68,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 63.593f,
 				LeadingSilence = 0.000f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -76,6 +80,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 75.355f,
 				LeadingSilence = 0.335f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -87,6 +92,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 60.380f,
 				LeadingSilence = 2.113f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -98,6 +104,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 73.182f,
 				LeadingSilence = 1.307f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -109,6 +116,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 59.850f,
 				LeadingSilence = 0.254f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -120,6 +128,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 76.014f,
 				LeadingSilence = 1.957f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -131,6 +140,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 48.412f,
 				LeadingSilence = 0.246f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -142,6 +152,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 49.270f,
 				LeadingSilence = 1.244f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -153,6 +164,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 50.434f,
 				LeadingSilence = 1.009f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -164,6 +176,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 56.100f,
 				LeadingSilence = 0.279f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -175,6 +188,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 57.282f,
 				LeadingSilence = 0.271f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -186,6 +200,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 48.676f,
 				LeadingSilence = 0.923f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -197,6 +212,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 55.823f,
 				LeadingSilence = 0.000f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -208,6 +224,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 75.104f,
 				LeadingSilence = 0.000f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -219,6 +236,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 53.255f,
 				LeadingSilence = 0.457f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -230,6 +248,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 54.017f,
 				LeadingSilence = 0.754f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -241,6 +260,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 56.310f,
 				LeadingSilence = 0.000f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -252,6 +272,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 18.079f,
 				LeadingSilence = 1.470f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -263,6 +284,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 21.496f,
 				LeadingSilence = 2.130f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -274,6 +296,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 68.165f,
 				LeadingSilence = 0.725f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -285,6 +308,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 89.166f,
 				LeadingSilence = 0.621f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -296,6 +320,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 75.433f,
 				LeadingSilence = 0.802f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -307,6 +332,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 54.651f,
 				LeadingSilence = 0.807f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -318,6 +344,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 98.280f,
 				LeadingSilence = 2.259f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -329,6 +356,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 62.307f,
 				LeadingSilence = 1.745f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -340,6 +368,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 18.635f,
 				LeadingSilence = 0.490f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -351,6 +380,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 38.611f,
 				LeadingSilence = 0.295f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -362,6 +392,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 80.321f,
 				LeadingSilence = 0.576f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -373,6 +404,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 46.047f,
 				LeadingSilence = 1.245f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -384,6 +416,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 23.552f,
 				LeadingSilence = 1.804f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -395,6 +428,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 63.062f,
 				LeadingSilence = 0.698f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -406,6 +440,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 73.401f,
 				LeadingSilence = 1.330f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -417,6 +452,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 46.691f,
 				LeadingSilence = 2.240f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -428,6 +464,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 93.764f,
 				LeadingSilence = 0.653f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -439,6 +476,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 58.162f,
 				LeadingSilence = 0.865f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -450,6 +488,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 101.473f,
 				LeadingSilence = 0.720f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -461,6 +500,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 85.203f,
 				LeadingSilence = 6.278f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -472,6 +512,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 108.081f,
 				LeadingSilence = 0.387f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -483,6 +524,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 63.470f,
 				LeadingSilence = 3.121f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -494,6 +536,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 76.952f,
 				LeadingSilence = 0.974f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -505,6 +548,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 73.571f,
 				LeadingSilence = 1.291f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -516,6 +560,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 58.930f,
 				LeadingSilence = 0.765f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -527,6 +572,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 58.054f,
 				LeadingSilence = 1.954f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -538,6 +584,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 66.166f,
 				LeadingSilence = 0.838f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -549,6 +596,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 79.248f,
 				LeadingSilence = 1.332f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -560,6 +608,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 66.360f,
 				LeadingSilence = 1.651f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -571,6 +620,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 130.632f,
 				LeadingSilence = 0.990f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -582,6 +632,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 220.113f,
 				LeadingSilence = 1.613f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -593,6 +644,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 224.236f,
 				LeadingSilence = 0.798f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -604,6 +656,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 203.620f,
 				LeadingSilence = 0.000f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -615,6 +668,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 84.859f,
 				LeadingSilence = 0.379f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -626,6 +680,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 123.439f,
 				LeadingSilence = 1.610f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -637,6 +692,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 175.813f,
 				LeadingSilence = 1.374f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -648,6 +704,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 57.854f,
 				LeadingSilence = 0.632f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -659,6 +716,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 62.481f,
 				LeadingSilence = 0.601f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -670,6 +728,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 62.059f,
 				LeadingSilence = 0.000f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -681,6 +740,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 51.480f,
 				LeadingSilence = 1.532f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -692,6 +752,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 73.234f,
 				LeadingSilence = 1.962f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -703,28 +764,19 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 70.747f,
 				LeadingSilence = 1.241f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
-				Name = "E D Menus",
-				ResourcePath = "Music/E D Menus",
+				Name = "Starbound",
+				ResourcePath = "Music/Starbound",
 				Category = "Menu",
 				Family = "Menu",
-				Duration = 217.548f,
-				EndingOnset = 208.846f,
+				Duration = 306.979f,
+				EndingOnset = 285.491f,
 				LeadingSilence = 0.000f,
 				IsCombatSection = false,
-			},
-			new Entry
-			{
-				Name = "E D Theme E3 Edit Blaze Your Own Trail",
-				ResourcePath = "Music/E D Theme E3 Edit Blaze Your Own Trail",
-				Category = "Menu",
-				Family = "Menu",
-				Duration = 85.914f,
-				EndingOnset = 73.600f,
-				LeadingSilence = 0.573f,
-				IsCombatSection = false,
+				Loops = true,
 			},
 			new Entry
 			{
@@ -736,6 +788,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 68.637f,
 				LeadingSilence = 0.000f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -747,6 +800,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 63.934f,
 				LeadingSilence = 0.531f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -758,6 +812,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 75.725f,
 				LeadingSilence = 0.613f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -769,6 +824,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 83.502f,
 				LeadingSilence = 1.018f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -780,6 +836,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 67.168f,
 				LeadingSilence = 0.865f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -791,6 +848,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 54.872f,
 				LeadingSilence = 0.930f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -802,6 +860,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 68.367f,
 				LeadingSilence = 0.865f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -813,6 +872,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 69.236f,
 				LeadingSilence = 0.729f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -824,6 +884,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 66.718f,
 				LeadingSilence = 0.935f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -835,6 +896,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 79.583f,
 				LeadingSilence = 0.901f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -846,6 +908,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 67.808f,
 				LeadingSilence = 0.000f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -857,6 +920,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 86.740f,
 				LeadingSilence = 1.084f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -868,6 +932,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 187.776f,
 				LeadingSilence = 0.000f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -879,6 +944,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 181.235f,
 				LeadingSilence = 0.684f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -890,6 +956,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 175.066f,
 				LeadingSilence = 3.741f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -901,6 +968,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 197.973f,
 				LeadingSilence = 2.168f,
 				IsCombatSection = false,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -912,6 +980,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 80.196f,
 				LeadingSilence = 1.598f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -923,6 +992,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 51.885f,
 				LeadingSilence = 1.687f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -934,6 +1004,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 58.570f,
 				LeadingSilence = 1.053f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -945,6 +1016,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 69.114f,
 				LeadingSilence = 1.275f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -956,6 +1028,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 82.843f,
 				LeadingSilence = 0.609f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -967,6 +1040,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 51.515f,
 				LeadingSilence = 0.377f,
 				IsCombatSection = true,
+				Loops = false,
 			},
 			new Entry
 			{
@@ -978,6 +1052,31 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				EndingOnset = 52.136f,
 				LeadingSilence = 0.000f,
 				IsCombatSection = true,
+				Loops = false,
+			},
+			new Entry
+			{
+				Name = "E D Menus",
+				ResourcePath = "Music/E D Menus",
+				Category = "Unassigned",
+				Family = "Unassigned",
+				Duration = 217.548f,
+				EndingOnset = 208.846f,
+				LeadingSilence = 0.000f,
+				IsCombatSection = false,
+				Loops = false,
+			},
+			new Entry
+			{
+				Name = "E D Theme E3 Edit Blaze Your Own Trail",
+				ResourcePath = "Music/E D Theme E3 Edit Blaze Your Own Trail",
+				Category = "Unassigned",
+				Family = "Unassigned",
+				Duration = 85.914f,
+				EndingOnset = 73.600f,
+				LeadingSilence = 0.573f,
+				IsCombatSection = false,
+				Loops = false,
 			}
 		};
 	}

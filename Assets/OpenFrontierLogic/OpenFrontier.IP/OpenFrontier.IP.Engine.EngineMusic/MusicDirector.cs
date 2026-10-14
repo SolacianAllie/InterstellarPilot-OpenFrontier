@@ -275,8 +275,10 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			if (IsMainMenu(engine))
 			{
+				// The one track, looping - not a random draw from the Menu
+				// category. See MusicLibrary.MenuTrack.
 				key = "Menu";
-				entry = MusicLibrary.RandomFrom("Menu", lastRequested);
+				entry = MusicLibrary.MenuTrack();
 				return;
 			}
 

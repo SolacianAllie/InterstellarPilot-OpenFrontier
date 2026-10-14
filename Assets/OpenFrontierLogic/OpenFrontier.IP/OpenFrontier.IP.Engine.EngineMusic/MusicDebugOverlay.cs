@@ -130,8 +130,45 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				+ "\nwhy " + why
 				+ "\n" + position
 				+ "\n" + next
-				+ "\nfamily " + MusicFactionClassifier.NameOf(director.SectorFamily)
+				+ "\nsrc " + player.AudioState()
+				+ "\ntimeScale " + Time.timeScale.ToString("0.00")
+				+ ", listeners " + EnabledListenerCount()
 				+ ", " + MusicLibrary.LoadedClipCount + " clips loaded";
+		}
+
+		/// <summary>
+		/// How many AudioListeners are actually able to hear anything.
+		/// </summary>
+		/// <remarks>
+		/// The last thing left to rule out when a track is playing, the source
+		/// says it is playing, the volume is right and the clip is loaded, and
+		/// there is still no sound: nothing in the scene is listening. This
+		/// project has exactly two AudioListeners - on MenuCamera and
+		/// GameCamera - so it is a short list to be wrong about, and the game
+		/// has no AudioMixer and no code that pauses or mutes one. If this
+		/// reads 0, that is the answer, and it is nothing to do with music.
+		/// </remarks>
+		private static int EnabledListenerCount()
+		{
+			AudioListener[] listeners = Object.FindObjectsOfType<AudioListener>();
+
+			if (listeners == null)
+			{
+				return 0;
+			}
+
+			int count = 0;
+
+			for (int i = 0; i < listeners.Length; i++)
+			{
+				if (listeners[i] != null && listeners[i].enabled
+					&& listeners[i].gameObject.activeInHierarchy)
+				{
+					count++;
+				}
+			}
+
+			return count;
 		}
 
 		/// <summary>

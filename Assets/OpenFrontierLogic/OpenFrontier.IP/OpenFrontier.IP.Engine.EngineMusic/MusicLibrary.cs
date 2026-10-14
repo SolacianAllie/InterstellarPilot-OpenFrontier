@@ -112,6 +112,39 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			return null;
 		}
 
+		/// <summary>
+		/// The main menu track.
+		/// </summary>
+		/// <remarks>
+		/// Not a random pick from the Menu category, because the category
+		/// holds exactly one track and randomising it would be a way of
+		/// spelling "there might be others" while there are not.
+		///
+		/// The menu plays Starbound and nothing else, and loops it. That was
+		/// already true - EngineMusicPlayerController hardcoded
+		/// "music_starbound" for the menu, looped it, and played no other
+		/// track there - and it is now true of the new system too. The first
+		/// run of this played "E D Menus" instead, because two loose files in
+		/// the music folder root were being classified as Menu by the same
+		/// rule that classifies a folder, and they have since been moved to
+		/// Unassigned, where nothing plays them until somebody says what they
+		/// are for.
+		/// </remarks>
+		public static MusicTimingTable.Entry MenuTrack()
+		{
+			for (int i = 0; i < MusicTimingTable.Tracks.Count; i++)
+			{
+				MusicTimingTable.Entry entry = MusicTimingTable.Tracks[i];
+
+				if (entry.Category == "Menu")
+				{
+					return entry;
+				}
+			}
+
+			return null;
+		}
+
 		/// <summary>Every playable combat section of one kind and intensity.</summary>
 		/// <remarks>
 		/// The reserved intro is filtered out here rather than at each call

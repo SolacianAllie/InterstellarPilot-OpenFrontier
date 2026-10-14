@@ -55,9 +55,21 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		public bool IsFadingOut => fadingOut;
 
 		/// <summary>Seconds since the current track started.</summary>
+		/// <remarks>
+		/// Unscaled time, deliberately. Time.time stops dead at timeScale 0,
+		/// and the main menu is a ScreenBase - ScreenNavigator sets
+		/// timeScale = 0 for it - so a Time.time clock froze the moment the
+		/// menu opened. The overlay showed it: 186s of 218s, ends in 23s, and
+		/// it stayed exactly there, because 23 seconds of scaled time never
+		/// elapsed. The ending onset was therefore never reached, so no track
+		/// ever handed over to another.
+		///
+		/// The old SimpleMusicPlayer already used Time.realtimeSinceStartup for
+		/// its fades for the same reason. This had to match it.
+		/// </remarks>
 		public float CurrentElapsed => currentEntry == null
 			? 0f
-			: Time.time - currentStartedAt;
+			: Time.realtimeSinceStartup - currentStartedAt;
 
 		/// <summary>
 		/// Whether the current track has reached its pinned ending onset AND
@@ -76,8 +88,9 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// another handover every frame - which restarts the incoming track
 		/// from its first sample and sounds like a skip.
 		/// </remarks>
+		/// A looped track has no ending to reach, so it never triggers this.
 		public bool ReachedEndingOnset =>
-			currentEntry != null && !incomingWaiting
+			currentEntry != null && !currentEntry.Loops && !incomingWaiting
 				&& CurrentElapsed >= currentEntry.EndingOnset;
 
 		/// <summary>How long until the ending onset, or 0 if not known.</summary>
@@ -172,10 +185,11 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			currentSource.clip = clip;
 			currentSource.volume = MasterVolume;
 			currentSource.time = 0f;
+			currentSource.loop = entry.Loops;
 			currentSource.Play();
 
 			currentEntry = entry;
-			currentStartedAt = Time.time;
+			currentStartedAt = Time.realtimeSinceStartup;
 
 			Debug.Log("Music: playing '" + entry.Name + "' (" + entry.Category
 				+ ") from the start. " + entry.Duration.ToString("0")
@@ -221,7 +235,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			incomingSource.Play();
 
 			incomingEntry = entry;
-			incomingStartedAt = Time.time;
+			incomingStartedAt = Time.realtimeSinceStartup;
 			incomingWaiting = true;
 
 			Debug.Log("Music: handing over to '" + entry.Name + "' ("
@@ -274,9 +288,10 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			//
 			// It has to be loaded HERE. Deferring the load to the promote left
 			// the promoted source with no clip at all - silence - and left
-			// incomingStartedAt at zero, so CurrentElapsed became Time.time
-			// and ReachedEndingOnset fired immediately on the very next
-			// frame. Every interruption was a silent gap followed by a skip.
+			// incomingStartedAt at zero, so CurrentElapsed became the time
+			// since the level started and ReachedEndingOnset fired immediately
+			// on the very next frame. Every interruption was a silent gap
+			// followed by a skip.
 			EnsureSources();
 
 			incomingSource.Stop();
@@ -286,7 +301,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			incomingEntry = entry;
 			incomingWaiting = true;
 			fadingOut = true;
-			fadeStartedAt = Time.time;
+			fadeStartedAt = Time.realtimeSinceStartup;
 
 			Debug.Log("Music: interrupted '" + currentEntry.Name + "' after "
 				+ CurrentElapsed.ToString("0") + "s of " + currentEntry.Duration.ToString("0")
@@ -328,10 +343,11 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return;
 			}
 
-			// A track that ran out before reaching its measured ending still
-			// has to hand over, or the game goes quiet. Ending onset is a
-			// measurement and measurements are occasionally wrong.
-			if (currentEntry != null && currentSource != null
+			// A LOOPED track reports isPlaying true forever, so it must be
+			// excluded here. It is not broken and must not be "recovered" by
+			// restarting it - and if it were, the restart would fight
+			// AudioSource.loop and restart the menu track forever.
+			if (currentEntry != null && currentSource != null && !currentEntry.Loops
 				&& !currentSource.isPlaying && CurrentElapsed > 1f)
 			{
 				Debug.Log("Music: '" + currentEntry.Name + "' stopped playing at "
@@ -345,7 +361,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 		private void StepFadeOut()
 		{
-			float elapsed = Time.time - fadeStartedAt;
+			float elapsed = Time.realtimeSinceStartup - fadeStartedAt;
 			float t = InterruptFadeSeconds <= 0f
 				? 1f
 				: Mathf.Clamp01(elapsed / InterruptFadeSeconds);
@@ -399,7 +415,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				incomingSource = outgoing;
 
 				currentSource.volume = MasterVolume;
-				currentSource.loop = false;
+				currentSource.loop = currentEntry != null && currentEntry.Loops;
 
 				// Two paths arrive here and they differ. A handover's track is
 				// already playing underneath and must not be restarted. An
@@ -414,7 +430,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				if (!wasAlreadyPlaying && currentSource.clip != null)
 				{
 					currentSource.Play();
-					incomingStartedAt = Time.time;
+					incomingStartedAt = Time.realtimeSinceStartup;
 				}
 			}
 
@@ -448,6 +464,39 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		public void StopAll()
 		{
 			StopBoth();
+		}
+
+		/// <summary>Is the AudioSource Unity thinks is playing, actually playing?</summary>
+		public bool SourcePlaying => currentSource != null && currentSource.isPlaying;
+
+		/// <summary>The source's real volume right now, -1 if there is no source.</summary>
+		public float SourceVolume => currentSource != null ? currentSource.volume : -1f;
+
+		/// <summary>Whether a clip is actually attached to the source.</summary>
+		public bool SourceHasClip => currentSource != null && currentSource.clip != null;
+
+		/// <summary>
+		/// The raw audio state, for the diagnostic overlay.
+		/// </summary>
+		/// <remarks>
+		/// Added because "the overlay says it is playing and nothing can be
+		/// heard" is not a reportable bug. Everything above this can say a
+		/// track is playing while Unity's AudioSource disagrees, and those two
+		/// facts being different is the whole of the problem. This is the
+		/// side that can be wrong.
+		/// </remarks>
+		public string AudioState()
+		{
+			if (currentSource == null)
+			{
+				return "NO SOURCE";
+			}
+
+			return "playing=" + SourcePlaying
+				+ " clip=" + (SourceHasClip ? currentSource.clip.name : "NONE")
+				+ " vol=" + SourceVolume.ToString("0.00")
+				+ " loop=" + currentSource.loop
+				+ " paused=" + AudioListener.pause;
 		}
 
 		/// <summary>One line describing what is playing and why.</summary>
