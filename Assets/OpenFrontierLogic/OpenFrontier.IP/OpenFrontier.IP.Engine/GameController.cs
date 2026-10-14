@@ -319,6 +319,28 @@ namespace OpenFrontier.IP.Engine
 		// refresh rate goes back up.
 		public int UserTargetFrameRate = 60;
 
+		/// <summary>
+		/// The frame rate actually being aimed at, for display purposes.
+		/// </summary>
+		/// <remarks>
+		/// With V-Sync on the display decides, so the target is the panel's
+		/// refresh rate rather than any number the user picked - showing "60"
+		/// against a 144Hz panel would be a lie. With it off, it is the frame
+		/// rate limit row. 0 or less there means the "Uncapped" option.
+		///
+		/// refreshRateRatio.value is a double and is used rather than
+		/// currentResolution.refreshRate because the latter truncates: a 59.94Hz
+		/// panel reports 59, and rounding the ratio gives the 60 people expect.
+		/// </remarks>
+		public int GetEffectiveFrameRateTarget()
+		{
+			if (PlayerPrefs.GetInt(PlayerOptionConstants.Video_VSyncKey, 1) > 0)
+			{
+				return Mathf.Max(1, Mathf.RoundToInt((float)Screen.currentResolution.refreshRateRatio.value));
+			}
+			return UserTargetFrameRate;
+		}
+
 		public bool LightingFXEnabled = true;
 
 		public const bool DefaultLightingFXEnabled = true;
