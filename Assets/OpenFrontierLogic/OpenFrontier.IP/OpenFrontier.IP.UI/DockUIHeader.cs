@@ -11,18 +11,10 @@ namespace OpenFrontier.IP.UI
 	{
 		private float lastTimeRefreshedTitleLabel = -100f;
 
-		// Frame rate shown at the head of the location label. A rolling average over
-		// the last second of real frames, kept in a fixed ring so there is no
-		// allocation per frame.
-		private const int FpsSampleCount = 128;
-
-		private readonly float[] fpsSamples = new float[FpsSampleCount];
-
-		private int fpsSampleHead;
-
-		private int fpsSampleCount;
-
-		private float displayFps;
+		// Frame rate shown at the head of the location label. Same counter the dev
+		// overlay uses, so the two cannot report different numbers on the same
+		// frame. Owned by OpenFrontier; OpenFrontier.IP already references it.
+		private readonly FrameRateCounter frameRateCounter = new FrameRateCounter();
 
 		public TextMeshProUGUI CreditsText;
 
@@ -178,47 +170,9 @@ namespace OpenFrontier.IP.UI
 		{
 			// Unscaled, so the readout stays honest while a PauseWhenShown screen
 			// has Time.timeScale at 0 - which is exactly when it is least obvious
-			// whether something is holding the framerate up.
-			//
-			// An average over the last second of frames, not the instantaneous
-			// rate and not an exponential smoothing. Both of those were tried and
-			// both read badly: raw per-frame alternates by a frame or two for
-			// reasons that do not matter, and a smoothing factor leans too far
-			// towards responsiveness - the number moves every frame, which is
-			// precisely what makes it hard to read.
-			//
-			// Samples are taken newest-first and the window is cut at one second
-			// of accumulated time rather than at a fixed frame count, so the
-			// average covers the same span at any framerate. The ring is 128 deep
-			// and preallocated; nothing here allocates.
-			float frameDelta = Time.unscaledDeltaTime;
-			if (frameDelta > 0f)
-			{
-				fpsSamples[fpsSampleHead] = frameDelta;
-				fpsSampleHead = (fpsSampleHead + 1) % FpsSampleCount;
-				if (fpsSampleCount < FpsSampleCount)
-				{
-					fpsSampleCount++;
-				}
-				float windowTime = 0f;
-				int windowFrames = 0;
-				int index = fpsSampleHead;
-				while (windowFrames < fpsSampleCount)
-				{
-					index = (index - 1 + FpsSampleCount) % FpsSampleCount;
-					float sample = fpsSamples[index];
-					if (windowTime + sample > 1f && windowFrames > 0)
-					{
-						break;
-					}
-					windowTime += sample;
-					windowFrames++;
-				}
-				if (windowTime > 0f)
-				{
-					displayFps = windowFrames / windowTime;
-				}
-			}
+			// whether something is holding the framerate up. See FrameRateCounter
+			// for why the rolling mean beat the other two approaches.
+			frameRateCounter.Sample(Time.unscaledDeltaTime);
 
 			// Location label, refreshed every frame so the framerate reading moves
 			// with the display rather than jumping once a second. This used to be
@@ -341,7 +295,7 @@ namespace OpenFrontier.IP.UI
 				// when that is the option, since the display decides and there is
 				// no number to show, and the frame rate limit row when one was
 				// picked. 0 or less on that row is the "Uncapped" option.
-				stringBuilder.Append(displayFps.ToString("0"));
+				stringBuilder.Append(frameRateCounter.FramesPerSecond.ToString("0"));
 				stringBuilder.Append('/');
 				GameController gameController = GameController.Instance;
 				if (gameController != null && PlayerPrefs.GetInt(gameController.PlayerOptionConstants.Video_VSyncKey, 1) > 0)

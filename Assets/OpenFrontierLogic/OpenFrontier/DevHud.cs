@@ -20,16 +20,16 @@ namespace OpenFrontier
 		private int fpsFrames;
 		private float currentFps;
 
+		// Shared with the dock header's player-facing readout so the two cannot
+		// disagree on what the framerate is. This was a 0.5s sampled bucket,
+		// which jumped twice a second and read differently from the header on the
+		// same frame - a hitch showed as a dip in one and a step in the other.
+		private readonly FrameRateCounter frameRateCounter = new FrameRateCounter();
+
 		private void Update()
 		{
-			fpsAccum += Time.unscaledDeltaTime;
-			fpsFrames++;
-			if (fpsAccum >= 0.5f)
-			{
-				currentFps = fpsFrames / fpsAccum;
-				fpsAccum = 0f;
-				fpsFrames = 0;
-			}
+			frameRateCounter.Sample(Time.unscaledDeltaTime);
+			currentFps = frameRateCounter.FramesPerSecond;
 		}
 
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
