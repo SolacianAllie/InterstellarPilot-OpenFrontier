@@ -60,6 +60,14 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// combat sections come out 1, 2, 3 and the sequencer walks them in
 		/// that order rather than shuffling. Ambient tracks are picked at
 		/// random from this list instead.
+		///
+		/// RETURNS A SHARED BUFFER, VALID UNTIL THE NEXT CALL. The list is
+		/// reused rather than allocated because this runs every frame and a
+		/// fresh list per frame is a needless allocation in a game that is
+		/// already memory-tight. The cost is that a caller which keeps the
+		/// list across another query sees it change underneath - which is why
+		/// the combat sequencer copies out of it rather than holding it. Copy
+		/// if you need to keep it.
 		/// </remarks>
 		public static List<MusicTimingTable.Entry> InCategory(string category)
 		{

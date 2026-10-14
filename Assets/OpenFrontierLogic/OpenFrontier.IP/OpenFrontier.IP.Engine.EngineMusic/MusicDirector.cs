@@ -152,6 +152,23 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// <summary>The answer the state machine is currently giving.</summary>
 		public string CurrentKey => currentKey;
 
+		/// <summary>
+		/// The last combat reading, for the diagnostic overlay.
+		/// </summary>
+		/// <remarks>
+		/// Reads through the detector rather than a copy, so the overlay shows
+		/// the same number the state machine acted on rather than a second
+		/// measurement taken a frame later and possibly disagreeing with it.
+		/// </remarks>
+		public MusicCombatState CombatState => detector.Sample();
+
+		/// <summary>Which family owns the sector you are in, for the overlay.</summary>
+		public MusicFamily SectorFamily =>
+			EngineASX.Instance == null || EngineASX.Instance.ActiveSector == null
+				? MusicFamily.Neutral
+				: MusicFactionClassifier.FamilyOf(
+					EngineASX.Instance.ActiveSector.ControllingFaction);
+
 		private void Update()
 		{
 			StandDownTheOldController();
@@ -173,18 +190,24 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return;
 			}
 
+			// Through the property, not the field. The crossfader is made on
+			// demand by Player, and reading the field directly left it null
+			// here - a NullReferenceException every single frame, which is
+			// what the first run of this actually did.
+			MusicCrossfadePlayer crossfader = Player;
+
 			// The world changed. Cut.
 			if (wantedKey != currentKey)
 			{
-				if (player.Current == null)
+				if (crossfader.Current == null)
 				{
-					if (player.Start(wanted))
+					if (crossfader.Start(wanted))
 					{
 						currentKey = wantedKey;
 						lastRequested = wanted;
 					}
 				}
-				else if (player.Interrupt(wanted))
+				else if (crossfader.Interrupt(wanted))
 				{
 					currentKey = wantedKey;
 					lastRequested = wanted;
@@ -195,9 +218,9 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			// Same answer, nothing playing. A track that failed to load, or a
 			// session that started silent.
-			if (player.Current == null)
+			if (crossfader.Current == null)
 			{
-				if (player.Start(wanted))
+				if (crossfader.Start(wanted))
 				{
 					lastRequested = wanted;
 				}
@@ -207,11 +230,11 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			// The track reached its ending, and nothing has changed since.
 			// Hand over to the next one and let the old one finish.
-			if (player.ReachedEndingOnset && !player.IsFadingOut)
+			if (crossfader.ReachedEndingOnset && !crossfader.IsFadingOut)
 			{
 				MusicTimingTable.Entry next = NextFor(wantedKey, wanted);
 
-				if (next != null && player.HandOver(next))
+				if (next != null && crossfader.HandOver(next))
 				{
 					lastRequested = next;
 				}
