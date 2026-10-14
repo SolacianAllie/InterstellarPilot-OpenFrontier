@@ -139,10 +139,9 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				+ "\nwhy " + why
 				+ "\n" + position
 				+ "\n" + next
-				+ "\nsrc " + player.AudioState()
-				+ "\ntimeScale " + Time.timeScale.ToString("0.00")
-				+ ", listeners " + EnabledListenerCount()
-				+ ", " + MusicLibrary.LoadedClipCount + " clips loaded";
+				+ "\nvoices " + director.VoiceReport()
+				+ "\n" + player.AudioState()
+				+ ", listeners " + EnabledListenerCount();
 		}
 
 		/// <summary>

@@ -700,6 +700,34 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		public bool HasLiveMasterVolume =>
 			GameController.Instance != null && GameController.Instance.MusicPlayer != null;
 
+		/// <summary>
+		/// Both audio sources, named, with what each is actually doing.
+		/// </summary>
+		/// <remarks>
+		/// The second source is included because it is SUPPOSED to be playing
+		/// during a handover and during a crossfade. Reporting only the
+		/// current one makes a perfectly correct overlap look exactly like a
+		/// second music system running - which is the mistake being made here
+		/// twice.
+		/// </remarks>
+		public string SourceReport()
+		{
+			return "[" + DescribeSource(currentSource, "out")
+				+ " " + DescribeSource(incomingSource, "in") + "]";
+		}
+
+		private static string DescribeSource(AudioSource source, string tag)
+		{
+			if (source == null)
+			{
+				return tag + "=none";
+			}
+
+			string clip = source.clip == null ? "noclip" : source.clip.name;
+
+			return tag + "=" + clip + (source.isPlaying ? "/PLAYING" : "/stopped");
+		}
+
 		/// <summary>One line describing what is playing and why.</summary>
 		public string Describe()
 		{

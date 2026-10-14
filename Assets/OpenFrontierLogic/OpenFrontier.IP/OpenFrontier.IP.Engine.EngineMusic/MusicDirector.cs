@@ -223,6 +223,70 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			}
 		}
 
+		/// <summary>
+		/// Everything that could be making a sound, in one string.
+		/// </summary>
+		/// <remarks>
+		/// Added because "two music systems are playing at once" has been
+		/// wrong twice for different reasons, and both times the only way to
+		/// tell them apart was to already know the answer. This names every
+		/// voice in the game that can play music and says what each one is
+		/// doing: the old controller's enabled count, the old player's track
+		/// and queue, and BOTH of this system's audio sources - the second
+		/// one matters because during a handover or a crossfade it is
+		/// supposed to be playing, and that is indistinguishable from a bug
+		/// by ear.
+		/// </remarks>
+		public string VoiceReport()
+		{
+			System.Text.StringBuilder sb = new System.Text.StringBuilder();
+
+			EngineMusicPlayerController[] controllers =
+				Object.FindObjectsOfType<EngineMusicPlayerController>();
+			int enabled = 0;
+
+			for (int i = 0; i < controllers.Length; i++)
+			{
+				if (controllers[i] != null && controllers[i].enabled)
+				{
+					enabled++;
+				}
+			}
+
+			sb.Append("old ctrls ").Append(controllers.Length)
+				.Append(" (").Append(enabled).Append(" enabled)");
+
+			if (GameController.Instance != null && GameController.Instance.MusicPlayer != null)
+			{
+				OpenFrontier.IP.MusicPlayer.SimpleMusicPlayer old =
+					GameController.Instance.MusicPlayer;
+
+				sb.Append(", old player ");
+
+				if (old.PlayingTrack != null && old.PlayingTrack.AudioSource != null)
+				{
+					sb.Append("'").Append(old.PlayingTrack.Track.TrackName)
+						.Append("' ").Append(old.PlayingTrack.AudioSource.isPlaying
+							? "PLAYING" : "silent");
+				}
+				else
+				{
+					sb.Append("nothing");
+				}
+
+				sb.Append(", queued ").Append(old.QueuedTracks.Count);
+			}
+			else
+			{
+				sb.Append(", no old player");
+			}
+
+			sb.Append(" | mine ");
+			sb.Append(Player.SourceReport());
+
+			return sb.ToString();
+		}
+
 		/// <summary>The answer the state machine is currently giving.</summary>
 		public string CurrentKey => currentKey;
 
