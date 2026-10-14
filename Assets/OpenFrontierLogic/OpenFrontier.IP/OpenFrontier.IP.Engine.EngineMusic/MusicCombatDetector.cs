@@ -85,6 +85,31 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// stays ordinary, and only an actual encounter changes the music.
 		/// </remarks>
 		public const int ThreatThreshold = 3;
+
+		/// <summary>
+		/// How far the count has to fall before a threat is forgotten.
+		/// </summary>
+		/// <remarks>
+		/// A second, lower threshold, so the gate itself does not chatter.
+		///
+		/// With one threshold a patrol sitting on three ships is unstable:
+		/// one drifts out of sensor range, the count drops to two which is
+		/// below the line, and twenty seconds later it drifts back and is over
+		/// it again. Each crossing was an instant change of music, and the
+		/// symptom was themes interrupting and restarting several times a
+		/// minute as bandits crossed sensor range.
+		///
+		/// Deferring the change to the next track removes the cut. This
+		/// removes much of the reason to defer, and both are wanted: the gate
+		/// should be stable, and even a stable gate should not cut a track in
+		/// half.
+		///
+		/// Entry and exit are deliberately not symmetric. It takes three ships
+		/// to start worrying and one to stop, so a fight has to build before
+		/// the music admits it, and a scattering patrol stands down sooner
+		/// than it stood up.
+		/// </remarks>
+		public const int ThreatThresholdToStandDown = 1;
 	}
 
 	/// <summary>
@@ -147,6 +172,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		private readonly List<Unit> seen = new List<Unit>(64);
 		private float lastSampleAt = -999f;
 
+		private bool threatRaised;
 		private MusicThreatState pendingState = MusicThreatState.Normal;
 		private float pendingSince = -999f;
 
@@ -203,6 +229,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		public void Reset()
 		{
 			AllClearPending = false;
+			threatRaised = false;
 			pendingState = MusicThreatState.Normal;
 			pendingSince = -999f;
 			State = default(MusicCombatState);
@@ -237,9 +264,21 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			// and already expires on its own timer.
 			bool engaged = engine.PlayerInCombat;
 
+			// The gate, with hysteresis: it takes more ships to start
+			// worrying than to stop, so a patrol hovering on the line does
+			// not oscillate.
+			if (!threatRaised && count > MusicCombatState.ThreatThreshold)
+			{
+				threatRaised = true;
+			}
+			else if (threatRaised && count <= MusicCombatState.ThreatThresholdToStandDown)
+			{
+				threatRaised = false;
+			}
+
 			MusicThreatState raw = engaged
 				? MusicThreatState.Engagement
-				: count > MusicCombatState.ThreatThreshold
+				: threatRaised
 					? MusicThreatState.Threat
 					: MusicThreatState.Normal;
 

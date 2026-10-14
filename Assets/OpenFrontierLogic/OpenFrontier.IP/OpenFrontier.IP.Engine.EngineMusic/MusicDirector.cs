@@ -650,12 +650,55 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 					return;
 				}
 
-				if (crossfader.Current == null)
+				// IS THIS WORTH CUTTING OFF A TRACK FOR?
+				//
+				// Only some changes are. Something is shooting at you, you
+				// docked, you went through a wormhole, the menu is involved -
+				// those interrupt, because something has actually happened and
+				// the music is part of it.
+				//
+				// The ENEMY COUNT is not one of those, and treating it as one
+				// is what made the music aggressive. Bandits cross sensor
+				// range constantly; the count goes over the threshold and back
+				// under it several times in a minute, and every crossing was
+				// an instant cut to a different theme and then back. A track
+				// that is cut short is worse than a track that is briefly wrong
+				// about how many ships are around.
+				//
+				// So a count-driven change is NOT taken now. It is simply left
+				// as the answer, and picked up at the next natural handover -
+				// which is the point where the track changes anyway, so the
+				// music still responds, just without a cut to do it. It also
+				// cancels itself: if the count goes back down before that
+				// handover, the answer is the one for calm again and nothing
+				// happens at all.
+				bool isEngagement = wantedKey.StartsWith("Combat/Engagement",
+					System.StringComparison.Ordinal)
+					|| currentKey.StartsWith("Combat/Engagement",
+						System.StringComparison.Ordinal);
+
+				bool isPlaceChange = IsPlace(wantedKey) != IsPlace(currentKey);
+
+				// A dock is a place change and a crossfade, never deferred:
+				// arriving somewhere is not a mood.
+				bool urgent = isEngagement || isPlaceChange
+					|| dockedNow != dockAtLastTransition
+					|| currentKey == "Menu" || wantedKey == "Menu";
+
+				if (!urgent)
+				{
+					// Fall through to the handover below, which will arrive at
+					// `wanted` instead of the next track in the same place.
+					// currentKey is NOT updated, so the difference is still
+					// there to be noticed next frame.
+				}
+				else if (crossfader.Current == null)
 				{
 					if (crossfader.Start(wanted))
 					{
 						currentKey = wantedKey;
 						lastRequested = wanted;
+						dockAtLastTransition = dockedNow;
 					}
 				}
 				else
@@ -705,9 +748,9 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 						// quietly giving up and cutting instead.
 						dockAtLastTransition = dockedNow;
 					}
-				}
 
-				return;
+					return;
+				}
 			}
 
 			// Same answer, nothing playing. A track that failed to load, or a
@@ -722,11 +765,24 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return;
 			}
 
-			// The track reached its ending, and nothing has changed since.
-			// Hand over to the next one and let the old one finish.
+			// The track reached its ending. Hand over, and let the old one
+			// finish under it.
+			//
+			// If a DEFERRED change is waiting, this is where it lands: the
+			// track changes anyway, so the music has responded to the new
+			// state without anything being cut off to make room for it. When
+			// the state is unchanged the handover stays inside the current
+			// place or mood.
 			if (crossfader.ReachedEndingOnset && !crossfader.IsFadingOut)
 			{
-				MusicTimingTable.Entry next = NextFor(wantedKey, wanted);
+				MusicTimingTable.Entry next = wantedKey == currentKey
+					? NextFor(wantedKey, wanted)
+					: wanted;
+
+				if (next == null)
+				{
+					next = NextFor(currentKey, wanted);
+				}
 
 				if (next != null && crossfader.HandOver(next))
 				{
@@ -747,6 +803,23 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// previous one is excluded so a track cannot hand straight over to
 		/// itself, which would sound like a skip rather than a change.
 		/// </remarks>
+		/// <summary>
+		/// Whether a key names a PLACE - somewhere the player is - rather than
+		/// a mood the sector happens to be in.
+		/// </summary>
+		/// <remarks>
+		/// Places interrupt. Moods wait for the next track.
+		///
+		/// Going from a starport to open space is somewhere you have left;
+		/// going from calm to threat music is the same sector with a
+		/// different number of ships in it.
+		/// </remarks>
+		private static bool IsPlace(string key)
+		{
+			return key.StartsWith("Space/", System.StringComparison.Ordinal)
+				|| key.StartsWith("Starport/", System.StringComparison.Ordinal);
+		}
+
 		private MusicTimingTable.Entry NextFor(string key, MusicTimingTable.Entry current)
 		{
 			if (key.StartsWith("Combat/", System.StringComparison.Ordinal))
