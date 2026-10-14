@@ -316,6 +316,25 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			if (engine == null || !EngineASX.LoadedAndReady)
 			{
+				// Leaving the main menu. The world is gone or being built, so
+				// there is nothing to decide yet and nothing to fade TO - but
+				// the player has committed to leaving, and this is the only
+				// moment the menu can start letting go.
+				//
+				// Below the early return on purpose. Waiting for a ready world
+				// meant the fade began once the NEXT world was observable,
+				// which is after the scene change the player was watching, so
+				// three seconds of music played over a world that had already
+				// loaded and the menu never faded out under the transition
+				// at all.
+				//
+				// FadeOutOnly returns false once it has run or once there is
+				// nothing playing, so this is safe to call every frame.
+				if (currentKey == "Menu")
+				{
+					Player.FadeOutOnly(Player.MenuFadeSeconds);
+				}
+
 				return;
 			}
 

@@ -332,6 +332,25 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			incomingEntry = entry;
 			incomingWaiting = true;
+			crossfading = false;
+
+			if (fadingOut)
+			{
+				// Already on the way to silence. Arm the track and LEAVE THE
+				// FADE RUNNING - do not restart it.
+				//
+				// Restarting would snap the volume back to full at the moment
+				// the new world appeared: audible, and the opposite of the
+				// point, since the menu was already on its way out. The load
+				// simply finished early and there is now somewhere for the
+				// fade to arrive.
+				Debug.Log("Music: '" + entry.Name + "' is ready in time for the"
+					+ " fade already running, so it arrives behind it rather"
+					+ " than starting a second fade.");
+
+				return true;
+			}
+
 			fadingOut = true;
 			fadeStartedAt = Time.realtimeSinceStartup;
 			fadeSeconds = seconds;
@@ -558,6 +577,60 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				// master, which is where the ramp left it.
 				PromoteIncoming();
 			}
+		}
+
+		/// <summary>
+		/// Fades the current track to silence with nothing queued behind it.
+		/// </summary>
+		/// <remarks>
+		/// A fade out that is not a transition. The next track is unknown
+		/// yet, or there may not be one for some time - which is exactly the
+		/// situation when leaving the main menu, because the menu hands over
+		/// to a loading scene and the next world does not exist yet.
+		///
+		/// THE MENUS FADE COULD NOT START WITHOUT THIS. The director only
+		/// decides what to play once the world is ready, and leaving the menu
+		/// means the world is emphatically NOT ready - it is being torn down,
+		/// then a loading scene runs, then a new world is built. So the fade
+		/// began when the new world became observable, which is after the
+		/// scene change the player was watching, and 3 seconds of it played
+		/// over a world that had already loaded. Asking for the menu to fade
+		/// out BEFORE the scene change is a request for a fade that does not
+		/// have a destination yet.
+		///
+		/// Returns false when there is nothing playing or a fade is already
+		/// running, so the caller can call it every frame without guarding.
+		/// </remarks>
+		public bool FadeOutOnly(float seconds)
+		{
+			if (currentEntry == null || currentSource == null || !currentSource.isPlaying)
+			{
+				return false;
+			}
+
+			// The fadingOut guard is load-bearing, not tidiness. During a fade
+			// the track is still Playing and currentEntry is still set - it
+			// is quieter, not finished - so without this the caller's
+			// every-frame invocation would reset fadeStartedAt each frame and
+			// the fade would never complete. It would sit just below full
+			// volume forever, which is worse than not fading at all.
+			if (fadingOut || crossfading)
+			{
+				return false;
+			}
+
+			incomingEntry = null;
+			incomingWaiting = false;
+			crossfading = false;
+			fadingOut = true;
+			fadeStartedAt = Time.realtimeSinceStartup;
+			fadeSeconds = seconds;
+
+			Debug.Log("Music: letting go of '" + currentEntry.Name
+				+ "' after " + CurrentElapsed.ToString("0") + "s - fading to"
+				+ " silence over " + seconds + "s with nothing behind it.");
+
+			return true;
 		}
 
 		private void StepFadeOut()
