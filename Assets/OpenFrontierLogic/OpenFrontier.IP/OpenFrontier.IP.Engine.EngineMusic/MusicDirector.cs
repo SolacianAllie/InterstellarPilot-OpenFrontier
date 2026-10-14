@@ -565,6 +565,26 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			// The world changed.
 			if (wantedKey != currentKey)
 			{
+				// THE STATE CHANGED BUT THE TRACK DID NOT NEED TO.
+				//
+				// A wormhole flaps the state - the sector changes, the local
+				// ship goes away, combat ends - and the answer can come back
+				// as the track already playing. Passing that to Interrupt
+				// meant fading the music to silence and starting it again
+				// from its first sample: a hard ending, which is exactly
+				// what a wormhole sounded like.
+				//
+				// The player now refuses it, so the state is simply accepted
+				// here with no audio operation at all. If this did NOT
+				// acknowledge the key it would ask again next frame, be
+				// refused again, and never settle.
+				if (crossfader.Current == wanted)
+				{
+					currentKey = wantedKey;
+					dockAtLastTransition = dockedNow;
+					return;
+				}
+
 				if (crossfader.Current == null)
 				{
 					if (crossfader.Start(wanted))
@@ -676,6 +696,33 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// <summary>
 		/// What should be playing, and why.
 		/// </summary>
+		/// <summary>
+		/// What to keep the random picker away from: the track that is
+		/// actually playing, falling back to the last one requested.
+		/// </summary>
+		/// <remarks>
+		/// lastRequested is not the same thing. After a handover, a crossfade
+		/// or an interrupted transition the two drift apart, and the picker
+		/// was then free to choose the track currently sounding - which is
+		/// how a transition came to ask for the music it was already
+		/// playing.
+		///
+		/// Refusing that in the player is the real fix, because it makes the
+		/// mistake harmless wherever it comes from. Asking the right question
+		/// here stops it being offered in the first place.
+		/// </remarks>
+		private MusicTimingTable.Entry PlayingOrLast()
+		{
+			MusicCrossfadePlayer crossfader = player;
+
+			if (crossfader != null && crossfader.Current != null)
+			{
+				return crossfader.Current;
+			}
+
+			return lastRequested;
+		}
+
 		private void Decide(out string key, out MusicTimingTable.Entry entry)
 		{
 			EngineASX engine = EngineASX.Instance;
@@ -765,14 +812,14 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				// for an unowned sector, so docking somewhere nobody owns
 				// needs no rule of its own.
 				key = "Space/Neutral";
-				entry = MusicLibrary.RandomFrom("Neutral", lastRequested);
+				entry = MusicLibrary.RandomFrom("Neutral", PlayingOrLast());
 				return;
 			}
 
 			if (HypersleepHelper.IsHypersleepActive())
 			{
 				key = "Hypersleep";
-				entry = MusicLibrary.RandomFrom("Hypersleep", lastRequested);
+				entry = MusicLibrary.RandomFrom("Hypersleep", PlayingOrLast());
 				return;
 			}
 
@@ -781,7 +828,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				engine.LocalFaction);
 
 			key = "Space/" + MusicFactionClassifier.NameOf(family);
-			entry = MusicLibrary.RandomFrom(MusicFactionClassifier.NameOf(family), lastRequested);
+			entry = MusicLibrary.RandomFrom(MusicFactionClassifier.NameOf(family), PlayingOrLast());
 		}
 
 		/// <summary>The faction that owns the station this ship is docked in.</summary>

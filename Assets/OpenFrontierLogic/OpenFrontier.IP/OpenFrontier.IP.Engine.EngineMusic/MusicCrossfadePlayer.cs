@@ -306,6 +306,27 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return false;
 			}
 
+			// A transition to the track that is ALREADY playing is not a
+			// transition. It is a cut followed by a restart of the same music,
+			// and the log caught it doing exactly that on a wormhole:
+			//
+			//   interrupted 'Neutral Blue Giant' after 0s of 82s
+			//       - fading to silence over 1.5s,
+			//       then 'Neutral Blue Giant'
+			//
+			// Wormholes flap the state - the sector changes, the local ship
+			// goes away, combat ends - so the answer can come back as the
+			// track already playing. It was then faded to silence and started
+			// again from its first sample. To the ear that is the music
+			// suddenly ending, every time it happened.
+			//
+			// HandOver already refused this. Interrupt and Crossfade did not,
+			// and they are the two that move between places.
+			if (entry == currentEntry)
+			{
+				return false;
+			}
+
 			if (currentEntry == null || currentSource == null || !currentSource.isPlaying)
 			{
 				return Start(entry);
@@ -532,6 +553,27 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		public bool Crossfade(MusicTimingTable.Entry entry)
 		{
 			if (entry == null)
+			{
+				return false;
+			}
+
+			// A transition to the track that is ALREADY playing is not a
+			// transition. It is a cut followed by a restart of the same music,
+			// and the log caught it doing exactly that on a wormhole:
+			//
+			//   interrupted 'Neutral Blue Giant' after 0s of 82s
+			//       - fading to silence over 1.5s,
+			//       then 'Neutral Blue Giant'
+			//
+			// Wormholes flap the state - the sector changes, the local ship
+			// goes away, combat ends - so the answer can come back as the
+			// track already playing. It was then faded to silence and started
+			// again from its first sample. To the ear that is the music
+			// suddenly ending, every time it happened.
+			//
+			// HandOver already refused this. Interrupt and Crossfade did not,
+			// and they are the two that move between places.
+			if (entry == currentEntry)
 			{
 				return false;
 			}
