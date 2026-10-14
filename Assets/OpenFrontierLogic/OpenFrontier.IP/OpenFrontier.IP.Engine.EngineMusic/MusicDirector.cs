@@ -365,9 +365,58 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// one matters because during a handover or a crossfade it is
 		/// supposed to be playing, and that is indistinguishable from a bug
 		/// by ear.
+		///
+		/// CACHED, AND THAT IS THE FIX RATHER THAN AN OPTIMISATION.
+		///
+		/// This used to run FindObjectsOfType, which walks every GameObject in
+		/// the scene and allocates an array to return. The overlay calls it
+		/// from OnGUI, and OnGUI runs at least twice per frame - once for the
+		/// Layout event, once for Repaint - so this cost two full scene scans
+		/// per frame, plus one more for the listener count. Four scans and
+		/// four array allocations, every frame, on a project whose scenes are
+		/// enormous.
+		///
+		/// It showed up as "moving the camera halves the FPS", which misleads
+		/// in a specific way: these are CPU costs competing with rendering,
+		/// so they only become visible once there IS rendering to compete
+		/// with. Standing still looked fine. The allocations also mean a
+		/// periodic garbage collection, which is the "sometimes" in
+		/// "sometimes the FPS is cut in half".
 		/// </remarks>
-		public string VoiceReport()
+		public string VoiceReport() => cachedVoiceReport;
+
+		private const float VoiceReportInterval = 0.25f;
+
+		private string cachedVoiceReport = "not sampled yet";
+		private float nextVoiceReportAt;
+
+		/// <summary>AudioListeners enabled and in an active hierarchy.</summary>
+		private static int LiveListenerCount()
 		{
+			AudioListener[] listeners = Object.FindObjectsOfType<AudioListener>();
+			int count = 0;
+
+			for (int i = 0; i < listeners.Length; i++)
+			{
+				if (listeners[i] != null && listeners[i].enabled
+					&& listeners[i].gameObject.activeInHierarchy)
+				{
+					count++;
+				}
+			}
+
+			return count;
+		}
+
+		private void RefreshVoiceReport()
+		{
+			if (Time.realtimeSinceStartup < nextVoiceReportAt)
+			{
+				return;
+			}
+
+			nextVoiceReportAt = Time.realtimeSinceStartup + VoiceReportInterval;
+
 			System.Text.StringBuilder sb = new System.Text.StringBuilder();
 
 			EngineMusicPlayerController[] controllers =
@@ -410,10 +459,10 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				sb.Append(", no old player");
 			}
 
-			sb.Append(" | mine ");
-			sb.Append(Player.SourceReport());
+			sb.Append(" | mine ").Append(Player.SourceReport())
+				.Append(", listeners ").Append(LiveListenerCount());
 
-			return sb.ToString();
+			cachedVoiceReport = sb.ToString();
 		}
 
 		/// <summary>The answer the state machine is currently giving.</summary>
@@ -472,6 +521,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		{
 			StandDownTheOldController();
 			EnsureMusicStaysAudible();
+			RefreshVoiceReport();
 
 			EngineASX engine = EngineASX.Instance;
 

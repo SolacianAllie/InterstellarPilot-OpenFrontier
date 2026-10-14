@@ -50,6 +50,10 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 #endif
 		}
 
+		private string cachedBody = "";
+		private string cachedAgainst = null;
+		private float nextBodyAt;
+
 		private void OnGUI()
 		{
 			MusicDirector director = MusicDirector.Instance;
@@ -59,7 +63,25 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return;
 			}
 
-			string body = Body(director);
+			// Rebuilt four times a second, not sixty. OnGUI runs at least twice
+			// per frame - Layout then Repaint - so building this string per
+			// call allocated twice per frame forever. The positions it shows
+			// are seconds out of a hundred, and a diagnostic that lags a
+			// quarter of a second is still a diagnostic.
+			//
+			// Also keyed on the state, so an event worth seeing is never the
+			// one the timer happens to swallow.
+			string stateKey = director.CurrentKey + "|" + (director.Player.Current != null
+				? director.Player.Current.Name : "none");
+
+			if (stateKey != cachedAgainst || Time.realtimeSinceStartup >= nextBodyAt)
+			{
+				cachedAgainst = stateKey;
+				nextBodyAt = Time.realtimeSinceStartup + 0.25f;
+				cachedBody = Body(director);
+			}
+
+			string body = cachedBody;
 
 			// One line per line of body, plus a little padding. Counted rather
 			// than hardcoded so adding a row cannot silently overflow the box
@@ -140,8 +162,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				+ "\n" + position
 				+ "\n" + next
 				+ "\nvoices " + director.VoiceReport()
-				+ "\n" + player.AudioState()
-				+ ", listeners " + EnabledListenerCount();
+				+ "\n" + player.AudioState();
 		}
 
 		/// <summary>
@@ -156,29 +177,6 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// has no AudioMixer and no code that pauses or mutes one. If this
 		/// reads 0, that is the answer, and it is nothing to do with music.
 		/// </remarks>
-		private static int EnabledListenerCount()
-		{
-			AudioListener[] listeners = Object.FindObjectsOfType<AudioListener>();
-
-			if (listeners == null)
-			{
-				return 0;
-			}
-
-			int count = 0;
-
-			for (int i = 0; i < listeners.Length; i++)
-			{
-				if (listeners[i] != null && listeners[i].enabled
-					&& listeners[i].gameObject.activeInHierarchy)
-				{
-					count++;
-				}
-			}
-
-			return count;
-		}
-
 		/// <summary>
 		/// The reason, in the same priority order the state machine uses.
 		/// </summary>
