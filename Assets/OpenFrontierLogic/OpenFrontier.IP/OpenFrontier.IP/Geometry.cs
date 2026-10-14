@@ -100,7 +100,17 @@ namespace OpenFrontier.IP
 
 		public static Vector3 RandomXZUnitVector(System.Random random)
 		{
-			return Quaternion.Euler(0f, random.NextFloat() * 360f, 0f) * Vector3.forward;
+			// Was Quaternion.Euler(0f, random.NextFloat() * 360f, 0f) * Vector3.forward.
+			//
+			// Quaternion.Euler is an extern native call, so calling it off the main
+			// thread is not safe, which made this method unusable from a worker even
+			// though everything else on the world-generation path is pure. Rotating
+			// (0,0,1) about Y by a degrees is (sin a, 0, cos a) - no quaternion, no
+			// native call, identical result.
+			//
+			// Mathf.Sin/Cos are managed wrappers over System.Math, not InternalCalls.
+			float angle = random.NextFloat() * 360f * Mathf.Deg2Rad;
+			return new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
 		}
 	}
 }
