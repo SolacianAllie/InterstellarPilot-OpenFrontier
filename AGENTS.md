@@ -1,5 +1,40 @@
 # Notes for Coding Agents
 
+## This is a MOBILE game first, PC second
+
+Decide everything against the weakest target, not the one in front of you.
+A PC has cores to spare and desktop memory; a phone does not, and a foldable
+is worse than a desktop again. Something that is free on a PC can be the
+single largest cost in a mobile build, and the PC is not where anyone plays.
+
+Practical form of it, in the order it actually bites:
+
+- **Diagnostic work does not ship.** Anything only a developer reads - an
+  overlay, a voice report, a scan that feeds one - belongs behind
+  `DEVELOPMENT_BUILD || UNITY_EDITOR`, compiled out rather than runtime-guarded
+  so a release build does not contain it. `MusicDirector.RefreshVoiceReport`
+  ran two `FindObjectsOfType` scans every quarter second in release to fill a
+  cache that only the overlay read, and the overlay is compiled out. Removed.
+- **Never put a scene-wide search on the render path.** `FindObjectsOfType`
+  walks every GameObject and allocates an array. In `OnGUI` it runs at least
+  twice per frame. If something must be watched, watch it on an event
+  (`sceneLoaded`, `sceneUnloaded`) and use a poll only as a backstop, at a
+  rate the weakest device would not notice.
+- **Per-frame work is a per-frame tax on a phone.** If it can be done at
+  2-4 Hz because nothing changes faster, it is at 2-4 Hz. "Cheap enough" is
+  judged against a budget, not against the desktop it was tested on.
+- **Look for the symptom that lies.** A CPU cost competing with rendering only
+  shows when there is rendering to compete with, so it appears as "moving the
+  camera halves the FPS" and looks like a graphics problem. Measure on the
+  target before believing what the symptom points at.
+- **Memory is budget starvation, not depth** - see the mipmap streaming note
+  below. The same instinct applies to allocations: steady small allocations
+  cause GC hitches, which read as random frame drops ("sometimes"), not as
+  the cost they are.
+
+When a feature is being designed, ask what it costs on a mid-range phone
+before asking what it costs here.
+
 ## Branches: everything lands on `Dev`
 
 `Dev` is the working branch and is checked out. Commit and push **Dev**:

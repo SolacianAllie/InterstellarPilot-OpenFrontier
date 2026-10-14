@@ -521,7 +521,19 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		{
 			StandDownTheOldController();
 			EnsureMusicStaysAudible();
+
+			// DIAGNOSTIC ONLY, AND DIAGNOSTIC WORK DOES NOT SHIP.
+			//
+			// cachedVoiceReport is read by one thing: MusicDebugOverlay, which
+			// is compiled out of release builds entirely. Two FindObjectsOfType
+			// scans every quarter second to fill a cache nobody can read is
+			// pure cost on the platform this game is designed for.
+			//
+			// Compiled out rather than guarded at runtime, so a release build
+			// does not even contain it.
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
 			RefreshVoiceReport();
+#endif
 
 			EngineASX engine = EngineASX.Instance;
 
