@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using UnityEngine.Profiling;
 using OpenFrontier.IP.Common;
 using OpenFrontier.IP.Common.Factions;
 using OpenFrontier.IP.Engine.AI.ActiveOrders;
@@ -485,6 +486,18 @@ namespace OpenFrontier.IP.Engine
 		private Dictionary<int, Sector> sectorIdMap = new Dictionary<int, Sector>(100);
 
 		private List<Unit> updatableUnits = new List<Unit>(2000);
+
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+		// Diagnostic only, and compiled out of release builds entirely per the
+		// project's rule that developer-facing work must not ship. These exist to
+		// answer one question: of EngineASX.Update()'s self time, how much is the
+		// engine-driven loops that replaced 13,521 MonoBehaviour Update()
+		// callbacks, and how much is the work that was always here? Guessing at
+		// that split is what this exists to replace.
+		private static readonly ProfilerMarker s_markerActiveUnits = new ProfilerMarker("EngineASX.ActiveSectorUnits");
+		private static readonly ProfilerMarker s_markerFactions = new ProfilerMarker("EngineASX.Factions");
+		private static readonly ProfilerMarker s_markerActiveFleets = new ProfilerMarker("EngineASX.ActiveSectorFleets");
+#endif
 
 		private List<int> freeUnitIndices = new List<int>(100);
 
@@ -3924,8 +3937,19 @@ namespace OpenFrontier.IP.Engine
 			// they have always been driven from below the guard - so this is a
 			// long-standing inconsistency in the engine, not a decision being made
 			// here.)
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+			using (s_markerActiveUnits.Auto())
+			{
+				UpdateActiveSectorUnits();
+			}
+			using (s_markerFactions.Auto())
+			{
+				UpdateFactions();
+			}
+#else
 			UpdateActiveSectorUnits();
 			UpdateFactions();
+#endif
 
 			if (IsPaused)
 			{
@@ -4453,6 +4477,9 @@ namespace OpenFrontier.IP.Engine
 		/// </remarks>
 		private void UpdateActiveSectorFleets()
 		{
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+			using (s_markerActiveFleets.Auto())
+#endif
 			for (int i = 0; i < fleets.Count; i++)
 			{
 				Fleet fleet = fleets[i];
