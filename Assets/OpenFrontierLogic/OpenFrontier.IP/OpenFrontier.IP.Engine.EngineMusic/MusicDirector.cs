@@ -78,12 +78,114 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			Object.DontDestroyOnLoad(host);
 			host.AddComponent<MusicDirector>();
 
+			// Scene events are subscribed in Awake, not here: Install is
+			// static and cannot bind an instance handler (CS0120).
+			//
 			// The old controller is stood down from Update rather than from
 			// here, because it lives on the EngineASX prefab and that does
 			// not exist yet at BeforeSceneLoad. Looking now finds nothing,
 			// says nothing, and leaves two systems playing music over each
 			// other for the whole session.
 		}
+
+		/// <summary>
+		/// Keeps at least one AudioListener alive, so the music is never
+		/// silently inaudible.
+		/// </summary>
+		/// <remarks>
+		/// THE CAUSE OF A SECOND-WORTH OF SILENCE ON EVERY LOAD. This project
+		/// has exactly two AudioListeners in it, on MenuCamera and GameCamera,
+		/// and NEITHER is referenced by LoadingScene.unity - so for the whole
+		/// of the load there is no listener at all, and an AudioSource with no
+		/// listener in the scene plays into nothing. The music was not being
+		/// stopped or faded; it was playing perfectly into a scene with no
+		/// ears in it, which is indistinguishable from a dropout by ear.
+		///
+		/// Unity has no "keep the last listener" behaviour, so this supplies
+		/// one - but ONLY while there is nothing else. The moment any other
+		/// live listener exists this one is switched off again, so there are
+		/// never two. Two listeners is not a quiet version of one: Unity
+		/// warns about it and the audio ends up somewhere arbitrary.
+		///
+		/// Re-checked on every scene load and unload, so the gap is covered
+		/// from the frame the camera goes rather than up to a poll later, and
+		/// on a slow poll after that as a backstop for listeners destroyed by
+		/// something that is not a scene event.
+		/// </remarks>
+		private void EnsureMusicStaysAudible()
+		{
+			if (Time.realtimeSinceStartup < nextListenerCheck)
+			{
+				return;
+			}
+
+			nextListenerCheck = Time.realtimeSinceStartup + 0.5f;
+
+			AudioListener[] all = Object.FindObjectsOfType<AudioListener>(true);
+
+			bool anotherLive = false;
+
+			for (int i = 0; i < all.Length; i++)
+			{
+				if (all[i] == null || all[i] == fallbackListener)
+				{
+					continue;
+				}
+
+				if (all[i].enabled && all[i].gameObject.activeInHierarchy)
+				{
+					anotherLive = true;
+					break;
+				}
+			}
+
+			if (anotherLive)
+			{
+				if (fallbackListener != null && fallbackListener.enabled)
+				{
+					fallbackListener.enabled = false;
+				}
+
+				return;
+			}
+
+			if (fallbackListener == null)
+			{
+				fallbackListener = gameObject.AddComponent<AudioListener>();
+			}
+
+			if (!fallbackListener.enabled)
+			{
+				fallbackListener.enabled = true;
+
+				Debug.Log("Music: nothing in this scene can hear anything, so"
+					+ " the music has supplied its own listener until one"
+					+ " exists again.");
+			}
+		}
+
+		// Two handlers rather than one shared, because the two events do NOT
+		// have the same signature here: sceneLoaded passes (Scene, LoadSceneMode)
+		// and sceneUnloaded passes (Scene). Writing one handler for both
+		// produced two CS0123s that read like the event was mistyped.
+		private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene,
+			UnityEngine.SceneManagement.LoadSceneMode mode)
+		{
+			// Re-check on the next frame rather than now: at sceneLoaded the
+			// camera that brings the listener may not have run Awake yet.
+			nextListenerCheck = 0f;
+		}
+
+		private void OnSceneUnloaded(UnityEngine.SceneManagement.Scene scene)
+		{
+			// This is the one that matters. The camera carrying the listener
+			// has just been destroyed, so this is the frame the scene stopped
+			// being able to hear anything.
+			nextListenerCheck = 0f;
+		}
+
+		private AudioListener fallbackListener;
+		private float nextListenerCheck;
 
 		private float nextStandDownCheck;
 		private bool warnedAboutOldMusic;
@@ -184,6 +286,11 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		private void Awake()
 		{
 			instance = this;
+
+			// Scene events so the fallback listener goes in the frame the
+			// camera leaves, rather than up to half a second later.
+			UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+			UnityEngine.SceneManagement.SceneManager.sceneUnloaded += OnSceneUnloaded;
 		}
 
 		private void OnDestroy()
@@ -308,33 +415,50 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 					EngineASX.Instance.ActiveSector.ControllingFaction,
 					EngineASX.Instance.LocalFaction);
 
+		/// <summary>
+		/// The player has committed to loading a scenario.
+		/// </summary>
+		/// <remarks>
+		/// Called from ScenarioLoaderUI.TryLoadScenario, at the moment the
+		/// load is queued. That is the earliest point at which the music can
+		/// know the menu is over - and getting it EARLIER than this is not
+		/// possible, while getting it later is what went wrong twice.
+		///
+		/// The first attempt watched for EngineASX.LoadedAndReady going
+		/// false. It never once fired: the log contains ZERO "Engine:
+		/// OnDestroy" lines, because the engine is not destroyed when you
+		/// leave the menu - the same instance carries the menu world and then
+		/// the galaxy one. LoadedAndReady stays true throughout, so the hook
+		/// was unreachable code that looked entirely plausible.
+		///
+		/// Watched for a scene change instead? No - the menu changes scene
+		/// constantly while you navigate it, and that would have cut the
+		/// music off every time you opened a submenu.
+		///
+		/// A static, called by the thing that knows, is the honest version of
+		/// this hook. Same assembly, so there is no reference to add.
+		/// </remarks>
+		public static void ScenarioLoadCommitted()
+		{
+			if (instance != null && instance.currentKey == "Menu")
+			{
+				instance.Player.FadeOutOnly(instance.Player.MenuFadeSeconds);
+			}
+		}
+
 		private void Update()
 		{
 			StandDownTheOldController();
+			EnsureMusicStaysAudible();
 
 			EngineASX engine = EngineASX.Instance;
 
 			if (engine == null || !EngineASX.LoadedAndReady)
 			{
-				// Leaving the main menu. The world is gone or being built, so
-				// there is nothing to decide yet and nothing to fade TO - but
-				// the player has committed to leaving, and this is the only
-				// moment the menu can start letting go.
-				//
-				// Below the early return on purpose. Waiting for a ready world
-				// meant the fade began once the NEXT world was observable,
-				// which is after the scene change the player was watching, so
-				// three seconds of music played over a world that had already
-				// loaded and the menu never faded out under the transition
-				// at all.
-				//
-				// FadeOutOnly returns false once it has run or once there is
-				// nothing playing, so this is safe to call every frame.
-				if (currentKey == "Menu")
-				{
-					Player.FadeOutOnly(Player.MenuFadeSeconds);
-				}
-
+				// No music decision to make without a world. The menu used to
+				// fade out here, which was wrong twice over: the branch is
+				// effectively unreachable because the engine persists across
+				// the transition, and ScenarioLoadCommitted is the real seam.
 				return;
 			}
 
