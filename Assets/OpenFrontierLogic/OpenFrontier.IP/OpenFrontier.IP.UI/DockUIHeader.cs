@@ -11,14 +11,9 @@ namespace OpenFrontier.IP.UI
 	{
 		private float lastTimeRefreshedTitleLabel = -100f;
 
-		// Frame rate shown at the head of the location label. Accumulated in
-		// Update() and divided out once a second, so the label - which only
-		// refreshes when the unit or sector changes or every 2s - can read a
-		// stable number without doing any per-frame string work.
-		private float fpsAccum;
-
-		private int fpsFrames;
-
+		// Frame rate shown at the head of the location label. Exponentially smoothed
+		// per frame in Update() so the number moves with the display without
+		// strobing.
 		private float displayFps;
 
 		public TextMeshProUGUI CreditsText;
@@ -176,14 +171,29 @@ namespace OpenFrontier.IP.UI
 			// Unscaled, so the readout stays honest while a PauseWhenShown screen
 			// has Time.timeScale at 0 - which is exactly when it is least obvious
 			// whether something is holding the framerate up.
-			fpsAccum += Time.unscaledDeltaTime;
-			fpsFrames++;
-			if (fpsAccum >= 1f)
+			//
+			// Exponentially smoothed rather than sampled out of a 1s bucket, so
+			// the number moves every frame but does not strobe. Raw per-frame
+			// framerate is unreadable - it alternates by a frame or two for
+			// reasons that do not matter. The factor gives roughly a fifth of a
+			// second to settle: fast enough to see a stutter, slow enough to read.
+			float frameDelta = Time.unscaledDeltaTime;
+			if (frameDelta > 0f)
 			{
-				displayFps = fpsFrames / fpsAccum;
-				fpsAccum = 0f;
-				fpsFrames = 0;
+				float instantFps = 1f / frameDelta;
+				displayFps = (displayFps <= 0f) ? instantFps : (displayFps + (instantFps - displayFps) * 0.1f);
 			}
+
+			// Location label, refreshed every frame so the framerate reading moves
+			// with the display rather than jumping once a second. This used to be
+			// driven entirely by the change-detection block below, which fired
+			// when the unit, ship name or sector changed or every 2s; the framerate
+			// was averaged over 1s and sampled into that. Two things are given up
+			// for live updating: a StringBuilder.ToString() per frame, and a TMP
+			// mesh rebuild of this one label per frame. Both are small, and the
+			// feature is player-facing, so it is worth it - but if this ever needs
+			// to be cheaper, split the framerate into its own TMP element rather
+			// than rebuilding the whole label, so only the digits change.
 			if (!(Engine != null))
 			{
 				return;
@@ -202,12 +212,20 @@ namespace OpenFrontier.IP.UI
 			Unit playerUnit = Engine.PlayerUnit;
 			if (playerUnit != null)
 			{
+				if (playerUnit.IsValidAndNotDestroyed)
+				{
+					UpdateTitleLabels();
+				}
 				Unit playerRootUnit = Engine.PlayerRootUnit;
 				if (lastPlayerUnit != playerUnit || lastPlayerRootUnit != playerRootUnit || lastKnownUnitName != playerUnit.UnitName || lastKnownRootUnitName != playerRootUnit.UnitName || lastPlayerScene != Engine.ActiveSector || Time.realtimeSinceStartup > lastTimeRefreshedTitleLabel + 2f || (playerUnit != null && playerUnit.Components != null && playerUnit.Components.ShipName != lastKnownShipName))
 				{
+					// No UpdateTitleLabels() here any more - the label is now rebuilt
+					// every frame above, so calling it from here too would do the
+					// string build and the mesh rebuild twice on every change frame.
+					// This block stays for the caching it does.
 					if (playerUnit.IsValidAndNotDestroyed)
 					{
-						UpdateTitleLabels();
+						lastTimeRefreshedTitleLabel = Time.realtimeSinceStartup;
 					}
 					lastKnownUnitName = playerUnit.UnitName;
 					lastKnownRootUnitName = playerRootUnit.UnitName;
