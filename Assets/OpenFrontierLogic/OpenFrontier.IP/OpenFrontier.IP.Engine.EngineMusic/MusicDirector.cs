@@ -751,6 +751,22 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		{
 			if (key.StartsWith("Combat/", System.StringComparison.Ordinal))
 			{
+				// A fight has ended and the threat music is being allowed to
+				// play out. When it reaches its own ending, the ordinary music
+				// goes back in - not another threat section, which would be
+				// announcing a threat that is no longer there.
+				//
+				// This is the only thing that consumes the linger, and it is
+				// what the linger is waiting for.
+				if (detector.AllClearPending)
+				{
+					detector.ConsumeAllClear();
+
+					MusicTimingTable.Entry ordinary = OrdinaryEntry();
+
+					return ordinary ?? current;
+				}
+
 				MusicTimingTable.Entry next = sequencer.Advance();
 				return next ?? current;
 			}
@@ -759,8 +775,30 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		}
 
 		/// <summary>
-		/// What should be playing, and why.
+		/// The track that would be playing if the threat logic were not
+		/// involved.
 		/// </summary>
+		/// <remarks>
+		/// Only asked for while handing over out of a threat track, which
+		/// means never docked - docking resets the linger, so by the time this
+		/// is called there is no station state to honour.
+		/// </remarks>
+		private MusicTimingTable.Entry OrdinaryEntry()
+		{
+			EngineASX engine = EngineASX.Instance;
+
+			if (engine == null || engine.ActiveSector == null)
+			{
+				return null;
+			}
+
+			MusicFamily family = MusicFactionClassifier.FamilyOf(
+				engine.ActiveSector.ControllingFaction, engine.LocalFaction);
+
+			return MusicLibrary.RandomFrom(
+				MusicFactionClassifier.NameOf(family), PlayingOrLast());
+		}
+
 		/// <summary>
 		/// What to keep the random picker away from: the track that is
 		/// actually playing, falling back to the last one requested.
@@ -837,27 +875,19 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return;
 			}
 
-			MusicCombatState combat = detector.Sample();
-
-			if (combat.InCombat)
-			{
-				key = "Combat/" + combat.Category + "/" + combat.Intensity;
-
-				if (sequencer.SetKind(combat.Category, combat.Intensity))
-				{
-					lastCombat = combat;
-					entry = sequencer.Current;
-				}
-				else
-				{
-					entry = sequencer.Current;
-				}
-
-				return;
-			}
-
+			// DOCKING OVERRIDES THE THREAT LOGIC, and is checked first for
+			// that reason. It used to be checked after combat, so a fight
+			// still running when you reached a station kept the combat music
+			// playing over the starport theme and the dock was inaudible as
+			// an event.
+			//
+			// Reset as well as choosing: a threat linger pending here would
+			// drop the player back into threat music on undocking, for a
+			// fight that ended several sectors ago.
 			if (docked)
 			{
+				detector.Reset();
+
 				MusicFamily owner =
 					MusicFactionClassifier.FamilyOf(DockOwner(mine), engine.LocalFaction);
 
@@ -878,6 +908,28 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				// needs no rule of its own.
 				key = "Space/Neutral";
 				entry = MusicLibrary.RandomFrom("Neutral", PlayingOrLast());
+				return;
+			}
+
+
+			MusicCombatState combat = detector.Sample();
+
+			// Not `InCombat`, which was "one hostile is enough". The threat
+			// logic decides for itself now, and a quiet sector reads Normal.
+			if (combat.IsThreat)
+			{
+				key = "Combat/" + combat.Category + "/" + combat.Intensity;
+
+				if (sequencer.SetKind(combat.Category, combat.Intensity))
+				{
+					lastCombat = combat;
+					entry = sequencer.Current;
+				}
+				else
+				{
+					entry = sequencer.Current;
+				}
+
 				return;
 			}
 

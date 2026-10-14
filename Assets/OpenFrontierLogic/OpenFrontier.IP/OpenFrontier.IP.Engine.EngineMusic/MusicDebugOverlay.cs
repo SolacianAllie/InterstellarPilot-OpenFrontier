@@ -259,11 +259,15 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return "this is the main menu";
 			}
 
-			if (combat.InCombat)
+			if (combat.IsThreat)
 			{
-				return combat.HostileCount + " hostile(s), " + combat.Intensity + " "
-					+ combat.Category + (combat.AnyTargetingPlayer ? ", targeted" : "")
-					+ " - " + combat.HostileCount + " detected in this sector";
+				string linger = combat.ThreatState == MusicThreatState.AllClear
+					? " (all clear - threat theme playing out)"
+					: "";
+
+				return combat.HostileCount + " seen, " + combat.Intensity + " "
+					+ combat.Category + (combat.Engaged ? " (engaged)" : "") + linger
+					+ " of " + MusicCombatState.ThreatThreshold + " to react at all";
 			}
 
 			EngineASX engine = EngineASX.Instance;

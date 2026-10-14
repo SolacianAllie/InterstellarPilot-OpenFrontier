@@ -4,118 +4,219 @@ using UnityEngine;
 
 namespace OpenFrontier.IP.Engine.EngineMusic
 {
+	/// <summary>Where the threat logic has got to.</summary>
+	public enum MusicThreatState
+	{
+		/// <summary>Nothing worth reacting to. Ordinary music.</summary>
+		Normal = 0,
+
+		/// <summary>Enough hostiles to matter, but no shooting.</summary>
+		Threat = 1,
+
+		/// <summary>The player is attacking something they can see, or is being shot at.</summary>
+		Engagement = 2,
+
+		/// <summary>
+		/// The fight is over but the threat music has not finished.
+		/// </summary>
+		/// <remarks>
+		/// Not a state the world is in - a state the MUSIC is in. Engagement
+		/// ends the moment the shooting stops, but cutting straight back to
+		/// ambience at that instant is abrupt: the player has just survived
+		/// something and the music should let them out of it rather than
+		/// snatching it away. So the threat theme is played out, and only
+		/// when it reaches its own ending does the ordinary music return.
+		/// </remarks>
+		AllClear = 3
+	}
+
 	/// <summary>What the world looks like from a music point of view.</summary>
 	public struct MusicCombatState
 	{
-		/// <summary>Hostiles you can see, in this sector.</summary>
+		/// <summary>Hostiles the player's faction has detected in this sector.</summary>
 		public int HostileCount;
 
-		/// <summary>Whether any of them is shooting at you specifically.</summary>
-		public bool AnyTargetingPlayer;
+		/// <summary>Player attacking a visible hostile, or targeted by one.</summary>
+		public bool Engaged;
 
 		/// <summary>Low, Medium or High.</summary>
 		public string Intensity;
 
-		/// <summary>Threat while nobody has you, Engagement once they do.</summary>
+		/// <summary>Threat while merely present, Engagement once shooting.</summary>
 		public string Category;
 
-		/// <summary>Whether anything is happening at all.</summary>
-		public bool InCombat => HostileCount > 0;
+		/// <summary>Which step of the threat logic we are on.</summary>
+		public MusicThreatState ThreatState;
+
+		public bool IsThreat => ThreatState == MusicThreatState.Threat
+			|| ThreatState == MusicThreatState.Engagement
+			|| ThreatState == MusicThreatState.AllClear;
 
 		public override string ToString()
 		{
-			if (!InCombat)
+			if (ThreatState == MusicThreatState.Normal)
 			{
-				return "no hostiles";
+				return HostileCount <= ThreatThreshold
+					? "calm (" + HostileCount + " seen, threshold "
+						+ ThreatThreshold + ")"
+					: "calm";
 			}
 
-			return HostileCount + " hostile(s), " + Intensity + " "
-				+ Category + (AnyTargetingPlayer ? ", targeted" : ", not targeted");
+			return HostileCount + " seen, " + Intensity + " " + Category
+				+ ", " + ThreatState
+				+ (Engaged ? " (engaged)" : "");
 		}
+
+		/// <summary>
+		/// How many spotted hostiles it takes before the music reacts at all.
+		/// </summary>
+		/// <remarks>
+		/// A gate, not an intensity. Intensity still comes from the count -
+		/// under ten is Low, ten to nineteen Medium, twenty and over High -
+		/// but nothing plays until the count clears this.
+		///
+		/// The old behaviour was "one hostile is enough", and with thirty-one
+		/// threat sections between Low and High a lone scout crossing your
+		/// path could start a theme and drop it again a few seconds later. A
+		/// patrol has to look like a patrol.
+		///
+		/// Three is a judgement call and is meant to be moved. The thing it
+		/// buys is that ordinary space traffic - a freighter, a patrol of two -
+		/// stays ordinary, and only an actual encounter changes the music.
+		/// </remarks>
+		public const int ThreatThreshold = 3;
 	}
 
 	/// <summary>
-	/// Works out whether you are being shot at, and by how many.
+	/// Decides between calm, threat music and combat music.
 	/// </summary>
 	/// <remarks>
-	/// The yardstick for "nearby" is deliberately the game's own: a hostile
-	/// your faction has detected, in the sector you are in, that is hostile to
-	/// you and not yours. Not a distance, because the game has no opinion
-	/// about distance for music and inventing one would mean a hostile you
-	/// can see on a sensor is worth music and one you cannot is not, which is
-	/// already the rule - so counting what has been detected is counting what
-	/// you can see.
+	/// THE FOUR STEPS
 	///
-	/// Intensity from the count, and which music from whether anyone is
-	/// actually shooting at you rather than merely present:
+	///   Normal      fewer than ThreatThreshold hostiles visible. Ordinary
+	///               music.
+	///   Threat      enough hostiles visible. Threat music, no shooting yet.
+	///   Engagement  the player is attacking something they can see, or
+	///               something they can see is attacking them.
+	///   AllClear    the shooting stopped. Threat music PLAYS OUT to its own
+	///               ending, and only then does the ordinary music return.
 	///
-	///   under 10            Low
-	///   10 to 19            Medium
-	///   20 and over         High
+	/// ENGAGEMENT USES THE GAME'S OWN ANSWER, not a reimplementation.
 	///
-	/// Threat while none of them are targeting you. The moment one is, it
-	/// becomes Engagement, and it changes back the moment that stops - which
-	/// is the single most reactive thing in this system, and the one most
-	/// worth being able to see in a log.
+	/// EngineASX.PlayerInCombat is raised by exactly the two things wanted
+	/// here - HudScreen raises it when something targets the player within
+	/// NotifyPlayerTargettedMaxDistanceToTriggerInCombat, and HudAutoScanner
+	/// raises it when the player attacks hostile targets it has scanned - and
+	/// it clears itself AudioCombatMusicTimeout (25s) after the last such
+	/// event. So "attacking or being targeted" and "beyond sensor range of
+	/// enemies for a long time" are both already answered correctly, by the
+	/// thing that has to answer them correctly anyway. Reimplementing it here
+	/// would be a second opinion about when a fight is over, and the two
+	/// would disagree.
 	///
-	/// Counted on a tick rather than every frame. It walks every discovered
-	/// unit in the sector, which is cheap but not free, and nothing about a
-	/// firefight's size changes in the time it takes to play two frames of
-	/// music.
+	/// WHAT "SPOTTED" MEANS is the game's own: units the player's faction
+	/// has detected, in the active sector, hostile and not its own. Not a
+	/// distance, because the game has no opinion about distance for music,
+	/// and counting what has been detected is counting what is visible.
+	///
+	/// COUNTS EVERY HALF SECOND, as asked. Nothing about how many ships are
+	/// pointed at you changes faster than that, and the walk is over every
+	/// discovered unit in the sector, so sixty times a second would buy
+	/// nothing and cost plenty.
+	///
+	/// BUT ENTERING IS FAST AND LEAVING IS SLOW, deliberately. The old code
+	/// settled every change over two seconds, including entering, which meant
+	/// the music could be two seconds late to react to a fight starting. An
+	/// attack should be heard immediately; letting go of it should be
+	/// deliberate. Entering Threat or Engagement therefore takes effect on the
+	/// first sample, and only the way back to calm waits.
 	/// </remarks>
 	public sealed class MusicCombatDetector
 	{
 		private const float SampleInterval = 0.5f;
 
-		/// <summary>
-		/// How long a reading must hold before the music believes it.
-		/// </summary>
+		/// <summary>How long calm has to hold before the music lets go of the fight.</summary>
 		/// <remarks>
-		/// THE FIRST RUN'S LOG WAS A LIST OF THIS BUG. It read:
-		///
-		///   interrupted 'Combat High Intensity Engagement Section 1'
-		///       after 27s of 29s, then 'High Threat Section 1'
-		///   interrupted 'Combat High Intensity Threat Section 1'
-		///       after 13s of 96s, then 'High Engagement Section 1'
-		///
-		/// Threat and Engagement flip-flopping every ten to twenty-five
-		/// seconds, each flip a hard interrupt and a fresh track. Not two
-		/// systems - one system being told to change its mind far too often.
-		///
-		/// The cause is that "is anything targeting me" is instantaneous and
-		/// genuinely does alternate - a pirate reacquires, another loses
-		/// target, the player turns - and half a second of sampling catches
-		/// every one of those. Music cannot respond to a value that changes
-		/// every other frame without sounding like it is malfunctioning, so
-		/// the reading has to be steadier than the world is.
-		///
-		/// Two seconds. Long enough that a couple of targeting swaps are
-		/// absorbed, short enough that arriving at a real fight is still
-		/// noticed promptly rather than felt late.
-		///
-		/// A pending reading is held, not sampled: if the reading reverts
-		/// before it has settled, the timer restarts from the new value.
-		/// Blending the two would give a music state that matches neither.
+		/// Two seconds, to absorb a target swapping one frame for another.
+		/// The AllClear step already holds the music for much longer than
+		/// this, so this is only about not flapping between Threat and calm
+		/// while the count wobbles around the threshold.
 		/// </remarks>
-		private const float StableSeconds = 2f;
+		private const float SettleSeconds = 2f;
 
 		private readonly List<Unit> seen = new List<Unit>(64);
 		private float lastSampleAt = -999f;
 
-		private MusicCombatState pending;
+		private MusicThreatState pendingState = MusicThreatState.Normal;
 		private float pendingSince = -999f;
 
 		public MusicCombatState State { get; private set; }
 
+		/// <summary>
+		/// Whether the threat music is being allowed to finish before the
+		/// ordinary music returns.
+		/// </summary>
+		/// <remarks>
+		/// True from the moment a fight ends until the director spends it, by
+		/// handing over from the threat track to ordinary music. Consuming it
+		/// is the director's job, because the handover is what the linger is
+		/// actually waiting for.
+		/// </remarks>
+		public bool AllClearPending { get; private set; }
+
+		/// <summary>
+		/// The music has reached the end of the threat track during a
+		/// linger, so the ordinary music may return.
+		/// </summary>
+		public void ConsumeAllClear()
+		{
+			AllClearPending = false;
+			pendingState = MusicThreatState.Normal;
+			pendingSince = -999f;
+
+			// Straight to Normal, rather than waiting out the settling period
+			// on the way down.
+			//
+			// The linger is waited for HERE - at the handover - because the
+			// handover is the point at which the threat track has finished
+			// playing out. Settling the state separately would leave the music
+			// key reading Combat for two more seconds while the ordinary track
+			// was already sounding, and when the key finally changed it would
+			// hard-cut that track and start another one. So the fight is over
+			// the moment the linger is spent, and the settle belongs only to
+			// the way in.
+			MusicCombatState served = State;
+			served.ThreatState = MusicThreatState.Normal;
+			State = served;
+		}
+
+		/// <summary>
+		/// Forgets any fight entirely. Used when docking or a wormhole
+		/// takes the music somewhere else.
+		/// </summary>
+		/// <remarks>
+		/// Without this, arriving at a station mid-fight would leave a threat
+		/// linger pending, and leaving the station would drop the player
+		/// straight back into threat music for a fight that ended several
+		/// sectors ago.
+		/// </remarks>
+		public void Reset()
+		{
+			AllClearPending = false;
+			pendingState = MusicThreatState.Normal;
+			pendingSince = -999f;
+			State = default(MusicCombatState);
+		}
+
 		/// <summary>The last reading, and whether it is worth re-reading yet.</summary>
 		public MusicCombatState Sample(bool force = false)
 		{
-			if (!force && Time.time - lastSampleAt < SampleInterval)
+			if (!force && Time.realtimeSinceStartup - lastSampleAt < SampleInterval)
 			{
 				return State;
 			}
 
-			lastSampleAt = Time.time;
+			lastSampleAt = Time.realtimeSinceStartup;
 
 			EngineASX engine = EngineASX.Instance;
 
@@ -129,129 +230,144 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				? null
 				: engine.LocalPlayer.Person.CurrentUnit;
 
-			int count = 0;
-			bool targeted = false;
+			int count = CountHostiles(mine);
 
-			if (mine != null)
-			{
-				FactionIntel intel = engine.LocalFaction.Intel;
+			// The game's own answer to "is the player fighting", which already
+			// covers attacking a visible hostile and being targeted by one,
+			// and already expires on its own timer.
+			bool engaged = engine.PlayerInCombat;
 
-				if (intel != null)
-				{
-					intel.GetDiscoveredUnitIdsInSectorNonAlloc(engine.ActiveSector, seen);
+			MusicThreatState raw = engaged
+				? MusicThreatState.Engagement
+				: count > MusicCombatState.ThreatThreshold
+					? MusicThreatState.Threat
+					: MusicThreatState.Normal;
 
-					for (int i = 0; i < seen.Count; i++)
-					{
-						Unit other = seen[i];
-
-						if (other == null || other.IsDestroyed || other.Faction == null)
-						{
-							continue;
-						}
-
-						if (other.Faction == engine.LocalFaction)
-						{
-							continue;
-						}
-
-						if (!other.IsHostileTo(mine))
-						{
-							continue;
-						}
-
-						count++;
-
-						if (!targeted && IsShootingAt(other, mine))
-						{
-							targeted = true;
-						}
-					}
-				}
-			}
-
-			MusicCombatState raw = new MusicCombatState
+			State = new MusicCombatState
 			{
 				HostileCount = count,
-				AnyTargetingPlayer = targeted,
+				Engaged = engaged,
 				Intensity = IntensityFor(count, State.Intensity),
-				Category = targeted ? "Engagement" : "Threat"
+				Category = engaged ? "Engagement" : "Threat",
+				ThreatState = Settle(raw)
 			};
-
-			return Settle(raw);
-		}
-
-		/// <summary>
-		/// Holds a reading until it has been steady for StableSeconds.
-		/// </summary>
-		/// <remarks>
-		/// The count itself is NOT compared for settling. Only the category
-		/// and the band are, because those are the two the music keys on -
-		/// four hostiles becoming five is nothing, while being targeted or
-		/// not is everything, and five hostiles becoming twenty is a
-		/// different piece of music.
-		/// </remarks>
-		private MusicCombatState Settle(MusicCombatState raw)
-		{
-			bool differs = raw.Category != State.Category
-				|| raw.Intensity != State.Intensity;
-
-			if (!differs)
-			{
-				pending = raw;
-				pendingSince = -999f;
-				return State;
-			}
-
-			if (pending.Category != raw.Category || pending.Intensity != raw.Intensity)
-			{
-				// A different change than the one being held: restart the
-				// clock rather than inheriting the previous one's progress.
-				pending = raw;
-				pendingSince = Time.realtimeSinceStartup;
-			}
-
-			if (Time.realtimeSinceStartup - pendingSince >= StableSeconds)
-			{
-				State = pending;
-				pendingSince = -999f;
-			}
 
 			return State;
 		}
 
-		/// <summary>Whether this unit has the player's ship as its combat target.</summary>
-		private static bool IsShootingAt(Unit other, Unit mine)
+		/// <summary>
+		/// Holds a change to calm, and lets a change into danger through at once.
+		/// </summary>
+		private MusicThreatState Settle(MusicThreatState raw)
 		{
-			Person pilot = other.GetPilot();
-
-			if (pilot == null || pilot.NpcPilot == null)
+			if (raw == State.ThreatState)
 			{
-				return false;
+				pendingState = raw;
+				pendingSince = -999f;
+
+				if (raw == MusicThreatState.Normal)
+				{
+					AllClearPending = false;
+				}
+
+				return raw;
 			}
 
-			return pilot.NpcPilot.CombatTarget == mine;
+			// Into danger, or back to calm from a fight: through at once.
+			if (raw == MusicThreatState.Engagement || raw == MusicThreatState.Threat)
+			{
+				pendingState = raw;
+				pendingSince = -999f;
+				AllClearPending = false;
+
+				return raw;
+			}
+
+			// Heading back to calm.
+			//
+			// Straight from Engagement to Normal is the fight ending, and that
+			// is the AllClear step: the threat music stays and plays out. The
+			// linger is only skipped when the world stopped being dangerous
+			// for a different reason - never spotted enough hostiles at all -
+			// which is a quiet sector rather than a won fight.
+			if (State.ThreatState == MusicThreatState.Engagement
+				&& raw == MusicThreatState.Normal)
+			{
+				pendingState = raw;
+				pendingSince = -999f;
+				AllClearPending = true;
+
+				return MusicThreatState.AllClear;
+			}
+
+			if (pendingState != raw)
+			{
+				pendingState = raw;
+				pendingSince = Time.realtimeSinceStartup;
+			}
+
+			if (Time.realtimeSinceStartup - pendingSince >= SettleSeconds)
+			{
+				pendingSince = -999f;
+
+				return raw;
+			}
+
+			return State.ThreatState;
+		}
+
+		/// <summary>Hostiles the player can see, in this sector.</summary>
+		private int CountHostiles(Unit mine)
+		{
+			if (mine == null)
+			{
+				return 0;
+			}
+
+			FactionIntel intel = EngineASX.Instance.LocalFaction.Intel;
+
+			if (intel == null)
+			{
+				return 0;
+			}
+
+			seen.Clear();
+			intel.GetDiscoveredUnitIdsInSectorNonAlloc(
+				EngineASX.Instance.ActiveSector, seen);
+
+			int count = 0;
+
+			for (int i = 0; i < seen.Count; i++)
+			{
+				Unit other = seen[i];
+
+				if (other == null || other.IsDestroyed || other.Faction == null)
+				{
+					continue;
+				}
+
+				if (other.Faction == EngineASX.Instance.LocalFaction)
+				{
+					continue;
+				}
+
+				if (other.IsHostileTo(mine))
+				{
+					count++;
+				}
+			}
+
+			return count;
 		}
 
 		/// <summary>
-		/// The intensity band for a hostile count.
+		/// The intensity band for a hostile count, with a dead band.
 		/// </summary>
 		/// <remarks>
-		/// Under ten is low, ten to nineteen is medium, twenty and over is
-		/// high. Zero and one both come out Low, which is deliberate: a
-		/// single pirate is not an encounter, and making one pirate quieter
-		/// than three would mean the music got *louder* as a fight got
-		/// smaller.
-		///
-		/// A dead band, because a fight hovers on a boundary. Nineteen
-		/// hostiles, one destroyed, nineteen again would otherwise cross the
-		/// line every few seconds and restart the music each time - which is
-		/// exactly what the first run's log showed, flipping between bands
-		/// faster than the tracks themselves are long.
-		///
-		/// Climbing to a higher band needs the full threshold; dropping back
-		/// out needs to fall two below it. That asymmetry is the point: it is
-		/// easy to get INTO a big fight and easy to stay out of one, rather
-		/// than a fight sitting on twenty flickering in and out of High.
+		/// Under ten is Low, ten to nineteen Medium, twenty and over High,
+		/// with an asymmetric dead band so a fight sitting on twenty does not
+		/// flicker between Medium and High. Climbing needs the full
+		/// threshold; dropping out needs to fall two below.
 		/// </remarks>
 		public static string IntensityFor(int hostileCount, string current)
 		{
@@ -279,6 +395,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		}
 
 		/// <summary>The intensity band for a count, with no history.</summary>
-		public static string IntensityFor(int hostileCount) => IntensityFor(hostileCount, null);
+		public static string IntensityFor(int hostileCount) =>
+			IntensityFor(hostileCount, null);
 	}
 }
