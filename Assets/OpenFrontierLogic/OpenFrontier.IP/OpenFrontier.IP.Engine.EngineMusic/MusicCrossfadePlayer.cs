@@ -228,9 +228,23 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			// reached, the second call would reassign the clip of a source
 			// that is mid-playback and restart it from zero, which is the
 			// skip sound this whole class exists to avoid.
+			// A handover in progress is not a reason to refuse. The world has
+			// changed and something has to happen about it now.
+			//
+			// Refusing left the old track playing its ending - up to 49
+			// seconds for the longest one - while the director retried every
+			// frame and got refused every frame, so a dock or a wormhole
+			// during a handover simply did not happen until the overlap
+			// ended on its own.
+			//
+			// Take the handover's promoted track as the current one and
+			// transition from there. Its predecessor's ending is cut, which
+			// is correct: the world moved on, and a composed ending belongs
+			// to a track that ran its course rather than one that was
+			// replaced halfway through its fade-out.
 			if (incomingWaiting)
 			{
-				return false;
+				PromoteIncoming();
 			}
 
 			AudioClip clip = MusicLibrary.ClipFor(entry);
@@ -507,12 +521,23 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return Start(entry);
 			}
 
-			// A handover already pending means the incoming source is playing
-			// the track being handed over to. Re-arming it here would restart
-			// that track from its first sample, mid-handover.
+			// A handover in progress is not a reason to refuse. The world has
+			// changed and something has to happen about it now.
+			//
+			// Refusing left the old track playing its ending - up to 49
+			// seconds for the longest one - while the director retried every
+			// frame and got refused every frame, so a dock or a wormhole
+			// during a handover simply did not happen until the overlap
+			// ended on its own.
+			//
+			// Take the handover's promoted track as the current one and
+			// transition from there. Its predecessor's ending is cut, which
+			// is correct: the world moved on, and a composed ending belongs
+			// to a track that ran its course rather than one that was
+			// replaced halfway through its fade-out.
 			if (incomingWaiting)
 			{
-				return false;
+				PromoteIncoming();
 			}
 
 			// A fade already running means this is not a crossfade, it is the

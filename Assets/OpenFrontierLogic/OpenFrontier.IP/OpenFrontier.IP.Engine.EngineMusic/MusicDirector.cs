@@ -306,8 +306,30 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		private readonly MusicCombatSequencer sequencer = new MusicCombatSequencer();
 
 		private string currentKey = "none";
-		private bool lastDocked;
-		private bool dockedChanged;
+		// The dock is held as a STATE, not as an edge.
+		//
+		// It used to be an edge - dockedChanged, true for exactly one frame,
+		// consumed by the transition block - and that is wrong in two ways
+		// that both showed up as "the station crossfade is broken".
+		//
+		// One frame is not long enough. If Crossfade is refused on that frame
+		// because a handover is already pending, the next frame sees false,
+		// and the dock is handled as a plain interrupt. The crossfade never
+		// happens at all.
+		//
+		// More seriously, combat outranks docked in Decide. Dock while being
+		// shot at on the way in - which is most arrivals - and Decide keeps
+		// answering "Combat/...", so no transition is even attempted. Thirty
+		// seconds later the shooting stops, the transition finally happens,
+		// and the one-frame flag expired long ago. Arriving at a station
+		// under fire was therefore never crossfaded.
+		//
+		// Holding the dock state and comparing it against the dock state at
+		// the last transition that SUCCEEDED makes the request persistent: it
+		// survives a refused crossfade, and it survives combat in between,
+		// and it is answered the moment it can be.
+		private bool dockedNow;
+		private bool dockAtLastTransition;
 		private MusicTimingTable.Entry lastRequested;
 		private MusicCombatState lastCombat;
 
@@ -517,7 +539,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 					{
 						moved = crossfader.Interrupt(wanted, crossfader.MenuFadeSeconds);
 					}
-					else if (dockedChanged)
+					else if (dockedNow != dockAtLastTransition)
 					{
 						moved = crossfader.Crossfade(wanted);
 					}
@@ -530,6 +552,11 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 					{
 						currentKey = wantedKey;
 						lastRequested = wanted;
+
+						// Latched ONLY on success. A refused crossfade leaves
+						// this false, so the next frame asks again instead of
+						// quietly giving up and cutting instead.
+						dockAtLastTransition = dockedNow;
 					}
 				}
 
@@ -625,8 +652,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			// nobody owns falls back to Neutral ambience, and if the sector
 			// was unowned too then the key does not change AT ALL - the ship
 			// docked, and the music would be told nothing happened.
-			dockedChanged = docked != lastDocked;
-			lastDocked = docked;
+			dockedNow = docked;
 
 			if (IsMainMenu(engine))
 			{
