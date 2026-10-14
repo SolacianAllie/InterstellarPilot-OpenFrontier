@@ -1,5 +1,29 @@
 # Notes for Coding Agents
 
+## Branches: everything lands on `Dev`
+
+`Dev` is the working branch and is checked out. Commit and push **Dev**:
+
+```bash
+git commit -q -m "..."
+git push origin Dev        # never bare `git push` - see below
+```
+
+`Legacy` is the historical branch and is **frozen** at `e530dbac`. It is
+still `origin/HEAD`, which is the trap: **a bare `git push` follows
+`origin/HEAD` and pushes `Legacy`, silently leaving `Dev` behind.** Always
+name the branch. If a push reports "Everything up-to-date" while `Dev` is
+behind `Legacy`, this is why - `git push origin Legacy Dev` pushed `Legacy`
+and found `Dev` genuinely unchanged, because the new commit was only ever on
+`Legacy`.
+
+If `Dev` needs to move, fast-forward it rather than checking it out, so the
+working tree is never disturbed:
+
+```bash
+git branch -f Dev Legacy && git push origin Dev   # only if Legacy is ahead
+```
+
 Only non-obvious traps live here — things you cannot learn from the project
 structure. Add new ones as they are found.
 
@@ -190,13 +214,27 @@ Four changes, in order of what they were worth:
 Now **4.6s warm, 16.6s cold** (a wiped cache re-parses everything). If it
 ever reads 70s again, one of these four has been lost.
 
-**The generator has a case-collision trap.** The repo tracks a lowercase
-`tools/`, the filesystem is case-insensitive, and git's index is
-case-SENSITIVE. A script written to `Tools/music/` therefore reports as
-untracked `?? Tools/music/` forever and `git ls-files Tools/` returns
-nothing, which reads exactly like "never committed" and is not the same
-question. **Always check `git ls-files tools/` in lowercase** before
-concluding anything about `Tools/`.
+**`core.ignorecase` was TRUE on a CASE-SENSITIVE filesystem — it deleted a
+tracked file through `git add -A`.** `tools/` and `Tools/` are two real
+directories here (different inodes), and git was configured to match paths
+case-insensitively. So a file written to `Tools/music/` committed as
+`tools/music/`, and the next `git add -A` found nothing at `tools/music/`,
+staged a **deletion of all 335 lines**, and declined to re-add the copy at
+`Tools/music/` because the ignorecase match said it was already tracked.
+
+The symptom is invisible: `git status` shows nothing alarming, the file is
+still on disk, and `git ls-files` for either spelling looks reasonable. 87
+generated plots sat in the repo the whole time with no script that makes
+them, and commit messages cited the absent file for several commits.
+
+Now `core.ignorecase false`, and the script lives at `tools/music/` so the
+working tree, the index and the repo agree on one spelling.
+
+**If a tracked file goes missing from `git ls-tree` while still being on
+disk, check `git config core.ignorecase` against `stat -c %i` on both
+spellings before anything else.** A case mismatch plus a wrong `ignorecase`
+deletes silently, and `git checkout` will not bring it back because git does
+not know it was ever supposed to be there.
 
 ## A green harness run can have compiled almost nothing
 
