@@ -3928,15 +3928,29 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
-		private void Update()
+		private void FixedUpdate()
 		{
-			// Ahead of the IsPaused guard on purpose. Active-sector units used to be
-			// ticked by UnitComponentHolder.Update(), which is a MonoBehaviour
-			// callback and therefore ran while paused. Placing this here preserves
-			// that exactly. (Inactive units already stopped while paused, because
-			// they have always been driven from below the guard - so this is a
-			// long-standing inconsistency in the engine, not a decision being made
-			// here.)
+			// The simulation tick. This was Update() and ran once per rendered
+			// frame, which made the simulation rate depend on the display: a 30fps
+			// phone simulated at 30Hz, a 144Hz monitor at 144Hz. Anything
+			// accumulating Time.deltaTime behaved differently either side of that.
+			//
+			// As FixedUpdate at a 0.0333 timestep the rate is 30Hz everywhere. A
+			// 30fps device ticks once per frame exactly as before; faster displays
+			// tick every other frame. Every time read in this method is now
+			// fixedDeltaTime for the same reason - deltaTime here would be wrong,
+			// because FixedUpdate runs zero, one or several times per frame, so
+			// accumulating the frame delta over-integrates after a hitch.
+			//
+			// Being FixedUpdate also means this stops while Time.timeScale is 0,
+			// which any ScreenBase with PauseWhenShown sets (ScreenNavigator).
+			// Intended: nothing was actually simulating behind a pause screen, but
+			// the callbacks were still being dispatched and the module work was
+			// still being walked. Multiplayer does not pause by timescale, so this
+			// does not gate a session.
+			//
+			// Presentation stays per-frame. ActiveUnitShip.Update still moves and
+			// turns the ship the player is flying, at display rate.
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
 			using (s_markerActiveUnits.Auto())
 			{
@@ -3957,7 +3971,7 @@ namespace OpenFrontier.IP.Engine
 			}
 			if (IsPlayerPilot)
 			{
-				ElapsedTimeAsPilot += Time.deltaTime;
+				ElapsedTimeAsPilot += Time.fixedDeltaTime;
 			}
 			else
 			{
@@ -4007,7 +4021,7 @@ namespace OpenFrontier.IP.Engine
 			UpdateInactiveFleets();
 			UpdateInactiveGroupSpawners();
 			CleanupEmptyFleets();
-			ScenarioElapsedTime += Time.deltaTime;
+			ScenarioElapsedTime += Time.fixedDeltaTime;
 			for (int i = 0; i < destroyedUnitsToCleanup.Count; i++)
 			{
 				Unit unit = destroyedUnitsToCleanup[i];
