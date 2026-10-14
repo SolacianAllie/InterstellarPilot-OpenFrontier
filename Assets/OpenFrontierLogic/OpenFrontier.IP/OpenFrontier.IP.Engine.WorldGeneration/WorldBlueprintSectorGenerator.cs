@@ -38,18 +38,30 @@ namespace OpenFrontier.IP.Engine.WorldGeneration
 
 		private SectorBlueprint GetNextNode(List<SectorBlueprint> nodes, WorldGeneratorSettings settings)
 		{
+			// nodes.Max(...) is invariant across this Select but was recomputed for
+			// every node, which made the pick O(n^2) and the whole growth loop
+			// O(n^3) -- roughly n^3/3 operations in total. At the old ceiling of 64
+			// sectors that is ~87k and invisible; at 1024 it is ~3.6e8 LINQ Max
+			// calls with a delegate, which hangs world generation on the main
+			// thread. Hoisting it is behaviour-preserving: list2 does not mutate
+			// during this call, only between calls.
+			//
+			// Note the divide-by-zero when every node has 0 connections (the very
+			// first call, on a single node) is unchanged and still harmless:
+			// GetRandomWeightedIndex short-circuits on count == 1 before it reads
+			// the weight.
+			int maxConnectionsInUse = nodes.Max((SectorBlueprint e) => e.Connections.Count);
 			return nodes.Select((SectorBlueprint e) => new WeightedNode
 			{
 				Node = e,
-				Weight = WeightNodeBySnakinessSetting(nodes, e, settings.Snakiness)
+				Weight = WeightNodeBySnakinessSetting(maxConnectionsInUse, e, settings.Snakiness)
 			}).ToList().GetRandomWeighted(Random)
 				.Node;
 		}
 
-		private float WeightNodeBySnakinessSetting(IEnumerable<SectorBlueprint> nodes, SectorBlueprint node, float snakiness)
+		private float WeightNodeBySnakinessSetting(int maxConnectionsInUse, SectorBlueprint node, float snakiness)
 		{
-			int num = nodes.Max((SectorBlueprint e) => e.Connections.Count);
-			float num2 = (float)Mathf.Max(0, node.Connections.Count - 1) / (float)num;
+			float num2 = (float)Mathf.Max(0, node.Connections.Count - 1) / (float)maxConnectionsInUse;
 			float num3 = (1f - snakiness) * num2;
 			return 1f + num3 * 15f;
 		}
