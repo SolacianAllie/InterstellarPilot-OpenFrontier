@@ -330,6 +330,15 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		// and it is answered the moment it can be.
 		private bool dockedNow;
 		private bool dockAtLastTransition;
+
+		/// <summary>How long a wormhole transit may claim to be running.</summary>
+		/// <remarks>
+		/// Generous - a transit is seconds - and only a backstop for a flag
+		/// owned by another class. See the backstop in Update.
+		/// </remarks>
+		private const float WormholeStaleSeconds = 45f;
+
+		private float wormholeSince = -1f;
 		private MusicTimingTable.Entry lastRequested;
 		private MusicCombatState lastCombat;
 
@@ -536,6 +545,62 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 #endif
 
 			EngineASX engine = EngineASX.Instance;
+
+			// INSIDE A WORMHOLE: let go of everything.
+			//
+			// The old music used to play straight through the transit and stop
+			// dead on the far side, which is the one place a hard stop is
+			// plainly wrong: the ship is somewhere that has no music, and
+			// arriving somewhere should not begin with the previous place
+			// being cut off.
+			//
+			// Deliberately ABOVE the engine check and above Decide. Deciding
+			// requires a world, and during a transit there is no world to
+			// decide about - this is the same lesson as the main menu, where
+			// the fade could not start because it was waiting for the next
+			// world to become observable.
+			//
+			// Deciding is skipped entirely rather than returning a Wormhole
+			// state, because there is nothing to play here. currentKey is left
+			// alone on purpose: when the transit ends, the new sector's key
+			// differs from it, nothing is playing, and the new track starts.
+			// If the far side is the same family the key matches instead and
+			// the "same answer, nothing playing" branch starts it. Both paths
+			// work.
+			//
+			// One property read per frame. No scene walk - this is a phone.
+			if (WormholeAnimator.Active)
+			{
+				// BACKSTOP. The flag is cleared by the animator finishing and
+				// by OnDisable, but those are two code paths owned by another
+				// class, and the failure if both are ever wrong is the music
+				// never coming back - a far worse bug than the missing fade
+				// this exists to fix. A transit that somehow lasts
+				// implausibly long is therefore treated as over.
+				if (wormholeSince < 0f)
+				{
+					wormholeSince = Time.realtimeSinceStartup;
+				}
+				else if (Time.realtimeSinceStartup - wormholeSince > WormholeStaleSeconds)
+				{
+					Debug.LogWarning("Music: a wormhole has reported itself"
+						+ " active for " + WormholeStaleSeconds + "s, which no"
+						+ " transit takes. Clearing it so the music comes back."
+						+ " The animation's own flag-clearing has missed"
+						+ " something and is worth a look.");
+
+					WormholeAnimator.ClearActive();
+					wormholeSince = -1f;
+
+					return;
+				}
+
+				Player.FadeOutOnly(Player.WormholeFadeSeconds);
+
+				return;
+			}
+
+			wormholeSince = -1f;
 
 			if (engine == null || !EngineASX.LoadedAndReady)
 			{

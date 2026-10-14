@@ -43,6 +43,10 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		[Tooltip("How long the main menu music takes to reach silence before gameplay music starts.")]
 		public float MenuFadeSeconds = 3f;
 
+		/// <summary>How long the music takes to reach silence inside a wormhole.</summary>
+		[Tooltip("How long the music fades to nothing when entering a wormhole.")]
+		public float WormholeFadeSeconds = 1.5f;
+
 		private AudioSource currentSource;
 		private AudioSource incomingSource;
 		private MusicTimingTable.Entry currentEntry;
