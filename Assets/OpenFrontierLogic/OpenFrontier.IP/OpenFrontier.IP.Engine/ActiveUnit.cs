@@ -592,11 +592,29 @@ namespace OpenFrontier.IP.Engine
 			// bd3ae90b added a re-enable. 8f5aae89 dropped it while separating
 			// the flag from the cull, and that is the regression.
 			//
-			// What draws these objects now is the real mechanism: the camera
-			// far plane, and the per-prefab LODGroup where one exists. A fixed
-			// number pretending to be a LOD system fires on geometry the
-			// LODGroup has already culled, and cannot be turned off - which is
-			// the entire class of bug this line used to be.
+			// What draws these objects now is the real mechanism, and for these
+			// prefabs that mechanism is thinner than it looks. Be honest about
+			// what is actually underneath:
+			//
+			//   GameCamera far clip plane is 8500. That is the real bound - a
+			//   station past it is not drawn at all, so this is 8.5x further out
+			//   than the old 1000 cull, but it is not unbounded.
+			//
+			//   NO LODGroup on any structure prefab - Factory, TradeStation,
+			//   Bar2, Refinery all have zero. There is no LOD ladder to climb,
+			//   so QualitySettings lodBias (0.5 -> 2 across the range) does
+			//   NOTHING for them specifically. A station inside the frustum at
+			//   8000 units draws at the same detail as one at 100.
+			//
+			//   Occlusion culling is switched on for six cameras but has zero
+			//   occluders baked, so it is not doing any work either.
+			//
+			// So inside the frustum and inside 8500 units, these render at full
+			// detail and NO graphics setting changes that. That is the cost of
+			// lifting the cull, and it is a deliberate trade for never having a
+			// structure silently vanish - but it is not free, and if station
+			// cost ever shows up on a phone the fix is authored LODGroups on the
+			// structure prefabs, not putting a distance back here.
 			//
 			// inDrawRange itself is untouched and still gates thruster audio,
 			// asteroid yield explosions and material updates. See
