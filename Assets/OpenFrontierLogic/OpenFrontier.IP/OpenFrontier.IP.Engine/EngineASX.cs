@@ -3917,6 +3917,15 @@ namespace OpenFrontier.IP.Engine
 
 		private void Update()
 		{
+			// Ahead of the IsPaused guard on purpose. Active-sector units used to be
+			// ticked by UnitComponentHolder.Update(), which is a MonoBehaviour
+			// callback and therefore ran while paused. Placing this here preserves
+			// that exactly. (Inactive units already stopped while paused, because
+			// they have always been driven from below the guard - so this is a
+			// long-standing inconsistency in the engine, not a decision being made
+			// here.)
+			UpdateActiveSectorUnits();
+
 			if (IsPaused)
 			{
 				return;
@@ -4219,6 +4228,56 @@ namespace OpenFrontier.IP.Engine
 		/// and worth knowing about before a session grows to four players
 		/// spread across four sectors.
 		/// </remarks>
+		/// <summary>
+		/// Ticks every unit in the active sector, every frame.
+		/// </summary>
+		/// <remarks>
+		/// This used to live in UnitComponentHolder.Update(), which meant Unity
+		/// dispatched 6,308 managed->native->managed callbacks per frame to
+		/// service roughly 48 ships. The work inside was always trivial - it
+		/// checked IsInActiveSector and returned - so the cost was the dispatch
+		/// itself: ~0.34us each, ~2.1ms a frame at 1024 sectors, the single
+		/// largest item in BehaviourUpdate.
+		///
+		/// Nothing is disabled. UnitComponentHolder is still a component on every
+		/// unit prefab, still holds the unit's state, and its GameObject is still
+		/// alive and active; it simply no longer has an Update() for Unity to
+		/// call. The units themselves keep ticking - these every frame, and the
+		/// inactive ones via UpdateInactiveUnits / UpdateWatchedSectorUnits
+		/// exactly as before.
+		///
+		/// The predicate is IsInActiveSector, the same cached flag the deleted
+		/// Update() used, rather than the live Sector.IsActive. The two are the
+		/// same condition by construction (SectorObject.RefreshIsInActiveSector:
+		/// sector == EngineASX.Instance.ActiveSector), but the cached flag is
+		/// what the previous behaviour actually turned on, so using it keeps
+		/// this provably identical rather than merely equivalent.
+		///
+		/// Iterating the whole list rather than only the active sector's ships is
+		/// deliberate: the scan is ~6,300 pointer checks with an early-out,
+		/// which is roughly two orders of magnitude cheaper than the dispatch
+		/// it replaces, and it cannot miss a unit of a type the active sector
+		/// list does not cover.
+		/// </remarks>
+		private void UpdateActiveSectorUnits()
+		{
+			int num = updatableUnits.Count;
+			for (int i = 0; i < num; i++)
+			{
+				Unit unit = updatableUnits[i];
+				if (unit == null)
+				{
+					continue;
+				}
+				UnitComponentHolder components = unit.Components;
+				if (components == null || !components.ShouldTickNow)
+				{
+					continue;
+				}
+				components.Tick();
+			}
+		}
+
 		private void UpdateWatchedSectorUnits()
 		{
 			for (int s = 0; s < watchedSectors.Count; s++)

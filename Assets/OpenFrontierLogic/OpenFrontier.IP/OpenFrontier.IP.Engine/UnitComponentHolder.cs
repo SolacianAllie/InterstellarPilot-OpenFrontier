@@ -1072,13 +1072,17 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
-		public void Update()
-		{
-			if (hasInit && unit.Engine != null && unit.IsInActiveSector)
-			{
-				Tick();
-			}
-		}
+		/// <summary>
+		/// Whether this holder should tick its unit right now.
+		/// </summary>
+		/// <remarks>
+		/// This is the predicate that used to live inside Update(), preserved
+		/// verbatim so that the engine-driven loop in EngineASX.UpdateActiveSectorUnits
+		/// ticks exactly the same set it did before. hasInit is private to this
+		/// class and is only set once the holder has been fully wired up, so it
+		/// cannot be reimplemented by the caller - hence the property.
+		/// </remarks>
+		public bool ShouldTickNow => hasInit && unit != null && unit.Engine != null && unit.IsInActiveSector;
 
 		/// <summary>
 		/// Whether this copy simulates the ship, and therefore whether

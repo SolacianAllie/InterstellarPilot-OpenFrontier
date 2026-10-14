@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace OpenFrontier
 {
@@ -71,7 +72,8 @@ namespace OpenFrontier
 			Matrix4x4 old = GUI.matrix;
 			GUI.matrix = scaledMatrix;
 
-			GUI.Box(new Rect(8f, 8f, 340f, 66f), cachedText, HudStyle);
+			// Six lines now: fps/cap, graphics API, display modes, pacing note.
+			GUI.Box(new Rect(8f, 8f, 340f, 100f), cachedText, HudStyle);
 
 			GUI.matrix = old;
 		}
@@ -123,7 +125,36 @@ namespace OpenFrontier
 #endif
 			return "FPS " + currentFps.ToString("0")
 				+ "  (cap " + Application.targetFrameRate
-				+ ", vSync " + QualitySettings.vSyncCount + ")" + hz;
+				+ ", vSync " + QualitySettings.vSyncCount + ")"
+				+ Api() + hz + PacingNote();
+		}
+
+		/// <summary>
+		/// The graphics API actually running. Vulkan and OpenGLES3 pace frames
+		/// differently - Vulkan present modes cannot express a fractional swap
+		/// interval - so which one is live decides whether a cap can hold, and
+		/// it was previously invisible without a device log.
+		/// </summary>
+		private static string cachedApi;
+
+		private static string Api()
+		{
+			if (cachedApi == null)
+			{
+				cachedApi = "\nAPI " + SystemInfo.graphicsDeviceType;
+			}
+			return cachedApi;
+		}
+
+		/// <summary>
+		/// Shows why the requested cap could not be reached exactly. A panel
+		/// that cannot supply a rate the cap divides evenly is the usual reason,
+		/// and it is invisible without this line.
+		/// </summary>
+		private static string PacingNote()
+		{
+			string issue = AndroidDisplayMetrics.LastRefreshRateIssue;
+			return string.IsNullOrEmpty(issue) ? "" : "\npacing " + issue;
 		}
 	}
 }

@@ -13,6 +13,13 @@ namespace OpenFrontier
 		private static AndroidJavaClass unityPlayerClass;
 #endif
 
+		/// <summary>
+		/// Why the most recent SetPreferredRefreshRate could not reach the
+		/// requested rate exactly, or "" when it could. Read by the dev overlay.
+		/// Empty on non-Android platforms, which never take this path.
+		/// </summary>
+		public static string LastRefreshRateIssue = "";
+
 		public static Vector2Int GetWindowSize()
 		{
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -146,11 +153,27 @@ namespace OpenFrontier
 			}
 		}
 
-		// Switch the display MODE to the smallest supported rate >= targetHz
-		// (or the highest available) at the current resolution, via the
-		// window's preferredDisplayModeId. Needed because Screen.resolutions
-		// does not expose high-refresh modes on some devices.
-		public static void SetPreferredRefreshRate(float targetHz)
+		// Switch the display MODE to the rate that best matches targetHz at the
+		// current resolution, via the window's preferredDisplayModeId. Needed
+		// because Screen.resolutions does not expose high-refresh modes on some
+		// devices.
+		//
+		// Open Frontier: the previous version took "smallest mode >= target" and,
+		// failing that, silently fell through to the HIGHEST mode. On a 90Hz
+		// panel with no 60Hz mode, asking for a 60 cap picked 90Hz - and 90/60 is
+		// 1.5, a swap interval Vulkan's present modes cannot express. The cap was
+		// then ignored and the game ran at 90. Mode choice now prefers a rate the
+		// target divides evenly, and reports when the panel cannot supply one.
+		//
+		// Returns a short status line for the dev overlay, or "" when there is
+		// nothing worth reporting. Never throws.
+		public static string SetPreferredRefreshRate(float targetHz)
+		{
+			LastRefreshRateIssue = ApplyPreferredRefreshRate(targetHz);
+			return LastRefreshRateIssue;
+		}
+
+		private static string ApplyPreferredRefreshRate(float targetHz)
 		{
 			try
 			{
@@ -160,10 +183,12 @@ namespace OpenFrontier
 					AndroidJavaObject[] modes = display.Call<AndroidJavaObject[]>("getSupportedModes");
 					int curW = display.Call<int>("getPhysicalWidth");
 					int curH = display.Call<int>("getPhysicalHeight");
-					int bestId = -1;
-					float bestHz = -1f;
-					float highestHz = -1f;
+					int divisorId = -1;
+					float divisorHz = -1f;
+					int smallestId = -1;
+					float smallestHz = -1f;
 					int highestId = -1;
+					float highestHz = -1f;
 					foreach (AndroidJavaObject mode in modes)
 					{
 						float hz = mode.Call<float>("getRefreshRate");
@@ -177,32 +202,80 @@ namespace OpenFrontier
 								highestHz = hz;
 								highestId = id;
 							}
-							if (hz >= targetHz - 0.5f && (bestId < 0 || hz < bestHz))
+							if (hz >= targetHz - 0.5f && (smallestId < 0 || hz < smallestHz))
 							{
-								bestHz = hz;
-								bestId = id;
+								smallestHz = hz;
+								smallestId = id;
+							}
+							// A rate the target divides evenly can be held with a
+							// whole swap interval. Those are the only ones that
+							// actually keep a cap under Vulkan.
+							if (hz >= targetHz - 0.5f && DividesEvenly(hz, targetHz)
+								&& (divisorId < 0 || hz < divisorHz))
+							{
+								divisorHz = hz;
+								divisorId = id;
 							}
 						}
 						mode.Dispose();
 					}
-					if (bestId < 0)
+					int chosenId = divisorId;
+					float chosenHz = divisorHz;
+					if (chosenId < 0)
 					{
-						bestId = highestId;
+						chosenId = smallestId;
+						chosenHz = smallestHz;
 					}
-					if (bestId >= 0)
+					bool fellBackToHighest = false;
+					if (chosenId < 0)
 					{
-						using (AndroidJavaObject window = activity.Call<AndroidJavaObject>("getWindow"))
-						using (AndroidJavaObject lp = window.Call<AndroidJavaObject>("getAttributes"))
-						{
-							lp.Set("preferredDisplayModeId", bestId);
-							window.Call("setAttributes", lp);
-						}
+						chosenId = highestId;
+						chosenHz = highestHz;
+						fellBackToHighest = true;
 					}
+					if (chosenId < 0)
+					{
+						return "no display mode available";
+					}
+
+					using (AndroidJavaObject window = activity.Call<AndroidJavaObject>("getWindow"))
+					using (AndroidJavaObject lp = window.Call<AndroidJavaObject>("getAttributes"))
+					{
+						lp.Set("preferredDisplayModeId", chosenId);
+						window.Call("setAttributes", lp);
+					}
+
+					if (divisorId >= 0)
+					{
+						// Requested rate is exactly reachable. Nothing to report.
+						return "";
+					}
+					// No even divisor available. Say so - this is the case where the
+					// cap will not hold, and the overlay alone cannot explain it.
+					string why = fellBackToHighest
+						? "no mode at this resolution"
+						: "no rate divides " + targetHz.ToString("0") + " evenly";
+					return chosenHz.ToString("0") + "Hz, " + why;
 				}
 			}
 			catch (System.Exception)
 			{
+				return "refresh rate request failed";
 			}
+		}
+
+		/// <summary>
+		/// True when hz is an integer multiple of targetHz within tolerance.
+		/// Both arrive from Android as floats, hence the tolerance.
+		/// </summary>
+		private static bool DividesEvenly(float hz, float targetHz)
+		{
+			if (targetHz <= 0f)
+			{
+				return false;
+			}
+			float ratio = hz / targetHz;
+			return System.Math.Abs(ratio - System.Math.Round(ratio)) < 0.02f;
 		}
 #endif
 	}

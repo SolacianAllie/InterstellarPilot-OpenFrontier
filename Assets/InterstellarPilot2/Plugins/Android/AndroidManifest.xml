@@ -6,7 +6,7 @@
   <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
   <uses-feature android:name="android.hardware.touchscreen.multitouch" android:required="false" />
   <uses-feature android:name="android.hardware.touchscreen.multitouch.distinct" android:required="false" />
-  <application android:appCategory="game" android:enableOnBackInvokedCallback="true" android:extractNativeLibs="true">
+  <application android:appCategory="game" android:enableOnBackInvokedCallback="true" android:extractNativeLibs="true" android:hardwareAccelerated="true">
     <meta-data android:name="unity.splash-mode" android:value="0" />
     <meta-data android:name="unity.splash-enable" android:value="True" />
     <meta-data android:name="unity.requested-visible-insets" android:value="" />
@@ -19,7 +19,12 @@
     <meta-data android:name="unity.auto-set-game-state" android:value="true" />
     <!-- Open Frontier: sensorLandscape (both landscape directions always,
          ignoring the system rotation lock) instead of userLandscape. -->
-    <activity android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density" android:enabled="true" android:exported="true" android:hardwareAccelerated="false" android:launchMode="singleTask" android:name="com.unity3d.player.UnityPlayerGameActivity" android:resizeableActivity="true" android:screenOrientation="sensorLandscape" android:theme="@style/BaseUnityGameActivityTheme">
+    <!-- Open Frontier: hardwareAccelerated was false, inherited from the
+         decompiled original manifest and never reviewed. Android's default is
+         true. A window the system does not treat as hardware accelerated is
+         one where it is least likely to honour a preferredDisplayModeId, which
+         is how the frame rate limit is enforced here. -->
+    <activity android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density" android:enabled="true" android:exported="true" android:hardwareAccelerated="true" android:launchMode="singleTask" android:name="com.unity3d.player.UnityPlayerGameActivity" android:resizeableActivity="true" android:screenOrientation="sensorLandscape" android:theme="@style/BaseUnityGameActivityTheme">
       <intent-filter>
         <category android:name="android.intent.category.LAUNCHER" />
         <action android:name="android.intent.action.MAIN" />
