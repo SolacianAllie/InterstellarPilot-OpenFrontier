@@ -348,14 +348,40 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				}
 				else
 				{
-					// Docking and undocking crossfade; everything else is cut.
-					// A station is somewhere you have arrived, not something
-					// that interrupted you, and a fade to silence followed by
-					// a fade up leaves a hole exactly where the player is
-					// most expecting to hear the place they just reached.
-					bool moved = dockedChanged
-						? crossfader.Crossfade(wanted)
-						: crossfader.Interrupt(wanted);
+					// How the world changed decides how the music moves.
+					//
+					// Leaving the main menu fades all the way to silence
+					// first, and takes longer doing it. It is the one place a
+					// real gap is right: the menu is its own place, and
+					// arriving in the galaxy should sound like arriving
+					// rather than like one room bleeding into the next. A
+					// crossfade here would put both at once and neither would
+					// sound like a place.
+					//
+					// Tested on EITHER side, because the menu boundary is one
+					// boundary. Coming back out of the galaxy is the same
+					// moment as going into it, and the same piece of music is
+					// being let go of.
+					//
+					// Docking crossfades - somewhere you have arrived, not
+					// something that interrupted you.
+					//
+					// Everything else is cut, sized for the suddenness of the
+					// thing that caused it.
+					bool moved;
+
+					if (currentKey == "Menu" || wantedKey == "Menu")
+					{
+						moved = crossfader.Interrupt(wanted, crossfader.MenuFadeSeconds);
+					}
+					else if (dockedChanged)
+					{
+						moved = crossfader.Crossfade(wanted);
+					}
+					else
+					{
+						moved = crossfader.Interrupt(wanted);
+					}
 
 					if (moved)
 					{

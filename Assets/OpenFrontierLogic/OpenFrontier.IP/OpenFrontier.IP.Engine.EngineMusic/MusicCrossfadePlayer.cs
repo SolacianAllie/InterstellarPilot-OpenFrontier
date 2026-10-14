@@ -39,6 +39,10 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		[Tooltip("How long entering or leaving a station crossfades between the two tracks.")]
 		public float StationCrossfadeSeconds = 2f;
 
+		/// <summary>How long the menu takes to fade to silence on the way out.</summary>
+		[Tooltip("How long the main menu music takes to reach silence before gameplay music starts.")]
+		public float MenuFadeSeconds = 3f;
+
 		private AudioSource currentSource;
 		private AudioSource incomingSource;
 		private MusicTimingTable.Entry currentEntry;
@@ -46,6 +50,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		private float currentStartedAt;
 		private float incomingStartedAt;
 		private float fadeStartedAt;
+		private float fadeSeconds = 1.5f;
 		private bool fadingOut;
 		private bool crossfading;
 		private float crossfadeStartedAt;
@@ -266,7 +271,25 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// heard alone - which is how a transition ends up sounding like a
 		/// mistake rather than a change of scene.
 		/// </remarks>
-		public bool Interrupt(MusicTimingTable.Entry entry)
+		public bool Interrupt(MusicTimingTable.Entry entry) =>
+			Interrupt(entry, InterruptFadeSeconds);
+
+		/// <summary>
+		/// Fades to silence over a given duration, then plays the new track.
+		/// </summary>
+		/// <remarks>
+		/// The duration is a parameter because the fades are not
+		/// interchangeable. The default is short and blunt, sized for a
+		/// wormhole where the world has already moved on and the player is
+		/// looking somewhere else. Leaving the main menu is the opposite: a
+		/// deliberate, calm exit from a five minute piece, where 1.5s sounds
+		/// like the music was cut off rather than let go.
+		///
+		/// Only the menu needs this. Everywhere else a fade out is a response
+		/// to something sudden, and a long silence after a sudden thing is
+		/// worse than a quick one.
+		/// </remarks>
+		public bool Interrupt(MusicTimingTable.Entry entry, float seconds)
 		{
 			if (entry == null)
 			{
@@ -311,10 +334,11 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			incomingWaiting = true;
 			fadingOut = true;
 			fadeStartedAt = Time.realtimeSinceStartup;
+			fadeSeconds = seconds;
 
 			Debug.Log("Music: interrupted '" + currentEntry.Name + "' after "
 				+ CurrentElapsed.ToString("0") + "s of " + currentEntry.Duration.ToString("0")
-				+ "s - fading to silence over " + InterruptFadeSeconds
+				+ "s - fading to silence over " + fadeSeconds
 				+ "s, then '" + entry.Name + "' (" + entry.Category + ").");
 
 			return true;
@@ -539,9 +563,9 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		private void StepFadeOut()
 		{
 			float elapsed = Time.realtimeSinceStartup - fadeStartedAt;
-			float t = InterruptFadeSeconds <= 0f
+			float t = fadeSeconds <= 0f
 				? 1f
-				: Mathf.Clamp01(elapsed / InterruptFadeSeconds);
+				: Mathf.Clamp01(elapsed / fadeSeconds);
 
 			if (currentSource != null)
 			{
