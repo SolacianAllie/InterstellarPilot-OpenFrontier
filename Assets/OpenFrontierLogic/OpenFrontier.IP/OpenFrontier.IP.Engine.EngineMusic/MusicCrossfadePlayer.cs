@@ -630,14 +630,36 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			float half = t * Mathf.PI * 0.5f;
 			float master = MasterVolume;
 
+			// Outgoing DOWN, incoming UP. Cos runs 1 -> 0 over 0..pi/2 and Sin
+			// runs 0 -> 1, so the track you are leaving starts at full and the
+			// track you are arriving at starts at nothing.
+			//
+			// THESE WERE THE OTHER WAY ROUND. Sin and Cos were swapped, so the
+			// current track snapped to silence on the first frame and then
+			// climbed back to full while the new one started loud and faded
+			// away - the exact inverse of a crossfade, and reported as "the
+			// track snaps to 0 and fades in, then stops, then the new one
+			// fades in".
+			//
+			// It survived being written, reviewed and run because the two
+			// curves are identical at the midpoint - cos and sin of pi/4 are
+			// both 0.7071 - so only the two ENDS are wrong, and the ends are
+			// where the ears are. Check the ends of a crossfade, not its
+			// middle.
+			//
+			// cos^2 + sin^2 = 1, so the summed POWER is constant across the
+			// whole ramp and the perceived loudness holds steady. That is the
+			// equal-power property, and it is why these two and not a pair of
+			// straight lines: a linear ramp sums AMPLITUDE to 1 and dips ~3 dB
+			// through the middle.
 			if (currentSource != null)
 			{
-				currentSource.volume = master * Mathf.Sin(half);
+				currentSource.volume = master * Mathf.Cos(half);
 			}
 
 			if (incomingSource != null)
 			{
-				incomingSource.volume = master * Mathf.Cos(half);
+				incomingSource.volume = master * Mathf.Sin(half);
 			}
 
 			if (t >= 1f)
