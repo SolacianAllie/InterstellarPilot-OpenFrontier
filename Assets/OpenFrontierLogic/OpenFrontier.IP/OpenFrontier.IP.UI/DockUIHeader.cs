@@ -11,6 +11,16 @@ namespace OpenFrontier.IP.UI
 	{
 		private float lastTimeRefreshedTitleLabel = -100f;
 
+		// Frame rate shown at the head of the location label. Accumulated in
+		// Update() and divided out once a second, so the label - which only
+		// refreshes when the unit or sector changes or every 2s - can read a
+		// stable number without doing any per-frame string work.
+		private float fpsAccum;
+
+		private int fpsFrames;
+
+		private float displayFps;
+
 		public TextMeshProUGUI CreditsText;
 
 		public Image PausedActivatorImage;
@@ -163,6 +173,17 @@ namespace OpenFrontier.IP.UI
 
 		private void Update()
 		{
+			// Unscaled, so the readout stays honest while a PauseWhenShown screen
+			// has Time.timeScale at 0 - which is exactly when it is least obvious
+			// whether something is holding the framerate up.
+			fpsAccum += Time.unscaledDeltaTime;
+			fpsFrames++;
+			if (fpsAccum >= 1f)
+			{
+				displayFps = fpsFrames / fpsAccum;
+				fpsAccum = 0f;
+				fpsFrames = 0;
+			}
 			if (!(Engine != null))
 			{
 				return;
@@ -258,6 +279,13 @@ namespace OpenFrontier.IP.UI
 			Unit playerCurrentUnit = DockUI.PlayerCurrentUnit;
 			if (playerCurrentUnit != null)
 			{
+				// Frame rate prefix, e.g. "60/V-Sync - Shuttle-A "Aether", Abocleus".
+				// Measured from unscaled time so it stays true while a pause screen
+				// has stopped Time.timeScale.
+				stringBuilder.Append(displayFps.ToString("0"));
+				stringBuilder.Append('/');
+				stringBuilder.Append(PlayerPrefs.GetInt(GameController.Instance.PlayerOptionConstants.Video_VSyncKey, 1) > 0 ? "V-Sync" : "No V-Sync");
+				stringBuilder.Append(" - ");
 				GetLocationTextNonAlloc(playerCurrentUnit, stringBuilder);
 				return stringBuilder.ToString();
 			}
