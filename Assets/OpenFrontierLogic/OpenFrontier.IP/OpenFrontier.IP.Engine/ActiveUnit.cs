@@ -562,12 +562,59 @@ namespace OpenFrontier.IP.Engine
 				inDrawRange = true;
 			}
 
-			// Only react to an actual change, and only ever while the visual
-			// cull is live. The hysteresis band is unchanged, so a ship at
-			// 900 units still does not strobe.
-			if (inDrawRange != wasInDrawRange && !LetLodGroupsGovernDrawDistance)
+			// Only react to an actual change. The hysteresis band is unchanged, so a
+			// ship at 900 units still does not strobe.
+			//
+			// Two cases, because the top quality level lifts the cull rather
+			// than removing the flag.
+			//
+			// Below it, the flag and the SetActive calls are the same thing and
+			// SetDrawObjectsActive is still correct.
+			//
+			// At the top level the LODGroups govern what draws, so a unit
+			// leaving the flag must NOT be switched off. But suppressing the
+			// call entirely - which is what a plain `&& !LetLodGroups...` guard
+			// does - also means a unit that a LOWER level already switched off
+			// is never switched back on. Since the flag only clears again below
+			// DrawDistNear, anything still far away stays false, the call stays
+			// suppressed, and it is invisible for the rest of the session.
+			// Switching quality up is exactly how you hit that.
+			//
+			// This is what bd3ae90b did; 8f5aae89 dropped it while
+			// separating the flag from the cull, and the re-enable went with it.
+			// Restored here without touching the flag's meaning - it still
+			// clears at distance, because ActiveUnitThrusterAudio and Asteroid
+			// read it.
+			if (inDrawRange != wasInDrawRange)
 			{
-				SetDrawObjectsActive();
+				if (!LetLodGroupsGovernDrawDistance)
+				{
+					SetDrawObjectsActive();
+				}
+				else if (!inDrawRange)
+				{
+					SetDrawObjectsActiveEnabled();
+				}
+			}
+		}
+
+		/// <summary>
+		/// Switches every draw-range object ON regardless of the flag.
+		/// </summary>
+		/// <remarks>
+		/// For the top quality level only, where the visual cull is lifted and
+		/// a unit that was switched off at a lower level must be recovered.
+		/// SetDrawObjectsActive cannot do this - it follows the flag, and the
+		/// flag is deliberately false at range.
+		/// </remarks>
+		private void SetDrawObjectsActiveEnabled()
+		{
+			for (int i = 0; i < DrawRangeObjects.Count; i++)
+			{
+				if (DrawRangeObjects[i] != null)
+				{
+					DrawRangeObjects[i].gameObject.SetActive(true);
+				}
 			}
 		}
 
