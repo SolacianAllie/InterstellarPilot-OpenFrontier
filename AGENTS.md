@@ -156,6 +156,48 @@ not a real missing reference before deciding:
 The editor refocus the user does anyway rebuilds `ScriptAssemblies`, which
 clears it. `grep -c "error CS" Logs/Editor.log` is the real confirmation.
 
+## The harness is 15x faster now, and this is how
+
+It was 70 seconds and it was not the compiler. Measured breakdown of the old
+run: **prefab-yaml-check.py 53s**, thirteen builds ~14s, codec tests ~1.9s
+(dotenv run twice), everything else under half a second.
+
+Four changes, in order of what they were worth:
+
+- **`yaml.load_all(text, Loader=CSafeLoader)` instead of `safe_load_all`.**
+  Same parser, compiled instead of interpreted: 6.7s to 0.9s over 200
+  prefabs. Fall back to `SafeLoader` if libyaml is missing, never fail.
+  Takes the prefab check 53s -> 12.9s.
+- **Cache the prefab check on (mtime_ns, size), in
+  `checks/.prefab-yaml-cache.json`.** The parse is a pure function of the
+  file, so 12.9s -> **142ms** on any run where nothing under `Assets/` was
+  touched, which is nearly every run. **The cache stores the messages, not
+  just the verdict** - caching the boolean would make a second run of a
+  failing check print "0 failures" and quietly invert the check, which is
+  this harness's signature failure mode.
+- **Build the projects in parallel** (`xargs -P 6`, `HARNESS_JOBS` to
+  override). They are independent: no generated csproj has a
+  `ProjectReference`, because they reference Unity's own DLLs out of
+  `Library/ScriptAssemblies` rather than each other, so there is no ordering
+  to respect. 14s -> ~4s. Capped at 6 of 12 cores because the editor is
+  usually open and starving it to save three seconds is a bad trade.
+- **`--no-restore` on every build, and run codec-test ONCE.** NuGet restore
+  runs on every `dotnet build` whether anything changed or not - 853ms
+  against 521ms. And `dotnet run` was being invoked twice, once to grep the
+  output and again for the exit code; capturing once and reusing removed a
+  way for the printed verdict and the returned status to disagree.
+
+Now **4.6s warm, 16.6s cold** (a wiped cache re-parses everything). If it
+ever reads 70s again, one of these four has been lost.
+
+**The generator has a case-collision trap.** The repo tracks a lowercase
+`tools/`, the filesystem is case-insensitive, and git's index is
+case-SENSITIVE. A script written to `Tools/music/` therefore reports as
+untracked `?? Tools/music/` forever and `git ls-files Tools/` returns
+nothing, which reads exactly like "never committed" and is not the same
+question. **Always check `git ls-files tools/` in lowercase** before
+concluding anything about `Tools/`.
+
 ## A green harness run can have compiled almost nothing
 
 `gen.main()` **writes the csproj files every time it runs**, so it is not a
