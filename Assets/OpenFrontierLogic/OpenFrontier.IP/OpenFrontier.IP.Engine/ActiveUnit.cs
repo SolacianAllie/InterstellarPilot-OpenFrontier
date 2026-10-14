@@ -531,23 +531,20 @@ namespace OpenFrontier.IP.Engine
 				inAudioRange = true;
 				PlayAmbientSounds();
 			}
-			// What inDrawRange means, and the visual cull, are SEPARATE.
-			// At the top quality level the cull is lifted; the flag still
-			// means exactly what it always did.
+			// inDrawRange is a PROXIMITY flag, not the model cull, and it must stay
+			// one. ActiveUnitThrusterAudio computes volume from engine throttle
+			// rather than distance, and Asteroid gates its yield explosion on it,
+			// so a unit held permanently in range would be audible across the
+			// sector and every asteroid impact anywhere in the sector would pop
+			// a particle effect. That is the opposite of what the flag is for,
+			// on a project whose lowest target is a phone.
 			//
-			// This previously left inDrawRange stuck TRUE at the top level,
-			// which looked right and was not. The flag is read by
-			// ActiveUnitThrusterAudio (volume 0 beyond range) and by
-			// Asteroid (yield effects skipped beyond range), so keeping it
-			// true meant every distant ship kept an AudioSource alive and
-			// updating and every asteroid impact still spawned its effect -
-			// at long range, on a mobile-first project. That is the opposite
-			// of what the setting was for.
-			//
-			// So the flag is computed exactly as it always was, and the top
-			// level only stops the SetActive calls. The LODGroups govern
-			// visibility instead of a fixed distance. Consumers keep their
-			// meaning, and the only thing that changes is which meshes draw.
+			// An earlier attempt lifted the flag itself at the top quality level,
+			// on the theory that the LODGroups had taken over. That was the
+			// wrong half of the wrong fix: it kept the audio and effects cost,
+			// and it still left the models broken - see SetDrawObjectsActive,
+			// where the actual cull now is, and where the whole regression is
+			// written out.
 			bool wasInDrawRange = inDrawRange;
 
 			if (inDrawRange)
@@ -562,120 +559,53 @@ namespace OpenFrontier.IP.Engine
 				inDrawRange = true;
 			}
 
-			// Only react to an actual change. The hysteresis band is unchanged, so a
-			// ship at 900 units still does not strobe.
-			//
-			// Two cases, because the top quality level lifts the cull rather
-			// than removing the flag.
-			//
-			// Below it, the flag and the SetActive calls are the same thing and
-			// SetDrawObjectsActive is still correct.
-			//
-			// At the top level the LODGroups govern what draws, so a unit
-			// leaving the flag must NOT be switched off. But suppressing the
-			// call entirely - which is what a plain `&& !LetLodGroups...` guard
-			// does - also means a unit that a LOWER level already switched off
-			// is never switched back on. Since the flag only clears again below
-			// DrawDistNear, anything still far away stays false, the call stays
-			// suppressed, and it is invisible for the rest of the session.
-			// Switching quality up is exactly how you hit that.
-			//
-			// This is what bd3ae90b did; 8f5aae89 dropped it while
-			// separating the flag from the cull, and the re-enable went with it.
-			// Restored here without touching the flag's meaning - it still
-			// clears at distance, because ActiveUnitThrusterAudio and Asteroid
-			// read it.
+			// Only on an actual transition. SetDrawObjectsActive is idempotent
+			// and now unconditional, so this is purely to avoid re-walking a
+			// two-entry list on every visibility poll - which is every two
+			// seconds per unit.
 			if (inDrawRange != wasInDrawRange)
 			{
-				if (!LetLodGroupsGovernDrawDistance)
-				{
-					SetDrawObjectsActive();
-				}
-				else if (!inDrawRange)
-				{
-					SetDrawObjectsActiveEnabled();
-				}
-			}
-		}
-
-		/// <summary>
-		/// Switches every draw-range object ON regardless of the flag.
-		/// </summary>
-		/// <remarks>
-		/// For the top quality level only, where the visual cull is lifted and
-		/// a unit that was switched off at a lower level must be recovered.
-		/// SetDrawObjectsActive cannot do this - it follows the flag, and the
-		/// flag is deliberately false at range.
-		/// </remarks>
-		private void SetDrawObjectsActiveEnabled()
-		{
-			for (int i = 0; i < DrawRangeObjects.Count; i++)
-			{
-				if (DrawRangeObjects[i] != null)
-				{
-					DrawRangeObjects[i].gameObject.SetActive(true);
-				}
-			}
-		}
-
-		/// <summary>
-		/// Whether the prefab LODGroups should decide what is drawn, rather
-		/// than a fixed distance that switches a set of objects off.
-		/// </summary>
-		/// <remarks>
-		/// True only at the topmost quality level, where there is budget for
-		/// the extra geometry. Below that the cull stays, which is also what
-		/// keeps a phone fast: a phone will not be at the top level, so it
-		/// keeps the cheap behaviour by default rather than needing a
-		/// separate code path.
-		///
-		/// WHAT IT ACTUALLY REACHES, which is much less than it sounds.
-		///
-		/// SetDrawObjectsActive only touches entries in DrawRangeObjects, and
-		/// that list is EMPTY on all eighteen ship prefabs. It is populated on
-		/// eighteen others - stations, refineries, shipyards, outposts, nav
-		/// buoys, wormholes, debris. So this lifts the cull for structures,
-		/// and ships were never subject to it.
-		///
-		/// An earlier version of this comment claimed it was giving LODs
-		/// eight times more room to work with, which was wrong. Ship
-		/// visibility was always governed by the camera far plane and the
-		/// per-prefab LODGroup, with the full ladder, all the way out. A
-		/// structure whose LODGroup is authored for it now keeps drawing
-		/// past 1000 units and its lowest LOD rather than vanishing; that is
-		/// the whole of what changes.
-		///
-		/// Keyed off the TOPMOST index rather than a hardcoded 4, so
-		/// reordering, renaming or adding quality levels cannot silently
-		/// move which one gets this.
-		/// </remarks>
-		private static bool LetLodGroupsGovernDrawDistance
-		{
-			get
-			{
-				if (GameController.Instance == null)
-				{
-					return false;
-				}
-
-				string[] names = QualitySettings.names;
-
-				if (names == null || names.Length == 0)
-				{
-					return false;
-				}
-
-				return GameController.Instance.CurrentQualityLevel >= names.Length - 1;
+				SetDrawObjectsActive();
 			}
 		}
 
 		private void SetDrawObjectsActive()
 		{
+			// Always ON. Never follows the flag, at any distance and at any
+			// quality level.
+			//
+			// This is the actual fix for structures vanishing at the top
+			// quality level. History, because it is the whole shape of the
+			// bug:
+			//
+			// SetActive(inDrawRange) was guarded by
+			// `&& !LetLodGroupsGovernDrawDistance` at the top level, on the
+			// theory that the prefab LODGroups took over there. They did not
+			// "take over" - suppressing the call just meant these objects were
+			// never switched back ON. A unit switched off at a lower level then
+			// stayed off, because the flag only clears again below DrawDistNear,
+			// so anything still far away never recovered for the rest of the
+			// session. Loading straight into the top level hit it too, because
+			// CurrentQualityLevel is -1 until GameController resolves it, so
+			// early units were culled before the gate went active.
+			//
+			// bd3ae90b added a re-enable. 8f5aae89 dropped it while separating
+			// the flag from the cull, and that is the regression.
+			//
+			// What draws these objects now is the real mechanism: the camera
+			// far plane, and the per-prefab LODGroup where one exists. A fixed
+			// number pretending to be a LOD system fires on geometry the
+			// LODGroup has already culled, and cannot be turned off - which is
+			// the entire class of bug this line used to be.
+			//
+			// inDrawRange itself is untouched and still gates thruster audio,
+			// asteroid yield explosions and material updates. See
+			// ActiveUnitClass.DrawDistFar for why that has to stay real.
 			for (int i = 0; i < DrawRangeObjects.Count; i++)
 			{
 				if (DrawRangeObjects[i] != null)
 				{
-					DrawRangeObjects[i].gameObject.SetActive(inDrawRange);
+					DrawRangeObjects[i].gameObject.SetActive(true);
 				}
 			}
 		}
