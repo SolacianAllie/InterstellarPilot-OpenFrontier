@@ -19,6 +19,7 @@ using OpenFrontier.IP.Engine.Core;
 using OpenFrontier.IP.Engine.Core.Units;
 using OpenFrontier.IP.Engine.Dialog;
 using OpenFrontier.IP.Engine.DitchShip;
+using OpenFrontier.IP.Engine.EngineMusic;
 using OpenFrontier.IP.Engine.Factions;
 using OpenFrontier.IP.Engine.Factions.Bounty;
 using OpenFrontier.IP.Engine.Fleets.FleetFormations;
@@ -40,7 +41,6 @@ using OpenFrontier.IP.Engine.Triggers;
 using OpenFrontier.IP.Engine.UnitComponents;
 using OpenFrontier.IP.Engine.Validation;
 using OpenFrontier.IP.Engine.Wormholes;
-using OpenFrontier.IP.MusicPlayer;
 using OpenFrontier.IP.Scenarios;
 using OpenFrontier.IP.Scenarios.RandomEvents;
 using OpenFrontier.IP.Scenarios.UniverseEventsNotifier;
@@ -1484,11 +1484,6 @@ namespace OpenFrontier.IP.Engine
 		public static Person LoadPerson(string name)
 		{
 			return UnityObjectHelper.Load<Person>("Prefabs/WorldData/People/" + name);
-		}
-
-		public static AudioSource LoadMusicAudioSource(string name)
-		{
-			return UnityObjectHelper.Load<AudioSource>("Audio/AudioSources/" + name);
 		}
 
 		public static Fleet LoadFleet(string name)
@@ -2962,34 +2957,33 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
+		/// <summary>
+		/// Plays the win stinger, if the game has been given one.
+		/// </summary>
+		/// <remarks>
+		/// WinAudioSourceNames is empty on the prefab, so this has always done
+		/// nothing. It is kept because the field is serialized data and an
+		/// empty list is a deliberate choice someone might fill in, not
+		/// because anything calls it meaningfully.
+		/// </remarks>
 		public void PlayWinAudio()
 		{
-			SimpleMusicPlayer musicPlayer = GameController.Instance.MusicPlayer;
-			if (musicPlayer != null)
-			{
-				string random = WinAudioSourceNames.GetRandom();
-				if (!string.IsNullOrEmpty(random))
-				{
-					musicPlayer.FadeOutIfPlaying();
-					musicPlayer.QueuedTracks.Clear();
-					musicPlayer.EnqueueTrack(random);
-				}
-			}
+			MusicDirector.PlayJingle(WinAudioSourceNames.GetRandom());
 		}
 
+		/// <summary>
+		/// Plays the lose stinger over silence.
+		/// </summary>
+		/// <remarks>
+		/// LoseAudioSourceNames holds one track, and this is the only live
+		/// user of the old audio source prefabs left in the project - which is
+		/// why they were kept rather than deleted with the rest of the old
+		/// music system. They are AudioSource prefabs wrapping a clip, and the
+		/// clip is a defeat sting this game plays.
+		/// </remarks>
 		public void PlayLoseAudio()
 		{
-			SimpleMusicPlayer musicPlayer = GameController.Instance.MusicPlayer;
-			if (musicPlayer != null)
-			{
-				string random = LoseAudioSourceNames.GetRandom();
-				if (!string.IsNullOrEmpty(random))
-				{
-					musicPlayer.FadeOutIfPlaying();
-					musicPlayer.QueuedTracks.Clear();
-					musicPlayer.EnqueueTrack(random);
-				}
-			}
+			MusicDirector.PlayJingle(LoseAudioSourceNames.GetRandom());
 		}
 
 		public void NotifyPlayerInCombat()

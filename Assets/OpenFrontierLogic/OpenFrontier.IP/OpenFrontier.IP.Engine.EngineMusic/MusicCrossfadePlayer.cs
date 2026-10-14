@@ -150,26 +150,22 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		}
 
 		/// <summary>
-		/// The music volume, from the existing player.
+		/// The music volume, which the director owns.
 		/// </summary>
 		/// <remarks>
-		/// Read rather than stored so that moving the volume slider in the
-		/// options takes effect immediately, which it would not if the value
-		/// were latched when a track started - a track can run for three
-		/// minutes and the player expects the slider to do something.
+		/// This used to reach across and read it off the old
+		/// SimpleMusicPlayer component, falling back to a hardcoded 0.5 when
+		/// that component was not there. Both halves of that were bad: the
+		/// old system could not be deleted while something still read it,
+		/// and the fallback was indistinguishable from a real volume of 0.5 -
+		/// which is exactly what the overlay's HasLiveMasterVolume existed to
+		/// warn about, on the property that was causing it.
+		///
+		/// Read live rather than latched when a track starts, so that moving
+		/// the slider does something. A track can run for three minutes and
+		/// the player expects the slider to work while it does.
 		/// </remarks>
-		public float MasterVolume
-		{
-			get
-			{
-				if (GameController.Instance != null && GameController.Instance.MusicPlayer != null)
-				{
-					return GameController.Instance.MusicPlayer.Volume;
-				}
-
-				return 0.5f;
-			}
-		}
+		public float MasterVolume => MusicDirector.Volume;
 
 		/// <summary>
 		/// Starts a track immediately, cutting whatever was playing.
@@ -934,26 +930,10 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				+ " clip=" + (SourceHasClip ? currentSource.clip.name : "NONE")
 				+ " vol=" + SourceVolume.ToString("0.00")
 				+ " master=" + MasterVolume.ToString("0.00")
-				+ " from=" + (HasLiveMasterVolume ? "player" : "FALLBACK")
 				+ " listener=" + AudioListener.volume.ToString("0.00")
 				+ " loop=" + currentSource.loop
 				+ " paused=" + AudioListener.pause;
 		}
-
-		/// <summary>
-		/// Whether the master volume is the real setting or the fallback.
-		/// </summary>
-		/// <remarks>
-		/// MasterVolume returns a hardcoded 0.5 when GameController or its
-		/// MusicPlayer is not there yet, which looks exactly like a real
-		/// volume and is not. Saying which one it is turns "the volume is
-		/// wrong" into a reportable fact - the menu screenshot showed
-		/// vol=0.00 while the stored preference was 1, and nothing on screen
-		/// could have said whether that was a live zero, a stale snapshot, or
-		/// a player that was not there.
-		/// </remarks>
-		public bool HasLiveMasterVolume =>
-			GameController.Instance != null && GameController.Instance.MusicPlayer != null;
 
 		/// <summary>
 		/// Both audio sources, named, with what each is actually doing.

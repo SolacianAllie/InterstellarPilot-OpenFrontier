@@ -109,10 +109,11 @@ namespace OpenFrontier.IP.UI
 
 		private void QueueSceneLoad(ScenarioLoadData loadData)
 		{
-			if (GameController.Instance.MusicPlayer != null)
-			{
-				GameController.Instance.MusicPlayer.ClearAllTracksWithFadeOut(0.8f);
-			}
+			// No fade here. This faded the OLD player, and the equivalent for
+			// this system is ScenarioLoadCommitted, called from TryLoadScenario
+			// above - the same call, on the right system, at the moment the
+			// load is actually committed. Two fades for one event is how they
+			// ended up disagreeing about which one the player heard.
 			if (LoadingScenario != null)
 			{
 				LoadingScenario(this, queuedLoadData);

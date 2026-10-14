@@ -67,23 +67,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!1 &1618682377417806
-GameObject:
-  serializedVersion: 6
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Component:
-  - component: {fileID: 4089843903986396}
-  - component: {fileID: 114672306508523268}
-  m_Layer: 0
-  m_Name: Jukebox
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
 --- !u!1 &1703437598541787
 GameObject:
   serializedVersion: 6
@@ -413,7 +396,6 @@ Transform:
   m_Children:
   - {fileID: 4621510681728303}
   - {fileID: 4733206282342372}
-  - {fileID: 4089843903986396}
   - {fileID: 4808113985169905}
   - {fileID: 4900271049623953}
   - {fileID: 4518489005915545}
@@ -525,7 +507,6 @@ MonoBehaviour:
   - {r: 0.9764706, g: 0.8348186, b: 0.36378315, a: 1}
   - {r: 1, g: 0.8922655, b: 0.042452812, a: 1}
   DefaultCombatDifficultyLevel: {fileID: 114724804207875695, guid: f76c71c1d4541a64fbb7e6b97787462d, type: 2}
-  DefaultMusicVolume: 0.5
   CombatDifficultyLevel: {fileID: 114724804207875695, guid: 1ae4e94d3f5d39f4597607c226d2e357, type: 2}
   CombatDifficultyLevelKey: combat_difficulty
   CombatDifficultyLevels:
@@ -600,8 +581,6 @@ MonoBehaviour:
   DamageObjectMask:
     serializedVersion: 2
     m_Bits: 1073741824
-  MusicPlayer: {fileID: 114672306508523268}
-  MusicVolumeKey: music_volume
   AutoCloseInGameMenu: 1
   DefaultPilotName: Player
   DefaultPilotNameKey: default_pilot_name
@@ -1023,34 +1002,6 @@ MonoBehaviour:
   InputKey: 282
   NamePrefix: screenshot_
   TargetPath: C:\dev\temp\asx\screenshots
---- !u!4 &4089843903986396
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1618682377417806}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4470112387431263}
-  m_RootOrder: 2
-  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
---- !u!114 &114672306508523268
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1618682377417806}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c61662824c118f56b45818bf676c05df, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  FadeOutDuration: 2
 --- !u!4 &4808113985169905
 Transform:
   m_ObjectHideFlags: 0

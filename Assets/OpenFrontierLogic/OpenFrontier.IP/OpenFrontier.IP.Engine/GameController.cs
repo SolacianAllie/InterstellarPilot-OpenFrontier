@@ -10,7 +10,6 @@ using OpenFrontier.IP.Engine.SaveGame;
 using OpenFrontier.IP.Engine.SectorNaming;
 using OpenFrontier.IP.Engine.WorldGeneration.Models;
 using OpenFrontier.IP.IO;
-using OpenFrontier.IP.MusicPlayer;
 using OpenFrontier.IP.UI;
 using OpenFrontier.IP.UI.Screens;
 using OpenFrontier.IP.ZFrame;
@@ -204,7 +203,6 @@ namespace OpenFrontier.IP.Engine
 
 		public GameCombatDifficultyLevel DefaultCombatDifficultyLevel;
 
-		public float DefaultMusicVolume = 0.5f;
 
 		public GameCombatDifficultyLevel CombatDifficultyLevel;
 
@@ -273,9 +271,7 @@ namespace OpenFrontier.IP.Engine
 
 		public LayerMask DamageObjectMask;
 
-		public SimpleMusicPlayer MusicPlayer;
 
-		public string MusicVolumeKey = "music_volume";
 
 		public bool AutoCloseInGameMenu = true;
 
@@ -576,7 +572,6 @@ namespace OpenFrontier.IP.Engine
 		{
 			PlayerPrefs.SetInt(PlayerOptionConstants.Video_FullScreenKey, Helper.BoolTo01(Screen.fullScreen));
 			PlayerPrefs.SetFloat(MasterVolumeKey, AudioListener.volume);
-			PlayerPrefs.SetFloat(MusicVolumeKey, (MusicPlayer != null) ? MusicPlayer.Volume : DefaultMusicVolume);
 			PlayerPrefs.SetInt(PlayButtonSoundsKey, Helper.BoolTo01(PlayButtonSounds));
 			PlayerPrefs.SetInt(PlayerOptionConstants.Audio_MissileLockSoundKey, Helper.BoolTo01(PlayerOptions.Audio_MissileLockSound));
 			PlayerPrefs.SetInt(SpaceFogEnabledKey, Helper.BoolTo01(SpaceFogEnabled));
@@ -744,10 +739,6 @@ namespace OpenFrontier.IP.Engine
 		public void ApplyAllPlayerPrefs()
 		{
 			Debug.Log("GameController: Applying player preferences...", this);
-			if (MusicPlayer != null)
-			{
-				MusicPlayer.Volume = PlayerPrefsHelper.SafeGetFloat(MusicVolumeKey, DefaultMusicVolume);
-			}
 			bool fullScreen = PlayerPrefs.GetInt(PlayerOptionConstants.Video_FullScreenKey, 1) > 0;
 			ApplyResolution(fullScreen);
 			AudioListener.volume = PlayerPrefsHelper.SafeGetFloat(MasterVolumeKey, 1f);

@@ -46,8 +46,63 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 		public static MusicDirector Instance => instance;
 
+		/// <summary>Where the music volume is stored.</summary>
+		/// <remarks>
+		/// The same PlayerPrefs key the old player used, deliberately. Every
+		/// existing player's choice is already filed under this name, and
+		/// moving the storage would silently reset all of them to the default
+		/// in the very commit that deleted the thing holding it - which reads
+		/// as "the options screen broke", not as "the storage moved".
+		/// </remarks>
+		public const string VolumePrefsKey = "music_volume";
+
+		/// <summary>The music volume of a player who has never set one.</summary>
+		public const float DefaultVolume = 0.5f;
+
+		private static float volume = -1f;
+
 		/// <summary>
-		/// Installs the director and stands the old music controller down.
+		/// The music volume, and this system's to own.
+		/// </summary>
+		/// <remarks>
+		/// It used to be read out of the old SimpleMusicPlayer component on
+		/// every single frame. That is not a small coupling dressed up as a
+		/// convenience: it means the new system cannot honestly be called
+		/// removed while that component is still on the GameController prefab,
+		/// and a value read from a component that exists only to be deleted is
+		/// a dependency wearing a disguise.
+		///
+		/// Seeded from PlayerPrefs on first use rather than in Awake, because
+		/// Awake needs a component and this is called before one exists.
+		///
+		/// Written through on every set rather than at a save moment, because
+		/// the options screen moves a slider and the expectation is that the
+		/// choice survives the player switching the device off immediately.
+		/// Clamped because this multiplies an AudioSource.
+		/// </remarks>
+		public static float Volume
+		{
+			get
+			{
+				if (volume < 0f)
+				{
+					volume = PlayerPrefsHelper.SafeGetFloat(VolumePrefsKey, DefaultVolume);
+				}
+
+				return volume;
+			}
+
+			set
+			{
+				volume = Mathf.Clamp01(value);
+
+				PlayerPrefs.SetFloat(VolumePrefsKey, volume);
+			}
+		}
+
+		/// <summary>
+		/// Installs the director. Nothing is stood down; there is nothing left
+		/// to stand down.
 		/// </summary>
 		/// <remarks>
 		/// Created at startup rather than added to the EngineASX prefab, because
@@ -56,14 +111,16 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// be saved, so it survives a scene change without appearing in a
 		/// hierarchy anyone looks at.
 		///
-		/// The old EngineMusicPlayerController is disabled rather than removed.
-		/// It plays the eleven old tracks from Resources and would otherwise
-		/// talk over the top of this one - two systems deciding what the music
-		/// is, which is the exact failure this design exists to avoid.
-		///
-		/// Its SimpleMusicPlayer is left in place and still read for volume, so
-		/// the options screen keeps working with no change to it and no second
-		/// volume setting to disagree with the first.
+		/// THE OLD MUSIC SYSTEM IS GONE, not disabled. It used to be stood down
+		/// from here - FindObjectsOfType once a second, disabling
+		/// EngineMusicPlayerController and clearing its SimpleMusicPlayer -
+		/// because it lived on the EngineASX prefab and its component still
+		/// enqueued music on demand, past anything that only polled. Polling a
+		/// thing to keep it quiet is not the same as not having it, and it
+		/// cost a scene walk every second on the platform this game is built
+		/// for. The controller and the player are deleted, both prefab
+		/// components are gone, and the only thing that can now decide what the
+		/// music is, decides it.
 		/// </remarks>
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		public static void Install()
@@ -80,12 +137,6 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			// Scene events are subscribed in Awake, not here: Install is
 			// static and cannot bind an instance handler (CS0120).
-			//
-			// The old controller is stood down from Update rather than from
-			// here, because it lives on the EngineASX prefab and that does
-			// not exist yet at BeforeSceneLoad. Looking now finds nothing,
-			// says nothing, and leaves two systems playing music over each
-			// other for the whole session.
 		}
 
 		/// <summary>
@@ -187,102 +238,6 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		private AudioListener fallbackListener;
 		private float nextListenerCheck;
 
-		private float nextStandDownCheck;
-		private bool warnedAboutOldMusic;
-
-		/// <summary>
-		/// Disables the previous music controller, every time a new one turns
-		/// up, and stops whatever it left playing.
-		/// </summary>
-		/// <remarks>
-		/// THIS WAS A ONE-SHOT AND IT WAS WRONG. It disabled the first
-		/// EngineMusicPlayerController it found and set a flag so it would
-		/// never look again - fine exactly once per session, and wrong from
-		/// the first sector load onwards. That controller lives on the EngineASX
-		/// prefab, and every world or sector load instantiates a fresh one. The
-		/// fresh copy arrived enabled, started playing the old sector music,
-		/// and was never disabled, because the flag said the job was done.
-		///
-		/// The visible result was a correct menu and two pieces of music in
-		/// every sector: this system's track and the old scenario music, from
-		/// two live controllers that both believed they owned the music.
-		///
-		/// Disabling a controller does NOT stop what it already started.
-		/// SimpleMusicPlayer is a separate component that keeps playing and
-		/// keeps its queue, and the only code that would ever have cleared
-		/// that is inside the controller's own Update - the code just
-		/// disabled. So the queue is cleared and the track stopped too.
-		///
-		/// Checked once a second rather than every frame: a new controller can
-		/// only appear on a world load, and FindObjectsOfType every frame for
-		/// something that happens every few minutes is waste.
-		/// </remarks>
-		private void StandDownTheOldController()
-		{
-			if (Time.realtimeSinceStartup < nextStandDownCheck)
-			{
-				return;
-			}
-
-			nextStandDownCheck = Time.realtimeSinceStartup + 1f;
-
-			EngineMusicPlayerController[] found =
-				Object.FindObjectsOfType<EngineMusicPlayerController>();
-
-			bool disabledAny = false;
-
-			for (int i = 0; i < found.Length; i++)
-			{
-				if (found[i] != null && found[i].enabled)
-				{
-					found[i].enabled = false;
-					disabledAny = true;
-				}
-			}
-
-			StopLeftoverOldMusic();
-
-			if (disabledAny && !warnedAboutOldMusic)
-			{
-				warnedAboutOldMusic = true;
-
-				Debug.Log("Music: the previous music controller has been stood"
-					+ " down, and anything it had playing has been stopped."
-					+ " It lives on the EngineASX prefab, so a new one appears on"
-					+ " every world and sector load and has to be stood down"
-					+ " again each time. Its SimpleMusicPlayer is still read for"
-					+ " volume, so the options screen is unchanged.");
-			}
-		}
-
-		/// <summary>
-		/// Clears the old player's queue and stops its track.
-		/// </summary>
-		/// <remarks>
-		/// Only touches the player when it actually has something on it, so
-		/// this is a no-op in normal operation and cannot fight anything.
-		/// </remarks>
-		private void StopLeftoverOldMusic()
-		{
-			if (GameController.Instance == null || GameController.Instance.MusicPlayer == null)
-			{
-				return;
-			}
-
-			OpenFrontier.IP.MusicPlayer.SimpleMusicPlayer old =
-				GameController.Instance.MusicPlayer;
-
-			if (old.QueuedTracks != null && old.QueuedTracks.Count > 0)
-			{
-				old.QueuedTracks.Clear();
-			}
-
-			if (old.PlayingTrack != null)
-			{
-				old.StopPlayingTrack();
-			}
-		}
-
 		private void Awake()
 		{
 			instance = this;
@@ -302,6 +257,17 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		}
 
 		private MusicCrossfadePlayer player;
+
+		/// <summary>A stinger playing over the music, if one is.</summary>
+		/// <remarks>
+		/// Held here rather than left to play itself out, because the
+		/// background has to STAY stopped for as long as it does. A jingle
+		/// that faded the music out and then let the state machine start the
+		/// next track straight away would have two pieces of music over each
+		/// other for its whole length - the exact failure this system exists
+		/// to prevent, reached by a different route.
+		/// </remarks>
+		private AudioSource jingleSource;
 		private readonly MusicCombatDetector detector = new MusicCombatDetector();
 		private readonly MusicCombatSequencer sequencer = new MusicCombatSequencer();
 
@@ -367,13 +333,15 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// <remarks>
 		/// Added because "two music systems are playing at once" has been
 		/// wrong twice for different reasons, and both times the only way to
-		/// tell them apart was to already know the answer. This names every
-		/// voice in the game that can play music and says what each one is
-		/// doing: the old controller's enabled count, the old player's track
-		/// and queue, and BOTH of this system's audio sources - the second
-		/// one matters because during a handover or a crossfade it is
-		/// supposed to be playing, and that is indistinguishable from a bug
-		/// by ear.
+		/// tell them apart was to already know the answer. It names this
+		/// system's stinger and BOTH of its audio sources - the second one
+		/// matters because during a handover or a crossfade it is supposed to
+		/// be playing, and that is indistinguishable from a bug by ear.
+		///
+		/// It used to name the old controller and the old player as well,
+		/// which is the honest reason this file spent a second of every
+		/// second walking the scene to keep them quiet. There is nothing left
+		/// to name but the sources here.
 		///
 		/// CACHED, AND THAT IS THE FIX RATHER THAN AN OPTIMISATION.
 		///
@@ -428,45 +396,9 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			System.Text.StringBuilder sb = new System.Text.StringBuilder();
 
-			EngineMusicPlayerController[] controllers =
-				Object.FindObjectsOfType<EngineMusicPlayerController>();
-			int enabled = 0;
-
-			for (int i = 0; i < controllers.Length; i++)
-			{
-				if (controllers[i] != null && controllers[i].enabled)
-				{
-					enabled++;
-				}
-			}
-
-			sb.Append("old ctrls ").Append(controllers.Length)
-				.Append(" (").Append(enabled).Append(" enabled)");
-
-			if (GameController.Instance != null && GameController.Instance.MusicPlayer != null)
-			{
-				OpenFrontier.IP.MusicPlayer.SimpleMusicPlayer old =
-					GameController.Instance.MusicPlayer;
-
-				sb.Append(", old player ");
-
-				if (old.PlayingTrack != null && old.PlayingTrack.AudioSource != null)
-				{
-					sb.Append("'").Append(old.PlayingTrack.Track.TrackName)
-						.Append("' ").Append(old.PlayingTrack.AudioSource.isPlaying
-							? "PLAYING" : "silent");
-				}
-				else
-				{
-					sb.Append("nothing");
-				}
-
-				sb.Append(", queued ").Append(old.QueuedTracks.Count);
-			}
-			else
-			{
-				sb.Append(", no old player");
-			}
+			sb.Append("jingle ").Append(jingleSource == null ? "none"
+				: jingleSource.clip != null ? "'" + jingleSource.clip.name + "'"
+					: "NO CLIP");
 
 			sb.Append(" | mine ").Append(Player.SourceReport())
 				.Append(", listeners ").Append(LiveListenerCount());
@@ -526,9 +458,81 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			}
 		}
 
+		/// <summary>
+		/// Plays a stinger over the music, and silences the music under it.
+		/// </summary>
+		/// <remarks>
+		/// The port of the old player's last remaining job. WinAudioSourceNames
+		/// is empty on the prefab and LoseAudioSourceNames holds one track, so
+		/// in practice this is one sound - but it was going through an entire
+		/// second music system to make it, and that system is deleted, so the
+		/// call had to land somewhere.
+		///
+		/// REPLACES the background rather than layering over it, which is what
+		/// the old player did and is right: the scenario has ended, and space
+		/// music continuing under the sting of your defeat is not what that
+		/// moment is for.
+		/// </remarks>
+		/// <returns>Whether a stinger actually started.</returns>
+		public static bool PlayJingle(string audioSourceResourceName)
+		{
+			return instance != null
+				&& instance.PlayJingleInternal(audioSourceResourceName);
+		}
+
+		private bool PlayJingleInternal(string audioSourceResourceName)
+		{
+			if (string.IsNullOrEmpty(audioSourceResourceName))
+			{
+				return false;
+			}
+
+			AudioSource prefab = Resources.Load<AudioSource>(
+				"Audio/AudioSources/" + audioSourceResourceName);
+
+			if (prefab == null)
+			{
+				Debug.LogWarning("Music: the stinger '" + audioSourceResourceName
+					+ "' has no AudioSource under Resources/Audio/AudioSources, so"
+					+ " nothing plays. That name is a string on the EngineASX"
+					+ " prefab, and the prefab is not checked against the folder.");
+
+				return false;
+			}
+
+			StopJingle();
+
+			// The same fade the old player used here, so the sting does not
+			// arrive on top of a hard cut.
+			Player.FadeOutOnly(Player.InterruptFadeSeconds);
+
+			jingleSource = Instantiate(prefab, transform);
+			jingleSource.transform.localPosition = Vector3.zero;
+			jingleSource.volume = Volume;
+			jingleSource.loop = false;
+			jingleSource.Play();
+
+			Debug.Log("Music: playing the stinger '" + audioSourceResourceName
+				+ "' over silence"
+				+ (jingleSource.clip != null
+					? ", " + jingleSource.clip.length.ToString("0") + "s long."
+					: ", with no clip."));
+
+			return true;
+		}
+
+		private void StopJingle()
+		{
+			if (jingleSource != null)
+			{
+				Destroy(jingleSource.gameObject);
+
+				jingleSource = null;
+			}
+		}
+
 		private void Update()
 		{
-			StandDownTheOldController();
 			EnsureMusicStaysAudible();
 
 			// DIAGNOSTIC ONLY, AND DIAGNOSTIC WORK DOES NOT SHIP.
@@ -601,6 +605,26 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			}
 
 			wormholeSince = -1f;
+
+			// A jingle owns the floor until it finishes.
+			//
+			// Deliberately ABOVE the wormhole block, and the reason is the
+			// cleanup rather than the playing: below the wormhole's return,
+			// the CLEANUP is deferred too, so a jingle that had already
+			// finished would sit on an AudioSource that is still audible for
+			// the length of the transit. A jingle is an explicit event - a
+			// scenario won or lost - and the one wired up is the defeat sting,
+			// which the player is looking at an end screen for. Entering a
+			// wormhole in the same instant is not a situation the game has.
+			if (jingleSource != null)
+			{
+				if (jingleSource.isPlaying)
+				{
+					return;
+				}
+
+				StopJingle();
+			}
 
 			if (engine == null || !EngineASX.LoadedAndReady)
 			{

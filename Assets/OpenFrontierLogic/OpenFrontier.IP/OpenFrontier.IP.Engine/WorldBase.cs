@@ -1425,10 +1425,11 @@ namespace OpenFrontier.IP.Engine
 			ReactiveQuickMsgr();
 			if (continueScenario)
 			{
-				if (GameController.Instance.MusicPlayer != null)
-				{
-					GameController.Instance.MusicPlayer.ClearAllTracksWithFadeOut();
-				}
+				// Nothing here: this used to stop the old player, which had a
+				// separate track for a scenario. The music system now decides
+				// from where the ship actually is, so leaving a scenario
+				// mid-way means continuing to hear the sector, and fading it
+				// out would only have been re-started a frame later.
 				ObjectiveState = ScenarioState.Playing;
 				engine.SetUIFromPlayerStatus();
 				SetPlayingScenario(playing: true);

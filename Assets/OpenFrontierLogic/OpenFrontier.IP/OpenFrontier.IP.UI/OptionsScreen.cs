@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using OpenFrontier.IP.Engine;
+using OpenFrontier.IP.Engine.EngineMusic;
 using OpenFrontier.IP.UI.Screens;
 using OpenFrontier.IP.UI.Screens.MessageBox;
 using OpenFrontier.IP.UI.Screens.Options;
@@ -413,7 +414,7 @@ namespace OpenFrontier.IP.UI
 				FullScreenToggle.isOn = Screen.fullScreen;
 				RefreshScreenResolutionDropdown();
 				MasterVolumeSlider.value = PlayerPrefsHelper.SafeGetFloat(GameController.Instance.MasterVolumeKey, 1f);
-				MusicVolumeSlider.value = PlayerPrefsHelper.SafeGetFloat(GameController.Instance.MusicVolumeKey, GameController.Instance.DefaultMusicVolume);
+				MusicVolumeSlider.value = MusicDirector.Volume;
 				ButtonSoundsToggle.isOn = GameController.Instance.PlayButtonSounds;
 				MissileLockSoundToggle.isOn = GameController.Instance.PlayerOptions.Audio_MissileLockSound;
 				AutoCloseInGameMenuToggle.isOn = GameController.Instance.AutoCloseInGameMenu;
@@ -565,10 +566,12 @@ namespace OpenFrontier.IP.UI
 
 		private void MusicVolumeSlider_ValueChanged(float change)
 		{
-			if (GameController.Instance != null && GameController.Instance.MusicPlayer != null)
-			{
-				GameController.Instance.MusicPlayer.Volume = MusicVolumeSlider.value;
-			}
+			// Straight to the music system, which owns the value and writes it
+			// through to PlayerPrefs itself. It used to be guarded on
+			// GameController and its MusicPlayer component, so a slider moved
+			// before either existed did nothing and stayed where it was - the
+			// guard was for a player that no longer exists.
+			MusicDirector.Volume = MusicVolumeSlider.value;
 		}
 
 		private void CameraDragRotationSensitivitySliderValueChanged(float change)

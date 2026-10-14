@@ -17,7 +17,7 @@ namespace OpenFrontier.IP.Engine
 	/// Open Frontier: re-rolls the main menu's star system on EVERY menu
 	/// visit so the backdrop is a fresh randomly generated system each
 	/// time, custom-universe style. Detects the menu scenario the same way
-	/// EngineMusicPlayerController does (World.ScenarioInfo matches
+	/// MusicDirector does (World.ScenarioInfo matches
 	/// GameController.MainMenuScenario), then:
 	///   1. re-seeds the sector and regenerates its backdrop (nebulae +
 	///      starfield params re-rolled via the stock pipeline)
