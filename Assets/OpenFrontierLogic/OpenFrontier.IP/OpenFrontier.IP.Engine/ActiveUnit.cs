@@ -531,69 +531,76 @@ namespace OpenFrontier.IP.Engine
 				inAudioRange = true;
 				PlayAmbientSounds();
 			}
-			// The hard cull. At the top quality level the prefab LODGroups govern
-			// instead - see LetLodGroupsGovernDrawDistance.
-			if (LetLodGroupsGovernDrawDistance)
-			{
-				// Left in draw range permanently, so SetActive(false) is never
-				// applied and a far ship keeps drawing its LOWEST LOD mesh
-				// rather than disappearing.
-				//
-				// This also repairs units already culled before the quality
-				// level was raised: UpdateVisibility runs every two seconds
-				// and calls in here, so a unit culled at High is switched back
-				// on within two seconds of moving up. Without that, raising
-				// the setting in the options would leave everything that had
-				// been culled still invisible for the rest of the session.
-				if (!inDrawRange)
-				{
-					inDrawRange = true;
-					SetDrawObjectsActive();
-				}
-			}
-			else if (inDrawRange)
+			// What inDrawRange means, and the visual cull, are SEPARATE.
+			// At the top quality level the cull is lifted; the flag still
+			// means exactly what it always did.
+			//
+			// This previously left inDrawRange stuck TRUE at the top level,
+			// which looked right and was not. The flag is read by
+			// ActiveUnitThrusterAudio (volume 0 beyond range) and by
+			// Asteroid (yield effects skipped beyond range), so keeping it
+			// true meant every distant ship kept an AudioSource alive and
+			// updating and every asteroid impact still spawned its effect -
+			// at long range, on a mobile-first project. That is the opposite
+			// of what the setting was for.
+			//
+			// So the flag is computed exactly as it always was, and the top
+			// level only stops the SetActive calls. The LODGroups govern
+			// visibility instead of a fixed distance. Consumers keep their
+			// meaning, and the only thing that changes is which meshes draw.
+			bool wasInDrawRange = inDrawRange;
+
+			if (inDrawRange)
 			{
 				if (LastDistanceFromCamera > ActiveUnitClass.DrawDistFar)
 				{
 					inDrawRange = false;
-					SetDrawObjectsActive();
 				}
 			}
 			else if (LastDistanceFromCamera < ActiveUnitClass.DrawDistNear)
 			{
 				inDrawRange = true;
+			}
+
+			// Only react to an actual change, and only ever while the visual
+			// cull is live. The hysteresis band is unchanged, so a ship at
+			// 900 units still does not strobe.
+			if (inDrawRange != wasInDrawRange && !LetLodGroupsGovernDrawDistance)
+			{
 				SetDrawObjectsActive();
 			}
 		}
 
 		/// <summary>
-		/// Whether the per-prefab LODGroups should decide what is drawn,
-		/// rather than a fixed distance that switches the whole ship off.
+		/// Whether the prefab LODGroups should decide what is drawn, rather
+		/// than a fixed distance that switches a set of objects off.
 		/// </summary>
 		/// <remarks>
 		/// True only at the topmost quality level, where there is budget for
-		/// the extra ships this keeps on screen. Below that the hard cull stays,
-		/// which is also what keeps a phone fast: a phone will not be at the
-		/// top level, so it keeps the cheap behaviour by default rather than
-		/// needing a separate code path.
+		/// the extra geometry. Below that the cull stays, which is also what
+		/// keeps a phone fast: a phone will not be at the top level, so it
+		/// keeps the cheap behaviour by default rather than needing a
+		/// separate code path.
 		///
-		/// WHAT THIS ACTUALLY CHANGES, since it is easy to assume otherwise:
-		/// it does not make the LODGroups any smarter, and it does not make
-		/// them do work they were not doing. The LODGroup on each ship prefab
-		/// has always been choosing the mesh inside the draw window. This
-		/// widens that window from DrawDistFar (1000 by default) out to
-		/// wherever the camera's far clip plane stops it - 8500 on the game
-		/// camera - so a distant fleet stays visible as clusters of very low
-		/// poly silhouettes instead of blinking out.
+		/// WHAT IT ACTUALLY REACHES, which is much less than it sounds.
 		///
-		/// The cost is real and is the other side of that trade: the lowest
-		/// LOD is still a real mesh with real triangles, so this draws more of
-		/// them, over a much larger volume. That is why it is confined to the
-		/// level where the budget for it exists.
+		/// SetDrawObjectsActive only touches entries in DrawRangeObjects, and
+		/// that list is EMPTY on all eighteen ship prefabs. It is populated on
+		/// eighteen others - stations, refineries, shipyards, outposts, nav
+		/// buoys, wormholes, debris. So this lifts the cull for structures,
+		/// and ships were never subject to it.
+		///
+		/// An earlier version of this comment claimed it was giving LODs
+		/// eight times more room to work with, which was wrong. Ship
+		/// visibility was always governed by the camera far plane and the
+		/// per-prefab LODGroup, with the full ladder, all the way out. A
+		/// structure whose LODGroup is authored for it now keeps drawing
+		/// past 1000 units and its lowest LOD rather than vanishing; that is
+		/// the whole of what changes.
 		///
 		/// Keyed off the TOPMOST index rather than a hardcoded 4, so
-		/// reordering or adding quality levels does not silently move which
-		/// one gets this.
+		/// reordering, renaming or adding quality levels cannot silently
+		/// move which one gets this.
 		/// </remarks>
 		private static bool LetLodGroupsGovernDrawDistance
 		{
