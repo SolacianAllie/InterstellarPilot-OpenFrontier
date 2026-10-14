@@ -507,6 +507,29 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return Start(entry);
 			}
 
+			// A handover already pending means the incoming source is playing
+			// the track being handed over to. Re-arming it here would restart
+			// that track from its first sample, mid-handover.
+			if (incomingWaiting)
+			{
+				return false;
+			}
+
+			// A fade already running means this is not a crossfade, it is the
+			// tail of a fade with somewhere new to arrive. Unguarded it set
+			// crossfading while fadingOut stayed true, and Update checks
+			// crossfading FIRST - so the fade was stranded. The crossfade ran
+			// to completion, the next frame found fadingOut still set, and
+			// faded the brand new track away to silence.
+			if (fadingOut)
+			{
+				Debug.Log("Music: a crossfade to '" + entry.Name + "' arrived"
+					+ " during a fade, so it takes the place of the fade"
+					+ " rather than starting a second one.");
+
+				return Interrupt(entry);
+			}
+
 			AudioClip clip = MusicLibrary.ClipFor(entry);
 
 			if (clip == null)
@@ -614,9 +637,25 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			// every-frame invocation would reset fadeStartedAt each frame and
 			// the fade would never complete. It would sit just below full
 			// volume forever, which is worse than not fading at all.
-			if (fadingOut || crossfading)
+			if (fadingOut)
 			{
 				return false;
+			}
+
+			// Taking over from a crossfade is allowed, and the incoming source
+			// MUST be stopped here.
+			//
+			// A crossfade in progress has its incoming track playing at
+			// whatever volume the ramp had reached. Clearing incomingEntry
+			// makes PromoteIncoming return early, so nothing else would ever
+			// stop it - it would carry on at that volume with no owner. That
+			// is two pieces of music at once, and it is the one place in this
+			// class where a spare source can be left behind.
+			if (incomingSource != null && incomingSource != currentSource)
+			{
+				incomingSource.Stop();
+				incomingSource.clip = null;
+				incomingSource.volume = 0f;
 			}
 
 			incomingEntry = null;

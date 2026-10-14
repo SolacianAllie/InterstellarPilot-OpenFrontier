@@ -469,6 +469,41 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			entry = null;
 
+			// Read the dock BEFORE any early return, because it is a fact
+			// about the ship and not about the music.
+			//
+			// It used to be computed after the menu and combat branches had
+			// already returned, which left dockedChanged STALE in both of
+			// them - and that is where it did its damage:
+			//
+			//  - Dock while being shot at on the way in. Decide takes the
+			//    combat branch, never reaches the dock test, and the arrival
+			//    at the station is handled as a plain interrupt. The station
+			//    crossfade appeared broken whenever you got shot at, which
+			//    is most of the times anyone docks.
+			//
+			//  - The whole main menu session kept whatever value it had on
+			//    the way out. Sitting in the menu for a minute and loading a
+			//    save started with a dock flag from a previous world, and
+			//    that is the menu transfer the crossfade was interfering
+			//    with.
+			Unit mine = engine == null || engine.LocalPlayer == null
+				|| engine.LocalPlayer.Person == null
+				? null
+				: engine.LocalPlayer.Person.CurrentUnit;
+
+			bool docked = mine != null
+				&& mine.Components != null
+				&& mine.Components.IsDocked;
+
+			// Read here rather than inferred from the state key, because the
+			// key cannot be trusted to change on a dock. Docking at a station
+			// nobody owns falls back to Neutral ambience, and if the sector
+			// was unowned too then the key does not change AT ALL - the ship
+			// docked, and the music would be told nothing happened.
+			dockedChanged = docked != lastDocked;
+			lastDocked = docked;
+
 			if (IsMainMenu(engine))
 			{
 				// The one track, looping - not a random draw from the Menu
@@ -496,23 +531,6 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 				return;
 			}
-
-			Unit mine = engine.LocalPlayer == null || engine.LocalPlayer.Person == null
-				? null
-				: engine.LocalPlayer.Person.CurrentUnit;
-
-			bool docked = mine != null
-				&& mine.Components != null
-				&& mine.Components.IsDocked;
-
-			// Read here rather than inferred from the state key, because the
-			// key cannot be trusted to change on a dock. Docking at a station
-			// nobody owns falls back to Neutral ambience, and if the sector
-			// was unowned too then the key does not change AT ALL - the ship
-			// docked, and the music would be told nothing happened. Watching
-			// the actual dock state catches that case.
-			dockedChanged = docked != lastDocked;
-			lastDocked = docked;
 
 			if (docked)
 			{
