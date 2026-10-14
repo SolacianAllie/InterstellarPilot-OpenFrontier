@@ -279,19 +279,24 @@ namespace OpenFrontier.IP.UI
 			Unit playerCurrentUnit = DockUI.PlayerCurrentUnit;
 			if (playerCurrentUnit != null)
 			{
-				// Frame rate prefix, e.g. "60/60 - Shuttle-A "Aether", Abocleus".
+				// Frame rate prefix, e.g. "60/V-Sync - Shuttle-A "Aether", Abocleus".
 				// Measured from unscaled time so it stays true while a pause screen
-				// has stopped Time.timeScale. The denominator is what the frame rate
-				// is being aimed at - the panel's refresh rate when V-Sync is on,
-				// the frame rate limit row when it is not, and "Uncapped" for the
-				// no-cap option.
+				// has stopped Time.timeScale.
+				//
+				// The denominator is whatever cap was chosen: the word V-Sync
+				// when that is the option, since the display decides and there is
+				// no number to show, and the frame rate limit row when one was
+				// picked. 0 or less on that row is the "Uncapped" option.
 				stringBuilder.Append(displayFps.ToString("0"));
 				stringBuilder.Append('/');
 				GameController gameController = GameController.Instance;
-				int frameRateTarget = (gameController != null) ? gameController.GetEffectiveFrameRateTarget() : 0;
-				if (frameRateTarget > 0)
+				if (gameController != null && PlayerPrefs.GetInt(gameController.PlayerOptionConstants.Video_VSyncKey, 1) > 0)
 				{
-					stringBuilder.Append(frameRateTarget);
+					stringBuilder.Append("V-Sync");
+				}
+				else if (gameController != null && gameController.UserTargetFrameRate > 0)
+				{
+					stringBuilder.Append(gameController.UserTargetFrameRate);
 				}
 				else
 				{
