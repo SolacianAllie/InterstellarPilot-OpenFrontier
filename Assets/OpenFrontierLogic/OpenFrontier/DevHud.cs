@@ -46,8 +46,10 @@ namespace OpenFrontier
 
 		private void OnGUI()
 		{
-			// Scale up for high-DPI phone panels so the text is readable.
-			float scale = Mathf.Max(2f, Screen.dpi > 0f ? Screen.dpi / 160f : 2f);
+			// Shared with the music overlay below this one, so the two read as
+			// a single panel. See DevOverlayScale for why the old floor of
+			// 2x is gone - it doubled the text on every desktop.
+			float scale = DevOverlayScale.Value;
 			Matrix4x4 old = GUI.matrix;
 			GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 			string hz = "";

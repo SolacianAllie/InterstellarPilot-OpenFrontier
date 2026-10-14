@@ -125,6 +125,37 @@ editor's own compile can still differ, because the harness does not define
 every symbol the editor defines — verify with `grep -c "error CS" Logs/Editor.log`
 after the editor refocuses (should be 0).
 
+**A NEW type in assembly A cannot be used from assembly B until Unity has
+rebuilt `Library/ScriptAssemblies`.** The harness resolves cross-assembly
+references to Unity's OWN built DLLs:
+
+```xml
+<Reference Include="OpenFrontier">
+  <HintPath>.../Library/ScriptAssemblies/OpenFrontier.dll</HintPath>
+</Reference>
+```
+
+So adding a new file to `OpenFrontier` and using it from `OpenFrontier.IP`
+fails the harness with `CS0103: the name 'X' does not exist` **even when the
+asmdef reference is correct and the editor will compile it**. The DLL is
+stale — it was built by Unity, not by the harness — so a type added a minute
+ago is genuinely not in it.
+
+This is not a guard firing falsely, so it must not be worked around by
+inlining the shared code back into the caller. Confirm it is staleness and
+not a real missing reference before deciding:
+
+- `grep -oE '<Reference Include="AssocName">' -A 3` the generated csproj — is
+  the association listed at all?
+- `ls -la` the HintPath DLL — is its timestamp older than the new file?
+- `strings` that DLL for the type — is the *older* sibling type in it while
+  the new one is absent? That is the signature of staleness.
+- Is there existing code in the same consumer assembly already using that
+  assembly? If yes, the direction is proven.
+
+The editor refocus the user does anyway rebuilds `ScriptAssemblies`, which
+clears it. `grep -c "error CS" Logs/Editor.log` is the real confirmation.
+
 ## A green harness run can have compiled almost nothing
 
 `gen.main()` **writes the csproj files every time it runs**, so it is not a

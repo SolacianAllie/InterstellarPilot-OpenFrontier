@@ -132,6 +132,48 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			return FamilyOf(faction.FactionType);
 		}
 
+		/// <summary>
+		/// The family for a faction, with the player's own space always
+		/// Allied.
+		/// </summary>
+		/// <remarks>
+		/// The player's own territory is home, and home sounds like Allied
+		/// whatever the player happens to be. A player running a Bandit
+		/// faction does not get Anarchic music over their own space - they
+		/// get the ordinary inhabited sound, because that is what their space
+		/// is to them, and the other three families are for everywhere else.
+		///
+		/// So a player's faction type chooses nothing here. It still matters
+		/// for the rest of the galaxy: the same faction seen from an
+		/// enemy-held sector classifies by type as usual. The same faction
+		/// therefore sounds different depending on whose territory you are
+		/// in, which is the point - you are hearing who owns the place, not
+		/// who you are.
+		///
+		/// Compared by reference, not by id, because a reference is what
+		/// "your faction" actually means and an id can be reassigned out from
+		/// under you.
+		///
+		/// A null local faction falls back to the ordinary type mapping rather
+		/// than treating everything as home - that happens before a faction
+		/// exists, and calling that "your space" would make the whole galaxy
+		/// sound like home.
+		/// </remarks>
+		public static MusicFamily FamilyOf(Faction faction, Faction localFaction)
+		{
+			if (faction == null)
+			{
+				return MusicFamily.Neutral;
+			}
+
+			if (localFaction != null && faction == localFaction)
+			{
+				return MusicFamily.Allied;
+			}
+
+			return FamilyOf(faction.FactionType);
+		}
+
 		/// <summary>In words, for logs and the diagnostic overlay.</summary>
 		public static string NameOf(MusicFamily family)
 		{

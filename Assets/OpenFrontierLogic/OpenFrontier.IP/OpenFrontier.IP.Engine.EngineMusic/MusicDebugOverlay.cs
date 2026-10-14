@@ -74,7 +74,11 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				}
 			}
 
-			float scale = Mathf.Max(2f, Screen.dpi > 0f ? Screen.dpi / 160f : 2f);
+			// Same scale as the DevHud box directly above this one, so the two
+			// stay one panel. DevOverlayScale is in the OpenFrontier
+			// assembly, which this one can see because OpenFrontier.IP
+			// references it.
+			float scale = DevOverlayScale.Value;
 			Matrix4x4 old = GUI.matrix;
 			GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
 
@@ -200,9 +204,20 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			{
 				Faction owner = engine.ActiveSector.ControllingFaction;
 
-				return owner == null
-					? "no one controls this sector"
-					: "sector controlled by " + owner.Name;
+				if (owner == null)
+				{
+					return "no one controls this sector";
+				}
+
+				// Say "yours" explicitly. Your own space is always Allied
+				// whatever your faction type is, so the family and the
+				// controller's name will not match here - Bandit, playing
+				// Allied - and without this the overlay looks broken at the
+				// exact moment it is working.
+				string yours = owner == engine.LocalFaction ? " (yours - always Allied)" : "";
+
+				return "sector controlled by " + owner.Name + yours
+					+ ", type " + owner.FactionType;
 			}
 
 			return "no sector";

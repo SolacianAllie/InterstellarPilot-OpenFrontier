@@ -239,7 +239,8 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			EngineASX.Instance == null || EngineASX.Instance.ActiveSector == null
 				? MusicFamily.Neutral
 				: MusicFactionClassifier.FamilyOf(
-					EngineASX.Instance.ActiveSector.ControllingFaction);
+					EngineASX.Instance.ActiveSector.ControllingFaction,
+					EngineASX.Instance.LocalFaction);
 
 		private void Update()
 		{
@@ -383,7 +384,8 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			if (docked)
 			{
-				MusicFamily owner = MusicFactionClassifier.FamilyOf(DockOwner(mine));
+				MusicFamily owner =
+					MusicFactionClassifier.FamilyOf(DockOwner(mine), engine.LocalFaction);
 
 				MusicTimingTable.Entry starport = MusicLibrary.StarportOf(owner);
 
@@ -413,7 +415,8 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			}
 
 			MusicFamily family = MusicFactionClassifier.FamilyOf(
-				engine.ActiveSector == null ? null : engine.ActiveSector.ControllingFaction);
+				engine.ActiveSector == null ? null : engine.ActiveSector.ControllingFaction,
+				engine.LocalFaction);
 
 			key = "Space/" + MusicFactionClassifier.NameOf(family);
 			entry = MusicLibrary.RandomFrom(MusicFactionClassifier.NameOf(family), lastRequested);
