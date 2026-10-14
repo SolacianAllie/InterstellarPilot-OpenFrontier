@@ -228,23 +228,19 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			// reached, the second call would reassign the clip of a source
 			// that is mid-playback and restart it from zero, which is the
 			// skip sound this whole class exists to avoid.
-			// A handover in progress is not a reason to refuse. The world has
-			// changed and something has to happen about it now.
 			//
-			// Refusing left the old track playing its ending - up to 49
-			// seconds for the longest one - while the director retried every
-			// frame and got refused every frame, so a dock or a wormhole
-			// during a handover simply did not happen until the overlap
-			// ended on its own.
+			// REFUSE, DO NOT PROMOTE. Promoting the pending incoming is right
+			// for a transition the WORLD asked for - a dock, a wormhole - and
+			// wrong here. A handover is the system following its own plan;
+			// there is nothing to take over from, and promoting would adopt
+			// the incoming as current and then hand over again on top of it.
 			//
-			// Take the handover's promoted track as the current one and
-			// transition from there. Its predecessor's ending is cut, which
-			// is correct: the world moved on, and a composed ending belongs
-			// to a track that ran its course rather than one that was
-			// replaced halfway through its fade-out.
-			if (incomingWaiting)
+			// A scripted replace put the promote block here instead of in
+			// Interrupt, because both ended in the same four lines. Read the
+			// guards in the methods you think you edited.
+			if (incomingWaiting || fadingOut || crossfading)
 			{
-				PromoteIncoming();
+				return false;
 			}
 
 			AudioClip clip = MusicLibrary.ClipFor(entry);
@@ -363,6 +359,30 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 					+ " than starting a second fade.");
 
 				return true;
+			}
+
+			// A HANDOVER, as opposed to a fade - and only now that the fade
+			// case above is settled.
+			//
+			// The order is the whole point. Interrupt sets incomingWaiting
+			// AND fadingOut together, so during any fade BOTH flags are true.
+			// Promoting here would adopt the incoming track that the fade is
+			// deliberately holding SILENT, stop the outgoing mid-fade, and
+			// make the quiet track audible. The fade case must be tested
+			// first, every time.
+			if (incomingWaiting)
+			{
+				// Take over: the handover's track becomes current and the
+				// transition runs from there. Its predecessor's ending is
+				// cut, which is right - a composed ending belongs to a track
+				// that ran its course, not one replaced halfway through its
+				// fade-out.
+				//
+				// Refusing instead left the outgoing playing its ending for up
+				// to 49 seconds, the longest in the library, while the caller
+				// retried every frame and was refused every frame - so a dock
+				// or a wormhole during a handover did not happen at all.
+				PromoteIncoming();
 			}
 
 			fadingOut = true;
@@ -521,25 +541,6 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return Start(entry);
 			}
 
-			// A handover in progress is not a reason to refuse. The world has
-			// changed and something has to happen about it now.
-			//
-			// Refusing left the old track playing its ending - up to 49
-			// seconds for the longest one - while the director retried every
-			// frame and got refused every frame, so a dock or a wormhole
-			// during a handover simply did not happen until the overlap
-			// ended on its own.
-			//
-			// Take the handover's promoted track as the current one and
-			// transition from there. Its predecessor's ending is cut, which
-			// is correct: the world moved on, and a composed ending belongs
-			// to a track that ran its course rather than one that was
-			// replaced halfway through its fade-out.
-			if (incomingWaiting)
-			{
-				PromoteIncoming();
-			}
-
 			// A fade already running means this is not a crossfade, it is the
 			// tail of a fade with somewhere new to arrive. Unguarded it set
 			// crossfading while fadingOut stayed true, and Update checks
@@ -553,6 +554,22 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 					+ " rather than starting a second one.");
 
 				return Interrupt(entry);
+			}
+
+			// A HANDOVER, and only now the fade case is dealt with. Interrupt
+			// sets incomingWaiting AND fadingOut together, so during a fade
+			// both are true - and promoting first would adopt the very track
+			// the fade is deliberately holding silent, stop the outgoing
+			// mid-fade, and make the quiet track audible.
+			//
+			// Take over: the handover's promoted track becomes current and the
+			// crossfade runs from there. Refusing left the outgoing playing
+			// its ending for up to 49 seconds, the longest in the library,
+			// while the director retried every frame and was refused every
+			// frame - so docking during a handover did not happen at all.
+			if (incomingWaiting)
+			{
+				PromoteIncoming();
 			}
 
 			AudioClip clip = MusicLibrary.ClipFor(entry);
@@ -585,6 +602,15 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			incomingStartedAt = Time.realtimeSinceStartup;
 			incomingWaiting = true;
 			crossfading = true;
+
+			// Explicit, though the fade case returned above and so this is
+			// already false. Update checks crossfading BEFORE fadingOut, so
+			// both being true would strand the fade - the crossfade would run
+			// to completion and the next frame would find fadingOut still set
+			// and fade the brand new track away. Relying on "it cannot get
+			// here" for a flag that strands a fade is how it got stranded.
+			fadingOut = false;
+
 			crossfadeStartedAt = Time.realtimeSinceStartup;
 
 			Debug.Log("Music: crossfading from '" + currentEntry.Name + "' to '"
