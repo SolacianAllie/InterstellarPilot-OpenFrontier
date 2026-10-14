@@ -11,9 +11,17 @@ namespace OpenFrontier.IP.UI
 	{
 		private float lastTimeRefreshedTitleLabel = -100f;
 
-		// Frame rate shown at the head of the location label. Exponentially smoothed
-		// per frame in Update() so the number moves with the display without
-		// strobing.
+		// Frame rate shown at the head of the location label. A rolling average over
+		// the last second of real frames, kept in a fixed ring so there is no
+		// allocation per frame.
+		private const int FpsSampleCount = 128;
+
+		private readonly float[] fpsSamples = new float[FpsSampleCount];
+
+		private int fpsSampleHead;
+
+		private int fpsSampleCount;
+
 		private float displayFps;
 
 		public TextMeshProUGUI CreditsText;
@@ -172,16 +180,44 @@ namespace OpenFrontier.IP.UI
 			// has Time.timeScale at 0 - which is exactly when it is least obvious
 			// whether something is holding the framerate up.
 			//
-			// Exponentially smoothed rather than sampled out of a 1s bucket, so
-			// the number moves every frame but does not strobe. Raw per-frame
-			// framerate is unreadable - it alternates by a frame or two for
-			// reasons that do not matter. The factor gives roughly a fifth of a
-			// second to settle: fast enough to see a stutter, slow enough to read.
+			// An average over the last second of frames, not the instantaneous
+			// rate and not an exponential smoothing. Both of those were tried and
+			// both read badly: raw per-frame alternates by a frame or two for
+			// reasons that do not matter, and a smoothing factor leans too far
+			// towards responsiveness - the number moves every frame, which is
+			// precisely what makes it hard to read.
+			//
+			// Samples are taken newest-first and the window is cut at one second
+			// of accumulated time rather than at a fixed frame count, so the
+			// average covers the same span at any framerate. The ring is 128 deep
+			// and preallocated; nothing here allocates.
 			float frameDelta = Time.unscaledDeltaTime;
 			if (frameDelta > 0f)
 			{
-				float instantFps = 1f / frameDelta;
-				displayFps = (displayFps <= 0f) ? instantFps : (displayFps + (instantFps - displayFps) * 0.1f);
+				fpsSamples[fpsSampleHead] = frameDelta;
+				fpsSampleHead = (fpsSampleHead + 1) % FpsSampleCount;
+				if (fpsSampleCount < FpsSampleCount)
+				{
+					fpsSampleCount++;
+				}
+				float windowTime = 0f;
+				int windowFrames = 0;
+				int index = fpsSampleHead;
+				while (windowFrames < fpsSampleCount)
+				{
+					index = (index - 1 + FpsSampleCount) % FpsSampleCount;
+					float sample = fpsSamples[index];
+					if (windowTime + sample > 1f && windowFrames > 0)
+					{
+						break;
+					}
+					windowTime += sample;
+					windowFrames++;
+				}
+				if (windowTime > 0f)
+				{
+					displayFps = windowFrames / windowTime;
+				}
 			}
 
 			// Location label, refreshed every frame so the framerate reading moves
