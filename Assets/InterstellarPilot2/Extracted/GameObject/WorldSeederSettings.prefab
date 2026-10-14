@@ -794,8 +794,8 @@ MonoBehaviour:
   maxGateDistanceMultiplier: 0.6
   maxConnections: 5
   minAngleBetweenGates: 60
-  minDistanceBetweenSectors: 110
-  maxDistanceBetweenSectors: 135
+  minDistanceBetweenSectors: 100
+  maxDistanceBetweenSectors: 500
   minSectorSnapRadius: 75
   maxSectorSnapRadius: 350
   minSectorDistance: 35

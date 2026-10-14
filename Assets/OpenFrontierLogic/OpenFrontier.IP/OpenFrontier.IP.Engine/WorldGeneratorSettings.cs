@@ -40,7 +40,7 @@ namespace OpenFrontier.IP.Engine
 		private float minDistanceBetweenSectors = 100f;
 
 		[SerializeField]
-		private float maxDistanceBetweenSectors = 150f;
+		private float maxDistanceBetweenSectors = 500f;
 
 		[SerializeField]
 		private float minSectorSnapRadius = 75f;
