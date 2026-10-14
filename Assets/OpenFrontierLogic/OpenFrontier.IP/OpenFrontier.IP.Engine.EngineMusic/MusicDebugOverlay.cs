@@ -51,11 +51,29 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		}
 
 		private string cachedBody = "";
-		private string cachedAgainst = null;
+		private string cachedAgainstName;
+		private string cachedAgainstKey;
 		private float nextBodyAt;
+
+		/// <summary>Box style with word wrap OFF, so IMGUI never re-wraps.</summary>
+		private static GUIStyle panelStyle;
 
 		private void OnGUI()
 		{
+			// ONLY ON REPAINT. IMGUI issues a Layout event and a Repaint event
+			// every frame, so drawing in OnGUI without this does the whole
+			// panel twice per frame - and the second time is pure waste,
+			// because the text and its rectangle are both fixed.
+			//
+			// Safe here precisely because nothing in this panel participates
+			// in GUILayout. It is an explicit Rect, so there is no layout to
+			// keep in step; skipping the Layout event skips only work whose
+			// result is thrown away.
+			if (Event.current.type != EventType.Repaint)
+			{
+				return;
+			}
+
 			MusicDirector director = MusicDirector.Instance;
 
 			if (director == null)
@@ -63,38 +81,30 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return;
 			}
 
-			// Rebuilt four times a second, not sixty. OnGUI runs at least twice
-			// per frame - Layout then Repaint - so building this string per
-			// call allocated twice per frame forever. The positions it shows
-			// are seconds out of a hundred, and a diagnostic that lags a
-			// quarter of a second is still a diagnostic.
+			// Rebuilt four times a second, not sixty, and only during a
+			// Repaint now. The positions it shows are seconds out of a
+			// hundred, and a diagnostic that lags a quarter of a second is
+			// still a diagnostic.
 			//
-			// Also keyed on the state, so an event worth seeing is never the
-			// one the timer happens to swallow.
-			string stateKey = director.CurrentKey + "|" + (director.Player.Current != null
-				? director.Player.Current.Name : "none");
+			// Compared as two values rather than pasted into one key string,
+			// because that concat allocated once per frame for the whole
+			// session. Both are plain field reads, so the check is free.
+			string currentName = director.Player.Current != null
+				? director.Player.Current.Name
+				: null;
 
-			if (stateKey != cachedAgainst || Time.realtimeSinceStartup >= nextBodyAt)
+			if (currentName != cachedAgainstName
+				|| director.CurrentKey != cachedAgainstKey
+				|| Time.realtimeSinceStartup >= nextBodyAt)
 			{
-				cachedAgainst = stateKey;
+				cachedAgainstName = currentName;
+				cachedAgainstKey = director.CurrentKey;
 				nextBodyAt = Time.realtimeSinceStartup + 0.25f;
 				cachedBody = Body(director);
+				cachedLines = CountLines(cachedBody);
 			}
 
 			string body = cachedBody;
-
-			// One line per line of body, plus a little padding. Counted rather
-			// than hardcoded so adding a row cannot silently overflow the box
-			// and clip its own last line.
-			int lines = 1;
-
-			for (int i = 0; i < body.Length; i++)
-			{
-				if (body[i] == '\n')
-				{
-					lines++;
-				}
-			}
 
 			// Same scale as the DevHud box directly above this one, so the two
 			// stay one panel. DevOverlayScale is in the OpenFrontier
@@ -102,12 +112,68 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			// references it.
 			float scale = DevOverlayScale.Value;
 			Matrix4x4 old = GUI.matrix;
-			GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+			GUI.matrix = scaledMatrix;
 
-			GUI.Box(new Rect(Left, Top, Width, lines * 18f + 10f), "MUSIC\n" + body);
+			GUI.Box(new Rect(Left, Top, Width, cachedLines * 18f + 10f), "MUSIC\n" + body, PanelStyle);
 
 			GUI.matrix = old;
 		}
+
+		private int cachedLines = 1;
+
+		private static int CountLines(string text)
+		{
+			int lines = 1;
+
+			for (int i = 0; i < text.Length; i++)
+			{
+				if (text[i] == '\n')
+				{
+					lines++;
+				}
+			}
+
+			return lines;
+		}
+
+		/// <summary>
+		/// The box style, with word wrap switched off.
+		/// </summary>
+		/// <remarks>
+		/// Unity's default box style has wordWrap ON, which means IMGUI
+		/// measures the text and breaks it into lines on EVERY event of EVERY
+		/// frame - for a panel of several hundred characters, four times a
+		/// frame across two overlays, whether or not one character of it had
+		/// changed. Measuring wrapped text is the expensive part of drawing
+		/// it, and it was happening to text that was already final.
+		///
+		/// With wordWrap off, IMGUI draws the lines it is given. The panel's
+		/// own newlines still break as normal; a line too long for the box
+		/// runs past its edge rather than wrapping, which is an acceptable
+		/// trade for a diagnostic and the reason this is cheap at all.
+		/// </remarks>
+		private static GUIStyle PanelStyle
+		{
+			get
+			{
+				if (panelStyle == null)
+				{
+					panelStyle = new GUIStyle(GUI.skin.box)
+					{
+						wordWrap = false,
+						richText = false,
+						alignment = TextAnchor.UpperLeft,
+						padding = new RectOffset(6, 6, 4, 4)
+					};
+				}
+
+				return panelStyle;
+			}
+		}
+
+		/// <summary>Cached, since it only changes when the DPI does.</summary>
+		private static Matrix4x4 scaledMatrix =>
+			Matrix4x4.Scale(new Vector3(DevOverlayScale.Value, DevOverlayScale.Value, 1f));
 
 		/// <summary>
 		/// The panel text: state, why, what is playing, and what changes next.
