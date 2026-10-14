@@ -326,7 +326,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			//
 			// HandOver already refused this. Interrupt and Crossfade did not,
 			// and they are the two that move between places.
-			if (entry == currentEntry)
+			if (IsSameTrack(entry, currentEntry))
 			{
 				return false;
 			}
@@ -577,7 +577,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			//
 			// HandOver already refused this. Interrupt and Crossfade did not,
 			// and they are the two that move between places.
-			if (entry == currentEntry)
+			if (IsSameTrack(entry, currentEntry))
 			{
 				return false;
 			}
@@ -969,6 +969,38 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		{
 			return "[" + DescribeSource(currentSource, "out")
 				+ " " + DescribeSource(incomingSource, "in") + "]";
+		}
+
+		/// <summary>
+		/// Whether two entries name the same piece of music.
+		/// </summary>
+		/// <remarks>
+		/// BY NAME, not by reference, and the log is why.
+		///
+		/// A reference comparison was the original guard and the log showed it
+		/// failing: the combat sequencer handed back an entry that printed as
+		/// the track already playing - "interrupted 'Combat Medium Intensity
+		/// Engagement Section 4' after 0s of 98s, then 'Combat Medium Intensity
+		/// Engagement Section 4'" - fourteen times in a session, every one of
+		/// them a cut to silence and a restart from zero. The generated table
+		/// holds exactly one entry per name, so the two could not be the same
+		/// object, and the reference check let it through.
+		///
+		/// Whatever was carrying one reference around instead of the other, a
+		/// track is identified by which piece of music it is, and the name is
+		/// what that is. Asking the name is the question that was actually
+		/// meant, and it cannot be defeated by an object that merely looks like
+		/// the current one.
+		/// </remarks>
+		public static bool IsSameTrack(MusicTimingTable.Entry a,
+			MusicTimingTable.Entry b)
+		{
+			if (a == null || b == null)
+			{
+				return false;
+			}
+
+			return string.Equals(a.Name, b.Name, System.StringComparison.Ordinal);
 		}
 
 		private static string DescribeSource(AudioSource source, string tag)

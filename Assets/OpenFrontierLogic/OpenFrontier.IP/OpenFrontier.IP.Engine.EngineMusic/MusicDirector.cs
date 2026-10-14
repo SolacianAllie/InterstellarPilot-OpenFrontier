@@ -677,13 +677,47 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 					|| currentKey.StartsWith("Combat/Engagement",
 						System.StringComparison.Ordinal);
 
-				bool isPlaceChange = IsPlace(wantedKey) != IsPlace(currentKey);
+				// A change of CATEGORY, not merely of key. Two intensities of
+				// one category are the same mood with a different number
+				// attached, and cutting the music to say so is what produced
+				// the log's fourteen restarts: Medium, High, Medium, each one
+				// a hard cut and each one restarting the section from zero.
+				//
+				// The old test asked "is EITHER side Engagement", which is
+				// true of Engagement-Medium to Engagement-High - the same
+				// fight, a few ships nearer - so every intensity wobble
+				// became an interruption. The intent was engagement; the
+				// test was simply the wrong one.
+				bool isCategoryChange = CategoryOf(wantedKey) != CategoryOf(currentKey);
 
-				// A dock is a place change and a crossfade, never deferred:
-				// arriving somewhere is not a mood.
-				bool urgent = isEngagement || isPlaceChange
+				// BOTH sides have to be places. Comparing them with
+				// != treated every space-to-combat change as leaving a
+				// place, because a combat key is not one - which made the
+				// count crossing the threshold urgent again and undid the
+				// deferral it was supposed to have.
+				//
+				// Leaving a starport for open space is leaving a place.
+				// Leaving a starport for threat music is the same sector
+				// with more ships in it.
+				bool isPlaceChange = IsPlace(wantedKey) && IsPlace(currentKey)
+					&& wantedKey != currentKey;
+
+				// URGENT means something happened and the music is part of it:
+				//
+				//   a change of place, a dock, the menu
+				//   a change of combat CATEGORY - threat becomes engagement, or
+				//     an engagement ends and the threat theme comes back
+				//
+				// NOT urgent:
+				//
+				//   the count crossing the threshold either way: a mood, and
+				//     it waits for the next track
+				//   an intensity change within a category: the same mood with
+				//     a bigger number on it
+				bool urgent = isPlaceChange
 					|| dockedNow != dockAtLastTransition
-					|| currentKey == "Menu" || wantedKey == "Menu";
+					|| currentKey == "Menu" || wantedKey == "Menu"
+					|| (isCategoryChange && isEngagement);
 
 				if (!urgent)
 				{
@@ -814,6 +848,35 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// going from calm to threat music is the same sector with a
 		/// different number of ships in it.
 		/// </remarks>
+		/// <summary>
+		/// The mood a key names: a place, a combat category, hypersleep, menu.
+		/// </summary>
+		/// <remarks>
+		/// Deliberately coarse. The intensity is not part of it, because Low
+		/// and High are the same mood with a different number of ships
+		/// attached, and treating them as different categories is what turned
+		/// every wobble in the count into a cut.
+		/// </remarks>
+		private static string CategoryOf(string key)
+		{
+			if (key.StartsWith("Combat/Engagement", System.StringComparison.Ordinal))
+			{
+				return "Engagement";
+			}
+
+			if (key.StartsWith("Combat/Threat", System.StringComparison.Ordinal))
+			{
+				return "Threat";
+			}
+
+			if (IsPlace(key))
+			{
+				return "Place";
+			}
+
+			return key;
+		}
+
 		private static bool IsPlace(string key)
 		{
 			return key.StartsWith("Space/", System.StringComparison.Ordinal)
