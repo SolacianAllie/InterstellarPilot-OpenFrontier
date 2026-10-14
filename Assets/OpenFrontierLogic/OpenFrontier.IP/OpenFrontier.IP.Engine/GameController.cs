@@ -809,7 +809,7 @@ namespace OpenFrontier.IP.Engine
 		private void ApplySandboxSettings()
 		{
 			int minNumSectors = GameSettings.SandboxSettings.MinSectorCount;
-			int maxNumSectors = GameSettings.SandboxSettings.MaxSectorCount;
+			int maxNumSectors = GameSettings.SandboxSettings.GetMaxSectorCount();
 			int value = PlayerPrefs.GetInt(SandboxPlayerSettings.GenerationNumSectorsKey, -1);
 			if (value < 0)
 			{

@@ -62,6 +62,38 @@ namespace OpenFrontier.IP.Engine.Sandbox
 			}
 		}
 
+		/// <summary>
+		/// Sector-count ceiling on phones. Android and iOS are treated identically:
+		/// iOS silicon is uniformly faster but thermal-throttles sooner, so the
+		/// sustained cost of a large generated universe is the binding constraint
+		/// on both, not peak speed.
+		/// </summary>
+		public int MobileMaxSectorCount = 128;
+
+		/// <summary>
+		/// Applies the mobile ceiling regardless of platform, so the phone-sized
+		/// limit can be exercised from a desktop build without an APK round trip.
+		/// </summary>
+		public bool ForceMobileLimit;
+
+		/// <summary>
+		/// Effective upper bound for the size slider and for generation. Must be
+		/// used at both: capping only the slider still lets a stored preference or
+		/// a hand-edited setting request more sectors than the device can take.
+		/// </summary>
+		public int GetMaxSectorCount()
+		{
+			int ceiling = MaxSectorCount;
+			if (Application.isMobilePlatform || ForceMobileLimit)
+			{
+				if (MobileMaxSectorCount > 0 && MobileMaxSectorCount < ceiling)
+				{
+					ceiling = MobileMaxSectorCount;
+				}
+			}
+			return Mathf.Max(ceiling, MinSectorCount);
+		}
+
 		public int GenerationDefaultMaxWormholes = 5;
 
 		public bool DefaultDiscoverAllSectors;

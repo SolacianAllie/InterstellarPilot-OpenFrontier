@@ -260,7 +260,14 @@ namespace OpenFrontier.IP.UI.Screens.UniverseSandboxSettings
 
 		private void PopulateSeedSettings(WorldSeedSettings seedSettings)
 		{
-			int numSectors = Mathf.RoundToInt(NumSectorsSlider.value);
+			// Clamped again here, not only at the slider: a stored preference or a
+			// hand-edited setting can still ask for more sectors than the slider
+			// offers, and this is the value the generator actually receives.
+			SandboxSettings sandboxSettings = GameController.Instance.GameSettings.SandboxSettings;
+			int numSectors = Mathf.Clamp(
+				Mathf.RoundToInt(NumSectorsSlider.value),
+				sandboxSettings.MinSectorCount,
+				sandboxSettings.GetMaxSectorCount());
 			seedSettings.WorldGeneratorSettings.MinNumScenes = numSectors;
 			seedSettings.WorldGeneratorSettings.MaxNumScenes = numSectors;
 			seedSettings.WorldGeneratorSettings.MaxConnections = GetCurrentMaxWormholesSetting();
@@ -378,11 +385,11 @@ namespace OpenFrontier.IP.UI.Screens.UniverseSandboxSettings
 			NumSectorsSlider.wholeNumbers = true;
 			SandboxSettings sandboxSettings = GameController.Instance.GameSettings.SandboxSettings;
 			NumSectorsSlider.minValue = sandboxSettings.MinSectorCount;
-			NumSectorsSlider.maxValue = sandboxSettings.MaxSectorCount;
+			NumSectorsSlider.maxValue = sandboxSettings.GetMaxSectorCount();
 			NumSectorsSlider.value = Mathf.Clamp(
 				GameController.Instance.SandboxPlayerSettings.GenerationNumSectors,
 				sandboxSettings.MinSectorCount,
-				sandboxSettings.MaxSectorCount);
+				sandboxSettings.GetMaxSectorCount());
 		}
 
 		private void InitIntelCheckboxes()
