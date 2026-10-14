@@ -3925,6 +3925,7 @@ namespace OpenFrontier.IP.Engine
 			// long-standing inconsistency in the engine, not a decision being made
 			// here.)
 			UpdateActiveSectorUnits();
+			UpdateFactions();
 
 			if (IsPaused)
 			{
@@ -4275,6 +4276,46 @@ namespace OpenFrontier.IP.Engine
 					continue;
 				}
 				components.Tick();
+			}
+		}
+
+		/// <summary>
+		/// Ticks every faction and every faction's AI, every frame.
+		/// </summary>
+		/// <remarks>
+		/// Replaces two MonoBehaviour Update() methods, one on Faction and one on
+		/// FactionAIBase. At 1024 sectors that is 1,523 + 1,521 = 3,044 dispatches
+		/// a frame, roughly 1.1ms. FactionAIBase is one component per AI faction
+		/// created by FactionAIBase.CreateFactionAIType on the faction's own
+		/// transform, so Faction.FactionAI reaches it without a second list.
+		///
+		/// Above the IsPaused guard for the same reason as UpdateActiveSectorUnits:
+		/// neither old Update() had a pause check of its own, so both ran while
+		/// paused and this preserves that.
+		///
+		/// Both guards are preserved verbatim inside the moved methods, including
+		/// Authority.OwnsFaction - a client must still not run another faction's
+		/// economy. Iteration order now follows the Factions list rather than
+		/// Unity's component order; factions do not read each other's state within
+		/// a frame, and the per-faction timers (nextRecentAttacksChkTime,
+		/// NextFactionAIUpdate) are absolute Time.time comparisons, so neither is
+		/// order-dependent.
+		/// </remarks>
+		private void UpdateFactions()
+		{
+			for (int i = 0; i < Factions.Count; i++)
+			{
+				Faction faction = Factions[i];
+				if (faction == null)
+				{
+					continue;
+				}
+				faction.Tick();
+				FactionAIBase factionAi = faction.FactionAI;
+				if (factionAi != null)
+				{
+					factionAi.Tick();
+				}
 			}
 		}
 
