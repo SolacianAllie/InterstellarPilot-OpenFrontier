@@ -15,6 +15,13 @@ Practical form of it, in the order it actually bites:
   so a release build does not contain it. `MusicDirector.RefreshVoiceReport`
   ran two `FindObjectsOfType` scans every quarter second in release to fill a
   cache that only the overlay read, and the overlay is compiled out. Removed.
+  **The rule is "only a developer reads it", not "it measures something".** The
+  dock header's framerate and V-Sync readout
+  (`DockUIHeader.GetLocationText`) is a deliberate player-facing feature - it is
+  how performance gets checked without entering dev menus - so it is NOT to be
+  gated. It accumulates `Time.unscaledDeltaTime` on purpose: `timeScale` is 0
+  behind any `PauseWhenShown` screen, and a scaled reading would report 0fps
+  exactly when something is holding the framerate up.
 - **Never put a scene-wide search on the render path.** `FindObjectsOfType`
   walks every GameObject and allocates an array. In `OnGUI` it runs at least
   twice per frame. If something must be watched, watch it on an event
