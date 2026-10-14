@@ -620,7 +620,7 @@ namespace OpenFrontier.IP.Engine
 
 		public void SaveSandboxPlayerSettings()
 		{
-			PlayerPrefs.SetInt(SandboxPlayerSettings.GenerationNumSectorsIndexKey, SandboxPlayerSettings.GenerationNumSectorsIndex);
+			PlayerPrefs.SetInt(SandboxPlayerSettings.GenerationNumSectorsKey, SandboxPlayerSettings.GenerationNumSectors);
 			PlayerPrefs.SetInt(SandboxPlayerSettings.DiscoverAllSectorsKey, Helper.BoolTo01(SandboxPlayerSettings.DiscoverAllSectors));
 			PlayerPrefs.SetInt(SandboxPlayerSettings.DiscoverEverythingKey, Helper.BoolTo01(SandboxPlayerSettings.DiscoverEverything));
 			PlayerPrefs.SetInt(SandboxPlayerSettings.FactionSeedingBanditFactionsKey, Helper.BoolTo01(SandboxPlayerSettings.FactionSeedingBanditFactions));
@@ -808,8 +808,27 @@ namespace OpenFrontier.IP.Engine
 
 		private void ApplySandboxSettings()
 		{
-			int value = PlayerPrefs.GetInt(SandboxPlayerSettings.GenerationNumSectorsIndexKey, GameSettings.SandboxSettings.SectorCounts.IndexOf(GameSettings.SandboxSettings.DefaultSectorCount));
-			SandboxPlayerSettings.GenerationNumSectorsIndex = Mathf.Clamp(value, 0, GameSettings.SandboxSettings.SectorCounts.Length - 1);
+			int minNumSectors = GameSettings.SandboxSettings.MinSectorCount;
+			int maxNumSectors = GameSettings.SandboxSettings.MaxSectorCount;
+			int value = PlayerPrefs.GetInt(SandboxPlayerSettings.GenerationNumSectorsKey, -1);
+			if (value < 0)
+			{
+				value = GameSettings.SandboxSettings.DefaultNumSectors;
+			}
+			else if (value < minNumSectors)
+			{
+				// Builds before the size slider became continuous stored an INDEX
+				// into SectorCounts, not a count. An index is always below the
+				// smallest preset's MinCount, so the two are unambiguous and we
+				// can translate rather than silently collapse the player's choice
+				// to the floor.
+				SandboxSectorCount[] sectorCounts = GameSettings.SandboxSettings.SectorCounts;
+				if (sectorCounts != null && value < sectorCounts.Length)
+				{
+					value = sectorCounts[value].MinCount;
+				}
+			}
+			SandboxPlayerSettings.GenerationNumSectors = Mathf.Clamp(value, minNumSectors, maxNumSectors);
 			SandboxPlayerSettings.DiscoverAllSectors = PlayerPrefs.GetInt(SandboxPlayerSettings.DiscoverAllSectorsKey, Helper.BoolTo01(GameSettings.SandboxSettings.DefaultDiscoverAllSectors)) > 0;
 			SandboxPlayerSettings.DiscoverEverything = PlayerPrefs.GetInt(SandboxPlayerSettings.DiscoverEverythingKey, Helper.BoolTo01(GameSettings.SandboxSettings.DefaultDiscoverEverything)) > 0;
 			SandboxPlayerSettings.FactionSpawning = PlayerPrefs.GetInt(SandboxPlayerSettings.FactionSpawningKey, Helper.BoolTo01(GameSettings.SandboxSettings.DefaultFactionSpawning)) > 0;
@@ -841,7 +860,7 @@ namespace OpenFrontier.IP.Engine
 		public void ResetSandboxPlayerSettings()
 		{
 			SandboxSettings sandboxSettings = instance.GameSettings.SandboxSettings;
-			sandboxPlayerSettings.GenerationNumSectorsIndex = sandboxSettings.SectorCounts.IndexOf(sandboxSettings.DefaultSectorCount);
+			sandboxPlayerSettings.GenerationNumSectors = sandboxSettings.DefaultNumSectors;
 			sandboxPlayerSettings.GenerationMaxWormholes = sandboxSettings.GenerationDefaultMaxWormholes;
 			sandboxPlayerSettings.DiscoverAllSectors = sandboxSettings.DefaultDiscoverAllSectors;
 			sandboxPlayerSettings.DiscoverEverything = sandboxSettings.DefaultDiscoverAllSectors;

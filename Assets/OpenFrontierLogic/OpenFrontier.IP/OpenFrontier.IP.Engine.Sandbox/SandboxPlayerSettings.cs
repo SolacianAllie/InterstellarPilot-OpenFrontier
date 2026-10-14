@@ -4,7 +4,7 @@ namespace OpenFrontier.IP.Engine.Sandbox
 {
 	public class SandboxPlayerSettings : MonoBehaviour
 	{
-		public string GenerationNumSectorsIndexKey = "sandbox_num_sectors";
+		public string GenerationNumSectorsKey = "sandbox_num_sectors";
 
 		public string DiscoverAllSectorsKey = "sandbox_discover_all_sectors";
 
@@ -58,7 +58,9 @@ namespace OpenFrontier.IP.Engine.Sandbox
 
 		public float GenerationAsteroidDustCloudsProbability = 0.75f;
 
-		public int GenerationNumSectorsIndex;
+		/// <summary>Absolute sector count, not an index into SectorCounts. Values read
+		/// from prefs by earlier builds were indexes; see ApplySandboxSettings.</summary>
+		public int GenerationNumSectors;
 
 		public int GenerationMaxWormholes = -1;
 
