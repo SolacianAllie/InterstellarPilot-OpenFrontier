@@ -4381,6 +4381,7 @@ namespace OpenFrontier.IP.Engine
 			{
 				return;
 			}
+			UpdateActiveSectorFleets();
 			int inactiveGroupUpdateCount = GetInactiveGroupUpdateCount();
 			for (int i = 0; i < inactiveGroupUpdateCount; i++)
 			{
@@ -4392,6 +4393,31 @@ namespace OpenFrontier.IP.Engine
 					{
 						fleet.Tick();
 					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Ticks every fleet in the active sector, every frame. Sits inside
+		/// UpdateInactiveFleets so the active and inactive paths read together,
+		/// and is called with the rest of the loop rather than above the pause
+		/// guard: Fleet.Tick() already returns early on engine.IsPaused, so
+		/// placement relative to that guard cannot change behaviour here.
+		/// </summary>
+		/// <remarks>
+		/// Removed 4,169 MonoBehaviour Update() dispatches per frame at 1024
+		/// sectors, ~1.20ms, in order to service the fleets in one sector. Same
+		/// reasoning as UpdateActiveSectorUnits: nothing is disabled, the Fleet
+		/// component and its GameObject are untouched, only the dispatch goes.
+		/// </remarks>
+		private void UpdateActiveSectorFleets()
+		{
+			for (int i = 0; i < fleets.Count; i++)
+			{
+				Fleet fleet = fleets[i];
+				if (fleet.Sector != null && fleet.Sector.IsActive)
+				{
+					fleet.Tick();
 				}
 			}
 		}

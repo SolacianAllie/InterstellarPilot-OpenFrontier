@@ -846,13 +846,17 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
-		private void Update()
-		{
-			if (IsInActiveSector)
-			{
-				Tick();
-			}
-		}
+		/// <summary>
+		/// Fleet ticking is driven by the engine, not by Unity's per-frame callback.
+		/// </summary>
+		/// <remarks>
+		/// This was a MonoBehaviour Update() that tested IsInActiveSector and called
+		/// Tick(). With 4,169 fleets live at 1024 sectors that cost ~1.20ms a frame
+		/// in dispatch alone. EngineASX.UpdateActiveSectorFleets now runs the
+		/// active-sector fleets every frame and UpdateInactiveFleets still
+		/// round-robins the rest, so the schedule is unchanged - only the caller
+		/// moved. The Fleet component and its GameObject are untouched.
+		/// </remarks>
 
 		public void Tick()
 		{
