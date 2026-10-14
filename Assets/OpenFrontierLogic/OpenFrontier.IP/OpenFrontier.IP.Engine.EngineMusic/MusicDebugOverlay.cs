@@ -112,7 +112,12 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			string next;
 
-			if (player.IsFadingOut)
+			if (player.IsCrossfading)
+			{
+				next = "crossfading to " + (player.Incoming == null ? "?" : player.Incoming.Name)
+					+ ", equal power";
+			}
+			else if (player.IsFadingOut)
 			{
 				next = "next " + (player.Incoming == null ? "?" : player.Incoming.Name)
 					+ " after the fade";

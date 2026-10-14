@@ -35,6 +35,10 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		[Tooltip("How long an interrupted track is faded out before the next one starts.")]
 		public float InterruptFadeSeconds = 1.5f;
 
+		/// <summary>How long a dock or undock crossfade takes.</summary>
+		[Tooltip("How long entering or leaving a station crossfades between the two tracks.")]
+		public float StationCrossfadeSeconds = 2f;
+
 		private AudioSource currentSource;
 		private AudioSource incomingSource;
 		private MusicTimingTable.Entry currentEntry;
@@ -43,6 +47,8 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		private float incomingStartedAt;
 		private float fadeStartedAt;
 		private bool fadingOut;
+		private bool crossfading;
+		private float crossfadeStartedAt;
 		private bool incomingWaiting;
 
 		/// <summary>What is playing, or null.</summary>
@@ -53,6 +59,9 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 		/// <summary>True while the outgoing track is being faded to silence.</summary>
 		public bool IsFadingOut => fadingOut;
+
+		/// <summary>True while two tracks are ramping against each other.</summary>
+		public bool IsCrossfading => crossfading;
 
 		/// <summary>Seconds since the current track started.</summary>
 		/// <remarks>
@@ -315,6 +324,13 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		{
 			TrackVolume();
 
+			if (crossfading)
+			{
+				StepCrossfade();
+
+				return;
+			}
+
 			if (fadingOut)
 			{
 				StepFadeOut();
@@ -382,7 +398,11 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// </remarks>
 		private void TrackVolume()
 		{
-			if (fadingOut)
+			// Both ramps own the volume while they run. Without this the
+			// per-frame volume tracking would reset both sources to full
+			// volume every frame and the crossfade would be a hard cut - the
+			// exact thing it exists to avoid.
+			if (fadingOut || crossfading)
 			{
 				return;
 			}
@@ -398,6 +418,121 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				&& !Mathf.Approximately(incomingSource.volume, wanted))
 			{
 				incomingSource.volume = wanted;
+			}
+		}
+
+		/// <summary>
+		/// Crossfades to a new track: both play at once, one down and one up.
+		/// </summary>
+		/// <remarks>
+		/// This is the third transition, and the one that makes docking sound
+		/// like arriving somewhere instead of a gap with music in it.
+		///
+		/// <see cref="Interrupt"/> deliberately does NOT overlap - it fades
+		/// the old track to silence and only then starts the new one, because
+		/// these pieces were composed to be heard alone and a linear overlap
+		/// of two of them sounds like a mistake. That reasoning holds when a
+		/// track is being cut short by something abrupt, like a wormhole.
+		///
+		/// It does not hold for a dock. You have flown here, you are looking
+		/// at the station, and the music arriving with you is a change of
+		/// place rather than an interruption of anything - and a fade to
+		/// silence followed by a fade up puts a hole in the middle of it.
+		///
+		/// EQUAL POWER, NOT EQUAL GAIN. The obvious ramp is linear, which sums
+		/// the two AMPLITUDES to a constant 1 and therefore dips about 3 dB
+		/// through the middle of every transition - the classic "hole" that
+		/// makes a crossfade sound like a crossfade. Ramping with sin and cos
+		/// instead sums the two POWERS to a constant 1, so the perceived
+		/// loudness holds steady through the middle while each track still
+		/// sounds like it is arriving or leaving rather than being switched.
+		///
+		/// That is the same pair of curves a DJ mixer uses, and it is the
+		/// right answer here for the same reason: the two tracks are
+		/// unrelated music, so there is no shared waveform for them to
+		/// reinforce, and only the power sum is meaningful.
+		/// </remarks>
+		public bool Crossfade(MusicTimingTable.Entry entry)
+		{
+			if (entry == null)
+			{
+				return false;
+			}
+
+			if (currentEntry == null || currentSource == null || !currentSource.isPlaying)
+			{
+				return Start(entry);
+			}
+
+			AudioClip clip = MusicLibrary.ClipFor(entry);
+
+			if (clip == null)
+			{
+				// Same reasoning as Interrupt: do not fade toward a track that
+				// cannot play, or the player gets silence instead of music.
+				Debug.LogWarning("Music: cannot crossfade to '" + entry.Name
+					+ "', its clip would not load. '" + currentEntry.Name
+					+ "' keeps playing.");
+
+				return false;
+			}
+
+			EnsureSources();
+
+			// Start the incoming SILENTLY rather than silently-but-stopped, so
+			// it is already decoding and playing when the ramp begins. Playing
+			// it at zero and ramping up avoids the click that starting it at
+			// full volume and ramping down would give the outgoing track.
+			incomingSource.Stop();
+			incomingSource.clip = clip;
+			incomingSource.time = 0f;
+			incomingSource.loop = entry.Loops;
+			incomingSource.volume = 0f;
+			incomingSource.Play();
+
+			incomingEntry = entry;
+			incomingStartedAt = Time.realtimeSinceStartup;
+			incomingWaiting = true;
+			crossfading = true;
+			crossfadeStartedAt = Time.realtimeSinceStartup;
+
+			Debug.Log("Music: crossfading from '" + currentEntry.Name + "' to '"
+				+ entry.Name + "' (" + entry.Category + ") over "
+				+ StationCrossfadeSeconds + "s, equal power.");
+
+			return true;
+		}
+
+		private void StepCrossfade()
+		{
+			float elapsed = Time.realtimeSinceStartup - crossfadeStartedAt;
+			float t = StationCrossfadeSeconds <= 0f
+				? 1f
+				: Mathf.Clamp01(elapsed / StationCrossfadeSeconds);
+
+			float half = t * Mathf.PI * 0.5f;
+			float master = MasterVolume;
+
+			if (currentSource != null)
+			{
+				currentSource.volume = master * Mathf.Sin(half);
+			}
+
+			if (incomingSource != null)
+			{
+				incomingSource.volume = master * Mathf.Cos(half);
+			}
+
+			if (t >= 1f)
+			{
+				crossfading = false;
+
+				// PromoteIncoming stops and clears the outgoing source and
+				// swaps the fields. It will not restart the incoming track,
+				// because wasAlreadyPlaying is true - it has been playing
+				// through the whole ramp - and it restores its volume to
+				// master, which is where the ramp left it.
+				PromoteIncoming();
 			}
 		}
 
@@ -500,6 +635,12 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			incomingEntry = null;
 			incomingWaiting = false;
 			fadingOut = false;
+
+			// A crossfade left mid-ramp would otherwise stay true forever and
+			// Update would keep calling StepCrossfade against sources that are
+			// no longer paired - and Start calls StopBoth, so this is on the
+			// path of any transition that happens during a ramp.
+			crossfading = false;
 		}
 
 		/// <summary>Stops everything, for leaving a game.</summary>

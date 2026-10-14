@@ -199,6 +199,8 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		private readonly MusicCombatSequencer sequencer = new MusicCombatSequencer();
 
 		private string currentKey = "none";
+		private bool lastDocked;
+		private bool dockedChanged;
 		private MusicTimingTable.Entry lastRequested;
 		private MusicCombatState lastCombat;
 
@@ -269,7 +271,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			// what the first run of this actually did.
 			MusicCrossfadePlayer crossfader = Player;
 
-			// The world changed. Cut.
+			// The world changed.
 			if (wantedKey != currentKey)
 			{
 				if (crossfader.Current == null)
@@ -280,10 +282,22 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 						lastRequested = wanted;
 					}
 				}
-				else if (crossfader.Interrupt(wanted))
+				else
 				{
-					currentKey = wantedKey;
-					lastRequested = wanted;
+					// Docking and undocking crossfade; everything else is cut.
+					// A station is somewhere you have arrived, not something
+					// that interrupted you, and a fade to silence followed by
+					// a fade up leaves a hole exactly where the player is
+					// most expecting to hear the place they just reached.
+					bool moved = dockedChanged
+						? crossfader.Crossfade(wanted)
+						: crossfader.Interrupt(wanted);
+
+					if (moved)
+					{
+						currentKey = wantedKey;
+						lastRequested = wanted;
+					}
 				}
 
 				return;
@@ -381,6 +395,15 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			bool docked = mine != null
 				&& mine.Components != null
 				&& mine.Components.IsDocked;
+
+			// Read here rather than inferred from the state key, because the
+			// key cannot be trusted to change on a dock. Docking at a station
+			// nobody owns falls back to Neutral ambience, and if the sector
+			// was unowned too then the key does not change AT ALL - the ship
+			// docked, and the music would be told nothing happened. Watching
+			// the actual dock state catches that case.
+			dockedChanged = docked != lastDocked;
+			lastDocked = docked;
 
 			if (docked)
 			{
