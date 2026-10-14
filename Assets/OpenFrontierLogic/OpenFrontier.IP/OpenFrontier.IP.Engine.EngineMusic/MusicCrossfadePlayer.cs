@@ -313,6 +313,8 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 		private void Update()
 		{
+			TrackVolume();
+
 			if (fadingOut)
 			{
 				StepFadeOut();
@@ -356,6 +358,46 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 					+ currentEntry.EndingOnset.ToString("0") + "s.");
 
 				currentEntry = null;
+			}
+		}
+
+		/// <summary>
+		/// Keeps both sources at the current volume, every frame.
+		/// </summary>
+		/// <remarks>
+		/// The volume was previously only written at transitions - Start,
+		/// HandOver, the fade, and PromoteIncoming - so it was a snapshot
+		/// taken when the track began and never revised. Moving the volume
+		/// slider then did nothing to whatever was already playing, and did
+		/// not take effect until the next track happened to start, which on a
+		/// 98 second track is a minute and a half of the slider appearing
+		/// broken. It was read live in the property and then thrown away.
+		///
+		/// Re-reading it every frame is cheap - one property chain and two
+		/// float comparisons - and it is the only way a value the player can
+		/// change at any moment stays true.
+		///
+		/// Skipped during a fade-out, because there the fade is the authority:
+		/// StepFadeOut owns the volume and scales it down on purpose.
+		/// </remarks>
+		private void TrackVolume()
+		{
+			if (fadingOut)
+			{
+				return;
+			}
+
+			float wanted = MasterVolume;
+
+			if (currentSource != null && !Mathf.Approximately(currentSource.volume, wanted))
+			{
+				currentSource.volume = wanted;
+			}
+
+			if (incomingSource != null && incomingSource != currentSource
+				&& !Mathf.Approximately(incomingSource.volume, wanted))
+			{
+				incomingSource.volume = wanted;
 			}
 		}
 
@@ -495,9 +537,27 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			return "playing=" + SourcePlaying
 				+ " clip=" + (SourceHasClip ? currentSource.clip.name : "NONE")
 				+ " vol=" + SourceVolume.ToString("0.00")
+				+ " master=" + MasterVolume.ToString("0.00")
+				+ " from=" + (HasLiveMasterVolume ? "player" : "FALLBACK")
+				+ " listener=" + AudioListener.volume.ToString("0.00")
 				+ " loop=" + currentSource.loop
 				+ " paused=" + AudioListener.pause;
 		}
+
+		/// <summary>
+		/// Whether the master volume is the real setting or the fallback.
+		/// </summary>
+		/// <remarks>
+		/// MasterVolume returns a hardcoded 0.5 when GameController or its
+		/// MusicPlayer is not there yet, which looks exactly like a real
+		/// volume and is not. Saying which one it is turns "the volume is
+		/// wrong" into a reportable fact - the menu screenshot showed
+		/// vol=0.00 while the stored preference was 1, and nothing on screen
+		/// could have said whether that was a live zero, a stale snapshot, or
+		/// a player that was not there.
+		/// </remarks>
+		public bool HasLiveMasterVolume =>
+			GameController.Instance != null && GameController.Instance.MusicPlayer != null;
 
 		/// <summary>One line describing what is playing and why.</summary>
 		public string Describe()

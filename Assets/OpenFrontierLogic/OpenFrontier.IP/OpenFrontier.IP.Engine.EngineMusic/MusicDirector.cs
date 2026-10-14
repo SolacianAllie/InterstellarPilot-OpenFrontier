@@ -85,28 +85,100 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			// other for the whole session.
 		}
 
-		private bool stoodDownOldController;
+		private float nextStandDownCheck;
+		private bool warnedAboutOldMusic;
 
+		/// <summary>
+		/// Disables the previous music controller, every time a new one turns
+		/// up, and stops whatever it left playing.
+		/// </summary>
+		/// <remarks>
+		/// THIS WAS A ONE-SHOT AND IT WAS WRONG. It disabled the first
+		/// EngineMusicPlayerController it found and set a flag so it would
+		/// never look again - fine exactly once per session, and wrong from
+		/// the first sector load onwards. That controller lives on the EngineASX
+		/// prefab, and every world or sector load instantiates a fresh one. The
+		/// fresh copy arrived enabled, started playing the old sector music,
+		/// and was never disabled, because the flag said the job was done.
+		///
+		/// The visible result was a correct menu and two pieces of music in
+		/// every sector: this system's track and the old scenario music, from
+		/// two live controllers that both believed they owned the music.
+		///
+		/// Disabling a controller does NOT stop what it already started.
+		/// SimpleMusicPlayer is a separate component that keeps playing and
+		/// keeps its queue, and the only code that would ever have cleared
+		/// that is inside the controller's own Update - the code just
+		/// disabled. So the queue is cleared and the track stopped too.
+		///
+		/// Checked once a second rather than every frame: a new controller can
+		/// only appear on a world load, and FindObjectsOfType every frame for
+		/// something that happens every few minutes is waste.
+		/// </remarks>
 		private void StandDownTheOldController()
 		{
-			if (stoodDownOldController)
+			if (Time.realtimeSinceStartup < nextStandDownCheck)
 			{
 				return;
 			}
 
-			EngineMusicPlayerController old = Object.FindObjectOfType<EngineMusicPlayerController>();
+			nextStandDownCheck = Time.realtimeSinceStartup + 1f;
 
-			if (old == null)
+			EngineMusicPlayerController[] found =
+				Object.FindObjectsOfType<EngineMusicPlayerController>();
+
+			bool disabledAny = false;
+
+			for (int i = 0; i < found.Length; i++)
+			{
+				if (found[i] != null && found[i].enabled)
+				{
+					found[i].enabled = false;
+					disabledAny = true;
+				}
+			}
+
+			StopLeftoverOldMusic();
+
+			if (disabledAny && !warnedAboutOldMusic)
+			{
+				warnedAboutOldMusic = true;
+
+				Debug.Log("Music: the previous music controller has been stood"
+					+ " down, and anything it had playing has been stopped."
+					+ " It lives on the EngineASX prefab, so a new one appears on"
+					+ " every world and sector load and has to be stood down"
+					+ " again each time. Its SimpleMusicPlayer is still read for"
+					+ " volume, so the options screen is unchanged.");
+			}
+		}
+
+		/// <summary>
+		/// Clears the old player's queue and stops its track.
+		/// </summary>
+		/// <remarks>
+		/// Only touches the player when it actually has something on it, so
+		/// this is a no-op in normal operation and cannot fight anything.
+		/// </remarks>
+		private void StopLeftoverOldMusic()
+		{
+			if (GameController.Instance == null || GameController.Instance.MusicPlayer == null)
 			{
 				return;
 			}
 
-			old.enabled = false;
-			stoodDownOldController = true;
+			OpenFrontier.IP.MusicPlayer.SimpleMusicPlayer old =
+				GameController.Instance.MusicPlayer;
 
-			Debug.Log("Music: the previous music controller has been stood down."
-				+ " Its SimpleMusicPlayer is still read for volume, so the options"
-				+ " screen is unchanged.");
+			if (old.QueuedTracks != null && old.QueuedTracks.Count > 0)
+			{
+				old.QueuedTracks.Clear();
+			}
+
+			if (old.PlayingTrack != null)
+			{
+				old.StopPlayingTrack();
+			}
 		}
 
 		private void Awake()
