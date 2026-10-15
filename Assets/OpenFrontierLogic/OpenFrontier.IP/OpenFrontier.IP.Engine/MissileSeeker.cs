@@ -716,7 +716,23 @@ namespace OpenFrontier.IP.Engine
 		/// looks at every ship and station in the sector, with no faction test
 		/// anywhere in it, and takes the strongest signature it finds.
 		///
-		/// It is cone-limited, which is what keeps the ninety degree ceiling
+		/// The one thing it will not consider is the ship that fired it. That
+		/// exclusion used to be written against Projectile.Unit, which is the
+		/// missile's OWN unit rather than the launcher's, so it excluded the
+		/// missile - which is not in any of these lists anyway - and let the
+		/// launcher straight through. The rule that stops a heat seeker locking
+		/// its own ship has therefore never once run.
+		///
+		/// Which is why fast fighters shot themselves with the Lancer. Nothing
+		/// about launch velocity is involved. A signature is thruster heat times
+		/// throttle, so the harder a ship is accelerating the hotter it looks,
+		/// and a fighter running flat out is the brightest thing in its own
+		/// neighbourhood. The missile has just left that fighter's nose, so it is
+		/// inside the cone, at point blank range, looking straight at the single
+		/// hottest object in the sector - and it locks on. The faster the fighter,
+		/// the brighter it is and the more certain the lock.
+		///
+		/// The cone and the ranking are unchanged by this. It is cone-limited,
 		/// meaning something: turn away from the hot ship and there is nothing
 		/// to lock. It runs on the seeker's own evaluation rather than only on
 		/// losing the target, so a seeker that was locked onto something modest
@@ -740,8 +756,8 @@ namespace OpenFrontier.IP.Engine
 			Vector3 nose = missile.transform.forward;
 			Vector3 self = missile.transform.position;
 			float bestHeat = SignatureOf(missile.Target, self);
-			Unit firingShip = missile.Projectile.Unit;
-			Sector sector = firingShip != null ? firingShip.Sector : null;
+			Unit launcher = missile.Projectile.SourceUnit;
+			Sector sector = missile.Projectile.Unit != null ? missile.Projectile.Unit.Sector : null;
 			if (sector == null)
 			{
 				return null;
@@ -767,7 +783,7 @@ namespace OpenFrontier.IP.Engine
 				for (int i = 0; i < units.Count; i++)
 				{
 					Unit candidate = units[i];
-					if (candidate == null || candidate == firingShip || candidate == best)
+					if (candidate == null || candidate == missile.Projectile.Unit || candidate == launcher || candidate == best)
 					{
 						continue;
 					}
