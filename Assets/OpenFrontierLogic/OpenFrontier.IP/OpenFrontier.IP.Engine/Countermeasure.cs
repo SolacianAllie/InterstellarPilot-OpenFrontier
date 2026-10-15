@@ -11,20 +11,25 @@ namespace OpenFrontier.IP.Engine
 		private const float projectileCheckFreq = 0.3f;
 
 		/// <summary>
-		/// Hard cap on how many missiles one countermeasure can disrupt.
+		/// How much of the cloud's life it spends still being able to jam, as a
+		/// fraction of the projectile class's MaxDuration.
 		/// </summary>
 		/// <remarks>
-		/// A cap on its own would have done nothing: GetDisruptedMissile
-		/// returned on the first success, so a puff contesting five missiles
-		/// rolled against exactly one of them - whichever OverlapSphere
-		/// happened to return first. Over a long engagement that let one
-		/// deployment turn around a dozen or more missiles, which is not
-		/// what 'an ECM fools the missiles chasing me' is meant to mean.
+		/// Read off the projectile rather than stored, because MaxDuration is
+		/// what actually takes the cloud off the board - deriving from it means
+		/// the jam window can never outlive the thing it belongs to.
 		///
-		/// Every missile in range is now rolled against, and this is the
-		/// ceiling on the total. One deployment fools a salvo, then stops.
+		/// The scenario clock, not Time.time: MaxDuration is enforced on
+		/// ScenarioElapsedTime, which advances on a fixed delta and keeps
+		/// running while the game is paused. A jam window measured on a
+		/// different clock would quietly disagree with the cloud it is part of.
 		/// </remarks>
-		private const int MaxMissilesDisrupted = 5;
+		private float JamDuration => (float)(projectile.ProjectileClass.MaxDuration * CountermeasureClass.JamFraction);
+
+		/// <summary>
+		/// Whether this puff is still in the part of its life where it can jam.
+		/// </summary>
+		public bool IsJamming => projectile.LifeTime < JamDuration;
 
 		/// <summary>
 		/// How much easier a fully notched missile is to jam than one whose
@@ -38,7 +43,11 @@ namespace OpenFrontier.IP.Engine
 		/// seeker holding a sliver of a signature is a seeker worth attacking.
 		///
 		/// It is a multiplier on the roll rather than a flat addition because
-		/// the roll is already a probability against effectiveness.
+		/// the roll is already a probability against effectiveness. It is also
+		/// only worth anything because each puff rolls once per missile - see
+		/// <see cref="Missile.HasRolledAgainst"/>. Rolling again on the next
+		/// 0.3 second check is what made the ECM a guaranteed break and the
+		/// notch decoration.
 		///
 		/// 1.75 is measured against the numbers, not chosen. The notch peaks at
 		/// 0.25 - the biggest hull held beam-on, which is where the aspect
@@ -66,10 +75,6 @@ namespace OpenFrontier.IP.Engine
 
 		private float effectiveness;
 
-		private bool expended;
-
-		private int disruptedMissiles;
-
 		private float nextCheck;
 
 		private Projectile projectile;
@@ -90,18 +95,6 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
-		public bool Expended
-		{
-			get
-			{
-				return expended;
-			}
-			set
-			{
-				expended = value;
-			}
-		}
-
 		public Vector3 Velocity
 		{
 			get
@@ -119,8 +112,6 @@ namespace OpenFrontier.IP.Engine
 			effectiveness = CountermeasureClass.Effectiveness;
 			flareClass = CountermeasureClass as FlareCountermeasureClass;
 			nextCheck = 0f;
-			expended = false;
-			disruptedMissiles = 0;
 			bool flag = Vector3.Distance(projectile.transform.position, GameController.Instance.MainCamera.transform.position) < GameController.Instance.GameSettings.PerformanceSettings.CountermeasureParticlesMaxDistance;
 			foreach (ParticleSystem particleSystem in ParticleSystems)
 			{
@@ -135,16 +126,22 @@ namespace OpenFrontier.IP.Engine
 		}
 
 		/// <summary>
-		/// Rolls every hostile, undisrupted missile in range and disrupts up to
-		/// whatever is left of this countermeasure's budget of five.
+		/// Rolls once against every hostile, undisrupted missile in range that
+		/// this puff has not already tried.
 		/// </summary>
+		/// <remarks>
+		/// There is no cap on how many this can defeat. There used to be one -
+		/// five - and it was arbitrary: it did not describe anything about the
+		/// fight, it just stopped the fifth missile and let the sixth through,
+		/// which is the worst of both. What actually limits a puff is its
+		/// radius, and that is a real handicap rather than a number chosen to
+		/// make a salvo feel big. A salvo that has already closed inside the
+		/// cloud is entirely answered; one still outside it is untouched, so
+		/// deploying early enough to sit in the gap is the whole of the timing.
+		/// </remarks>
 		/// <returns>How many were disrupted by this call.</returns>
 		public int DisruptMissilesInRange()
 		{
-			if (disruptedMissiles >= MaxMissilesDisrupted)
-			{
-				return 0;
-			}
 			Faction sourceFaction = projectile.SourceFaction;
 			if (sourceFaction == null || projectile.Engine.ScenarioElapsedTime - projectile.FireTime <= (double)CountermeasureClass.MinTimeBeforeDisruption)
 			{
@@ -154,10 +151,6 @@ namespace OpenFrontier.IP.Engine
 			int num = 0;
 			for (int i = 0; i < array.Length; i++)
 			{
-				if (disruptedMissiles >= MaxMissilesDisrupted)
-				{
-					break;
-				}
 				Missile component = array[i].GetComponent<Missile>();
 				// Target check first: only a missile actually chasing the ship that
 				// fired this ECM. Otherwise an ECM sat between two ships would
@@ -169,11 +162,20 @@ namespace OpenFrontier.IP.Engine
 				{
 					continue;
 				}
+				// One roll per missile per puff, recorded whichever way it went.
+				// Without this the roll repeated every 0.3 seconds for the whole
+				// jam window and seven or eight attempts at 0.8 left a miss
+				// probability of 0.2^7 - so the ECM broke every lock in front of
+				// it by itself and the notch was worth nothing at all.
+				if (component.HasRolledAgainst(this))
+				{
+					continue;
+				}
+				component.NoteRollAgainst(this);
 				// Behind the missile the dot product goes negative and the roll is
-				// impossible, which is the behaviour that was already there - and
-				// is right for the cheap countermeasure, which should have to be
-				// pointed at the threat. The expensive one drops the facing term
-				// and leaves only the budget, so anything in range is disrupted.
+				// impossible, which is right for the cheap countermeasure, which
+				// should have to be pointed at the threat. The expensive one drops
+				// the facing term, so anything in range is disrupted.
 				//
 				// The notch term is what makes notching and jamming one manoeuvre
 				// rather than two. Notching is a side-on activity: the ship
@@ -202,7 +204,6 @@ namespace OpenFrontier.IP.Engine
 					continue;
 				}
 				component.Disrupt(projectile.Unit);
-				disruptedMissiles++;
 				num++;
 			}
 			return num;
@@ -222,20 +223,26 @@ namespace OpenFrontier.IP.Engine
 		}
 
 		/// <summary>
-		/// What this cloud is worth to a heat seeker, or zero once it has been
-		/// expended.
+		/// What this cloud is worth to a heat seeker.
 		/// </summary>
 		/// <remarks>
-		/// A spent puff is still a cloud of gas but it is no longer burning, so
-		/// it stops being interesting. Spending one to break a radar lock should
-		/// not also leave a decoy sitting there for the next heat seeker to
-		/// walk onto.
+		/// Constant for the whole life of the puff, and it used not to be. A
+		/// spent puff - one that had already fooled something - used to report
+		/// nothing, on the reasoning that it had stopped burning. But the jam
+		/// window and the burn are now separate: the cloud jams for the first
+		/// half of its life and is nothing but a decoy for the second, so
+		/// "has jammed yet" and "is still hot" are different questions and only
+		/// one of them should change the answer.
+		///
+		/// Ending it is the projectile's job, not this class's:
+		/// <see cref="Projectile.MaxDuration"/> takes the cloud off the board,
+		/// at which point there is nothing left for a seeker to be tempted by.
 		///
 		/// An ECM carries this as well as a flare does, which is the whole
 		/// point of it: one puff answers a radar missile by jamming it and a
 		/// heat missile by being more interesting than the ship.
 		/// </remarks>
-		public float IrSignature => expended ? 0f : CountermeasureClass.IrSignature;
+		public float IrSignature => CountermeasureClass.IrSignature;
 
 		/// <summary>
 		/// Blinds the infrared seekers chasing the ship that fired this, harder
@@ -244,18 +251,23 @@ namespace OpenFrontier.IP.Engine
 		/// <remarks>
 		/// Shaped exactly like <see cref="DisruptMissilesInRange"/> - same
 		/// sphere, same 0.3 second cadence, same rule that only missiles
-		/// actually chasing the firing ship count - because it is the same
-		/// question asked of the same thing. The one thing it does differently
-		/// is that it never rolls for a hit: a flare works or it does not, and
-		/// how much it works is a continuous function of where it was dropped,
-		/// not a dice throw per missile.
+		/// actually chasing the firing ship count, and the same half-life jam
+		/// window. The one thing it does differently is that it never rolls for
+		/// a hit: a flare works or it does not, and how much it works is a
+		/// continuous function of where it was dropped, not a dice throw per
+		/// missile.
+		///
+		/// It also does not record having dazzled a missile, because dazzle
+		/// decays and a flare is a sustained burn rather than a single
+		/// attempt. Stopping it early would let the seeker walk straight back
+		/// onto the ship.
 		///
 		/// Returns zero for anything that is not a flare, so the ECM path is
 		/// untouched by this existing.
 		/// </remarks>
 		public int DazzleMissilesInRange(float elapsed)
 		{
-			if (flareClass == null)
+			if (flareClass == null || !IsJamming)
 			{
 				return 0;
 			}
@@ -313,47 +325,32 @@ namespace OpenFrontier.IP.Engine
 
 		private void Update()
 		{
-			if (expended)
+			// IsJamming reads the projectile, and this runs every frame rather
+			// than on the 0.3 second cadence, so a missing Projectile component
+			// would throw here continuously instead of once every third of a
+			// second inside the check. A countermeasure always shares a pooled
+			// GameObject with one, but a null is cheap to survive.
+			if (projectile == null || !IsJamming || Time.time <= nextCheck)
+			{
+				return;
+			}
+			nextCheck = Time.time + projectileCheckFreq;
+			if (!GameController.Instance.GameSettings.DebugSettings.CountermeasureFindDisruptedMissile)
 			{
 				return;
 			}
 			if (flareClass != null)
 			{
-				if (Time.time > nextCheck)
-				{
-					nextCheck = Time.time + projectileCheckFreq;
-					if (GameController.Instance.GameSettings.DebugSettings.CountermeasureFindDisruptedMissile)
-					{
-						DazzleMissilesInRange(projectileCheckFreq);
-					}
-				}
+				DazzleMissilesInRange(projectileCheckFreq);
 				return;
 			}
-			if (disruptedMissiles < MaxMissilesDisrupted && Time.time > nextCheck)
-			{
-				nextCheck = Time.time + 0.3f;
-				if (GameController.Instance.GameSettings.DebugSettings.CountermeasureFindDisruptedMissile)
-				{
-					PerformDisruptionCheck();
-				}
-			}
+			DisruptMissilesInRange();
 		}
 
 		private void FixedUpdate()
 		{
 			velocity = Vector3.MoveTowards(velocity, Vector3.zero, CountermeasureClass.Drag * Time.deltaTime);
 			transform.Translate(velocity * Time.deltaTime, Space.World);
-		}
-
-		private void PerformDisruptionCheck()
-		{
-			// No outer 'effectiveness' roll any more. It used to gate the whole
-			// check AND be applied again per missile inside the loop, so ECM I
-			// was really 0.8 x 0.8 head-on instead of the 0.8 its data says.
-			if (DisruptMissilesInRange() > 0 && CountermeasureClass.ExpendAfterDisruption)
-			{
-				expended = true;
-			}
 		}
 	}
 }

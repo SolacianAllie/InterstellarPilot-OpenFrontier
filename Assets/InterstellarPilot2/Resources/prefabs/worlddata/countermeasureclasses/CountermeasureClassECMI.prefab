@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier:
   Effectiveness: 0.8
-  ExpendAfterDisruption: 0
+  JamFraction: 0.5
   MaxDisruptionRange: 500
   MinTimeBeforeDisruption: 0.1
   Drag: 0.5

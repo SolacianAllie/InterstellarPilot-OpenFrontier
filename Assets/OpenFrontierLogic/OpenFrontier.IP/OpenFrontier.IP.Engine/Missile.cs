@@ -149,6 +149,7 @@ namespace OpenFrontier.IP.Engine
 		public void Init()
 		{
 			disrupted = false;
+			rolledAgainstBy = null;
 			dazzle = 0f;
 			hasAquiredTarget = false;
 			lastDotToTarget = 0f;
@@ -171,6 +172,36 @@ namespace OpenFrontier.IP.Engine
 			projectile.Target = target;
 			hasAquiredTarget = true;
 			seeker?.LoseLock();
+		}
+
+		/// <summary>
+		/// The countermeasure puff that has already had its roll against this
+		/// missile, whether it landed or not.
+		/// </summary>
+		/// <remarks>
+		/// This is what makes a puff worth deploying rather than a coin to flip
+		/// repeatedly. The roll used to happen every 0.3 seconds for as long as
+		/// the cloud was in the air, so a puff that missed on the first look
+		/// simply looked again - seven or eight times over a two second jam
+		/// window. Against effectiveness 0.8 that is a per-missile miss
+		/// probability of 0.2^7, which is not a roll at all: the ECM would
+		/// break every lock in front of it on its own and the notch would be
+		/// worth nothing but a fraction of a second.
+		///
+		/// So each puff gets exactly one roll per missile, recorded here. The
+		/// record lives on the missile rather than in a set on the puff for two
+		/// reasons: it costs one reference instead of a collection per puff in
+		/// the air, and a missile that drifts out of one puff's radius and back
+		/// into it is correctly not re-rolled by that same puff, while a second
+		/// puff arriving is still free to try.
+		/// </remarks>
+		private Countermeasure rolledAgainstBy;
+
+		public bool HasRolledAgainst(Countermeasure puff) => rolledAgainstBy == puff;
+
+		public void NoteRollAgainst(Countermeasure puff)
+		{
+			rolledAgainstBy = puff;
 		}
 
 		public void LoseTarget()
