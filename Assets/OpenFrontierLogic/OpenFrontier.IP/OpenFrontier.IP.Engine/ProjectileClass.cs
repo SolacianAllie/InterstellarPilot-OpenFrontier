@@ -112,25 +112,38 @@ namespace OpenFrontier.IP.Engine
 		public float SeekerCheckInterval;
 
 		/// <summary>
-		/// How far off the launching ship's nose a cloaked contact has to be
-		/// for this seeker to keep hold of it, in degrees. Zero means it cannot
-		/// hold one at all.
+		/// How far off the launching ship's nose the target has to be for a
+		/// semi-active seeker to hold it at all, in degrees. Zero means no arc
+		/// was authored and the launcher is not consulted.
 		/// </summary>
 		/// <remarks>
-		/// Only a semi-active seeker reads this. It rides the launching ship's
-		/// radar picture rather than a radar of its own, so when the ship it
-		/// was fired from turns away, the picture goes with it and the missile
-		/// goes blind to a contact it had already found. An active seeker does
-		/// not care what the launcher is doing - its own cone has already
-		/// decided the question by the time cloak matters - which is the whole
-		/// practical difference between the two, and the reason a ship under
-		/// ARH missiles has to fight them rather than turn away.
+		/// Only a semi-active seeker reads this, and it is not one of the ways
+		/// to beat that type - it is the premise. A semi-active missile carries
+		/// no radar of its own and listens to the echo off a target the
+		/// launching ship is illuminating, so the moment that ship turns away
+		/// there is nothing lighting the target up and the missile goes blind
+		/// whether the target is cloaked or not.
+		///
+		/// It used to be named SeekerCloakedHoldArc and only consulted while
+		/// the contact was cloaked, on the reasoning that the launcher picture
+		/// was only interesting once cloak was in play. That was wrong: it made
+		/// a semi-active missile track a target its firing ship had turned right
+		/// around from, which is the one thing semi-active homing cannot do. The
+		/// cloak rule - that the contact must have been seen before it went -
+		/// is a separate test in MissileSeeker and always was.
+		///
+		/// An active seeker does not consult it at all. Its own transmitter
+		/// lights the target up, so the launcher can do whatever it likes, and
+		/// that is the whole practical difference between the two types and the
+		/// reason a ship under ARH missiles has to fight them rather than turn
+		/// away.
 		///
 		/// Zero is the default because that is what every prefab written before
-		/// this field existed reads, and zero is what cloak did to every
-		/// missile in the base game.
+		/// this field existed reads. It is read as "do not consult the launcher"
+		/// rather than as "the target must be dead ahead", so a prefab that has
+		/// never heard of the field keeps the behaviour it had.
 		/// </remarks>
-		public float SeekerCloakedHoldArc;
+		public float SeekerLauncherArc;
 
 		/// <summary>
 		/// How much radiated heat a ship must be putting out before an infrared

@@ -71,7 +71,7 @@ MonoBehaviour:
   SeekerReacquireAngle: 60
   SeekerLockPersistence: 2
   SeekerBlindDrift: 6
-  SeekerCloakedHoldArc: 45
+  SeekerLauncherArc: 45
   SeekerCheckInterval: 0.1
   SignatureFrontFactor: 0.5
   RadarSignatureThreshold: 1.2

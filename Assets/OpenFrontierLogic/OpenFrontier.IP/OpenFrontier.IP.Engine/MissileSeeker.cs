@@ -395,56 +395,73 @@ namespace OpenFrontier.IP.Engine
 		/// pointed at.
 		/// </summary>
 		/// <summary>
-		/// Whether this seeker can still hold a contact that has gone to cloak.
+		/// Whether a contact that has gone to cloak can still be held, which
+		/// means it must have been seen before it went.
 		/// </summary>
 		/// <remarks>
 		/// Cloak stops being a contact being invisible and starts being a
-		/// contact being hard to keep, which is a better thing for it to be.
-		/// Three things have to line up, and they are the three ways a ship
-		/// should be able to break a radar lock it did not have before:
+		/// contact being hard to keep, which is a better thing for it to be. A
+		/// missile fired at a ship that was already cloaked has no picture to
+		/// hold, so it stays blind - which is what stops cloak from being a free
+		/// pass against a fresh salvo.
 		///
-		/// It must have been seen first. A missile fired at a ship that was
-		/// already cloaked has no picture to hold, so it stays blind - which is
-		/// what stops cloak from being a free pass against a fresh salvo.
-		///
-		/// And then what "keeping hold" means depends on the seeker, which is
-		/// the whole practical difference between the two radar types. An
-		/// active seeker carries its own radar, so by the time cloak is in
-		/// play its own cone has already answered the question and the contact
-		/// simply stays held - the launcher can turn away and it does not
-		/// matter. A semi-active seeker is riding the launching ship's picture,
-		/// so the launcher has to keep its nose on the target, and a ship that
-		/// cloaks and then turns away breaks it.
-		///
-		/// The missile's own cone gates all of this already - by the time this
-		/// is asked the contact is inside it - so only the semi-active case
-		/// needs an angle of its own.
+		/// This is deliberately only the cloak half of the question. Whether the
+		/// launcher is still pointing at the contact is a separate test, and it
+		/// used to be folded into this one behind a cloak check - which meant it
+		/// was only ever asked while the target was cloaked. A semi-active
+		/// missile therefore tracked perfectly well with the firing ship turned
+		/// right around, which is the one thing a semi-active missile cannot do:
+		/// it has no radar of its own, so with the launcher looking elsewhere
+		/// there is nothing lighting the target up and nothing to reflect off
+		/// it.
 		/// </remarks>
-		/// <param name="target">The contact being asked about.</param>
-		/// <param name="needsLauncherArc">
-		/// True for a seeker riding the launcher's picture, false for one
-		/// carrying its own radar.
-		/// </param>
-		private bool CanHoldCloaked(Unit target, bool needsLauncherArc)
+		private bool CanHoldCloaked(Unit target)
 		{
-			if (!target.IsFullyCloaked)
-			{
-				return true;
-			}
-			if (!hasEverLocked)
-			{
-				return false;
-			}
-			if (!needsLauncherArc)
-			{
-				return true;
-			}
+			return !target.IsFullyCloaked || hasEverLocked;
+		}
+
+		/// <summary>
+		/// Whether the ship that fired this missile still has its nose on the
+		/// target, which is the whole of what a semi-active seeker rides.
+		/// </summary>
+		/// <remarks>
+		/// Semi-active homing is not a weaker version of active homing, it is a
+		/// different arrangement: the missile carries no transmitter and no
+		/// receiver of its own worth the name, and instead listens to the echo
+		/// off a target that the launching ship is illuminating. The moment the
+		/// launching ship turns away that illumination stops, and the missile is
+		/// a rock that happens to still be flying towards where the target was.
+		///
+		/// Nothing rotates an ActiveTurret in this game - the comment on
+		/// <see cref="TurretComponent.RequiredLaunchAngle"/> says so, and a
+		/// homing missile launches along the hull's own rotation. So the firing
+		/// ship's transform is the antenna, and there is no separate turret
+		/// transform to be reading instead.
+		///
+		/// This is also what stops a fire-and-forget tactic working. The launch
+		/// itself is already gated on the ship's nose being on the target, since
+		/// the required launch angle is the missile's own seeker cone - but that
+		/// is only the instant of firing. A ship that turns hard immediately
+		/// afterwards used to launch a SARH it then had no way to shake, which
+		/// is the cheapest possible answer to the type.
+		/// </remarks>
+		private bool LauncherIlluminates(Unit target)
+		{
 			Unit launcher = missile.Projectile.SourceUnit;
-			if (launcher == null)
+			if (launcher == null || launcher.transform == null)
 			{
 				return false;
 			}
-			return Geometry.IsWithinBearing(launcher.transform, target.transform.position, missile.ProjectileClass.SeekerCloakedHoldArc);
+			float arc = missile.ProjectileClass.SeekerLauncherArc;
+			if (arc <= 0f)
+			{
+				// No arc authored, so this seeker type was not written to need
+				// one. Held rather than blocked, because the field predates every
+				// seeker in the game and reading it as zero must not silently
+				// turn every semi-active missile into a rock.
+				return true;
+			}
+			return Geometry.IsWithinBearing(launcher.transform, target.transform.position, arc);
 		}
 
 		/// <summary>
@@ -853,13 +870,19 @@ namespace OpenFrontier.IP.Engine
 					return !target.IsFullyCloaked && !missile.IsDazzled && HasIrSignature(target);
 
 				case MissileGuidanceType.SARH:
-					// Semi-active: it is riding the launching ship's radar
-					// picture, so the ECM beats it by breaking that picture up,
-					// cloak beats it by taking the ship out of the launcher's
-					// nose, and notching beats it by turning the ship edge-on to
-					// the radar. Three answers, which makes it the most fragile
-					// radar lock in the game despite the middling cone.
-					return !missile.IsDisrupted && HasRadarContact(target) && CanHoldCloaked(target, needsLauncherArc: true);
+					// Semi-active: it has no radar of its own and rides the
+					// launching ship's, so the ECM beats it by breaking that
+					// picture up, the launcher beating it by turning away, cloak
+					// beats it by taking the ship out of that picture, and
+					// notching beats it by turning the ship edge-on to the radar.
+					//
+					// Four answers, which makes it the most fragile radar lock in
+					// the game despite the middling cone. The launcher arc is not
+					// one of the answers - it is the premise. Everything else
+					// only gets asked once the ship is still pointing at the
+					// target at all.
+					return !missile.IsDisrupted && HasRadarContact(target)
+						&& LauncherIlluminates(target) && CanHoldCloaked(target);
 
 				case MissileGuidanceType.ARH:
 				default:
@@ -868,12 +891,12 @@ namespace OpenFrontier.IP.Engine
 					// and a jammer does not care whose radar it is. So an ECM
 					// beats this one too.
 					//
-					// It is notched as well, though - an active radar still has to
-					// resolve a return, and a ship beam-on is a poor one. What ARH
-					// does not suffer from is the launcher's picture: the missile
-					// can hold a cloaked contact and does not care what the firing
-					// ship is doing.
-					return !missile.IsDisrupted && HasRadarContact(target) && CanHoldCloaked(target, needsLauncherArc: false);
+					// It is notched as well - an active radar still has to resolve
+					// a return, and a ship beam-on is a poor one. What ARH does
+					// not suffer from is the launcher's picture: the missile can
+					// hold a cloaked contact and does not care what the firing
+					// ship is doing, because it is lighting the target up itself.
+					return !missile.IsDisrupted && HasRadarContact(target) && CanHoldCloaked(target);
 			}
 		}
 
