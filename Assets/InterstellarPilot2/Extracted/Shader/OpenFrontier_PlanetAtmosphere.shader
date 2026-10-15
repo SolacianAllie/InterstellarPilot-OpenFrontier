@@ -1,17 +1,18 @@
 Shader "OpenFrontier/Planet Atmosphere" {
 	Properties {
 		_AtmoColor ("Atmosphere Color", Vector) = (0.35,0.78,1,1)
-		_SunRimColor ("Sun Rim Color", Color) = (1,0.55,0.3,1)
-		_SunRimPower ("Sun Rim Power", Range(1, 16)) = 2
+		_SunRimColor ("Sun Rim Color", Color) = (1,0.62,0.30,1)
 		_Size ("Size", Float) = 0.75
 		_Falloff ("Falloff", Float) = 2
 		_Transparency ("Transparency", Float) = 3
 		_NightGlow ("Night Glow", Range(0, 0.3)) = 0.03
-		_TerminatorFalloff ("Terminator Falloff", Range(1, 16)) = 4
 		[Header(Volume)]
 		_ScaleHeight ("Scale Height", Range(0.004, 0.1)) = 0.012
 		_Density ("Density", Range(0.3, 12)) = 3
-		_DepthTint ("Depth Tint", Range(0, 1)) = 0.15
+		[Header(SunBleed)]
+		_SunBleed ("Sun Bleed", Range(0, 1)) = 1
+		_SunBleedPower ("Sun Bleed Power", Range(0.5, 6)) = 1.3
+		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 0.5
 	}
 	SubShader {
 		Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" }
@@ -29,15 +30,15 @@ Shader "OpenFrontier/Planet Atmosphere" {
 
 			fixed4 _AtmoColor;
 			fixed4 _SunRimColor;
-			float _SunRimPower;
 			float _Size;
 			float _Falloff;
 			float _Transparency;
 			float _NightGlow;
-			float _TerminatorFalloff;
 			float _ScaleHeight;
 			float _Density;
-			float _DepthTint;
+			float _SunBleed;
+			float _SunBleedPower;
+			float _SunRimBoost;
 			// URP publishes these every frame, for every camera. For a
 			// directional light _MainLightPosition.xyz is the direction TOWARDS
 			// the light -- the exact vector GetMainLight().direction hands to
@@ -148,14 +149,13 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// limb blowing out to white and is most of the "solid" feel.
 				float density = 1.0 - exp(-tau * _Density);
 
-				// Hue follows path length, but only slightly. A strong warm push here
-				// fights the look: the dense core of the band is CYAN in every
-				// reference, and warmth belongs to the sunrise arc alone,
-				// which is driven by the sun's geometry further down. Push
-				// this too far and the core desaturates to beige, because
-				// blue lerped toward orange passes through grey.
-				fixed3 air = lerp(_AtmoColor.rgb, _SunRimColor.rgb,
-					saturate(density * _DepthTint));
+				// Hue is NOT driven by density. A warm push keyed to how much air
+				// the ray crossed reddened the DENSE CORE of the band, which is
+				// the atmosphere's own colour in every reference -- and because
+				// blue lerped toward orange passes through grey, it desaturated
+				// that core to beige. Warmth belongs to the sun's geometry
+				// alone, which is what the next block keys off.
+				fixed3 air = _AtmoColor.rgb;
 
 				// day/night: the shell is concentric with the planet, so the
 				// shell normal IS the planet's normal at this limb point.
@@ -163,23 +163,43 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				float ndl = dot(n, l);
 				float day = smoothstep(-0.2, 0.3, ndl);
 
-				// sunset band hugging the terminator line
-				float terminator = pow(saturate(1.0 - abs(ndl)), _TerminatorFalloff);
+				// How far the sun's colour has bled into the air here.
+				//
+				// The sun is LOW at the terminator, and that is the one place
+				// light has crossed the most atmosphere sideways before
+				// reaching us, so it arrives reddened. As the sun climbs the
+				// path shortens and the air goes back to its own colour. That
+				// is the gradient along the limb in the sunset reference: warm
+				// around the sun's bearing, the atmosphere's own colour around
+				// the rest of the lit side.
+				//
+				// ndl and NOT abs(ndl): only the sun-ABOVE-the-horizon side
+				// reddens. The night side is already killed by `day`, and the
+				// absolute value would redden the anti-solar limb as well.
+				float lowSun = pow(saturate(1.0 - ndl), _SunBleedPower);
 
-				// Sunrise/sunset arc. dot(v, -l) is high only when the sun
-				// is on the far side of this limb point from the camera --
-				// i.e. when the sun is beyond the planet, not behind you --
-				// so the hot rim appears on the sunward limb at dawn and
-				// dusk and nowhere else. Multiply by the density so the rim
-				// still needs air to scatter through, and by the terminator
-				// so it stays a band rather than washing the whole limb.
-				float forwardScatter = pow(saturate(dot(v, -l)), _SunRimPower);
-				float rim = density * terminator * forwardScatter * _SunRimColor.a;
+				// Keep this to the case where the sun is low FOR US, not merely
+				// low somewhere on the planet. With the sun directly behind
+				// the camera the terminator coincides with the visible limb,
+				// so every limb point reads as "sun at the horizon" and the
+				// whole rim would redden on a fully lit day side. dot(l, v) is
+				// positive when the sun is on our side of the planet; this
+				// fades the bleed out as that grows.
+				float lowForUs = saturate(0.55 - dot(l, v) * 1.5);
+				float sunBleed = saturate(lowSun * lowForUs * _SunBleed);
 
-				// two colours, as authored: the air itself, and the sun
-				// burning through it
-				fixed3 tint = air * density * (day + _NightGlow) * lightCol
-				            + _SunRimColor.rgb * rim * lightCol;
+				// Two colours, and the sun REPLACES rather than adds. Additive
+				// warm on top of full-strength air washes the two together
+				// into cream, which is why they used to collapse into one
+				// colour instead of reading as a bleed.
+				fixed3 tint = lerp(air, _SunRimColor.rgb, sunBleed)
+				            * density * (day + _NightGlow) * lightCol;
+
+				// A small additive core on top, for the hot line right where
+				// the sun is coming up.
+				tint += _SunRimColor.rgb
+				      * (density * lowSun * lowForUs * _SunRimBoost * lightCol);
+
 				// _Transparency is the master gain. The 0.4 scale is not arbitrary:
 				// it puts the core of the band at roughly (0.5, 0.85, 1.0)
 				// for a _AtmoColor near the default, which is where the

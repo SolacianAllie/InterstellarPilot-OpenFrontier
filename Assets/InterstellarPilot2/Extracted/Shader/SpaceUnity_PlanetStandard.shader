@@ -13,7 +13,7 @@ Shader "SpaceUnity/PlanetStandard" {
 		_HazeStrength ("Haze Strength", Range(0, 1)) = 0.6
 		_HazeSunStrength ("Haze Sun Strength", Range(0, 2)) = 0.8
 		_HazeFalloff ("Haze Falloff", Range(0.5, 8)) = 2.5
-		_HazeSunPower ("Haze Sun Power", Range(1, 32)) = 4
+		_HazeSunPower ("Haze Sun Power", Range(0.5, 6)) = 1.3
 	}
 	SubShader {
 		Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
@@ -167,11 +167,22 @@ half3 emission = lightsTex * _LightScale * nightMask
 				// never disagree with the terminator.
 				float hazeLit = smoothstep(-0.15, 0.25, ndl);
 
-				// The sunrise arc washes the surface too, not just the shell.
-				// dot(V, -L) is high only when the sun is on the far side of
-				// this point from the camera -- beyond the planet, not behind
-				// you -- so this stays dark on a fully lit day side.
-				float hazeSun = pow(saturate(dot(viewDirWS, -mainLight.direction)), _HazeSunPower);
+				// The sunrise arc washes the surface too, not just the shell, and it
+				// has to be driven the SAME way the shell drives it or the two
+				// halves will disagree about where the sunset is.
+				//
+				// Keyed on ndl: the sun being low at this point is what makes
+				// its light arrive reddened. The global dot(V, -L) that used to
+				// drive this is nearly constant around the visible limb, so it
+				// could not produce a gradient along the rim at all -- it could
+				// only switch the whole limb warm or not.
+				float lowSun = pow(saturate(1.0 - ndl), _HazeSunPower);
+				// and only when the sun is low for US, not just somewhere on
+				// the planet; otherwise a sun directly behind the camera puts
+				// the terminator exactly on the visible limb and the wash
+				// covers everything.
+				float lowForUs = saturate(0.55 - dot(mainLight.direction, viewDirWS) * 1.5);
+				float hazeSun = saturate(lowSun * lowForUs);
 
 				half3 hazeTint = lerp(_HazeColor.rgb, _HazeSunColor.rgb, saturate(hazeSun));
 				float hazeAmt = saturate(grazing * hazeLit
