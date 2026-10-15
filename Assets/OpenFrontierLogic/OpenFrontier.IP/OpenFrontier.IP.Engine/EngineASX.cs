@@ -4292,28 +4292,64 @@ namespace OpenFrontier.IP.Engine
 		/// what the previous behaviour actually turned on, so using it keeps
 		/// this provably identical rather than merely equivalent.
 		///
-		/// Iterating the whole list rather than only the active sector's ships is
-		/// deliberate: the scan is ~6,300 pointer checks with an early-out,
-		/// which is roughly two orders of magnitude cheaper than the dispatch
-		/// it replaces, and it cannot miss a unit of a type the active sector
-		/// list does not cover.
+		/// The source of the unit list was updatableUnits, the whole world, with
+		/// an early-out. That was a reasonable second best - ~6,300 pointer
+		/// checks is two orders of magnitude cheaper than the dispatch it
+		/// replaced - but it is O(world) work to service O(active sector), and
+		/// the early-out threw away all of it for every unit not on screen.
+		///
+		/// It now reads the active sector's own per-type lists instead, which
+		/// is the same set by construction rather than by coincidence:
+		///
+		///   IsInActiveSector is true  =>  sector != null && sector == ActiveSector
+		///                             (SectorObject.RefreshIsInActiveSector)
+		///   sector != null            =>  sector.unitsByType[unit.UnitType]
+		///                             contains it (Unit.cs: Sector.AddUnit on
+		///                             every sector set, RemoveUnit on clear -
+		///                             unconditional and symmetric, so there is
+		///                             no path that puts a unit in one list and
+		///                             not the other)
+		///
+		/// Every unit type is walked, not just Ship. The earlier version only
+		/// considered ships, and the comment it replaced warned specifically
+		/// that a ship-only list "cannot miss a unit of a type the active
+		/// sector list does not cover" - stations, asteroids, cargo and gas
+		/// clouds all tick through here too.
+		///
+		/// ShouldTickNow is still applied rather than trusting the sector lists
+		/// on their own. It also checks hasInit and unit.Engine, and it reads
+		/// the cached flag, so keeping it means that even in the frame after a
+		/// sector change - where the cached flag and the sector lists can
+		/// briefly disagree - this ticks exactly what the old scan ticked.
 		/// </remarks>
 		private void UpdateActiveSectorUnits()
 		{
-			int num = updatableUnits.Count;
-			for (int i = 0; i < num; i++)
+			Sector activeSector = ActiveSector;
+			if (activeSector == null || unitTypes == null)
 			{
-				Unit unit = updatableUnits[i];
-				if (unit == null)
+				return;
+			}
+			for (int t = 0; t < unitTypes.Length; t++)
+			{
+				List<Unit> units = activeSector.GetUnitsByType(unitTypes[t]);
+				if (units == null)
 				{
 					continue;
 				}
-				UnitComponentHolder components = unit.Components;
-				if (components == null || !components.ShouldTickNow)
+				for (int i = 0; i < units.Count; i++)
 				{
-					continue;
+					Unit unit = units[i];
+					if (unit == null)
+					{
+						continue;
+					}
+					UnitComponentHolder components = unit.Components;
+					if (components == null || !components.ShouldTickNow)
+					{
+						continue;
+					}
+					components.Tick();
 				}
-				components.Tick();
 			}
 		}
 
