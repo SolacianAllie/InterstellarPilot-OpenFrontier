@@ -10,11 +10,29 @@ namespace OpenFrontier.IP.Engine
 
 		private const float projectileCheckFreq = 0.3f;
 
+		/// <summary>
+		/// Hard cap on how many missiles one countermeasure can disrupt.
+		/// </summary>
+		/// <remarks>
+		/// A cap on its own would have done nothing: GetDisruptedMissile
+		/// returned on the first success, so a puff contesting five missiles
+		/// rolled against exactly one of them - whichever OverlapSphere
+		/// happened to return first. Over a long engagement that let one
+		/// deployment turn around a dozen or more missiles, which is not
+		/// what 'an ECM fools the missiles chasing me' is meant to mean.
+		///
+		/// Every missile in range is now rolled against, and this is the
+		/// ceiling on the total. One deployment fools a salvo, then stops.
+		/// </remarks>
+		private const int MaxMissilesDisrupted = 5;
+
 		public CountermeasureClass CountermeasureClass;
 
 		private float effectiveness;
 
 		private bool expended;
+
+		private int disruptedMissiles;
 
 		private float nextCheck;
 
@@ -65,6 +83,7 @@ namespace OpenFrontier.IP.Engine
 			effectiveness = CountermeasureClass.Effectiveness;
 			nextCheck = 0f;
 			expended = false;
+			disruptedMissiles = 0;
 			bool flag = Vector3.Distance(projectile.transform.position, GameController.Instance.MainCamera.transform.position) < GameController.Instance.GameSettings.PerformanceSettings.CountermeasureParticlesMaxDistance;
 			foreach (ParticleSystem particleSystem in ParticleSystems)
 			{
@@ -78,27 +97,57 @@ namespace OpenFrontier.IP.Engine
 			velocity = Vector3.zero;
 		}
 
-		public Missile GetDisruptedMissile()
+		/// <summary>
+		/// Rolls every hostile, undisrupted missile in range and disrupts up to
+		/// whatever is left of this countermeasure's budget of five.
+		/// </summary>
+		/// <returns>How many were disrupted by this call.</returns>
+		public int DisruptMissilesInRange()
 		{
-			Faction sourceFaction = projectile.SourceFaction;
-			if (sourceFaction != null && projectile.Engine.ScenarioElapsedTime - projectile.FireTime > (double)CountermeasureClass.MinTimeBeforeDisruption)
+			if (disruptedMissiles >= MaxMissilesDisrupted)
 			{
-				Collider[] array = Physics.OverlapSphere(transform.position, CountermeasureClass.MaxDisruptionRange, GameController.Instance.MissileLayer);
-				for (int i = 0; i < array.Length; i++)
-				{
-					Missile component = array[i].GetComponent<Missile>();
-					if (!component.IsDisrupted && Faction.IsFactionHostileTo(component.Projectile.Unit.Faction, sourceFaction))
-					{
-						float num = Vector3.Dot(Vector3.Normalize(transform.position - component.transform.position), component.transform.forward);
-						float num2 = effectiveness * num;
-						if (Random.value < num2)
-						{
-							return component;
-						}
-					}
-				}
+				return 0;
 			}
-			return null;
+			Faction sourceFaction = projectile.SourceFaction;
+			if (sourceFaction == null || projectile.Engine.ScenarioElapsedTime - projectile.FireTime <= (double)CountermeasureClass.MinTimeBeforeDisruption)
+			{
+				return 0;
+			}
+			Collider[] array = Physics.OverlapSphere(transform.position, CountermeasureClass.MaxDisruptionRange, GameController.Instance.MissileLayer);
+			int num = 0;
+			for (int i = 0; i < array.Length; i++)
+			{
+				if (disruptedMissiles >= MaxMissilesDisrupted)
+				{
+					break;
+				}
+				Missile component = array[i].GetComponent<Missile>();
+				// Target check first: only a missile actually chasing the ship that
+				// fired this ECM. Otherwise an ECM sat between two ships would
+				// turn around missiles that were never going to reach it.
+				if (component == null || component.IsDisrupted || component.Projectile == null
+					|| component.Projectile.Target != projectile.Unit
+					|| component.Projectile.Unit == null
+					|| !Faction.IsFactionHostileTo(component.Projectile.Unit.Faction, sourceFaction))
+				{
+					continue;
+				}
+				// Behind the missile the dot product goes negative and the roll is
+				// impossible, which is the behaviour that was already there.
+				float facing = Vector3.Dot(Vector3.Normalize(transform.position - component.transform.position), component.transform.forward);
+				if (!(Random.value < effectiveness * facing))
+				{
+					continue;
+				}
+				if (!GameController.Instance.GameSettings.DebugSettings.CountermeasureDisruptionEnabled)
+				{
+					continue;
+				}
+				component.Disrupt(projectile.Unit);
+				disruptedMissiles++;
+				num++;
+			}
+			return num;
 		}
 
 		private void Awake()
@@ -108,7 +157,7 @@ namespace OpenFrontier.IP.Engine
 
 		private void Update()
 		{
-			if (!expended && Time.time > nextCheck)
+			if (!expended && disruptedMissiles < MaxMissilesDisrupted && Time.time > nextCheck)
 			{
 				nextCheck = Time.time + 0.3f;
 				if (GameController.Instance.GameSettings.DebugSettings.CountermeasureFindDisruptedMissile)
@@ -126,21 +175,12 @@ namespace OpenFrontier.IP.Engine
 
 		private void PerformDisruptionCheck()
 		{
-			if (!(effectiveness > Random.value))
+			// No outer 'effectiveness' roll any more. It used to gate the whole
+			// check AND be applied again per missile inside the loop, so ECM I
+			// was really 0.8 x 0.8 head-on instead of the 0.8 its data says.
+			if (DisruptMissilesInRange() > 0 && CountermeasureClass.ExpendAfterDisruption)
 			{
-				return;
-			}
-			Missile disruptedMissile = GetDisruptedMissile();
-			if (disruptedMissile != null)
-			{
-				if (GameController.Instance.GameSettings.DebugSettings.CountermeasureDisruptionEnabled)
-				{
-					disruptedMissile.Disrupt(projectile.Unit);
-				}
-				if (CountermeasureClass.ExpendAfterDisruption)
-				{
-					expended = true;
-				}
+				expended = true;
 			}
 		}
 	}
