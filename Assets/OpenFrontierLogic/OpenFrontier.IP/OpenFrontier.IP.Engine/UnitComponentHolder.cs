@@ -152,6 +152,14 @@ namespace OpenFrontier.IP.Engine
 
 		private List<ComponentBase> unitComponents = new List<ComponentBase>(10);
 
+		/// <summary>
+		/// Utility mounts, kept beside <see cref="unitComponents"/> rather than
+		/// searched out of it. A laser missile asks its launcher for a beam ten
+		/// times a second, and walking every component on the ship to find one
+		/// would be that walk per missile per check.
+		/// </summary>
+		private readonly List<UtilityMountComponent> utilityMounts = new List<UtilityMountComponent>(2);
+
 		private CargoTrader cargoTrader;
 
 		private UnitAutoTurretModule autoTurretModule;
@@ -1472,6 +1480,36 @@ namespace OpenFrontier.IP.Engine
 				}
 				unitComponents.Insert(i, component);
 			}
+			if (component is UtilityMountComponent mount && !utilityMounts.Contains(mount))
+			{
+				utilityMounts.Add(mount);
+			}
+		}
+
+		/// <summary>
+		/// Every utility mount on this ship. A ship with two of them has two
+		/// beams, so there is no best one to pick and nothing to arbitrate.
+		/// </summary>
+		public List<UtilityMountComponent> UtilityMounts => utilityMounts;
+
+		/// <summary>
+		/// Puts this ship's designators onto a target, for a shot that needs one.
+		/// </summary>
+		/// <remarks>
+		/// Only homing projectiles ask, because only they can be waiting on a
+		/// beam. Every mount is asked rather than just the first, so fitting a
+		/// second one helps instead of doing nothing.
+		/// </remarks>
+		public void RequestUtilityMountDesignation(Unit target)
+		{
+			for (int i = 0; i < utilityMounts.Count; i++)
+			{
+				UtilityMountComponent mount = utilityMounts[i];
+				if (mount != null)
+				{
+					mount.Designate(target);
+				}
+			}
 		}
 
 		public void DeregisterComponent(ComponentBase component)
@@ -1479,6 +1517,10 @@ namespace OpenFrontier.IP.Engine
 			if (unitComponents.Contains(component))
 			{
 				unitComponents.Remove(component);
+			}
+			if (component is UtilityMountComponent mount)
+			{
+				utilityMounts.Remove(mount);
 			}
 		}
 

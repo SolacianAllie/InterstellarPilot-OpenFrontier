@@ -152,6 +152,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 				UnitComponents.RegisterWeaponsFire();
 			}
 			UnitComponents.anyComponentRequiresRecharge = true;
+			RequestLaserDesignation(target);
 			onFired(target);
 			if (activeTurret != null)
 			{
@@ -161,6 +162,44 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 			InactiveFire(target);
 			return true;
 		}
+
+		/// <summary>
+		/// Tells this ship's utility mounts to hold their beam on whatever this
+		/// shot is aimed at.
+		/// </summary>
+		/// <remarks>
+		/// Only a homing projectile asks, because only one can be waiting on a
+		/// beam. A gun is aimed by the shot itself and needs nothing kept on the
+		/// target afterwards, so asking for a beam it will never ride would
+		/// leave one burning for no reason.
+		///
+		/// This is also where deselection comes from, without any of it being
+		/// about the HUD: the beam follows the shots. Stop shooting at a ship,
+		/// or start shooting at a different one, and the laser moves - which is
+		/// exactly what losing it by deselection means. An AI ship designates
+		/// through the same call as a player's, because the firing code is the
+		/// firing code.
+		/// </remarks>
+		private void RequestLaserDesignation(Unit target)
+		{
+			if (target == null || !NeedsLaserDesignation)
+			{
+				return;
+			}
+			UnitComponents.RequestUtilityMountDesignation(target);
+		}
+
+		/// <summary>
+		/// Whether a shot from this turret needs a laser designator held on the
+		/// target for it to work.
+		/// </summary>
+		/// <remarks>
+		/// False for everything that is not a projectile turret. It is a
+		/// question about the round in the tube, not about the launcher - a
+		/// launcher that can fire a laser missile and a radar missile asks for
+		/// a beam only when the laser one is the one loaded.
+		/// </remarks>
+		protected virtual bool NeedsLaserDesignation => false;
 
 		public virtual void RemoveAmmoForFiring()
 		{

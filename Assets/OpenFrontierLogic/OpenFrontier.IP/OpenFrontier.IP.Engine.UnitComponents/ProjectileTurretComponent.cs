@@ -142,6 +142,15 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 			return false;
 		}
 
+		/// <summary>
+		/// Only the laser seeker needs the launcher to be holding a designator on
+		/// the target. Everything else here flies on its own, so asking for a
+		/// beam for them would leave one burning on a ship that has no reason
+		/// to be pointing one at anything.
+		/// </summary>
+		protected override bool NeedsLaserDesignation =>
+			curProjectileClass != null && curProjectileClass.GuidanceType == MissileGuidanceType.Optical;
+
 		public void SelectFirstProjectileClass(bool conventionalWeaponsOnly)
 		{
 			if (PopulateProjectileClasses(ignoreAmmo: true, sort: true, conventionalWeaponsOnly) > 0)

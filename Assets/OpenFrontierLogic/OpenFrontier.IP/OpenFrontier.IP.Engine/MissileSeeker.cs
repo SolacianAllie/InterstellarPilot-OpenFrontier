@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using OpenFrontier.IP.Engine.UnitComponents;
 using UnityEngine;
 
@@ -235,13 +236,14 @@ namespace OpenFrontier.IP.Engine
 			switch (missile.ProjectileClass.GuidanceType)
 			{
 				case MissileGuidanceType.Optical:
-					// A laser seeker rides on a designator the launcher has to
-					// keep on the target, so it is the most fragile thing in the
-					// game - and the only type that must never quietly fall back
-					// to a blanket yes. Until the Utility Mount exists to be
-					// that designator, the launcher's own lock is the best
-					// answer available and the cone does the rest.
-					return true;
+					// A laser seeker sees nothing by itself. It is riding the
+					// beam the launcher is pointing at the target, so the beam
+					// has to still be there - which means the launching ship
+					// has to still be designating that target, and the utility
+					// mount has to have swung onto it. That is the whole
+					// weakness of this type, and the reason it is at the bottom
+					// of the order.
+					return IsDesignated(target);
 
 				case MissileGuidanceType.IR:
 					// Follows the target's own heat, so a cloaked ship has no
@@ -273,6 +275,35 @@ namespace OpenFrontier.IP.Engine
 		public void LoseLock()
 		{
 			hasLock = false;
+		}
+
+		/// <summary>
+		/// Whether the launching ship is still holding a beam on this target.
+		/// </summary>
+		/// <remarks>
+		/// The launcher is resolved once and kept, because a missile does not
+		/// change hands mid-flight and a launcher's bay can be blown off it
+		/// without that being a reason to start looking for a different ship.
+		/// Every mount on it counts: a ship with two has two beams and no reason
+		/// to pick between them.
+		/// </remarks>
+		private bool IsDesignated(Unit target)
+		{
+			Unit launcher = missile.Projectile.SourceUnit;
+			if (launcher == null || launcher.Components == null)
+			{
+				return false;
+			}
+			List<UtilityMountComponent> mounts = launcher.Components.UtilityMounts;
+			for (int i = 0; i < mounts.Count; i++)
+			{
+				UtilityMountComponent mount = mounts[i];
+				if (mount != null && mount.IsLasing(target))
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 
 		/// <summary>
