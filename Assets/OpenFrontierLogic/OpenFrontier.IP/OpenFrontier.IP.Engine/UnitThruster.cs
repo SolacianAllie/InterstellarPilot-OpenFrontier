@@ -73,6 +73,26 @@ namespace OpenFrontier.IP.Engine
 			}
 			foreach (UnitThrusterParticleSystem unitThrusterParticleSystem in UnitThrusterClass.UnitThrusterParticleSystems)
 			{
+				if (unitThrusterParticleSystem == null
+					|| unitThrusterParticleSystem.ParticleSystemPrefab == null)
+				{
+					// Skip rather than throw.
+					//
+					// Every entry in this list is expected to name a particle
+					// prefab, and one that does not is a content mistake. The old
+					// behaviour dereferenced it unconditionally, which meant a
+					// single bad entry took out every particle system after it in
+					// the list - not just its own. That is how the engine smoke
+					// went missing: a heat value had been appended as a list entry
+					// with no prefab, the loop threw on it, and the smoke puff
+					// that came after it in the same class was never instantiated.
+					// Five thruster classes were quietly rendering only their
+					// exhaust flame.
+					//
+					// One bad entry costing one effect is a bug. One bad entry
+					// costing every effect after it is a trap.
+					continue;
+				}
 				ParticleSystem particleSystem = instance.PlayPooledParticleSystem(unitThrusterParticleSystem.ParticleSystemPrefab.gameObject, transform.position, transform.rotation);
 				particleSystem.transform.SetParent(transform, worldPositionStays: true);
 				activeParticleSystems.Add(new ActiveUnitThruster(particleSystem, unitThrusterParticleSystem, particleSystem.emission.rateOverTime.constant, particleSystem.main.startColor.color));
