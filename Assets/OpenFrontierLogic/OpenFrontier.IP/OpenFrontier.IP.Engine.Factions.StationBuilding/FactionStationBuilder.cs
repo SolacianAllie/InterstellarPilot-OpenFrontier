@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using OpenFrontier.IP.Common.Factions;
+using OpenFrontier.IP.Engine.StationNaming;
 using OpenFrontier.IP.Engine.WorldPopulation;
 using UnityEngine;
 
@@ -71,6 +72,11 @@ namespace OpenFrontier.IP.Engine.Factions.StationBuilding
 			{
 				unit.UnitName = faction.Name;
 				unit.UnitShortName = faction.ShortName;
+			}
+			else
+			{
+				// Everything else used to read "Outpost QQ3".
+				StationNamer.NameIfUnnamed(unit, sector != null ? sector.UniqueId : 0);
 			}
 			return unit;
 		}

@@ -1,0 +1,162 @@
+﻿Name,ShortName,StationPurposeMask
+The Rust Belt,Rust Belt,5
+The Crucible,Crucible,5
+The Smelter,Smelter,5
+The Tapping Floor,Tapping Floor,5
+Ironhaul,Ironhaul,5
+The Slag Heap,Slag Heap,5
+The Ingot Line,Ingot Line,5
+Cinder Yard,Cinder Yard,5
+The Blast House,Blast House,5
+The Coke Ovens,Coke Ovens,5
+Molten,Molten,5
+The Ninth Furnace,Ninth Furnace,5
+The Long Pour,Long Pour,5
+Quench,Quench,5
+The Scale House,Scale House,5
+Billett,Billett,5
+The Dross Pit,Dross Pit,5
+Gantry,Gantry,5
+The Clinker Field,Clinker Field,5
+Hot Metal,Hot Metal,5
+The Settling Tank,Settling Tank,5
+Slake,Slake,5
+The Calciner,Calciner,5
+Reduction,Reduction,5
+The Sinter Plant,Sinter Plant,5
+The Roaster,Roaster,5
+The Tailings Dam,Tailings Dam,5
+The Keelhaul,Keelhaul,40
+The Dry Dock,Dry Dock,40
+Slipway Nine,Slipway Nine,40
+The Fitting Out,Fitting Out,40
+The Overhaul,Overhaul,40
+Cold Iron,Cold Iron,40
+The Marine Railway,Marine Railway,40
+Graving Dock,Graving Dock,40
+The Launch Ramp,Launch Ramp,40
+The Hard Stand,Hard Stand,40
+Way Three,Way Three,40
+The Shipwright,Shipwright,40
+The Caulking Bench,Caulking Bench,40
+The Paint Shop,Paint Shop,40
+Bilge and Ballast,Bilge and Ballast,40
+The Mast Step,Mast Step,40
+The Dockyard Gate,Dockyard Gate,40
+Yard Two,Yard Two,40
+The Scaffolding,Scaffolding,40
+The Jacks,Jacks,40
+Shores,Shores,40
+The Tenders,Tenders,40
+The Outfitting Wharf,Outfitting Wharf,40
+Keelblocks,Keelblocks,40
+The Last Resort,Last Resort,2050
+Fair Exchange,Fair Exchange,2050
+The Trading Post,Trading Post,2050
+The Weekly Market,Weekly Market,2050
+The Clearance,Clearance,2050
+The Ledger,Ledger,2050
+The Counting House,Counting House,2050
+The Exchange Floor,Exchange Floor,2050
+Common Ground,Common Ground,2050
+The Long Ledger,Long Ledger,2050
+The Credit Line,Credit Line,2050
+The Bad Debt Office,Bad Debt Office,2050
+The Open Book,Open Book,2050
+Settlement,Settlement,2050
+The Invoice Desk,Invoice Desk,2050
+The Brokerage,Brokerage,2050
+The Assay Office,Assay Office,2050
+The Weighhouse,Weighhouse,2050
+The Tally Room,Tally Room,2050
+The Market Cross,Market Cross,2050
+The Waystation,Waystation,2048
+The Far Post,Far Post,2048
+Nightwatch,Nightwatch,2048
+The Beacon,Beacon,2048
+The Long Dark,Long Dark,2048
+The Last Light,Last Light,2048
+The Cold outpost,Cold outpost,2048
+Vigil,Vigil,2048
+The Watch House,Watch House,2048
+The Signal Tower,Signal Tower,2048
+The Far Signal,Far Signal,2048
+The Quiet Station,Quiet Station,2048
+The Last Relief,Last Relief,2048
+The Long Supply Line,Long Supply Line,2048
+The Deep Field Post,Deep Field Post,2048
+The Outer Mark,Outer Mark,2048
+The Pilot's Rest,Pilot's Rest,2048
+The Relief Station,Relief Station,2048
+Lamplight,Lamplight,2048
+The Standing Watch,Standing Watch,2048
+The Assembly Line,Assembly Line,20
+The Tool Room,Tool Room,20
+The Press Shop,Press Shop,20
+The Small Parts Works,Small Parts Works,20
+Calibration,Calibration,20
+The Assembly Hall,Assembly Hall,20
+The Parts Bins,Parts Bins,20
+The Bench Shop,Bench Shop,20
+The Rotor Shop,Rotor Shop,20
+The Fitting Shop,Fitting Shop,20
+The Test Bench,Test Bench,20
+The Stores,Stores,20
+The Pattern Shop,Pattern Shop,20
+The Weld Bay,Weld Bay,20
+The Machine Hall,Machine Hall,20
+The Line Four,Line Four,20
+The Inspection Bench,Inspection Bench,20
+The Bone Yard,Bone Yard,4096
+The Wrecking Ground,Wrecking Ground,4096
+The Stripping Table,Stripping Table,4096
+Scrapheap,Scrapheap,4096
+The Cut Up,Cut Up,4096
+The Breakers' Yard,Breakers' Yard,4096
+The Scrapping Floor,Scrapping Floor,4096
+The Chassis Pool,Chassis Pool,4096
+The Pickers,Pickers,4096
+The Weighbridge,Weighbridge,4096
+The Cut Lance,Cut Lance,4096
+The Dismantling Row,Dismantling Row,4096
+The Redoubt,Redoubt,1088
+The Garrison,Garrison,1088
+The Watch Command,Watch Command,1088
+The Battery,Battery,1088
+The Musketry,Musketry,1088
+The Barbican,Barbican,1088
+The Guard Post,Guard Post,1088
+The Muster Roll,Muster Roll,1088
+The Orderly Room,Orderly Room,1088
+The Signal Office,Signal Office,1088
+The Cipher Room,Cipher Room,1088
+The Rookery,Rookery,1088
+The Sprawl,Sprawl,1088
+The Curtain Wall,Curtain Wall,1088
+The Flak Line,Flak Line,1088
+Sentry,Sentry,256
+The Watchcap,Watchcap,256
+The Overhead,Overhead,256
+The High Guard,High Guard,256
+The Kestrel Post,Kestrel Post,256
+The Eyes,Eyes,256
+The Periscope,Periscope,256
+The Overwatch,Overwatch,256
+The Kite String,Kite String,256
+The Early Warning,Early Warning,256
+Bosun's Rest,Bosun's,0
+Skipper's Locker,Skipper's,0
+Master's Quarters,Master's,0
+Navigator's Relief,Navigator's,0
+Engineer's Camp,Engineer's,0
+Cook's Galley,Cook's,0
+Purser's Office,Purser's,0
+Trader's Store,Trader's,0
+Pilot's Bunk,Pilot's,0
+Steward's Pantry,Steward's,0
+Factor's Office,Factor's,0
+Clerk's Desk,Clerk's,0
+Bosun's Locker,Bosun's,0
+Rigger's Bench,Rigger's,0
+Hostler's Shed,Hostler's,0
+The Surveyor's Mark,Surveyor's Mark,0
