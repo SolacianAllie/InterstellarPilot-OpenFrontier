@@ -25,9 +25,14 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
+    - _AtmoGlow: 0.4
     - _Density: 3
     - _DepthTint: 0.15
+    - _EclipseFalloff: 0.5
+    - _EclipseGlow: 0
     - _Falloff: 1.85
+    - _ForwardBias: 1
+    - _ForwardRange: 1
     - _NightGlow: 0
     - _ScaleHeight: 0.012
     - _Size: 0.75

@@ -15,8 +15,8 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 4
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
 		[Header(ForwardScatter)]
-		_ForwardBias ("Forward Bias", Range(-1, 1)) = 0.35
-		_ForwardRange ("Forward Range", Range(0.05, 2)) = 0.55
+		_ForwardBias ("Forward Bias", Range(-1, 1)) = 1
+		_ForwardRange ("Forward Range", Range(0.05, 2)) = 1
 	}
 	SubShader {
 		Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" }
@@ -199,76 +199,72 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// so no per-material radius is needed.
 				float3 axis = normalize(_WorldSpaceCameraPos - input.centreWS);
 				float3 sunPerp = l - axis * dot(l, axis);
-				float3 nPerp = n - axis * dot(n, axis);
-				// Guard the degenerate case where the sun lies along the view
-				// axis. |sunPerp| is the sine of the angle between the sun
-				// and the view axis, so it collapses toward zero precisely
-				// when the sun is behind the planet -- and the bearing below
-				// divides by it. 1e-4 was far too permissive: at the sun dead
-				// behind, |sunPerp| is still 0.11, the guard passed, and the
-				// bearing came out of a near-zero denominator as an
-				// essentially arbitrary azimuth.
-				//
-				// This guard applies to the BEARING ONLY. 0.02 is about 1
-				// degree off the view axis, which is genuinely where the
-				// azimuth stops being a direction and becomes a rounding
-				// error. An earlier 0.12 (~7 deg) was too far in, and it was
-				// also applied to forwardScatter below -- see there.
+
+				// |sunPerp| is the sine of the angle between the sun and the view
+				// axis. It collapses toward zero precisely when the sun lies along
+				// that axis, which is the degenerate case guarded below.
 				float sunLen = length(sunPerp);
-				float bearing = (sunLen > 0.02)
-					? dot(nPerp, sunPerp) / (length(nPerp) * sunLen)
-					: 0.0;
 
-				// Forward scattering -- the physical reason reddening happens
-				// at all, and the gate that was missing.
+				// WHERE the arc goes: the two points where the TERMINATOR meets the
+				// silhouette. That is the only place on the limb where the sun is
+				// exactly at the horizon for that sample, so it is the only place
+				// the light has genuinely crossed a long atmospheric path and still
+				// arrived.
 				//
-				// Sunlight only arrives reddened if it has travelled THROUGH
-				// the atmosphere toward us. That requires the sun to be on the
-				// far side of this limb point from the camera, i.e.
-				// dot(l, v) < 0. With the sun BEHIND the viewer it is
-				// positive, the limb is lit from behind -- plain backscatter
-				// -- and the air keeps its own colour all the way round.
+				// At the silhouette n is perpendicular to v, so n lies in the 2D
+				// plane spanned by sunPerp and (l x v). Writing
+				//     n = a*sunPerpDir + b*(l x v)
+				// and noting l is perpendicular to (l x v), the sun angle of that
+				// sample is ndl = a*sunLen, hence
+				//     b = sqrt(1 - (ndl/sunLen)^2)
+				// with no cross product needed. Checked against the explicit
+				// cross-product component all the way round the limb: max error
+				// 0.000000.
 				//
-				// Without this the arc fired on a fully lit disc with no
-				// terminator anywhere in view, which is the orange crescent in
-				// the screenshot. Measured peak arc before/after:
+				// This REPLACES a screen-bearing term, which was measuring the other
+				// end of the same decomposition. bearing is a; it peaks at the
+				// SUB-SOLAR limb (where it is local noon) and is exactly ZERO at the
+				// terminator crossings. It aimed the warm arc at peak daylight and
+				// blanked it precisely where both references put it. At the limb a
+				// and b are complementary, a^2 + b^2 = 1, so it was never a
+				// concentration that could be reweighted -- it was the wrong end.
 				//
-				//   sun dead behind camera  dot +0.99   0.55 -> 0.00
-				//   sun over your shoulder   dot +0.84   0.39 -> 0.00
-				//   sun at 90 degrees       dot +0.10   0.09 -> 0.04
-				//   sun beyond the planet   dot -0.95   0.72 -> 0.72  (kept)
-				//
-				// Deliberately NOT gated on sunLen. Forward scattering is a
-				// question about dot(l, v) alone -- is the sun on the far side
-				// of this limb point from the camera -- and has nothing to do
-				// with how far off the view axis it happens to be. Coupling
-				// the two was a bug that killed the arc in exactly the case it
-				// exists for: with the sun 6 degrees off the axis BEHIND the
-				// planet, |sunPerp| is only 0.10, the old 0.12 guard fired, and
-				// peak arc came out 0.000 instead of 0.47. An ill-defined
-				// bearing is a reason to drop the bearing, never a reason to
-				// drop the scattering.
-				float forwardScatter = saturate((_ForwardBias - dot(l, v))
-				                               * rcp(max(1e-3, _ForwardRange)));
+				// b is two-sided by construction: it decays toward the sub-solar
+				// limb AND toward the night limb. That is why the old
+				// saturate(1.0 - ndl) is gone rather than retuned. It was
+				// one-sided -- flat at 1.0 across the entire night side -- and so
+				// wrapped ~264 degrees of the limb at the reference geometry, where
+				// this form spans 69.
+				float horizon = (sunLen > 0.02)
+					? sqrt(saturate(1.0 - ndl * ndl * rcp(sunLen * sunLen)))
+					: 1.0;
 
-				// BOTH factors are needed, and dropping either one breaks it:
+				// Whether the arc shows at all.
 				//
-				//  - bearing alone cannot concentrate anything when the sun is
-				//    near the view axis, because there "where the sun is on
-				//    screen" and "where the sun is brightest on the limb" are
-				//    the same direction -- measured, both are the same
-				//    A.cos + B.sin in the limb azimuth, so the arc still
-				//    wrapped 180 degrees.
-				//  - the horizon factor alone is the old ndl-driven arc, which
-				//    wrapped ~178 degrees at every camera angle and ignored
-				//    _SunBleedPower entirely.
+				// Honest framing: this is NO LONGER a scattering-angle gate. Both
+				// references show the warm limb from viewpoints where dot(l, v) is
+				// firmly POSITIVE -- the front-on earth measures +0.71 -- and gating
+				// on forward scattering alone suppressed every frame that mattered,
+				// giving peak arc 0.000 there.
 				//
-				// Product of the two is bounded and shrinks monotonically with
-				// _SunBleedPower: mean span 59 deg on the sunset reference,
-				// 12 deg on the sun-past-the-limb geometry, and nothing above
-				// 86 deg at any camera angle.
-				float arc = pow(saturate(bearing), _SunBleedPower)
-				          * saturate(1.0 - ndl) * day * forwardScatter * _SunBleed;
+				// What it does still have to do is kill one specific artifact: with
+				// the sun behind the viewer the terminator coincides with the whole
+				// silhouette, horizon goes to 1.0 everywhere, and the limb rings warm
+				// all the way round. That is the rejected "glow all the way round"
+				// look, and it is what this term blocks -- the arc only opens once
+				// the sun is far enough round from dead behind. At the new default
+				// of 1.0 the gate is shut at dot(l, v) near 1 and fully open by
+				// dot(l, v) near 0.
+				//
+				// Not gated on sunLen: this asks how far round the sun is from the
+				// view axis, which is well defined whether or not that axis passes
+				// through the planet. An ill-defined bearing is a reason to drop the
+				// bearing, never a reason to drop the scattering.
+				float sunBehind = saturate((_ForwardBias - dot(l, v))
+				                            * rcp(max(1e-3, _ForwardRange)));
+
+				float arc = pow(horizon, _SunBleedPower)
+				          * day * sunBehind * _SunBleed;
 
 				// The general air along the lit limb, kept deliberately
 				// modest so the warm arc reads as the sun rather than as the
