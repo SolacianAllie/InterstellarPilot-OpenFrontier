@@ -8,8 +8,21 @@ Shader "SpaceUnity/PlanetStandard" {
 		_Emission ("_Emission", 2D) = "black" {}
 		_EmissionScale ("_EmissionScale", Float) = 1
 		[Header(AerialPerspective)]
-		_HazeColor ("Haze Color", Color) = (0.45,0.80,1,1)
-		_HazeSunColor ("Haze Sun Color", Color) = (1,0.62,0.30,1)
+		// Deliberately the SAME property names as the atmosphere shell
+		// (OpenFrontier/Planet Atmosphere): _AtmoColor and _SunRimColor.
+		//
+		// They used to be called _HazeColor/_HazeSunColor, which split one
+		// concept across two shaders under two names. Setting "Atmosphere
+		// Color" on the shell then moved only the outer rim and the wash over
+		// the surface silently kept its own default, so there was no way to
+		// colour the atmosphere as a whole.
+		//
+		// These still have to be given the same values on both materials.
+		// A shader global cannot do it: several planets can be on screen at
+		// once, each with its own air, so the colour has to live on the
+		// material rather than being shared.
+		_AtmoColor ("Atmosphere Color", Color) = (0.35,0.78,1,1)
+		_SunRimColor ("Sun Rim Color", Color) = (1,0.62,0.30,1)
 		_HazeStrength ("Haze Strength", Range(0, 1)) = 0.6
 		_HazeSunStrength ("Haze Sun Strength", Range(0, 2)) = 0.8
 		_HazeFalloff ("Haze Falloff", Range(0.5, 8)) = 2.5
@@ -43,8 +56,8 @@ Shader "SpaceUnity/PlanetStandard" {
 				float4 _MainTex_ST;
 				float _LightScale;
 				float _EmissionScale;
-				float4 _HazeColor;
-				float4 _HazeSunColor;
+				float4 _AtmoColor;
+				float4 _SunRimColor;
 				float _HazeStrength;
 				float _HazeSunStrength;
 				float _HazeFalloff;
@@ -184,7 +197,7 @@ half3 emission = lightsTex * _LightScale * nightMask
 				float lowForUs = saturate(0.55 - dot(mainLight.direction, viewDirWS) * 1.5);
 				float hazeSun = saturate(lowSun * lowForUs);
 
-				half3 hazeTint = lerp(_HazeColor.rgb, _HazeSunColor.rgb, saturate(hazeSun));
+				half3 hazeTint = lerp(_AtmoColor.rgb, _SunRimColor.rgb, saturate(hazeSun));
 				float hazeAmt = saturate(grazing * hazeLit
 					* (_HazeStrength + _HazeSunStrength * hazeSun));
 				color.rgb = lerp(color.rgb, hazeTint, hazeAmt);
