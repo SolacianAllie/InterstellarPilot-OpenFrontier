@@ -51,12 +51,24 @@ MonoBehaviour:
     RequiredPilotCount: 1
     MinNumber: 0
     MaxNumber: 99999
+  - Rank: {fileID: 114724804207875695, guid: 5e82cd0943ae4ff3ac1928e4461085e8, type: 2}
+    RequiredPilotCount: 1
+    MinNumber: 0
+    MaxNumber: 99999
   - Rank: {fileID: 114724804207875695, guid: 53a92f2e50b61424295d24b13ce34b28, type: 2}
     RequiredPilotCount: 1
     MinNumber: 0
     MaxNumber: 99999
+  - Rank: {fileID: 114724804207875695, guid: 1ac831454b6d4f28a5455cea35701dd1, type: 2}
+    RequiredPilotCount: 2
+    MinNumber: 0
+    MaxNumber: 99999
   - Rank: {fileID: 114724804207875695, guid: 79e1843ee3514aa469bbf374dc24782c, type: 2}
     RequiredPilotCount: 3
+    MinNumber: 0
+    MaxNumber: 99999
+  - Rank: {fileID: 114724804207875695, guid: 1220e4e46ca3489e90e097b68612cadd, type: 2}
+    RequiredPilotCount: 5
     MinNumber: 0
     MaxNumber: 99999
   - Rank: {fileID: 114724804207875695, guid: 58a01622261b36743bc0962f51d8a945, type: 2}
@@ -68,11 +80,11 @@ MonoBehaviour:
     MinNumber: 0
     MaxNumber: 99999
   - Rank: {fileID: 114724804207875695, guid: 4347587a49db79547847637f572f4c4a, type: 2}
-    RequiredPilotCount: 20
+    RequiredPilotCount: 15
     MinNumber: 0
     MaxNumber: 99999
-  - Rank: {fileID: 114724804207875695, guid: 7b27a5bafb06a4542a71e56aefa3d956, type: 2}
-    RequiredPilotCount: 30
+  - Rank: {fileID: 114724804207875695, guid: 9dfb5fd51837405680122133102a7203, type: 2}
+    RequiredPilotCount: 22
     MinNumber: 0
     MaxNumber: 99999
   - Rank: {fileID: 114724804207875695, guid: cb04c54c5f83cb94993208542b26bbc9, type: 2}
