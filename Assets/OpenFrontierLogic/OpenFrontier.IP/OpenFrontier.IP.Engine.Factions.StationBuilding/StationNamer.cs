@@ -42,6 +42,7 @@ namespace OpenFrontier.IP.Engine.StationNaming
 		private List<int> anyPurpose = new List<int>(200);
 
 		private static StationNamer instance;
+		private static bool warnedUnavailable;
 
 		private bool loaded;
 
@@ -66,12 +67,20 @@ namespace OpenFrontier.IP.Engine.StationNaming
 
 		private void Load()
 		{
-			if (loaded || NamesFile == null)
+			if (loaded)
 			{
 				return;
 			}
 
 			loaded = true;
+			if (NamesFile == null)
+			{
+				// Previously this returned silently, and the symptom was every
+				// station reading "Outpost QQ3" with no error anywhere. A missing
+				// reference is exactly the failure AGENTS.md warns about, so say so.
+				Debug.LogError("StationNamer.NamesFile is null, so no station names can be loaded. This component must be on the EngineASX prefab with NamesFile assigned.", this);
+				return;
+			}
 			foreach (string line in IOHelper.ReadAndSplitTextLines(NamesFile))
 			{
 				if (string.IsNullOrWhiteSpace(line) || line.StartsWith("Name,"))
@@ -123,6 +132,14 @@ namespace OpenFrontier.IP.Engine.StationNaming
 			StationNamer namer = Instance;
 			if (namer == null || namer.entries.Count == 0)
 			{
+				// Same reasoning as the null NamesFile case: this used to return in
+				// silence. Warn once, not per station - world seeding calls this
+				// once per station and would otherwise bury the console.
+				if (!warnedUnavailable)
+				{
+					warnedUnavailable = true;
+					Debug.LogError("StationNamer has no names available, so stations are being left unnamed and will read as a designation. Check that the component is on the EngineASX prefab and that Awake has run before world seeding.");
+				}
 				return;
 			}
 

@@ -73,11 +73,11 @@ namespace OpenFrontier.IP.Engine.Factions.StationBuilding
 				unit.UnitName = faction.Name;
 				unit.UnitShortName = faction.ShortName;
 			}
-			else
-			{
-				// Everything else used to read "Outpost QQ3".
-				StationNamer.NameIfUnnamed(unit, sector != null ? sector.UniqueId : 0);
-			}
+			// Everything else is named inside SpawnUnitAndInstallComponents, next
+			// to AutoAssignShipName. It used to be named here, which covered only
+			// stations built by this factory - the seeders, mission specs,
+			// ActiveBuildStationOrder and the multiplayer commands all build
+			// stations by other routes and were left reading "Outpost QQ3".
 			return unit;
 		}
 
