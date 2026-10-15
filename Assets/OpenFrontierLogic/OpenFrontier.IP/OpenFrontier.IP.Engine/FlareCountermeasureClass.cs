@@ -7,12 +7,13 @@ namespace OpenFrontier.IP.Engine
 	/// it dazzles an infrared seeker instead of breaking a radar return.
 	/// </summary>
 	/// <remarks>
-	/// This is what the IR seeker's weakness is made of. An ECM beats a
-	/// semi-active radar missile because the ECM breaks the signal the missile
-	/// is riding; nothing in the base game could touch a heat-seeking one,
-	/// which made IR strictly the safest thing to be hit by. A flare closes
-	/// that: not by overpowering the seeker but by putting something else hot
-	/// in the same part of the sky as the ship.
+	/// This is what the IR seeker's weakness is made of. An ECM beats both
+	/// radar seekers, because it breaks the signal a radar missile is listening
+	/// to whether that signal is someone else's or its own; nothing in the base
+	/// game could touch a heat-seeking one, which made IR strictly the safest
+	/// thing to be hit by. A flare closes that: not by overpowering the seeker
+	/// but by putting something else hot in the same part of the sky as the
+	/// ship.
 	///
 	/// Which is why <see cref="AspectWeighting"/> is the interesting number
 	/// here. A flare dropped anywhere near the target's bearing is very hard to

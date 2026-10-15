@@ -262,10 +262,18 @@ namespace OpenFrontier.IP.Engine
 
 				case MissileGuidanceType.ARH:
 				default:
-					// Its own radar. Nothing the target or its crew can do
-					// about it short of outrunning the missile or putting a
-					// mountain in the way.
-					return true;
+					// Active radar does not need anyone to light the target up,
+					// but it is still a radar receiver on the end of a missile,
+					// and a jammer does not care whose radar it is. So an ECM
+					// beats this one too.
+					//
+					// That does not make ARH any less the hardest lock in the
+					// game to shake, because being jammed is the only thing that
+					// beats it: it is still the widest cone, the longest blind
+					// tolerance, and the only seeker that neither cloak nor a
+					// flare touches. One countermeasure against one seeker, the
+					// same as every other row in this switch.
+					return !missile.IsDisrupted;
 			}
 		}
 
