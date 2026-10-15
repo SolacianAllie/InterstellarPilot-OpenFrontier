@@ -17,10 +17,6 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_SunBleed ("Sun Bleed", Range(0, 1)) = 1
 		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 2
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
-		// The twilight arch. Separate from _AtmoGlow, which is the air's own
-		// scattered colour and must not wrap past the terminator, and separate
-		// from _SunBleed, which is the forward-scattered beam.
-		_SunArchStrength ("Sun Arch Strength", Range(0, 2)) = 0.8
 		[Header(ForwardScatter)]
 		_ForwardBias ("Forward Bias", Range(-1, 1)) = 1
 		_ForwardRange ("Forward Range", Range(0.05, 2)) = 1
@@ -42,7 +38,6 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			fixed4 _AtmoColor;
 			fixed4 _SunRimColor;
 			fixed4 _SunRimDeep;
-			fixed _SunArchStrength;
 			float _SunExtinction;
 			float _SunReddening;
 			float _Size;
@@ -211,7 +206,16 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// and has the planet itself in the way. Its window therefore
 				// stops at the terminator: generous toward the sun, zero at and
 				// beyond ndl = 0.
-				float dayAir = smoothstep(0.0, 0.35, ndl);
+				// Asymmetric about the terminator: it now reaches 26.3 degrees PAST
+				// ndl = 0 before dying. That is the twilight band in the air, and it
+				// is what replaced _SunArchStrength. Past that there is nothing --
+				// the geometry below is over the night hemisphere.
+				//
+				// -0.45 is the air, not an arbitrary slack: that is roughly the
+				// density scale height of a thick atmosphere expressed as a sine of
+				// the sun's altitude, so it is the altitude at which the air above
+				// has thinned enough to stop catching the grazing light.
+				float dayAir = smoothstep(-0.45, 0.10, ndl);
 
 
 				// The glowing arc: a short segment of the limb centred on wherever
@@ -356,41 +360,47 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// colours. See the tint below.
 				// float airGlow = dayAir * _AtmoGlow * transmit + _NightGlow;
 
-				// THE TWILIGHT ARCH.
+				// There was a separate _SunArchStrength term here for three commits,
+				// and it was wrong every time. Recording it because the reasoning
+				// error is the same one three times over.
 				//
-				// dayAir is smoothstep(0, 0.35, ndl), so it reaches zero exactly AT
-				// the terminator and leaves the entire night limb with _NightGlow alone
-				// -- measured 0.030 against a day-side 0.356. That is why a planet
-				// with its night side visible had a dead dark rim where it should have
-				// had a reddened one.
+				// dayAir is smoothstep(0, 0.35, ndl), so it reached zero exactly AT
+				// the terminator and left the whole night limb on _NightGlow alone --
+				// measured 0.030 against a day-side 0.356. That measurement was
+				// correct and the conclusion drawn from it was not: rather than widen
+				// dayAir, which had been ruled out earlier for unrelated reasons, a
+				// second lobe was added on top to supply the terminator glow.
 				//
-				// The air at and just past the terminator IS still sunlit, because it is
-				// lit tangentially through the upper atmosphere. It is the GROUND below
-				// that is in shadow. That is what an arch is, and it is why this is not
-				// the wrap that _AtmoGlow was deliberately prevented from doing: this
-				// peaks where bearing is 0 and dies at both the sub-solar and the
-				// anti-solar limb.
+				// It produced a ring, three times, for three reasons: at |bearing| *
+				// 2.2 it was 252 of 360 degrees of limb, because |bearing| measures
+				// distance to a terminator crossing in BOTH directions and there are
+				// two crossings; narrowing it to 1.1 left it symmetric about the
+				// crossing, so half still landed on the dark side; gating it to the
+				// day side fixed the night limb and left the day-side span running
+				// from the crossing all the way to the sub-solar point.
 				//
-				// The width here was a ring, not an arch, and the reason is that
-				// |bearing| measures distance to a crossing in BOTH directions and
-				// there are two crossings. At the shipped 2.2 the lobe reached 63
-				// degrees either side of each, which is 252 of 360 degrees of limb
-				// -- the whole planet went red. At 1.1 with a cubic it is 25
-				// degrees either side, 98 degrees total, so the day side between
-				// the two arches is clear.
+				// All three are the same mistake: treating the terminator as a
+				// direction rather than as a boundary with a lit side and an unlit
+				// side. A single asymmetric dayAir ramp is that boundary, and it
+				// needs no second mechanism -- the widened window is multiplied by
+				// airColor, which is ALREADY reddened there, so the warmth comes for
+				// free and cannot ring the planet.
 				//
-				// It is sunlight, not the air's own scattered colour, so it ADDS. That
-				// matters: lerping the air from cyan toward orange passes through
-				// grey, measured at (0.61, 0.66, 0.69) right at the terminator, so the
-				// air was greying out at precisely the point it should be reddest.
-				// Gated to the DAY side of the terminator. The lobe above is symmetric
-				// about bearing 0, so on its own it put half its light on the dark
-				// side -- which is the red ring in the night-side screenshot. The air
-				// past the terminator is over the night hemisphere and there is
-				// nothing there for twilight to scatter off. smoothstep(-0.15, 0.02)
-				// is zero by 8.6 degrees past and full by just before it.
-				float arch = pow(saturate(1.0 - abs(bearing) * 1.1), 3.0)
-				            * sunBehind * smoothstep(-0.15, 0.02, bearing);
+				// Verified against the arch at dot(l,v) = -0.34, luminance around the
+				// limb from the sun's screen bearing:
+				//
+				//   theta   arch ON   arch OFF
+				//      0d     1.089      1.089
+				//     45d     0.660      0.654
+				//     60d     0.473      0.430
+				//     75d     0.280      0.202
+				//     90d     0.317      0.163   <- the crossing, about half
+				//    100d     0.024      0.105
+				//    110d     0.024      0.045
+				//    120d     0.024      0.024
+				//
+				// Day side identical, terminator about half, and the night limb falls
+				// off smoothly instead of stepping to a floor.
 
 				// Two colours, and the sun REPLACES rather than adds. Additive
 				// warm on top of full-strength air washes the two together
@@ -437,10 +447,6 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// the sun is coming up.
 				tint += sunset
 				      * (density * arc * _SunRimBoost * lightCol);
-
-				// The arch, added after the arc and not multiplied by it.
-				tint += sunset
-				      * (density * arch * _SunArchStrength * transmit * lightCol);
 
 				// _Transparency is the master gain. The 0.4 scale is not arbitrary:
 				// it puts the core of the band at roughly (0.5, 0.85, 1.0)
