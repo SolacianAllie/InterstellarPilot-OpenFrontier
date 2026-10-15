@@ -32,7 +32,10 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 3
 		// Added to the exponent as the sun goes behind the planet, which
 		// pulls the arc's two ends together. 0 disables it.
-		_SunBleedTighten ("Sun Bleed Tighten", Range(0, 16)) = 9
+		_SunBleedTighten ("Sun Bleed Tighten", Range(0, 64)) = 28
+		// Power applied to how far the sun is behind, so the tightening
+		// concentrates near alignment instead of starting at the limb.
+		_SunBleedShape ("Sun Bleed Shape", Range(1, 12)) = 4
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
 		[Header(ForwardScatter)]
 		_ForwardBias ("Forward Bias", Range(-1, 1)) = 1
@@ -68,6 +71,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			float _SunBleed;
 			float _SunBleedPower;
 			float _SunBleedTighten;
+			float _SunBleedShape;
 			float _SunRimBoost;
 			float _AtmoGlow;
 			float _ForwardBias;
@@ -405,31 +409,46 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// glow is on the night side of the terminator by definition, so a
 				// gate that reaches zero below ndl = -0.2 deletes the entire
 				// night-side rim -- which is the case most of the references are.
-				// The gate that matters is sunBehind above. bearing already keeps
-				// the arc off the unlit limb, since it falls to zero there anyway.
-				// The exponent GROWS as the sun goes behind, so the lobe's two
-				// ends walk in toward the sun's screen bearing.
+				// The gate that matters is sunBehind above.
 				//
-				// bearing is |cos|, so the lobe is symmetric about the bearing and
-				// has exactly two ends -- the red ends. They sit where
-				// bearing^P falls off, and before this P was constant, so they
-				// never moved with the geometry: the same 37 degrees of limb at
-				// every sun position.
+				// The lobe basis is cosSun, the SIGNED cosine, not bearing.
+				//
+				// bearing is saturate(...), so it is |cos| -- which is 1 at theta 0
+				// AND 1 at theta 180. pow(bearing, P) was therefore TWO lobes of
+				// identical brightness, one on the sun's bearing and one directly
+				// opposite it. dayAir is 0 on the night side so the air term
+				// cannot mask it: the core was painting a full-strength arc on the
+				// NIGHT limb. Measured, identical to three decimal places either
+				// side of the planet.
+				//
+				// cosSun already carries the signed value (it is ndl / sunLen, and
+				// at the silhouette ndl = dot(n, sunPerp)), so this is a change of
+				// basis and not a new quantity. bearing stays as it is: airMass
+				// genuinely needs |cos|, because there are TWO terminator crossings
+				// and both have to redden.
+				//
+				// The exponent grows as the sun goes behind, so the arc's two ends
+				// walk in toward the sun's bearing:
 				//
 				//     P   half-width
 				//     3       37 deg
-				//     6       27 deg
-				//     9       24 deg
 				//    12       19 deg
+				//    31       12 deg
 				//
-				// saturate(-dot(l,v)) is 0 side-on and 1 at alignment.
+				// _SunBleedShape raises it to a power so the tightening
+				// concentrates near alignment. Linear in dot(l,v) it began the
+				// instant the sun passed the limb and had collapsed to a third of
+				// its width by 30 degrees, which reads as the crescent snapping
+				// shut rather than closing. behind^4 leaves 60 degrees untouched,
+				// halves it by 45, and closes it by 20.
 				//
-				// This is a mad and an add on top of a pow that was ALREADY
-				// runtime -- _SunBleedPower is a uniform, so the compiler cannot
-				// fold it either way and the instruction count is unchanged.
-				float arcPower = _SunBleedPower
-				               + saturate(-dot(l, v)) * _SunBleedTighten;
-				float arc = pow(bearing, arcPower)
+				// Two muls and one pow on top of a pow that was ALREADY runtime --
+				// _SunBleedPower is a uniform, so the compiler cannot fold it
+				// either way.
+				float behind = saturate(-dot(l, v));
+				float tighten = pow(behind, _SunBleedShape) * _SunBleedTighten;
+				float lobe = saturate(cosSun);
+				float arc = pow(lobe, _SunBleedPower + tighten)
 				          * sunBehind * _SunBleed * transmit;
 
 				// The general air along the lit limb, kept deliberately
@@ -519,8 +538,27 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// It is not a sunset, and nothing about it has crossed a
 				// terminator, so it takes the air's own colour instead:
 				// R/B 8.3 red -> 0.3 cyan on the night limb.
+				// The SAME lobe, as a multiplier on the air term.
+				//
+				// This was the term actually painting the full-half line, and
+				// _SunBleedTighten never touched it. dayAir is a window on cosSun
+				// with no bearing dependence at all -- smoothstep(-0.3, 0.05, ...)
+				// is 1 for every theta below 87 degrees -- so it filled the entire
+				// gap between the crest and the terminator band and held the
+				// visible span at 180 degrees at EVERY sun position, side-on to
+				// alignment. Measured, the air term was 10x to 100x the core
+				// everywhere past 40 degrees off the bearing.
+				//
+				// The exponent is `tighten` ALONE, with no _SunBleedPower base: at
+				// behind 0 that is pow(x, 0) = 1 exactly, so the day side is
+				// bit-identical. The band at the terminator is a different
+				// phenomenon from the forward-scattered crest -- it is light
+				// scattered at every altitude along the line of sight, which is
+				// why its integral survives at the horizon where a single-column
+				// air mass diverges -- and narrowing it here does not narrow it.
+				float limb = pow(lobe, tighten);
 				fixed3 tint = lerp(airColor, sunset, saturate(arc))
-				            * density * (dayAir * _AtmoGlow * transmit)
+				            * density * (limb * dayAir * _AtmoGlow * transmit)
 				            * lightCol
 				          + _AtmoColor.rgb * (density * _NightGlow * lightCol);
 
