@@ -32,7 +32,16 @@ Shader "SpaceUnity/PlanetStandard" {
 		_WaterRange ("Water Range", Range(0.02, 1)) = 0.2
 		_WaterSmoothness ("Water Smoothness", Range(0, 1)) = 0.92
 		_LandSmoothness ("Land Smoothness", Range(0, 1)) = 0.12
-		_LandDetailSmoothness ("Snow Smoothness", Range(0, 1)) = 0.3
+		_LandDetailSmoothness ("Land Detail Smoothness", Range(0, 1)) = 0.3
+		[Header(Clouds)]
+		_Clouds ("Clouds", 2D) = "black" {}
+		_CloudShadows ("Cloud Shadows", 2D) = "black" {}
+		_CloudCoverage ("Cloud Coverage", Range(0, 1)) = 0.5
+		_CloudSharpness ("Cloud Sharpness", Range(0.5, 8)) = 1
+		_CloudBrightness ("Cloud Brightness", Range(0, 3)) = 1
+		_CloudParallax ("Cloud Parallax", Range(-0.1, 0.1)) = 0.008
+		_CloudWrap ("Cloud Wrap Light", Range(0, 1)) = 0.7
+		_CloudShadowStrength ("Cloud Shadow Strength", Range(0, 1)) = 0.5
 	}
 	SubShader {
 		Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
@@ -56,6 +65,8 @@ Shader "SpaceUnity/PlanetStandard" {
 			TEXTURE2D(_Normals);    SAMPLER(sampler_Normals);
 			TEXTURE2D(_Lights);     SAMPLER(sampler_Lights);
 			TEXTURE2D(_SpecMap);    SAMPLER(sampler_SpecMap);
+			TEXTURE2D(_Clouds);     SAMPLER(sampler_Clouds);
+			TEXTURE2D(_CloudShadows); SAMPLER(sampler_CloudShadows);
 			TEXTURE2D(_Emission);   SAMPLER(sampler_Emission);
 
 			CBUFFER_START(UnityPerMaterial)
@@ -73,6 +84,14 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _WaterSmoothness;
 				float _LandSmoothness;
 				float _LandDetailSmoothness;
+				float4 _Clouds_ST;
+				float4 _CloudShadows_ST;
+				float _CloudCoverage;
+				float _CloudSharpness;
+				float _CloudBrightness;
+				float _CloudParallax;
+				float _CloudWrap;
+				float _CloudShadowStrength;
 			CBUFFER_END
 
 			struct Attributes {
@@ -114,6 +133,12 @@ Shader "SpaceUnity/PlanetStandard" {
 				float3 normalWS = normalize(TransformTangentToWorld(normalTS,
 					half3x3(input.tangentWS.xyz, bitangentWS, input.normalWS)));
 
+				// Geometric normal. The haze and the clouds both need it and
+				// the normal map must not touch either: the haze's day/night
+				// gate is a property of the sphere, and the cloud deck is a
+				// layer in the sky that terrain relief cannot tilt.
+				float3 geoNormalWS = normalize(input.normalWS);
+
 				InputData inputData = (InputData)0;
 				inputData.positionWS = input.positionWS;
 				inputData.normalWS = normalWS;
@@ -148,6 +173,28 @@ half3 emission = lightsTex * _LightScale * nightMask
 				// landMask 0 -- matte terrain, which is the safe reading of a
 				// missing map rather than a fully mirrored planet.
 				half4 specTex = SAMPLE_TEXTURE2D(_SpecMap, sampler_SpecMap, input.uv);
+
+				// Cloud layer. The art convention in *_clouds_diffuse.png is
+				// near-white RGB with the COVERAGE IN ALPHA, and the matching
+				// *_clouds_shadow_diffuse.png has RGB = 0 with everything in
+				// alpha too -- so both masks are read from .a, not .rgb.
+				//
+				// Parallax: the deck sits above the surface, so it slides
+				// against the terrain as the camera moves. The offset is taken
+				// in the surface tangent frame, which is the frame the sphere
+				// UVs live in, so it stays consistent as the planet rotates.
+				float3 viewTangent = float3(dot(viewDirWS, input.tangentWS.xyz),
+				                             dot(viewDirWS, bitangentWS), 0.0);
+				float2 cloudUV = input.uv + viewTangent.xy * _CloudParallax;
+				half4 cloudTex = SAMPLE_TEXTURE2D(_Clouds, sampler_Clouds,
+				                                  TRANSFORM_TEX(cloudUV, _Clouds));
+				half4 shadowTex = SAMPLE_TEXTURE2D(_CloudShadows, sampler_CloudShadows,
+				                                   TRANSFORM_TEX(cloudUV, _CloudShadows));
+
+				// _CloudCoverage is the midpoint and _CloudSharpness the edge.
+				// Default 0.5 / 1.0 is a straight pass through of the authored
+				// alpha; raising sharpness gives the hard-edged storm look.
+				float cloudCov = saturate((cloudTex.a - _CloudCoverage + 0.5) * _CloudSharpness);
 
 				SurfaceData surfaceData = (SurfaceData)0;
 				surfaceData.albedo = albedoTex.rgb;
@@ -224,6 +271,40 @@ half3 emission = lightsTex * _LightScale * nightMask
 
 				half4 color = UniversalFragmentPBR(inputData, surfaceData);
 
+				// Cloud shadows.
+				//
+				// These have to dim the LIGHTING and nothing else, so that city
+				// lights and magma keep burning under a cloud. URP's
+				// CalculateLightingColor is
+				//
+				//     lightingColor = (mainLight + additionalLights + GI) * albedo
+				//                     + emissionColor
+				//
+				// so emission is exactly additive and separable, and the lit
+				// term is never negative. Subtracting the emission we already
+				// know and putting it straight back is therefore exact rather
+				// than a clamp.
+				//
+				// Note this cannot be done by scaling mainLight.color: the
+				// local Light that UniversalFragmentPBR receives is never
+				// passed in, it calls GetMainLight itself. Scaling surfaceData
+				// .albedo instead would work but would also dim the ambient and
+				// IBL, which a cloud deck only partly blocks.
+				half3 emissionTerm = surfaceData.emission;
+				half3 litTerm = color.rgb - emissionTerm;
+				float cloudShadow = 1.0 - saturate(shadowTex.a) * _CloudShadowStrength;
+				color.rgb = emissionTerm + max(litTerm, 0.0) * cloudShadow;
+
+				// The deck itself. Clouds are a high-albedo layer sitting in the
+				// sky, so they take the sun's colour and are lit with a wrapped
+				// terminator -- they scatter forward and stay visible a little
+				// past where the ground has gone dark, which is most of what
+				// sells them as being above it rather than painted on.
+				float cloudLight = saturate(dot(geoNormalWS, mainLight.direction) * _CloudWrap
+				                           + (1.0 - _CloudWrap));
+				half3 cloudColour = cloudTex.rgb * (mainLight.color * _CloudBrightness * cloudLight);
+				color.rgb = lerp(color.rgb, cloudColour, cloudCov);
+
 				// Aerial perspective -- the other half of the atmosphere.
 				//
 				// The shell only ever draws OUTSIDE the silhouette, so the air
@@ -257,7 +338,6 @@ half3 emission = lightsTex * _LightScale * nightMask
 				//    Feeding the normal map into mu made the wash follow
 				//    every ridge and crater, so the limb read as a blotchy
 				//    band instead of the clean arc in the reference.
-				float3 geoNormalWS = normalize(input.normalWS);
 				float geoNdL = dot(geoNormalWS, mainLight.direction);
 
 				float mu = saturate(dot(geoNormalWS, viewDirWS));  // 1 face-on, 0 at the limb
