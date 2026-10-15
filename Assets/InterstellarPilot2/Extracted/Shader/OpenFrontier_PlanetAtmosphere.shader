@@ -235,30 +235,13 @@ Shader "OpenFrontier/Planet Atmosphere" {
 
 				// |sunPerp| is the sine of the angle between the sun and the view
 				// axis, and it is what the bearing divides by. It collapses toward
-				// zero precisely when the sun lies along the view axis.
+				// zero precisely when the sun lies along the view axis. 0.02 is
+				// about 1 degree off-axis, where the azimuth stops being a
+				// direction and becomes a rounding error.
 				float sunLen = length(sunPerp);
-
-				// How close to EXACT alignment: 0 normally, 1 once the sun is within
-				// a couple of degrees of the view axis.
-				//
-				// The sun's screen bearing stops existing there. There is no
-				// "where the sun is on screen" when the sun is directly behind the
-				// planet, and the 0.02 guard that used to catch this returned 0 --
-				// which is not a limit, it is just wrong. Physically, at alignment
-				// the terminator IS the entire silhouette, so every limb point is
-				// equally at the horizon and the correct answer is a UNIFORM ring.
-				// Returning 0 instead gave a lopsided arc that faded in and out with
-				// whichever way the vanishing sunPerp happened to point, and
-				// extinction below finished the job, so an eclipse had no ring at
-				// all within 3 degrees of alignment.
-				float align = 1.0 - smoothstep(0.02, 0.30, sunLen);
-
-				// Divided by max(0.02, sunLen) rather than guarded on it: once
-				// sunLen is under the floor the quotient is meaningless anyway, and
-				// align is about to take over the term regardless.
-				float bearingRaw = saturate(dot(nPerp, sunPerp)
-				                           / (length(nPerp) * max(0.02, sunLen)));
-				float bearing = lerp(bearingRaw, 1.0, align);
+				float bearing = (sunLen > 0.02)
+					? saturate(dot(nPerp, sunPerp) / (length(nPerp) * sunLen))
+					: 0.0;
 
 				// BRIGHTNESS follows the sun's screen bearing -- 1 where this limb
 				// point faces the sun most directly.
@@ -315,13 +298,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// wrong. At 0.4 saturation moves out to ~72 degrees, so the deep
 				// red arrives only at the terminator itself. Lower = later and
 				// fainter; 1.0 is the old behaviour.
-				// + align, because at exact alignment every limb point is at the
-				// horizon and so the whole ring is at full air mass. Without it the
-				// ring came out in _SunRimColor -- the crest orange of a sample the
-				// sun is directly behind -- when the only physically available
-				// light has crossed the entire limb tangentially.
-				float airMass = saturate((rcp(max(0.05, bearing)) - 1.0) * _SunReddening
-				                     + align);
+				float airMass = saturate((rcp(max(0.05, bearing)) - 1.0) * _SunReddening);
 
 				// EXTINCTION, which is the piece that was missing entirely and the
 				// reason a white core survived all the way into eclipse.
@@ -338,14 +315,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// positive until the very last moment, so the cyan air glow summed
 				// with the orange arc and desaturated to white -- the white being a
 				// tonemap artifact of that brightness, not of any hue in here.
-				// Capped. 1/sunLen is the secant air mass at the crest, and it
-				// diverges at alignment -- but it diverges for the WRONG reason.
-				// At eclipse the sunlight that reaches the limb has crossed the
-				// atmosphere TANGENTIALLY, through thin upper air, not a
-				// sea-level column repeated fifty times. Left uncapped it drove
-				// transmit to zero and erased the ring; the cap is the difference
-				// between "very long path" and "infinitely many atmospheres".
-				float horizonPath = min(rcp(max(0.02, sunLen)) - 1.0, 4.0);
+				float horizonPath = rcp(max(0.02, sunLen)) - 1.0;
 				float transmit = exp(-(airMass + horizonPath) * _SunExtinction);
 
 				// Whether the arc shows at all.
