@@ -351,7 +351,10 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// modest so the warm arc reads as the sun rather than as the
 				// atmosphere's own colour. At 1.0 this rings the whole lit
 				// limb evenly, which is the "glow all the way round" look.
-				float airGlow = dayAir * _AtmoGlow * transmit + _NightGlow;
+				// Kept for reference only -- the two terms it summed are now
+				// applied separately at the tint, because they need different
+				// colours. See the tint below.
+				// float airGlow = dayAir * _AtmoGlow * transmit + _NightGlow;
 
 				// THE TWILIGHT ARCH.
 				//
@@ -412,8 +415,23 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				fixed3 airColor = lerp(lerp(_AtmoColor.rgb, _SunRimColor.rgb, warm),
 				                      _SunRimDeep.rgb, warm * warm);
 
+				// _NightGlow is deliberately NOT tinted by airColor.
+				//
+				// It used to be, because both terms rode on the same airGlow
+				// sum. But airColor is the REDDENED air -- at the terminator it
+				// is _SunRimDeep -- so a flat, unconditional 0.03 floor was
+				// arriving on the night limb already deep red, at R/B 8.3. That
+				// was a second and independent route to a red dark side, the
+				// one that survives even with the arch gated to the day side.
+				//
+				// Airglow is a faint chemical emission in the upper atmosphere.
+				// It is not a sunset, and nothing about it has crossed a
+				// terminator, so it takes the air's own colour instead:
+				// R/B 8.3 red -> 0.3 cyan on the night limb.
 				fixed3 tint = lerp(airColor, sunset, saturate(arc))
-				            * density * airGlow * lightCol;
+				            * density * (dayAir * _AtmoGlow * transmit)
+				            * lightCol
+				          + _AtmoColor.rgb * (density * _NightGlow * lightCol);
 
 				// A small additive core on top, for the hot line right where
 				// the sun is coming up.
