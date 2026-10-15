@@ -42,6 +42,10 @@ Shader "SpaceUnity/PlanetStandard" {
 		_CloudParallax ("Cloud Parallax", Range(-0.1, 0.1)) = 0.008
 		_CloudWrap ("Cloud Wrap Light", Range(0, 1)) = 0.7
 		_CloudShadowStrength ("Cloud Shadow Strength", Range(0, 1)) = 0.5
+		[Header(Twilight)]
+		_TwilightDim ("Twilight Dimming", Range(0, 1)) = 0.55
+		_TwilightSharpness ("Twilight Sharpness", Range(0.01, 1)) = 0.2
+		_TwilightHaze ("Twilight Haze", Range(0, 1)) = 0.35
 	}
 	SubShader {
 		Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
@@ -92,6 +96,9 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _CloudParallax;
 				float _CloudWrap;
 				float _CloudShadowStrength;
+				float _TwilightDim;
+				float _TwilightSharpness;
+				float _TwilightHaze;
 			CBUFFER_END
 
 			struct Attributes {
@@ -148,6 +155,51 @@ Shader "SpaceUnity/PlanetStandard" {
 
 				Light mainLight = GetMainLight(inputData.shadowCoord);
 				float ndl = dot(normalWS, mainLight.direction);
+
+				// Twilight -- the light itself reddening, which is what a
+				// terminator actually looks like and what was missing.
+				//
+				// Everything else here faded to black at the terminator
+				// because mainLight.color is uniform across the planet. But
+				// the sunlight reaching the terminator has crossed a very long
+				// path through the atmosphere and arrives both heavily
+				// reddened and much dimmer. That is why a sunset on the ground
+				// is red: it is the LIGHT that is red, not a tint over the sky.
+				//
+				// Air mass along the sun's path is the secant/zine
+				// approximation for a spherical atmosphere: 1 looking straight
+				// down the sun's rays at the sub-solar point, and unbounded at
+				// the horizon. rcp(cosZ) is all that costs, and it is exactly
+				// the quantity that makes the band appear when you look side on.
+				//
+				// cosZ is taken on the geometric normal -- this is a property
+				// of the sphere and the altitude of the sun over it, not of
+				// whatever relief happens to be under the pixel.
+				float cosZ = dot(geoNormalWS, mainLight.direction);
+				float airMass = rcp(max(0.06, cosZ));
+				float twilight = saturate((airMass - 1.0) * _TwilightSharpness);
+
+				// Hold it right up to the terminator, then kill it over the
+				// couple of degrees past, where the sun is gone and only the
+				// night side's ambient is left to tint -- that should stay
+				// blue, not go orange.
+				//
+				// The first attempt gated on saturate(cosZ * 6.0), which was
+				// too tight: it peaked the twilight at zenith 80 and dropped
+				// it to 0.10 by 89, i.e. the deepest red sat just BEFORE the
+				// horizon instead of on it. Measured, the profile now holds
+				// at full right through to the terminator.
+				twilight *= saturate(cosZ * 12.0 + 0.6);
+
+				// Multiplicative on purpose. A lerp toward the sunset colour
+				// would BRIGHTEN the terminator; real twilight darkens and
+				// reddens at the same time, so it has to scale the light.
+				// _SunRimColor is reused rather than adding a second colour --
+				// it is already "the colour of the sun in the atmosphere" and
+				// the haze uses it, so the sky and the light stay coherent.
+				half3 sunTint = lerp(half3(1, 1, 1), _SunRimColor.rgb, twilight)
+				              * lerp(1.0, _TwilightDim, twilight);
+				half3 sunColour = mainLight.color * sunTint;
 
 				// Two independent emitters, and they are deliberately NOT the same:
 //
@@ -291,7 +343,10 @@ half3 emission = lightsTex * _LightScale * nightMask
 				// .albedo instead would work but would also dim the ambient and
 				// IBL, which a cloud deck only partly blocks.
 				half3 emissionTerm = surfaceData.emission;
-				half3 litTerm = color.rgb - emissionTerm;
+				// Twilight rides on the lit term, so it never touches the
+				// emission: magma and city lights keep burning through the
+				// band instead of being dimmed with everything else.
+				half3 litTerm = (color.rgb - emissionTerm) * sunTint;
 				float cloudShadow = 1.0 - saturate(shadowTex.a) * _CloudShadowStrength;
 				color.rgb = emissionTerm + max(litTerm, 0.0) * cloudShadow;
 
@@ -302,7 +357,7 @@ half3 emission = lightsTex * _LightScale * nightMask
 				// sells them as being above it rather than painted on.
 				float cloudLight = saturate(dot(geoNormalWS, mainLight.direction) * _CloudWrap
 				                           + (1.0 - _CloudWrap));
-				half3 cloudColour = cloudTex.rgb * (mainLight.color * _CloudBrightness * cloudLight);
+				half3 cloudColour = cloudTex.rgb * (sunColour * _CloudBrightness * cloudLight);
 				color.rgb = lerp(color.rgb, cloudColour, cloudCov);
 
 				// Aerial perspective -- the other half of the atmosphere.
@@ -365,8 +420,13 @@ half3 emission = lightsTex * _LightScale * nightMask
 				float hazeSun = saturate(lowSun * lowForUs);
 
 				half3 hazeTint = lerp(_AtmoColor.rgb, _SunRimColor.rgb, saturate(hazeSun));
+				// The band term as well as the limb term. hazeTint is already
+				// the sunset colour wherever the sun is low, so letting a slice
+				// of it in across the terminator is what makes the blue visibly
+				// bend to red instead of only doing it at the silhouette.
 				float hazeAmt = saturate(grazing * hazeLit
-					* (_HazeStrength + _HazeSunStrength * hazeSun));
+					* (_HazeStrength + _HazeSunStrength * hazeSun)
+					+ twilight * _TwilightHaze * hazeLit);
 				color.rgb = lerp(color.rgb, hazeTint, hazeAmt);
 
 				color.rgb = MixFog(color.rgb, inputData.fogCoord);
