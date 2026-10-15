@@ -22,7 +22,17 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		// effectively black -- the 'invisible' in the report. 0.45 gives 5x
 		// that there and only 1.5x at sun 31, so it lifts the near-eclipse
 		// crescent far more than the geometries already tuned.
-		_SunEclipseExtinction ("Sun Eclipse Extinction", Range(0, 4)) = 0.45
+		// 0.22, not 0.45. The rim at sun 12 off axis was too dim to read as
+		// a rim: measured crest luminance 0.11 against a day-side 0.95,
+		// which after the 0.4 output scale is near black. The span is set
+		// by the lobe and does not move with this, so it is a pure
+		// brightness dial now. It still fades out -- horizonPath is
+		// 1/sin(alpha) - 1, so:
+		//     sun 20 off axis  transmit 0.66
+		//     sun 12 off axis  transmit 0.43
+		//     sun  6 off axis  transmit 0.15
+		//     sun  2 off axis  transmit 0.002
+		_SunEclipseExtinction ("Sun Eclipse Extinction", Range(0, 4)) = 0.22
 		_SunReddening ("Sun Reddening", Range(0.1, 2)) = 0.4
 		_Size ("Size", Float) = 0.75
 		_Falloff ("Falloff", Float) = 2
@@ -32,7 +42,14 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		// from the sun's screen bearing). 0.5 is 30 degrees of limb.
 		// How far past the terminator the air still glows, as cos(angle from
 		// the sun's screen bearing). 0.3 is about 17 degrees of limb.
-		_TwilightReach ("Twilight Reach", Range(0, 0.9)) = 0.3
+		// The dark-side reach of the terminator wedge, in cosine units. 0.3
+		// was dayAir's soft edge, which put the band 17.5 degrees past the
+		// terminator; 0.45 is 26.7 degrees. _TwilightDay is the day side of
+		// the same wedge and is a separate dial because the wedge really
+		// is lopsided -- a twilight glow reaches further into the dark than
+		// it reaches back into the day.
+		_TwilightReach ("Twilight Reach", Range(0, 0.9)) = 0.45
+		_TwilightDay ("Twilight Day", Range(0, 0.9)) = 0.45
 		[Header(Volume)]
 		_ScaleHeight ("Scale Height", Range(0.002, 0.1)) = 0.006
 		_Density ("Density", Range(0.3, 12)) = 3
@@ -45,7 +62,14 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_SunBleedTighten ("Sun Bleed Tighten", Range(0, 64)) = 28
 		// Power applied to how far the sun is behind, so the tightening
 		// concentrates near alignment instead of starting at the limb.
-		_SunBleedShape ("Sun Bleed Shape", Range(1, 12)) = 4
+		// 8, not 4. Shape is how sharply the crest lobe concentrates near
+		// alignment, and at 4 the tightening was well advanced by 30 degrees
+		// off axis -- the close-up rim, sun just past the limb, was already
+		// down to a third of its width. Measured rim span at sun 65 off axis:
+		// 73 degrees at shape 4, 99 at shape 8. At sun 12 the two are within
+		// a degree of each other (23.0 vs 24.0), so this buys the close-up
+		// case back without giving anything up at the eclipse.
+		_SunBleedShape ("Sun Bleed Shape", Range(1, 12)) = 8
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
 		[Header(ForwardScatter)]
 		_ForwardBias ("Forward Bias", Range(-1, 1)) = 1
@@ -76,6 +100,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			float _Transparency;
 			float _NightGlow;
 			float _TwilightReach;
+			float _TwilightDay;
 			float _ScaleHeight;
 			float _Density;
 			float _SunBleed;
@@ -482,7 +507,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				float behind = saturate(-dot(l, v));
 				float tighten = pow(behind, _SunBleedShape) * _SunBleedTighten;
 				float lobe = saturate(cosSun);
-				float arc = pow(lobe, _SunBleedPower + tighten)
+				float arc = pow(max(lobe, 1e-4), _SunBleedPower + tighten)
 				          * sunBehind * _SunBleed * transmit;
 
 				// The general air along the lit limb, kept deliberately
@@ -596,12 +621,44 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				//
 				// The exponent is `tighten` ALONE, with no _SunBleedPower base: at
 				// behind 0 that is pow(x, 0) = 1 exactly, so the day side is
-				// bit-identical. The band at the terminator is a different
-				// phenomenon from the forward-scattered crest -- it is light
-				// scattered at every altitude along the line of sight, which is
-				// why its integral survives at the horizon where a single-column
-				// air mass diverges -- and narrowing it here does not narrow it.
-				float limb = pow(lobe, tighten);
+				// bit-identical.
+				//
+				// The TERMINATOR WEDGE is a different phenomenon at a different
+				// place, and gating it by this lobe was a mistake made one commit
+				// ago. The wedge sits where the terminator crosses the visible
+				// limb -- theta 90 from the sun's bearing -- and cos(90) is 0, so
+				// pow(lobe, tighten) is ZERO there at every sun position except
+				// exactly side-on, where pow(0, 0) is undefined. The lobe was
+				// meant to confine the forward-scattered crest and it removed the
+				// twilight band instead:
+				//
+				//     theta    60      75      87      90      97     107
+				//     limb  0.547  0.309  0.077  0.000  0.160  0.343
+				//
+				// which is the whole of dayAir's soft edge -- i.e. all of the
+				// twilight band -- attenuated to nothing.
+				//
+				// So the wedge gets its own window, peaking ON the terminator
+				// rather than being the lit/unlit half-plane, and reaching further
+				// into the dark than back into the day. _TwilightReach is the dark
+				// side and _TwilightDay the day side; they coincide at cosSun 0, so
+				// the wedge is continuous through the terminator.
+				//
+				// It retracts FASTER than the crest, on (1 - behind^3), because it
+				// is the longer path: light reaching the terminator has grazed
+				// the atmosphere, while the crest is the sun's own bearing. Left at
+				// parity it would light the dark side at eclipse, which is exactly
+				// what the crest's lobe exists to prevent. Measured survival:
+				//
+				//     behind  0.42  0.71  0.86  0.94  0.98   1.00
+				//     wedge   0.93  0.65  0.37  0.17  0.065  0.00
+				//
+				// max(lobe, 1e-4) rather than lobe, so pow is never asked for
+				// pow(0, 0) at exactly side-on.
+				float wedge = saturate(1.0 + cosSun * rcp(max(1e-3, _TwilightReach)))
+				            * saturate(1.0 - cosSun * rcp(max(1e-3, _TwilightDay)))
+				            * (1.0 - behind * behind * behind);
+				float limb = saturate(pow(max(lobe, 1e-4), tighten) + wedge);
 				fixed3 tint = lerp(airColor, sunset, saturate(arc))
 				            * density * (limb * dayAir * _AtmoGlow * transmit)
 				            * lightCol
