@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using OpenFrontier.IP.Common;
 using OpenFrontier.IP.Engine.Core.Units;
 using OpenFrontier.IP.Engine.Dialog;
@@ -355,14 +356,16 @@ namespace OpenFrontier.IP.Engine
 		/// full thrust.
 		/// </summary>
 		/// <remarks>
-		/// The sum of the particle sizes of its thrusters, which is the whole
-		/// measure of hull size the seeker has.
+		/// The sum of the particle sizes of every thruster on the model, which
+		/// is the whole measure of hull size the seeker has. Models carry
+		/// several - the Venture has twelve thruster sets, the Creon eight, a
+		/// shuttle two - so it has to be a sum over all of them and not a read
+		/// of the first, or most of a ship's signature goes missing.
 		///
-		/// Cached, because it costs a GetComponent and the infrared seeker asks
-		/// every ship in the sector on every evaluation - which is one component
-		/// lookup per candidate per missile, ten times a second. The thruster
-		/// cannot change while the unit exists, so it is resolved once and only
-		/// again if the ActiveUnit is replaced.
+		/// Cached, because it costs a component lookup and the infrared seeker
+		/// asks every ship in the sector on every evaluation. A thruster cannot
+		/// change while the unit exists, so it is resolved once and only again if
+		/// the ActiveUnit is replaced.
 		///
 		/// Falls back to the average rather than to zero when there is no
 		/// ActiveUnit to read. A unit only gets one if it has a visual resource,
@@ -377,13 +380,21 @@ namespace OpenFrontier.IP.Engine
 				if (!thrusterHeatCached)
 				{
 					float resolved = 0f;
-					if (activeUnit != null && activeUnit.TryGetComponent(out UnitThruster thruster) && thruster != null && thruster.UnitThrusterClass != null)
+					if (activeUnit != null)
 					{
-						resolved = thruster.UnitThrusterClass.TotalHeatSize;
-					}
-					else
-					{
-						resolved = AverageThrusterHeat;
+						// Reused list rather than GetComponents, which allocates an
+						// array. This runs once per unit, but once per unit across
+						// a whole sector is still worth not garbage-collecting.
+						thrusterScratch.Clear();
+						activeUnit.GetComponents(thrusterScratch);
+						for (int i = 0; i < thrusterScratch.Count; i++)
+						{
+							UnitThruster thruster = thrusterScratch[i];
+							if (thruster != null && thruster.UnitThrusterClass != null)
+							{
+								resolved += thruster.UnitThrusterClass.TotalHeatSize;
+							}
+						}
 					}
 					thrusterHeat = resolved > 0f ? resolved : AverageThrusterHeat;
 					thrusterHeatCached = true;
@@ -391,6 +402,8 @@ namespace OpenFrontier.IP.Engine
 				return thrusterHeat;
 			}
 		}
+
+		private static readonly List<UnitThruster> thrusterScratch = new List<UnitThruster>(12);
 
 		/// <summary>
 		/// A middling thruster, used when a unit has no thruster to read. Sits
