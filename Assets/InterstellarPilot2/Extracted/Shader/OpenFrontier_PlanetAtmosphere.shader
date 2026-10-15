@@ -1,6 +1,6 @@
 Shader "OpenFrontier/Planet Atmosphere" {
 	Properties {
-		_AtmoColor ("Atmosphere Color", Vector) = (0.5,0.5,1,1)
+		_AtmoColor ("Atmosphere Color", Vector) = (0.35,0.78,1,1)
 		_SunRimColor ("Sun Rim Color", Color) = (1,0.55,0.3,1)
 		_SunRimPower ("Sun Rim Power", Range(1, 16)) = 2
 		_Size ("Size", Float) = 0.75
@@ -9,9 +9,9 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_NightGlow ("Night Glow", Range(0, 0.3)) = 0.03
 		_TerminatorFalloff ("Terminator Falloff", Range(1, 16)) = 4
 		[Header(Volume)]
-		_ScaleHeight ("Scale Height", Range(0.005, 0.2)) = 0.05
+		_ScaleHeight ("Scale Height", Range(0.004, 0.1)) = 0.012
 		_Density ("Density", Range(0.3, 12)) = 3
-		_DepthTint ("Depth Tint", Range(0, 2)) = 0.6
+		_DepthTint ("Depth Tint", Range(0, 1)) = 0.15
 	}
 	SubShader {
 		Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" }
@@ -122,10 +122,12 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// limb blowing out to white and is most of the "solid" feel.
 				float density = 1.0 - exp(-tau * _Density);
 
-				// Hue follows path length. Thin air is the atmosphere's own
-				// colour; thick air has scattered enough to lean warm. This
-				// gradient across the band is the strongest depth cue here and
-				// it costs one lerp -- no extra sample, no extra texture.
+				// Hue follows path length, but only slightly. A strong warm push here
+				// fights the look: the dense core of the band is CYAN in every
+				// reference, and warmth belongs to the sunrise arc alone,
+				// which is driven by the sun's geometry further down. Push
+				// this too far and the core desaturates to beige, because
+				// blue lerped toward orange passes through grey.
 				fixed3 air = lerp(_AtmoColor.rgb, _SunRimColor.rgb,
 					saturate(density * _DepthTint));
 
@@ -152,7 +154,12 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// burning through it
 				fixed3 tint = air * density * (day + _NightGlow)
 				            + _SunRimColor.rgb * rim;
-				return fixed4(tint * (_Transparency * 0.1), 1);
+				// _Transparency is the master gain. The 0.4 scale is not arbitrary:
+				// it puts the core of the band at roughly (0.5, 0.85, 1.0)
+				// for a _AtmoColor near the default, which is where the
+				// reference limb actually sits. At 0.1 the whole shell
+				// rendered as dark navy.
+				return fixed4(tint * (_Transparency * 0.4), 1);
 			}
 			ENDHLSL
 		}

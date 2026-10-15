@@ -19,23 +19,16 @@ Material:
   m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses: []
-  m_LockedProperties: 
+  m_LockedProperties:
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
-    m_Ints: []
+    m_TexEnvs: {}
+    m_Ints: {}
     m_Floats:
-    - _Falloff: 1.85
-    - _NightGlow: 0.03
-    - _Size: 0.75
-    - _SunRimPower: 2
-    - _TerminatorBoost: 0.8
-    - _TerminatorFalloff: 4
-    - _Transparency: 3
+      _Falloff: 1.85
+      _Size: 0.75
+      _Transparency: 3
     m_Colors:
-    - _AtmoColor: {r: 0.46503496, g: 0.391224, b: 0.26722157, a: 1}
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _SunRimColor: {r: 1, g: 0.54999995, b: 0.29999998, a: 1}
-    - _TerminatorColor: {r: 1, g: 0.54999995, b: 0.29999998, a: 1}
+      _AtmoColor: {r: 1, g: 0.8, b: 0.55, a: 1}
+      _Color: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
-  m_AllowLocking: 1

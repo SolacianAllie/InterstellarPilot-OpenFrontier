@@ -30,7 +30,7 @@ Material:
       _Size: 0.75
       _Transparency: 3
     m_Colors:
-      _AtmoColor: {r: 0, g: 0.18343589, b: 0.64685315, a: 1}
+      _AtmoColor: {r: 0.3, g: 0.72, b: 1, a: 1}
       _Color: {r: 1, g: 1, b: 1, a: 1}
       _LocalStarColor: {r: 1, g: 1, b: 1, a: 1}
       _LocalStarPosition: {r: 0, g: 0, b: 0, a: 1}
