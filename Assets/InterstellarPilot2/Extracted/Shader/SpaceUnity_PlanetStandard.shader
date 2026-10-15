@@ -43,6 +43,7 @@ Shader "SpaceUnity/PlanetStandard" {
 		_CloudWrap ("Cloud Wrap Light", Range(0, 1)) = 0.7
 		_CloudShadowStrength ("Cloud Shadow Strength", Range(0, 1)) = 0.5
 		[Header(Twilight)]
+		_TwilightColor ("Twilight Color", Color) = (1.0,0.62,0.30,1)
 		_TwilightStrength ("Twilight Strength", Range(0, 1)) = 0.55
 		_TwilightDim ("Twilight Dimming", Range(0, 1)) = 0.3
 		_TwilightSharpness ("Twilight Sharpness", Range(0.01, 1)) = 0.13
@@ -97,6 +98,7 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _CloudParallax;
 				float _CloudWrap;
 				float _CloudShadowStrength;
+				float4 _TwilightColor;
 				float _TwilightStrength;
 				float _TwilightDim;
 				float _TwilightSharpness;
@@ -203,11 +205,26 @@ Shader "SpaceUnity/PlanetStandard" {
 				// Strength and dimming are SEPARATE. Driving both from the
 				// same twilight meant the core of the band hit the full
 				// sunset hue AND 45% brightness, which read as orange paint
-				// rather than as warm light -- R/B hit 3.33, the full
-				// saturation of _SunRimColor. Measured at 0.55 strength and
-				// 0.30 dimming it peaks at R/B 1.63, which reads as sunlight
-				// that has gone through a lot of air.
-				half3 sunTint = lerp(half3(1, 1, 1), _SunRimColor.rgb,
+				// rather than as warm light.
+				//
+				// _TwilightColor is its OWN colour, not _SunRimColor. That
+				// reuse was a mistake and it showed: _SunRimColor is authored
+				// as an ABSOLUTE colour for the sky, and using it as a
+				// multiplier means any saturated value silently becomes a
+				// channel kill. Planet-Molten-Volcanica has it at (1, 0, 0),
+				// which turned the band into (1.000, 0.450, 0.450) -- green and
+				// blue both halved, i.e. magenta, which is the pink band in
+				// the screenshot rather than a reddened terminator.
+				//
+				// _TwilightColor is authored as a MULTIPLIER, not an absolute
+				// colour: 1.0 passes a channel untouched, 0.3 passes 30% of
+				// it. So (1.0, 0.62, 0.30) means "red full, green at 62%,
+				// blue at 30%", which is what a reddened sun actually is.
+				// Normalising it to unit luminance was tried and reverted --
+				// it pushed R/B from 1.63 to 3.33, i.e. more saturated, the
+				// opposite of what this band is for. Darkening is the
+				// separate job of _TwilightDim.
+				half3 sunTint = lerp(half3(1, 1, 1), _TwilightColor.rgb,
 				                    saturate(twilight * _TwilightStrength))
 				              * lerp(1.0, _TwilightDim, twilight);
 				half3 sunColour = mainLight.color * sunTint;
