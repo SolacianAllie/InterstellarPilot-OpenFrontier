@@ -64,9 +64,14 @@ MonoBehaviour:
   HomingAquiredTargetThreshold: 0.5
   HomingCanLoseTarget: 1
   HomingLostTargetDotThreshold: 0.25
-  IsHoming: 0
+  IsHoming: 1
   IsMine: 0
   GuidanceType: 0
+  SeekerConeAngle: 25
+  SeekerReacquireAngle: 45
+  SeekerLockPersistence: 1.5
+  SeekerBlindDrift: 8
+  SeekerCheckInterval: 0.1
   MaxMoveRange: 4000
   MiningDamageMultiplier: 0.1
   MoveSpeed: 160

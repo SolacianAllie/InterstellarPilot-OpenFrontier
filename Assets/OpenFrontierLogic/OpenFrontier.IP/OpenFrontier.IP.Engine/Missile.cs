@@ -289,6 +289,21 @@ namespace OpenFrontier.IP.Engine
 			// dot threshold, so a missile that has been shaken off or blinded
 			// stops counting as one.
 			hasAquiredTarget = seeker.HasLock && lastTargetDist <= LoseTargetDistance;
+			if (!seeker.HasEverLocked)
+			{
+				// It has never seen the target, so it has no picture to fly and
+				// is a rock: full thrust, dead ahead, exactly what a non-homing
+				// rocket has always done. This is also what a laser-guided
+				// missile does when the launcher has no beam on the target,
+				// which is the entire reason the utility mount is worth fitting.
+				//
+				// It matters that this is checked rather than left implicit. The
+				// seeker's aim point is only ever written when it acquires
+				// something, so a missile that never did would otherwise steer
+				// towards its own launch position.
+				thrust = 1f;
+				return;
+			}
 			lastDotToTarget = lastTargetDist > 0.0001f ? Vector3.Dot(lastTargetVector / lastTargetDist, transform.forward) : 1f;
 			ControlThrust();
 			RotateTowardsPoint();
@@ -340,14 +355,30 @@ namespace OpenFrontier.IP.Engine
 
 		private void UpdateTarget()
 		{
-			if (Target != oldTarget)
+			// The lock the rest of the game hears about is one the seeker has
+			// actually held, not one that was merely assigned at launch.
+			// GetMissileLocks is read directly by the warning controller and by
+			// the HUD's lock buttons, neither of which filters on whether the
+			// missile can see anything - so a missile that has never held its
+			// target must not be in that list.
+			//
+			// For a laser-guided round fired with no beam on the target that is
+			// not a subtle distinction. The missile is a rock. It should not
+			// set off a missile alarm, exactly as it did not before it had a
+			// seeker.
+			Unit current = null;
+			if (ProjectileClass.IsHoming && seeker != null && seeker.HasEverLocked && Target != null)
 			{
-				if (oldTarget != null && ProjectileClass.IsHoming)
+				current = Target;
+			}
+			if (current != oldTarget)
+			{
+				if (oldTarget != null)
 				{
 					projectile.Engine.MissileLockController.RemoveMissileLock(this, oldTarget);
 				}
-				oldTarget = Target;
-				if (oldTarget != null && ProjectileClass.IsHoming)
+				oldTarget = current;
+				if (oldTarget != null)
 				{
 					projectile.Engine.MissileLockController.AddMissileLock(this, oldTarget);
 				}

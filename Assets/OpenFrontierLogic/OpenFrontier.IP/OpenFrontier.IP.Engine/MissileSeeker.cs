@@ -190,9 +190,10 @@ namespace OpenFrontier.IP.Engine
 				Acquire(target);
 				return;
 			}
-			// Remember where it is and how fast it is going whether or not the
-			// cone test passes. The missile was fired at this ship, so it
-			// roughly knows where to start from even when it cannot see it.
+			// Note that lastKnownPosition is only ever written by Acquire, so a
+			// seeker that has never held anything has nothing to dead-reckon
+			// from and no picture to fly. That is deliberate, and the caller
+			// relies on it: a missile that never saw its target is a rock.
 			float dot = Vector3.Dot(toTarget / distance, missile.transform.forward);
 			float threshold = hasLock ? lockDot : reacquireDot;
 			if (dot >= threshold && SeesTarget(target, distance))
