@@ -32,7 +32,7 @@ Shader "SpaceUnity/PlanetStandard" {
 		_WaterRange ("Water Range", Range(0.02, 1)) = 0.2
 		_WaterSmoothness ("Water Smoothness", Range(0, 1)) = 0.92
 		_LandSmoothness ("Land Smoothness", Range(0, 1)) = 0.12
-		_SnowSmoothness ("Snow Smoothness", Range(0, 1)) = 0.3
+		_LandDetailSmoothness ("Snow Smoothness", Range(0, 1)) = 0.3
 	}
 	SubShader {
 		Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
@@ -72,7 +72,7 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _WaterRange;
 				float _WaterSmoothness;
 				float _LandSmoothness;
-				float _SnowSmoothness;
+				float _LandDetailSmoothness;
 			CBUFFER_END
 
 			struct Attributes {
@@ -145,7 +145,7 @@ half3 emission = lightsTex * _LightScale * nightMask
 
 				// Sampled before the SurfaceData so the spec block can read it.
 				// Defaults to black, and a black spec map gives waterMask 0 and
-				// snowMask 0 -- matte terrain, which is the safe reading of a
+				// landMask 0 -- matte terrain, which is the safe reading of a
 				// missing map rather than a fully mirrored planet.
 				half4 specTex = SAMPLE_TEXTURE2D(_SpecMap, sampler_SpecMap, input.uv);
 
@@ -153,22 +153,34 @@ half3 emission = lightsTex * _LightScale * nightMask
 				surfaceData.albedo = albedoTex.rgb;
 				surfaceData.metallic = 0.0;
 
-				// Spec map convention, read out of the maps rather than guessed.
-				// Checked on alpine_02, ocean_05, desert_04 and snow_01, which
-				// all agree:
+				// Spec map convention, measured off the maps rather than
+				// guessed. Checked on alpine_02, ocean_05, desert_04 and
+				// snow_01, which all agree, and cross-checked against each
+				// map's own diffuse so land and water could be separated:
 				//
-				//   G = WATER.  Clusters hard around 0.50 over ocean and
-				//       0.13-0.30 over land, so it needs remapping; using it
-				//       raw never reaches 1.
-				//   R = SNOW / ICE.  Zero over water, zero over most land,
-				//       0.6-0.97 on the bright caps.
+				//   G = WATER.  Mean 0.47 over lakes, 0.21 over land, and it
+				//       binarises the lake mask at 3.5% mismatch. Tops out
+				//       near 0.50-0.55 rather than 1.0, hence the remap.
+				//
+				//   A = a near-duplicate of G.  Correlation 0.9937, identical
+				//       binarisation quality, mean difference +0.004. It adds
+				//       nothing and is not read. It never was.
+				//
+				//   R = LAND / TERRAIN.  Mean 0.32 over land, 0.08 over
+				//       water, and bimodal: zero in the valleys and ridge
+				//       lines, high on the plateaus. A terrain variation
+				//       mask, NOT snow or ice as an earlier note here
+				//       claimed.
+				//
 				//   B = 0 in every map.
 				//
-				// This was previously read the other way round -- the comment
-				// claimed green was land and red was ocean -- so the ocean was
-				// shaded matte and the land came out glossy.
+				// These must be imported as LINEAR. They are data, not
+				// colour, and the whole set defaulted to sRGB, which left
+				// the GPU seeing water at 0.21 and land at 0.05 instead of
+				// 0.50 and 0.24 -- putting both below _WaterFloor and
+				// rendering the ocean matte. All 162 are now Linear.
 				float waterMask = saturate((specTex.g - _WaterFloor) * rcp(max(1e-3, _WaterRange)));
-				float snowMask  = saturate(specTex.r);
+				float landMask  = saturate(specTex.r);
 
 				// Smoothness is what actually drives the look, for the reason
 				// in the F0 note below.
@@ -180,7 +192,7 @@ half3 emission = lightsTex * _LightScale * nightMask
 				//
 				// Correctly read it gives:
 				//     ocean 0.86 (mirror)  rock 0.12 (matte)  snow 0.39
-				float landSmoothness = _LandSmoothness + snowMask * _SnowSmoothness;
+				float landSmoothness = _LandSmoothness + landMask * _LandDetailSmoothness;
 				surfaceData.smoothness = lerp(landSmoothness, _WaterSmoothness, waterMask);
 
 				// F0 -- normal-incidence reflectance.

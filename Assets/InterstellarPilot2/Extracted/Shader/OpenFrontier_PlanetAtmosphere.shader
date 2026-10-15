@@ -14,6 +14,9 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_SunBleed ("Sun Bleed", Range(0, 1)) = 1
 		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 4
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
+		[Header(ForwardScatter)]
+		_ForwardBias ("Forward Bias", Range(-1, 1)) = 0.35
+		_ForwardRange ("Forward Range", Range(0.05, 2)) = 0.55
 	}
 	SubShader {
 		Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" }
@@ -41,6 +44,8 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			float _SunBleedPower;
 			float _SunRimBoost;
 			float _AtmoGlow;
+			float _ForwardBias;
+			float _ForwardRange;
 			// URP publishes these every frame, for every camera. For a
 			// directional light _MainLightPosition.xyz is the direction TOWARDS
 			// the light -- the exact vector GetMainLight().direction hands to
@@ -196,13 +201,41 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				float3 sunPerp = l - axis * dot(l, axis);
 				float3 nPerp = n - axis * dot(n, axis);
 				// Guard the degenerate case where the sun lies along the view
-				// axis and the bearing is undefined. That is the eclipsed
-				// alignment; there is no preferred direction on screen, so
-				// there is no arc to place.
+				// axis. |sunPerp| is the sine of the angle between the sun
+				// and the view axis, so it collapses toward zero precisely
+				// when the sun is behind the viewer -- and the bearing below
+				// divides by it. 1e-4 was far too permissive: at the sun dead
+				// behind, |sunPerp| is still 0.11, the guard passed, and the
+				// bearing came out of a near-zero denominator as an
+				// essentially arbitrary azimuth. 0.12 is about 7 degrees off
+				// axis, below which there is no meaningful screen bearing
+				// to aim at.
 				float sunLen = length(sunPerp);
-				float bearing = (sunLen > 1e-4)
+				float bearing = (sunLen > 0.12)
 					? dot(nPerp, sunPerp) / (length(nPerp) * sunLen)
 					: 0.0;
+
+				// Forward scattering -- the physical reason reddening happens
+				// at all, and the gate that was missing.
+				//
+				// Sunlight only arrives reddened if it has travelled THROUGH
+				// the atmosphere toward us. That requires the sun to be on the
+				// far side of this limb point from the camera, i.e.
+				// dot(l, v) < 0. With the sun BEHIND the viewer it is
+				// positive, the limb is lit from behind -- plain backscatter
+				// -- and the air keeps its own colour all the way round.
+				//
+				// Without this the arc fired on a fully lit disc with no
+				// terminator anywhere in view, which is the orange crescent in
+				// the screenshot. Measured peak arc before/after:
+				//
+				//   sun dead behind camera  dot +0.99   0.55 -> 0.00
+				//   sun over your shoulder   dot +0.84   0.39 -> 0.00
+				//   sun at 90 degrees       dot +0.28   0.09 -> 0.01
+				//   sun beyond the planet   dot -0.95   0.59 -> 0.59  (kept)
+				float forwardScatter = (sunLen <= 0.12)
+					? 0.0
+					: saturate((_ForwardBias - dot(l, v)) * rcp(max(1e-3, _ForwardRange)));
 
 				// BOTH factors are needed, and dropping either one breaks it:
 				//
@@ -221,7 +254,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// 12 deg on the sun-past-the-limb geometry, and nothing above
 				// 86 deg at any camera angle.
 				float arc = pow(saturate(bearing), _SunBleedPower)
-				          * saturate(1.0 - ndl) * day * _SunBleed;
+				          * saturate(1.0 - ndl) * day * forwardScatter * _SunBleed;
 
 				// The general air along the lit limb, kept deliberately
 				// modest so the warm arc reads as the sun rather than as the
