@@ -31,26 +31,29 @@ namespace OpenFrontier.IP.Engine
 		/// target is running away from it.
 		/// </summary>
 		/// <remarks>
-		/// This is the hinge between notching and jamming. A missile whose seeker
-		/// is tracking a target beam-on is holding a much weaker signal, and a
-		/// weaker signal is a signal worth breaking - so the countermeasure's
-		/// odds scale with the notch.
+		/// This is the hinge between notching and jamming. Notching is a
+		/// side-on activity - the ship turns its beam to the missile and
+		/// deploys into the weakened lock - and neither half is much without
+		/// the other. So the countermeasure's odds scale with the notch, and a
+		/// seeker holding a sliver of a signature is a seeker worth attacking.
 		///
-		/// It has to be a multiplier rather than a flat bonus because the roll is
-		/// already a probability against effectiveness. Scaling it means a
-		/// notched ship converts an ECM I that would have failed into one that
-		/// lands, without making an ECM I that was already certain into
-		/// something stronger.
+		/// It is a multiplier on the roll rather than a flat addition because
+		/// the roll is already a probability against effectiveness.
 		///
-		/// 1.4 is chosen against the numbers rather than picked. The roll is
-		/// effectiveness 0.8 times facing times this, and anything much above
-		/// 1.25 pushes the product past one and turns ECM I into a guaranteed
-		/// hit - which is ECM II's job. At 1.4 an ECM I is 80 percent against an
-		/// unnotched target, 88 percent against a battleship held beam-on, and 96
-		/// percent bow-on: one puff usually is not enough, and two very nearly
-		/// always are, which is the shape the combination is supposed to have.
+		/// 1.75 is measured against the numbers, not chosen. The notch peaks at
+		/// 0.25 - the biggest hull held beam-on, which is where the aspect
+		/// falloff is halved by a hull that gets the full falloff - so this can
+		/// only be worth a quarter of itself at the extreme. At 1.75 that is an
+		/// ECM I going from 80 percent head-on to 95 against a Creon held
+		/// beam-on, with the small hulls barely moving off 80 because a fighter
+		/// has almost no flank to present. Two puffs at 95 percent is 90, which
+		/// is a combination you have to mean.
+		///
+		/// The ceiling is 2.0, and that is a real one: at 2.0 the product passes
+		/// one at maximum notch and ECM I becomes a guaranteed hit, which is
+		/// ECM II's job and would leave nothing for the manoeuvre to buy.
 		/// </remarks>
-		private const float NotchedJamBonus = 1.4f;
+		private const float NotchedJamBonus = 1.75f;
 
 		public CountermeasureClass CountermeasureClass;
 
@@ -172,14 +175,19 @@ namespace OpenFrontier.IP.Engine
 				// pointed at the threat. The expensive one drops the facing term
 				// and leaves only the budget, so anything in range is disrupted.
 				//
-				// The notch term is what makes notching and jamming one decision
-				// rather than two. A seeker that is only getting a sliver of its
-				// target's signature is a seeker worth attacking, so a ship
-				// presenting its beam is far easier to jam than one running
-				// flat out. Neither a notch nor an ECM breaks a large hull's lock
-				// on its own - hull sizes span a wider range than aspects do, so
-				// no single signature threshold can tell 'notched' from 'astern'
-				// across the whole ladder - but doing both is what loses it.
+				// The notch term is what makes notching and jamming one manoeuvre
+				// rather than two. Notching is a side-on activity: the ship
+				// turns its beam to the missile and deploys into the weakened
+				// lock, so the odds of the deploy landing scale with how well
+				// the turn was done. Flying bow-on is worth nothing here even
+				// though it dims the ship most - a ship presenting its nose to
+				// an incoming missile is not evading it.
+				//
+				// Neither a notch nor an ECM breaks a large hull's lock on its
+				// own - hull sizes span a wider range than aspects do, so no
+				// single signature threshold can tell 'notched' from 'astern'
+				// across the whole ladder - but doing both at once is what
+				// loses it.
 				if (!CountermeasureClass.AffectsAllInRange)
 				{
 					float facing = Vector3.Dot(Vector3.Normalize(transform.position - component.transform.position), component.transform.forward);

@@ -67,6 +67,23 @@ namespace OpenFrontier.IP.Engine
 		}
 
 		/// <summary>
+		/// How well this missile's seeker is currently notched: zero when the
+		/// target is running away or flying straight at it, rising as the
+		/// target turns its beam to the missile.
+		/// </summary>
+		/// <remarks>
+		/// Read by a countermeasure, and it is the other half of one manoeuvre
+		/// rather than a mechanic of its own. Notching is something you do
+		/// side-on while deploying; neither half is much without the other, so
+		/// a missile is only easy to jam when its target actually turned
+		/// side-on to earn the weakness.
+		///
+		/// Zero before a seeker exists, so a missile nobody gave a seeker to is
+		/// as easy to jam as one chasing an unnotched target.
+		/// </remarks>
+		public float NotchQuality => seeker != null ? seeker.Notch : 0f;
+
+		/// <summary>
 		/// How badly dazzled this seeker is, and how fast that wears off.
 		/// </summary>
 		/// <remarks>
@@ -78,23 +95,6 @@ namespace OpenFrontier.IP.Engine
 		/// burns out, the seeker comes back, and whether the missile got close
 		/// enough in between is the fight.
 		/// </remarks>
-		/// <summary>
-		/// How badly the target is currently notched, from nothing at all to
-		/// fully presenting its nose. Zero means running away, one means coming
-		/// straight at the missile.
-		/// </summary>
-		/// <remarks>
-		/// Read by a countermeasure so that jamming and notching work together.
-		/// A seeker is much easier to jam when it is only getting a sliver of a
-		/// signature, and that is the whole of the combination: neither a notch
-		/// nor an ECM breaks a large hull's lock on its own, but a ship doing
-		/// both is what actually loses it.
-		///
-		/// Zero before a seeker exists, so a missile that has not been given one
-		/// is as easy to jam as an unnotched one.
-		/// </remarks>
-		public float NotchQuality => seeker != null ? 1f - seeker.LockQuality : 0f;
-
 		[SerializeField]
 		private float dazzle;
 

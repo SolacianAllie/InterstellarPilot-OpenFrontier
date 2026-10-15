@@ -125,28 +125,13 @@ namespace OpenFrontier.IP.Engine
 		/// How much of its target's signature this seeker is currently getting,
 		/// as a fraction, because of the angle it is viewing the target from.
 		/// </summary>
-		/// <remarks		>
-		/// This is the measure of a notched target, and it exists so that
-		/// notching and jamming can be made to work together rather than being
-		/// two independent rolls that either both land or both miss.
-		///
-		/// Without it, notching could only ever break a lock by dropping a hull
-		/// below the seeker's threshold - and since hull sizes span a wider
-		/// range than aspects do, no single threshold can separate "notched" from
-		/// "astern" across the whole ladder. A small hull notches so slightly
-		/// that its signature barely moves, and it is already too dim to break
-		/// anyway; a large hull notches hard but starts so far above the
-		/// threshold that it never reaches it.
-		///
-		/// So the ECM reads this instead. A degraded lock is a lock worth
-		/// attacking: the countermeasure's odds scale with how badly the target
-		/// has been notched, which is what makes the combination break a lock
-		/// that neither a notch nor the ECM would have managed alone.
-		///
-		/// One while locked on a target running away, falling towards the
-		/// seeker's front factor as the target turns to meet it.
+		/// <remarks>
+		/// The input to <see cref="Notch"/> rather than anything read on its
+		/// own, which is why it is private. One while locked on a target
+		/// running away, falling towards the seeker's front factor as the
+		/// target turns to present its nose.
 		/// </remarks>
-		public float LockQuality { get; private set; } = 1f;
+		private float LockQuality { get; set; } = 1f;
 
 		/// <summary>
 		/// Whether this seeker has ever held the target at all. The warning
@@ -361,7 +346,48 @@ namespace OpenFrontier.IP.Engine
 			}
 			float seen = SignatureFrom(target, missile.transform.position, missile.ProjectileClass);
 			LockQuality = seen >= signature ? 1f : Mathf.Clamp01(seen / signature);
+			Notch = BeamOnliness(target) * (1f - LockQuality);
 		}
+
+		/// <summary>
+		/// How side-on the target is holding to this missile: one beam-on, zero
+		/// dead astern or dead bow-on.
+		/// </summary>
+		/// <remarks>
+		/// Notching is a side-on activity and this is the shape of it. The ship
+		/// turns its beam to the missile and deploys into the weakened lock, and
+		/// that pairing is the whole counter - neither half is much on its own.
+		///
+		/// It is deliberately NOT the same curve as the signature. A signature
+		/// falls off steadily from astern to bow-on, because a seeker looking at
+		/// a ship's nose sees less of its engines than one looking into its
+		/// exhaust. But the notch peaks at the beam and is worth nothing at either
+		/// end, because a ship flying straight at a missile is not evading it -
+		/// and a ship running flat out is not evading it either. Presenting the
+		/// flank is.
+		///
+		/// So flying bow-on dims you the most and helps the countermeasure
+		/// least. That looks odd until you remember it also means flying directly
+		/// at an incoming missile.
+		/// </remarks>
+		private float BeamOnliness(Unit target)
+		{
+			float sternFirst = SternFirstAspect(target, missile.transform.position);
+			// SternFirstAspect is 1 astern, 0.5 beam-on, 0 bow-on, so this is a
+			// triangle peaking at the middle.
+			return 1f - Mathf.Abs(sternFirst - 0.5f) * 2f;
+		}
+
+		/// <summary>
+		/// How well notched this seeker is: side-on to the missile and losing
+		/// most of the signature as a result. Zero when either is untrue.
+		/// </summary>
+		/// <remarks>
+		/// Read by a countermeasure, which is the other half of the manoeuvre.
+		/// A notched lock is a lock worth attacking, and a lock is only worth
+		/// attacking if the target actually turned side-on to earn the weakness.
+		/// </remarks>
+		public float Notch { get; private set; }
 
 		/// <summary>
 		/// The part that is genuinely different per seeker type. The cone and
