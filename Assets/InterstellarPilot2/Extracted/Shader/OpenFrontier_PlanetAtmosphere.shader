@@ -3,6 +3,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_AtmoColor ("Atmosphere Color", Vector) = (0.35,0.78,1,1)
 		_SunRimColor ("Sun Rim Color", Color) = (1,0.62,0.30,1)
 		_SunRimDeep ("Sun Rim Deep Color", Color) = (1,0.30,0.12,1)
+		_SunExtinction ("Sun Extinction", Range(0, 1.5)) = 0.25
 		_Size ("Size", Float) = 0.75
 		_Falloff ("Falloff", Float) = 2
 		_Transparency ("Transparency", Float) = 3
@@ -36,6 +37,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			fixed4 _AtmoColor;
 			fixed4 _SunRimColor;
 			fixed4 _SunRimDeep;
+			float _SunExtinction;
 			float _Size;
 			float _Falloff;
 			float _Transparency;
@@ -281,6 +283,24 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// slow even gradient.
 				float airMass = saturate(rcp(max(0.05, bearing)) - 1.0);
 
+				// EXTINCTION, which is the piece that was missing entirely and the
+				// reason a white core survived all the way into eclipse.
+				//
+				// airMass above is air mass RELATIVE to the crest: zero where the
+				// sun is highest, one at the terminator. It says nothing about how
+				// much light is left. The absolute figure at the crest is the
+				// secant value 1/ndl = 1/sunLen, and THAT diverges as the sun goes
+				// behind the planet -- at exact eclipse there is no bright point
+				// left, the whole ring is at the horizon.
+				//
+				// Without this the rim kept a full-strength white crest into
+				// eclipse. dayAir still read ~1 there, because ndl at the crest is
+				// positive until the very last moment, so the cyan air glow summed
+				// with the orange arc and desaturated to white -- the white being a
+				// tonemap artifact of that brightness, not of any hue in here.
+				float horizonPath = rcp(max(0.02, sunLen)) - 1.0;
+				float transmit = exp(-(airMass + horizonPath) * _SunExtinction);
+
 				// Whether the arc shows at all.
 				//
 				// Honest framing: this is NO LONGER a scattering-angle gate. Both
@@ -303,13 +323,13 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// The gate that matters is sunBehind above. bearing already keeps
 				// the arc off the unlit limb, since it falls to zero there anyway.
 				float arc = pow(bearing, _SunBleedPower)
-				          * sunBehind * _SunBleed;
+				          * sunBehind * _SunBleed * transmit;
 
 				// The general air along the lit limb, kept deliberately
 				// modest so the warm arc reads as the sun rather than as the
 				// atmosphere's own colour. At 1.0 this rings the whole lit
 				// limb evenly, which is the "glow all the way round" look.
-				float airGlow = dayAir * _AtmoGlow + _NightGlow;
+				float airGlow = dayAir * _AtmoGlow * transmit + _NightGlow;
 
 				// Two colours, and the sun REPLACES rather than adds. Additive
 				// warm on top of full-strength air washes the two together
@@ -328,7 +348,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// term that decides what the rim looks like where the arc has faded,
 				// and previously it was a flat _AtmoColor -- so the night-side limb
 				// came out blue exactly where the sun was lowest.
-				fixed3 airColor = lerp(_AtmoColor.rgb, sunset, airMass);
+				fixed3 airColor = lerp(_AtmoColor.rgb, sunset, airMass * sunBehind);
 
 				fixed3 tint = lerp(airColor, sunset, saturate(arc))
 				            * density * airGlow * lightCol;
