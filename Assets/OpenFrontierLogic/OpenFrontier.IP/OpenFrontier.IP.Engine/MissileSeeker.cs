@@ -85,6 +85,12 @@ namespace OpenFrontier.IP.Engine
 		/// </summary>
 		private bool hasEverLocked;
 
+		/// <summary>
+		/// Whether the seeker was handed the target's position at launch. False
+		/// for SARH, and false when there was no target to read.
+		/// </summary>
+		private bool hasInitialFix;
+
 		/// <summary>Whether the seeker can see the target right now.</summary>
 		private bool hasLock;
 
@@ -115,7 +121,23 @@ namespace OpenFrontier.IP.Engine
 		/// - no longer worth an alarm - and one that never had a lock and is
 		/// still coming, which very much is.
 		/// </summary>
+		/// <summary>Whether the seeker has ever actually held the target at all.</summary>
 		public bool HasEverLocked => hasEverLocked;
+
+		/// <summary>
+		/// Whether this seeker has anything at all to fly at - either it can
+		/// see the target, or it was handed a position to start from.
+		/// </summary>
+		/// <remarks>
+		/// False means the missile is a rock. That is a real state and not an
+		/// error: a semi-active missile whose launcher had no lock on the target
+		/// genuinely does not know the target exists, and the honest thing for
+		/// it to do is fly straight until it expires. Without this the seeker
+		/// would steer at the un-seeded aim point, which is the position the
+		/// missile was fired from - so it would turn around to go back where it
+		/// came from.
+		/// </remarks>
+		public bool HasPicture => hasLock || hasInitialFix;
 
 		public MissileSeeker(Missile missile)
 		{
@@ -124,6 +146,30 @@ namespace OpenFrontier.IP.Engine
 			lockDot = CosineOfHalfAngle(cls.SeekerConeAngle);
 			reacquireDot = CosineOfHalfAngle(cls.SeekerReacquireAngle > 0f ? cls.SeekerReacquireAngle : cls.SeekerConeAngle);
 		}
+
+		/// <summary>
+		/// The most a seeker can ever see, as a half-angle.
+		/// </summary>
+		/// <remarks>
+		/// Ninety degrees is the forward half-plane: the missile sees straight
+		/// ahead and abeam, and nothing at all behind its own beam. That is a
+		/// hard rule rather than a matter of taste, and it is clamped here so a
+		/// prefab cannot break it by being authored badly.
+		///
+		/// It matters because of what a homing missile does with something it
+		/// can see. Give it more than ninety and it will see a target astern
+		/// and simply turn around to go after it, which turns every wide-cone
+		/// missile into a U-turn seeker that will chase things it was never
+		/// launched at. Ninety keeps the cone describing what is in front of
+		/// the missile, which is the only question a seeker is being asked.
+		///
+		/// The trade is at the ceiling: a missile at exactly ninety has no room
+		/// for a wider re-acquire angle, so the hysteresis in
+		/// <see cref="ProjectileClass.SeekerReacquireAngle"/> flattens to
+		/// nothing for the widest seekers. A wide cone and a hysteresis gap
+		/// cannot both be had at ninety degrees.
+		/// </remarks>
+		public const float MaxConeHalfAngle = 90f;
 
 		private static float CosineOfHalfAngle(float degrees)
 		{
@@ -134,7 +180,7 @@ namespace OpenFrontier.IP.Engine
 				// cone see in every direction, which is the intent.
 				return -1f;
 			}
-			return Mathf.Cos(Mathf.Clamp(degrees, 0f, 180f) * Mathf.Deg2Rad);
+			return Mathf.Cos(Mathf.Min(degrees, MaxConeHalfAngle) * Mathf.Deg2Rad);
 		}
 
 		/// <summary>
@@ -419,6 +465,31 @@ namespace OpenFrontier.IP.Engine
 		/// <summary>
 		/// Starts a seeker over, for a missile being initialised.
 		/// </summary>
+		/// <remarks>
+		/// Most seeker types are handed the target's position and velocity the
+		/// moment they are fired, and treat that as their picture until they can
+		/// do better. It is not a lock and it is not guidance - it is simply
+		/// where the ship was at the instant the trigger was pulled, which the
+		/// firing ship knew and can pass on.
+		///
+		/// This is what makes a bay rotated away from the target survivable. A
+		/// launcher's direction and the pilot's chosen target are not the same
+		/// thing - a bay can be turned to face aft - so a missile can leave the
+		/// tube pointing well away from what it was fired at. Without an initial
+		/// position it would have to fly blind until it worked out where to go,
+		/// and with a tight cone it might never work it out at all. With one it
+		/// flies to where the target was, and re-locks whenever the target comes
+		/// back inside the cone - which, if the target has not moved, is
+		/// immediately.
+		///
+		/// SARH is excluded, and that is the one type for which this would be a
+		/// lie rather than a courtesy. A semi-active seeker is riding the
+		/// launching ship's radar picture; if the launcher has no lock on the
+		/// target then the missile has no idea it exists, and pretending
+		/// otherwise would hand the hardest counter to SARH - an ECM or a
+		/// launch from a launcher that was itself looking elsewhere - for free.
+		/// It has to earn its lock honestly or fly straight.
+		/// </remarks>
 		public void Reset(Vector3 launchPosition)
 		{
 			hasLock = false;
@@ -431,6 +502,31 @@ namespace OpenFrontier.IP.Engine
 			lastKnownVelocity = Vector3.zero;
 			AimPoint = launchPosition;
 			AimVelocity = Vector3.zero;
+			hasInitialFix = TakeInitialFix();
+		}
+
+		/// <summary>
+		/// Reads the target's position and velocity as the starting picture.
+		/// False when this seeker type is not entitled to one, or there is no
+		/// target to read.
+		/// </summary>
+		private bool TakeInitialFix()
+		{
+			if (missile.ProjectileClass.GuidanceType == MissileGuidanceType.SARH)
+			{
+				return false;
+			}
+			Unit target = missile.Target;
+			if (target == null || target.transform == null)
+			{
+				return false;
+			}
+			lastKnownPosition = target.transform.position;
+			Rigidbody targetBody = target.RBody;
+			lastKnownVelocity = targetBody != null ? targetBody.linearVelocity : Vector3.zero;
+			AimPoint = lastKnownPosition;
+			AimVelocity = lastKnownVelocity;
+			return true;
 		}
 	}
 }

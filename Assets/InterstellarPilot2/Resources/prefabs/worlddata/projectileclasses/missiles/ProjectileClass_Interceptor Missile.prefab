@@ -67,8 +67,8 @@ MonoBehaviour:
   IsHoming: 1
   IsMine: 0
   GuidanceType: 3
-  SeekerConeAngle: 90
-  SeekerReacquireAngle: 110
+  SeekerConeAngle: 85
+  SeekerReacquireAngle: 90
   SeekerLockPersistence: 4
   SeekerBlindDrift: 3
   SeekerCheckInterval: 0.1

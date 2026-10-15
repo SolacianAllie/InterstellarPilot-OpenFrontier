@@ -289,18 +289,13 @@ namespace OpenFrontier.IP.Engine
 			// dot threshold, so a missile that has been shaken off or blinded
 			// stops counting as one.
 			hasAquiredTarget = seeker.HasLock && lastTargetDist <= LoseTargetDistance;
-			if (!seeker.HasEverLocked)
+			if (!seeker.HasPicture)
 			{
-				// It has never seen the target, so it has no picture to fly and
-				// is a rock: full thrust, dead ahead, exactly what a non-homing
-				// rocket has always done. This is also what a laser-guided
-				// missile does when the launcher has no beam on the target,
-				// which is the entire reason the utility mount is worth fitting.
-				//
-				// It matters that this is checked rather than left implicit. The
-				// seeker's aim point is only ever written when it acquires
-				// something, so a missile that never did would otherwise steer
-				// towards its own launch position.
+				// Nothing to fly at and nothing it was told to fly at - a
+				// semi-active missile whose launcher had no lock on the target.
+				// Full thrust, dead ahead, until it runs out of time. Its seeker's
+				// aim point is still the position it was fired from, and steering
+				// at that would turn it around to go back where it came from.
 				thrust = 1f;
 				return;
 			}
