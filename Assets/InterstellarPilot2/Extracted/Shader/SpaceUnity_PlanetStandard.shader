@@ -50,11 +50,16 @@ Shader "SpaceUnity/PlanetStandard" {
 		_CloudSpecular ("Cloud Specular", 2D) = "black" {}
 		_CloudNormalStrength ("Cloud Normal Strength", Range(0, 3)) = 1
 		_CloudSmoothness ("Cloud Smoothness", Range(0, 2)) = 1
-		// Gain on the shadow mask, applied BEFORE the strength cap. Separate
-		// from strength because the jobs differ: strength caps how dark a
-		// shadow may get, gain decides whether a faint map reaches that cap.
-		_CloudShadowSharpness ("Cloud Shadow Sharpness", Range(0.25, 16)) = 2.5
-		_CloudShadowStrength ("Cloud Shadow Strength", Range(0, 1)) = 0.7
+		// Gain, applied BEFORE the strength. Capped at 1 on purpose: above 1 it
+		// stops being sharpness and starts inventing shadow the map does not
+		// describe -- it overdrives a texel the artist left at 0.3 into 0.75.
+		// At 1 the map says what it means, and strength alone decides how dark
+		// that reads.
+		_CloudShadowSharpness ("Cloud Shadow Sharpness", Range(0.25, 1)) = 1
+		// Depth, and deliberately overdrivable to 2. Above 1 the densest
+		// authored shadows saturate to solid black rather than going negative
+		// -- see the saturate in the frag.
+		_CloudShadowStrength ("Cloud Shadow Strength", Range(0, 2)) = 1.5
 		// Pan and drift are a UV offset added before the parallax term, so all
 		// four cloud maps move together. Drift is UV per second off _Time.
 		_CloudPan ("Cloud Pan", Vector) = (0,0,0,0)
@@ -448,15 +453,23 @@ Shader "SpaceUnity/PlanetStandard" {
 				// emission: magma and city lights keep burning through the
 				// band instead of being dimmed with everything else.
 				half3 litTerm = (color.rgb - emissionTerm) * sunTint;
-				// Gain first, then the strength cap. The order matters: strength alone
-				// cannot make a faint map visible. Measured alpha means across the shipped
-				// shadow maps: clouds_medium 0.371, clouds_locked 0.201, but
-				// clouds_aerial_shadow only 0.012 with 1.4% of texels above 0.3. At the
-				// old 0.5 cap those give 19% and 0.6% dimmings -- the second is not
-				// a shadow. The gain at 2.5 lifts the well-populated maps to that cap;
-				// the aerial map still needs its own dial, it is nearly empty.
-				float cloudShadow = 1.0 - saturate(shadowTex.a * _CloudShadowSharpness)
-				                   * _CloudShadowStrength;
+				// Gain first, then the strength. The order matters: strength alone
+				// cannot make a faint map visible. Measured alpha means across the
+				// shipped shadow maps: clouds_medium 0.371, clouds_locked 0.201, but
+				// clouds_aerial_shadow only 0.012 with 1.4% of texels above 0.3.
+				//
+				// The saturate around the whole expression is REQUIRED, not tidiness.
+				// _CloudShadowStrength goes to 2, so 1 - a*strength goes NEGATIVE
+				// wherever a*strength exceeds 1 -- on clouds_nuke, whose alpha mean
+				// is 0.794, that is most of the map. A negative cloudShadow
+				// multiplied into max(litTerm, 0) subtracts from the emission term,
+				// which is exactly what the separation just above exists to
+				// prevent: city lights and magma are meant to keep burning under a
+				// cloud. Saturating turns "overdriven" into "solid black shadow"
+				// instead of "shadow that eats the city lights".
+				float cloudShadow = saturate(
+					1.0 - saturate(shadowTex.a * _CloudShadowSharpness)
+					        * _CloudShadowStrength);
 				color.rgb = emissionTerm + max(litTerm, 0.0) * cloudShadow;
 
 				// The deck itself. Clouds are a high-albedo layer sitting in the
