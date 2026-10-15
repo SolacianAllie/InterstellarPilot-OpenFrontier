@@ -482,13 +482,12 @@ namespace OpenFrontier.IP.Engine
 		/// back inside the cone - which, if the target has not moved, is
 		/// immediately.
 		///
-		/// SARH is excluded, and that is the one type for which this would be a
-		/// lie rather than a courtesy. A semi-active seeker is riding the
-		/// launching ship's radar picture; if the launcher has no lock on the
-		/// target then the missile has no idea it exists, and pretending
-		/// otherwise would hand the hardest counter to SARH - an ECM or a
-		/// launch from a launcher that was itself looking elsewhere - for free.
-		/// It has to earn its lock honestly or fly straight.
+		/// Two kinds of missile do not get one, and
+		/// <see cref="TakeInitialFix"/> is where that is decided. A round that
+		/// turns to bear on its target at launch is already pointing the right
+		/// way. And SARH is riding the launcher's radar picture, so it has to
+		/// earn its lock honestly rather than be handed a position the firing
+		/// ship never had.
 		/// </remarks>
 		public void Reset(Vector3 launchPosition)
 		{
@@ -510,10 +509,34 @@ namespace OpenFrontier.IP.Engine
 		/// False when this seeker type is not entitled to one, or there is no
 		/// target to read.
 		/// </summary>
+		/// <remarks>
+		/// The test is RotateTowardsTarget, and it is not a new flag because
+		/// that field already says the thing this needs to know. A round with
+		/// it set is aimed at its target as it leaves the tube, so it is already
+		/// pointing the right way and has nothing to be told. A round without it
+		/// is fired along the launcher - which is the four guided missiles, and
+		/// is exactly the case where a bay turned away from the target sends it
+		/// out pointing the wrong way and it needs the firing ship's knowledge
+		/// to get going.
+		///
+		/// So the Small Rocket is the exception the data already describes: it
+		/// is the one round that turns to bear on its target at launch, which
+		/// is why it needs no fix, and why with no beam on the target it flies
+		/// exactly as it always did.
+		/// </remarks>
 		private bool TakeInitialFix()
 		{
+			if (missile.ProjectileClass.RotateTowardsTarget)
+			{
+				return false;
+			}
 			if (missile.ProjectileClass.GuidanceType == MissileGuidanceType.SARH)
 			{
+				// A semi-active seeker is riding the launching ship's radar
+				// picture; if the launcher has no lock then the missile has no
+				// idea the target exists. Handing it a free position anyway
+				// would give away the hardest counter to SARH - an ECM, or a
+				// shot from a launcher that was itself looking elsewhere.
 				return false;
 			}
 			Unit target = missile.Target;
