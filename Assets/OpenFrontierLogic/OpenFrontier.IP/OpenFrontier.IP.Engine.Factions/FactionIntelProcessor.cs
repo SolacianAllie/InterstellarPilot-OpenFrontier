@@ -73,7 +73,16 @@ namespace OpenFrontier.IP.Engine.Factions
 
 		public static bool IsTargetOutOfDetectionRange(Unit scanner, Unit unit, float dist)
 		{
-			float num = unit.GetDetectionRange() + scanner.Components.ScanRange + unit.Radius + scanner.Radius;
+			// The target's own detection range - its cross section, modified by
+			// cloak and by what is still powered - amplified by how good the
+			// scanner is, plus both radii.
+			//
+			// It used to be the two added flat, which meant a sensor bought the
+			// same extra range on a fighter as on a trade station and so had no
+			// particular reason to be a good sensor. See
+			// Unit.SensorReferenceRange.
+			float num = unit.VisibleRangeTo(scanner.Components.ScanRange)
+				+ unit.Radius + scanner.Radius;
 			if (dist > num)
 			{
 				return true;

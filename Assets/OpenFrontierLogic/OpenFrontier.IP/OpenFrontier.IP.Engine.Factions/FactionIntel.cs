@@ -837,11 +837,40 @@ namespace OpenFrontier.IP.Engine.Factions
 			}
 		}
 
+		/// <summary>
+		/// How wide the sphere that finds scan candidates has to be.
+		/// </summary>
+		/// <remarks>
+		/// This is a broad phase. It collects everything that might be in range
+		/// and the real per-target test happens afterwards in
+		/// FactionIntelProcessor, so the sphere has to be at least as wide as the
+		/// widest answer that test could give - or the target is culled before
+		/// the test that would have found it ever runs.
+		///
+		/// It was IntelSettings.MaxScanRange plus the caller's reach, which at
+		/// the defaults was 3500 metres. Now that detection is driven by the
+		/// target's radar cross section, a Magnus under an ordinary sensor is
+		/// visible at 3421 and a trade station at 4343 - so the old sphere was
+		/// dropping stations on the floor, and would have kept doing so.
+		///
+		/// Note that SkirmishWorld adds eight thousand to ScanRange, which under
+		/// the old numbers meant the broad phase was still only 3500 wide and most
+		/// of that bonus did nothing at all. It works now, and the sphere really
+		/// is that big in skirmish. Worth watching on a phone: this is the one
+		/// place where fixing radar makes a physics query physically larger.
+		/// </remarks>
+		private static float BroadPhaseRadius(float scannerRange)
+		{
+			return Mathf.Max(
+				GameController.Instance.GameSettings.IntelSettings.MaxScanRange + scannerRange,
+				Unit.WidestVisibleRangeFrom(scannerRange));
+		}
+
 		public void PerformScan(Sector sector, Vector3 sectorPosition, float range, Unit scanner)
 		{
 			if (GameController.Instance.GameSettings.DebugSettings.ScanningEnabled)
 			{
-				int num = Physics.OverlapSphereNonAlloc(sector.ToWorldPosition(sectorPosition), GameController.Instance.GameSettings.IntelSettings.MaxScanRange + range, EngineASX.ColliderCache, GameController.Instance.AIScanMask, QueryTriggerInteraction.Collide);
+				int num = Physics.OverlapSphereNonAlloc(sector.ToWorldPosition(sectorPosition), BroadPhaseRadius(range), EngineASX.ColliderCache, GameController.Instance.AIScanMask, QueryTriggerInteraction.Collide);
 				for (int i = 0; i < num; i++)
 				{
 					Unit component = EngineASX.ColliderCache[i].GetComponent<Unit>();
@@ -854,7 +883,7 @@ namespace OpenFrontier.IP.Engine.Factions
 		{
 			if (GameController.Instance.GameSettings.DebugSettings.ScanningEnabled)
 			{
-				int num = Physics.OverlapSphereNonAlloc(sector.ToWorldPosition(sectorPosition), GameController.Instance.GameSettings.IntelSettings.MaxScanRange + range, EngineASX.ColliderCache, GameController.Instance.AIScanMask, QueryTriggerInteraction.Collide);
+				int num = Physics.OverlapSphereNonAlloc(sector.ToWorldPosition(sectorPosition), BroadPhaseRadius(range), EngineASX.ColliderCache, GameController.Instance.AIScanMask, QueryTriggerInteraction.Collide);
 				for (int i = 0; i < num; i++)
 				{
 					Unit component = EngineASX.ColliderCache[i].GetComponent<Unit>();

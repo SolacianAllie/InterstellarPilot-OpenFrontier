@@ -119,8 +119,6 @@ namespace OpenFrontier.IP.Engine
 
 		public UnitType UnitType = UnitType.Ship;
 
-		public float DetectionRange = 1500f;
-
 		public PlanetClass PlanetClass;
 
 		public UnitPurpose Purposes

@@ -98,5 +98,4 @@ MonoBehaviour:
   ConstructionRateMultiplier: 1
   UnitSeries: {fileID: 114724804207875695, guid: eb855847918a9c649b77f2cfdd474651, type: 2}
   UnitType: 1
-  DetectionRange: 1000
   PlanetClass: {fileID: 0}

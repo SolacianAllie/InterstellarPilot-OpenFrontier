@@ -1995,9 +1995,168 @@ namespace OpenFrontier.IP.Engine
 			detectionRadius = CalculateDetectionRange();
 		}
 
+		/// <summary>
+		/// The constant that turns a radar cross section into a detection range.
+		/// </summary>
+		/// <remarks>
+		/// Calibrated against what the game already had. The authored
+		/// UnitClass.DetectionRange ran Ranger 700, Hornet 800, Venture 1100,
+		/// Creon 1300, Magnus 1800 - a factor of 2.57 from smallest to largest -
+		/// and the quarter power of the cross sections runs that same ladder at a
+		/// factor of 2.96. So the hand-picked numbers were already roughly
+		/// tracking size, and this makes it explicit and continuous rather than
+		/// twenty-eight separate guesses that happened to agree.
+		///
+		/// 270 puts a Ranger at about 650 and a Magnus at about 1920, which is
+		/// within a few hundred metres of what the game was doing before.
+		/// </remarks>
+		public const float RadarDetectionScale = 270f;
+
+		/// <summary>
+		/// The cross section of the smallest thing this game considers worth
+		/// seeing, used to draw the range within which everything is visible.
+		/// </summary>
+		/// <remarks>
+		/// The Ranger is 33 square metres and is the smallest hull in the game at
+		/// 28 for the Hornet, so this sits just below both. It is a floor rather
+		/// than a measurement, and it exists so the drawn circle has a definite
+		/// edge instead of being whatever the smallest class currently is.
+		/// </remarks>
+		public const float ReferenceCrossSection = 25f;
+
+		/// <summary>
+		/// How far away this hull can be picked up on a sensor, before anything
+		/// is switched off and nothing is multiplied.
+		/// </summary>
+		/// <remarks>
+		/// The same law the radar seekers use, on the same quarter power of the
+		/// same cross section, so a ship that is hard for a missile to see at
+		/// range is also hard to see at range. That is the whole point of putting
+		/// them on one number: a Creon being a large radar target is not a
+		/// property of missiles, it is a property of the Creon.
+		///
+		/// Zero cross section means no detection range at all, which is what an
+		/// asteroid or a piece of debris should read as.
+		/// </remarks>
+		public static float DetectionRangeFor(float radarCrossSection)
+		{
+			if (radarCrossSection <= 0f)
+			{
+				return 0f;
+			}
+			return RadarDetectionScale * Mathf.Pow(radarCrossSection, 0.25f);
+		}
+
+		/// <summary>
+		/// The scanner reach at which a sensor counts as ordinary and amplifies
+		/// a target's own detection range by exactly one.
+		/// </summary>
+		/// <remarks>
+		/// Deliberately the default ScanRange, so that an ordinary ship in an
+		/// ordinary game behaves as it did before any of this: one times.
+		///
+		/// This is the constant that makes sensor quality reach small targets,
+		/// which it did not used to. The scan range was a flat number added to
+		/// every target alike, so a ship with a ScanRange of 1500 and one with
+		/// 8000 differed by the same 6500 metres whether they were looking at a
+		/// fighter or a trade station. Better sensors bought range, and they
+		/// bought exactly as much of it on the small end of the ladder as on the
+		/// large, which is what made them not very good.
+		/// </remarks>
+		public const float SensorReferenceRange = 1500f;
+
+		/// <summary>
+		/// How far away a scanner with this reach can see this hull, before
+		/// cloak and powered-component modifiers are applied to either side.
+		/// </summary>
+		/// <remarks>
+		/// The scanner's own reach, plus the target's own detection range
+		/// amplified by how good the scanner is relative to
+		/// <see cref="SensorReferenceRange"/>.
+		///
+		/// The two terms stay separate on purpose. A target's detection range is
+		/// a statement about the target - cloaking halves it, a ship with dead
+		/// engines loses a quarter of it, one that has just fired gets a bonus -
+		/// and none of those should change how far the scanner can reach. Only
+		/// the amplification is a function of the scanner.
+		///
+		/// The result is the trade the design is asking for. A skirmish sensor
+		/// picks out a Hornet at about thirteen kilometres, where an ordinary
+		/// sensor picks out a trade station at about four, so a good sensor
+		/// genuinely closes the gap that being small leaves you at.
+		/// </remarks>
+		public float VisibleRangeTo(float scannerRange)
+		{
+			return scannerRange
+				+ CalculateDetectionRange() * (scannerRange / SensorReferenceRange);
+		}
+
+		/// <summary>
+		/// The widest range any target could be seen at by a scanner with this
+		/// reach, which is what a broad-phase test has to cover.
+		/// </summary>
+		/// <remarks>
+		/// The intel scan finds candidates with a physics sphere and then tests
+		/// each one properly, so the sphere has to be at least as wide as the
+		/// widest thing a real answer could include - or a good target is culled
+		/// before the test that would have found it ever runs.
+		///
+		/// That was not a theoretical concern. The sphere was
+		/// IntelSettings.MaxScanRange plus the scanner's reach, which with the
+		/// defaults was 3500 metres, while a Magnus under an ordinary sensor is
+		/// now visible at 3421 and a trade station at 4343. Stations were being
+		/// dropped.
+		///
+		/// Worth watching on a phone: this is the one place where making radar
+		/// work makes a sphere physically bigger.
+		/// </remarks>
+		public static float WidestVisibleRangeFrom(float scannerRange)
+		{
+			return scannerRange
+				+ DetectionRangeFor(LargestCrossSection) * (scannerRange / SensorReferenceRange);
+		}
+
+		/// <summary>
+		/// The cross section of the largest hull in the game, the trade station
+		/// at 12288 square metres.
+		/// </summary>
+		/// <remarks>
+		/// Used only to size a broad phase. It is the ceiling on what a scanner
+		/// can see, so anything sized against it is never too narrow.
+		/// </remarks>
+		public const float LargestCrossSection = 12288f;
+
+		/// <summary>
+		/// The range within which this unit can see anything at all, which is
+		/// what its drawn scan circle means.
+		/// </summary>
+		/// <remarks>
+		/// The edge of the circle is the smallest thing worth seeing. Anything
+		/// inside it is visible whatever it is; a battleship just outside is
+		/// visible and a fighter is not, and that is true of the map and of the
+		/// world because they are the same test.
+		///
+		/// It was a scanner's reach plus a flat 1500 pad from the HUD settings,
+		/// which was a decorative number that happened to be about the size of
+		/// the answer.
+		/// </remarks>
+		public float VisualRange
+		{
+			get
+			{
+				if (Components == null)
+				{
+					return 0f;
+				}
+				float scanRange = Components.ScanRange;
+				return scanRange
+					+ DetectionRangeFor(ReferenceCrossSection) * (scanRange / SensorReferenceRange);
+			}
+		}
+
 		public float CalculateDetectionRange()
 		{
-			float num = unitClass.DetectionRange;
+			float num = DetectionRangeFor(RadarCrossSection);
 			if (unitGasCloud != null)
 			{
 				num *= unitGasCloud.GetDetectionRangeMultiplier();
