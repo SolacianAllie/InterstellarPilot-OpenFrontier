@@ -380,7 +380,14 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// matters: lerping the air from cyan toward orange passes through
 				// grey, measured at (0.61, 0.66, 0.69) right at the terminator, so the
 				// air was greying out at precisely the point it should be reddest.
-				float arch = pow(saturate(1.0 - abs(bearing) * 1.1), 3.0) * sunBehind;
+				// Gated to the DAY side of the terminator. The lobe above is symmetric
+				// about bearing 0, so on its own it put half its light on the dark
+				// side -- which is the red ring in the night-side screenshot. The air
+				// past the terminator is over the night hemisphere and there is
+				// nothing there for twilight to scatter off. smoothstep(-0.15, 0.02)
+				// is zero by 8.6 degrees past and full by just before it.
+				float arch = pow(saturate(1.0 - abs(bearing) * 1.1), 3.0)
+				            * sunBehind * smoothstep(-0.15, 0.02, bearing);
 
 				// Two colours, and the sun REPLACES rather than adds. Additive
 				// warm on top of full-strength air washes the two together
