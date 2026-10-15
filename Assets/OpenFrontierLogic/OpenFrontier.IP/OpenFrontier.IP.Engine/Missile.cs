@@ -27,6 +27,13 @@ namespace OpenFrontier.IP.Engine
 
 		private bool isGuidanceActive;
 
+		/// <summary>
+		/// Decides where this missile flies and whether it can still see its
+		/// target. Null until <see cref="Init"/>, which is the only place a
+		/// missile becomes a missile.
+		/// </summary>
+		private MissileSeeker seeker;
+
 		public float LoseTargetDistance = 1000f;
 
 		private float timeWhenGuidanceActivates;
@@ -63,12 +70,22 @@ namespace OpenFrontier.IP.Engine
 
 		public Rigidbody RBody => projectile?.RBody;
 
+		/// <summary>
+		/// Whether there is still a ship here worth chasing.
+		/// </summary>
+		/// <remarks>
+		/// This used to also reject a fully cloaked target, which made cloak
+		/// defeat every missile in the game. Cloak is a seeker question now -
+		/// it blinds IR and SARH and does nothing to ARH or a laser - so it is
+		/// asked by <see cref="MissileSeeker"/> instead, and this is only
+		/// asking whether the thing still exists.
+		/// </remarks>
 		public bool IsTargetValid
 		{
 			get
 			{
 				Unit target = projectile.Target;
-				if (target != null && !target.IsFullyCloaked)
+				if (target != null)
 				{
 					return !target.IsDocked;
 				}
@@ -103,6 +120,7 @@ namespace OpenFrontier.IP.Engine
 			disrupted = true;
 			projectile.Target = target;
 			hasAquiredTarget = true;
+			seeker?.LoseLock();
 		}
 
 		public void LoseTarget()
@@ -210,58 +228,63 @@ namespace OpenFrontier.IP.Engine
 
 		private void UpdateHoming()
 		{
+			if (seeker == null)
+			{
+				// A projectile can be seen for a frame before its owner has
+				// called Init. Build the seeker here as well rather than
+				// throwing on the first Update.
+				seeker = new MissileSeeker(this);
+				seeker.Reset(transform.position);
+			}
+			seeker.Update(Time.time, Time.deltaTime);
+			if (projectile.Target == null)
+			{
+				// The seeker gave up. Nothing to steer towards, so fly on
+				// rather than sit there holding the last thrust it had.
+				thrust = 1f;
+				return;
+			}
 			UpdateTargetDistAndBearing();
-			if (lastTargetDist > LoseTargetDistance)
-			{
-				LoseTarget();
-				return;
-			}
-			Vector3 lhs = lastTargetVector / lastTargetDist;
-			lastDotToTarget = Vector3.Dot(lhs, transform.forward);
-			RotateTowardsTarget();
-			UpdateHomingTargetting();
+			// Whether this is a warning worth sounding, and it is the same two
+			// things it has always been - the seeker can see the target, and
+			// the target is close enough to matter. What has changed is that
+			// "can see it" is now the seeker's real answer rather than a bare
+			// dot threshold, so a missile that has been shaken off or blinded
+			// stops counting as one.
+			hasAquiredTarget = seeker.HasLock && lastTargetDist <= LoseTargetDistance;
+			lastDotToTarget = lastTargetDist > 0.0001f ? Vector3.Dot(lastTargetVector / lastTargetDist, transform.forward) : 1f;
+			ControlThrust();
+			RotateTowardsPoint();
 		}
 
-		private void UpdateTargetDistAndBearing()
-		{
-			lastTargetVector = Target.transform.position - transform.position;
-			lastTargetDist = lastTargetVector.magnitude;
-		}
-
-		private void UpdateHomingTargetting()
-		{
-			if (!projectile.ProjectileClass.HomingCanLoseTarget)
-			{
-				return;
-			}
-			if (hasAquiredTarget)
-			{
-				if (lastDotToTarget < projectile.ProjectileClass.HomingLostTargetDotThreshold)
-				{
-					projectile.Target = null;
-				}
-			}
-			else if (lastDotToTarget > projectile.ProjectileClass.HomingAquiredTargetThreshold)
-			{
-				hasAquiredTarget = true;
-			}
-		}
-
-		private void RotateTowardsTarget()
+		/// <summary>
+		/// Turns towards whatever the seeker decided to aim at, which is the
+		/// target itself while the seeker has it and a dead-reckoned guess
+		/// while it does not.
+		/// </summary>
+		private void RotateTowardsPoint()
 		{
 			Vector3 sourcePosition = transform.position;
-			Vector3 target = Target.transform.TransformPoint(projectile.targetLocalPosition);
+			bool locked = seeker != null && seeker.HasLock;
+			Vector3 target;
+			if (locked && Target != null)
+			{
+				// While locked this is the old behaviour exactly, aim point
+				// offset included, so nothing changes for a missile that never
+				// loses its cone.
+				target = Target.transform.TransformPoint(projectile.targetLocalPosition);
+			}
+			else
+			{
+				// Blind: fly the seeker's dead-reckoned guess. Only reachable
+				// before Init has run, in which case going straight is right.
+				target = seeker != null ? seeker.AimPoint : sourcePosition + transform.forward * 100f;
+			}
+			Vector3 targetVelocity = seeker != null ? seeker.AimVelocity : Vector3.zero;
 			if (ProjectileClass.MissileIntelligentGuidance && lastTargetDist < ProjectileClass.MissileIntelligentGuidanceMaxDist)
 			{
-				Vector3 targetVelocity = Vector3.zero;
-				Rigidbody rBody = Target.RBody;
-				if (rBody != null)
-				{
-					targetVelocity = rBody.linearVelocity;
-				}
-				float sourceSpd = maxSpd;
 				Vector3 interception = Vector3.zero;
-				if (Geometry.GetInteceptPosition(ref sourcePosition, sourceSpd, ref target, ref targetVelocity, out interception))
+				if (Geometry.GetInteceptPosition(ref sourcePosition, maxSpd, ref target, ref targetVelocity, out interception))
 				{
 					transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(interception - sourcePosition), ProjectileClass.TurnRate * Time.deltaTime);
 				}
@@ -270,6 +293,12 @@ namespace OpenFrontier.IP.Engine
 			{
 				transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(target - sourcePosition), ProjectileClass.TurnRate * Time.deltaTime);
 			}
+		}
+
+		private void UpdateTargetDistAndBearing()
+		{
+			lastTargetVector = Target.transform.position - transform.position;
+			lastTargetDist = lastTargetVector.magnitude;
 		}
 
 		private void UpdateTarget()

@@ -67,6 +67,11 @@ MonoBehaviour:
   IsHoming: 1
   IsMine: 0
   GuidanceType: 2
+  SeekerConeAngle: 45
+  SeekerReacquireAngle: 60
+  SeekerLockPersistence: 2
+  SeekerBlindDrift: 6
+  SeekerCheckInterval: 0.1
   MaxMoveRange: 20000
   MiningDamageMultiplier: 0.1
   MoveSpeed: 0

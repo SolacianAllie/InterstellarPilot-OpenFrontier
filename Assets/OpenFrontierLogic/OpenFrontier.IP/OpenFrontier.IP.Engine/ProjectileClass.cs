@@ -48,6 +48,58 @@ namespace OpenFrontier.IP.Engine
 
 		public bool IsHoming;
 
+		/// <summary>
+		/// Half-angle of the seeker cone, in degrees - how far off its nose the
+		/// target has to be before this missile stops being able to see it.
+		/// </summary>
+		/// <remarks>
+		/// This is the degrees equivalent of the two dot thresholds below, and
+		/// it is the one to author: 0.5 is not obviously 60 degrees, and every
+		/// missile in the game wants a different number.
+		///
+		/// Zero means unset, which is what every prefab written before this
+		/// field existed reads, and zero means NO cone - the missile sees in
+		/// every direction exactly as it always did. That is deliberate: it
+		/// makes the field safe to add to existing content, and it means a
+		/// missile that predates seekers keeps behaving like one.
+		/// </remarks>
+		public float SeekerConeAngle;
+
+		/// <summary>
+		/// The wider cone a blind missile has to get the target back inside to
+		/// re-acquire. Zero means the same as <see cref="SeekerConeAngle"/>.
+		/// </summary>
+		/// <remarks>
+		/// Without the gap a missile sitting exactly on the edge of its cone
+		/// flickers between locked and blind every evaluation, and the
+		/// dead-reckoning below turns that flicker into a random walk.
+		/// </remarks>
+		public float SeekerReacquireAngle;
+
+		/// <summary>
+		/// Seconds the seeker may stay blind before the missile gives up on the
+		/// target for good. Zero means no second chances - one blind evaluation
+		/// ends it, which is what every missile did before seekers existed.
+		/// </summary>
+		public float SeekerLockPersistence;
+
+		/// <summary>
+		/// How fast, in metres per second, the blind missile's guess at where
+		/// the target is wanders away from the truth.
+		/// </summary>
+		/// <remarks>
+		/// This is what makes a broken lock cost something. A missile that
+		/// loses its cone does not snap back on: it flies on the last position
+		/// and velocity it knew, and gets it steadily more wrong.
+		/// </remarks>
+		public float SeekerBlindDrift;
+
+		/// <summary>
+		/// How often the seeker checks whether it can see the target, in
+		/// seconds. Zero falls back to the default rather than to every frame.
+		/// </summary>
+		public float SeekerCheckInterval;
+
 		public bool IsMine;
 
 		/// <summary>
