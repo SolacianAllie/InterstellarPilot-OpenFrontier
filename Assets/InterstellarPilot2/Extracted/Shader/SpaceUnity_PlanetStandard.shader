@@ -315,12 +315,23 @@ Shader "SpaceUnity/PlanetStandard" {
 				// UVs live in, so it stays consistent as the planet rotates.
 				float3 viewTangent = float3(dot(viewDirWS, input.tangentWS.xyz),
 				                             dot(viewDirWS, bitangentWS), 0.0);
-				// Pan and drift go in BEFORE the parallax term and before any _ST,
-				// so the deck, its normals, its specular and its shadow map all move
-				// as one. Parallax is last because it is the view-dependent part.
-				float2 cloudUV = input.uv
-				               + _CloudPan.xy
-				               + _CloudDrift.xy * _Time.y
+				// TWO coordinates, because the deck and its shadow are not in the
+				// same place.
+				//
+				// Pan and drift are shared: the clouds drift, so what they cast has
+				// to drift with them or the shadow detaches from its own cloud.
+				//
+				// Parallax is NOT shared. It is the view-dependent term, which is
+				// the whole reason it exists -- it is what makes the deck read as
+				// being at altitude rather than painted on. A shadow is a
+				// projection down ONTO the ground; sliding it with the camera
+				// makes the shadow move across a stationary surface, which reads
+				// as exactly the flat decal the parallax was added to fix. The
+				// shadow belongs to the surface plane, so it gets the surface UV.
+				float2 cloudDriftUV = input.uv
+				                    + _CloudPan.xy
+				                    + _CloudDrift.xy * _Time.y;
+				float2 cloudUV = cloudDriftUV
 				               + viewTangent.xy * _CloudParallax;
 				half4 cloudTex = SAMPLE_TEXTURE2D(_Clouds, sampler_Clouds,
 				                                  TRANSFORM_TEX(cloudUV, _Clouds));
@@ -330,8 +341,9 @@ Shader "SpaceUnity/PlanetStandard" {
 					_CloudNormalStrength);
 				half3 cloudSpecTex = SAMPLE_TEXTURE2D(_CloudSpecular, sampler_CloudSpecular,
 				                                      TRANSFORM_TEX(cloudUV, _CloudSpecular)).rgb;
+				// Sampled at cloudDriftUV, NOT cloudUV -- see above. No parallax.
 				half4 shadowTex = SAMPLE_TEXTURE2D(_CloudShadows, sampler_CloudShadows,
-				                                   TRANSFORM_TEX(cloudUV, _CloudShadows));
+				                                   TRANSFORM_TEX(cloudDriftUV, _CloudShadows));
 
 				// _CloudCoverage is the midpoint and _CloudSharpness the edge.
 				// Default 0.5 / 1.0 is a straight pass through of the authored
