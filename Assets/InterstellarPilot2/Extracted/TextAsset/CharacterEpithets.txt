@@ -1,0 +1,378 @@
+﻿Epithet,Gender
+the Bagel Thief,Unspecified
+the Pickle Thief,Unspecified
+the Gravy Fool,Unspecified
+the Soup Drinker,Unspecified
+the Bacon Baron,Unspecified
+the Doughnut King,Unspecified
+the Roast Beef Commander,Unspecified
+the Fish Finger Extra,Unspecified
+the Egg Separator,Unspecified
+the Sugar Cube Sharer,Unspecified
+the Salt Pork Sergeant,Unspecified
+the Cold Porridge,Unspecified
+the Burnt Toast,Unspecified
+the Tea Leaf Reader,Unspecified
+the Coffee Stain,Unspecified
+the Sticky Bun,Unspecified
+the Parsnip Prophet,Unspecified
+the Turnip Terror,Unspecified
+the Cabbage Conspirator,Unspecified
+the Marmalade Margin,Unspecified
+the Corn Chowder,Unspecified
+the Barley Sugar,Unspecified
+the Frozen Dill,Unspecified
+the Stale Cracker,Unspecified
+the Butterfingers,Unspecified
+the Pickled Onion,Unspecified
+the Doughy Apron,Unspecified
+the Missing Sausage,Unspecified
+the Gravy Boat,Unspecified
+the Custard Stand-In,Unspecified
+the Drunken Pie,Unspecified
+the Espresso Wader,Unspecified
+the Cold Brew,Unspecified
+the Kettle Singer,Unspecified
+the Cheese Merchant,Unspecified
+the Egg Custard,Unspecified
+the Pudding Slinger,Unspecified
+the Tea Ceremony,Unspecified
+the Bread Round,Unspecified
+the Honeycomb,Unspecified
+the Pickle Jar,Unspecified
+the Salt Cellar,Unspecified
+the Sugar Spire,Unspecified
+the Cold Cuts,Unspecified
+the Fried Egg,Unspecified
+the Gravy Tractor,Unspecified
+the Milk Float,Unspecified
+the Sausage Links,Unspecified
+the Soup Kettle,Unspecified
+the Ale Tapster,Unspecified
+the Bitter Lemon,Unspecified
+the Sticky Toffee,Unspecified
+the Vanilla Ghost,Unspecified
+the Custard Coffin,Unspecified
+the Plum Sucker,Unspecified
+the Badger Whisperer,Unspecified
+the Cat Burglar,Unspecified
+the Duck Whisperer,Unspecified
+the Ferret Feeder,Unspecified
+the Goose Guardian,Unspecified
+the Mongoose Masseur,Unspecified
+the Sleepless Otter,Unspecified
+the One-Eared Hound,Unspecified
+the Two-Tailed Cat,Unspecified
+the Invisible Gorilla,Unspecified
+the Borrowed Whale,Unspecified
+the Sleeping Hare,Unspecified
+the Unhitched Ox,Unspecified
+the Deaf Canary,Unspecified
+the Spotted Pony,Unspecified
+the Borrowed Sparrow,Unspecified
+the Caged Falcon,Unspecified
+the Patient Terrier,Unspecified
+the Escaped Lobster,Unspecified
+the Missing Parrot,Unspecified
+the Obedient Mule,Unspecified
+the Reluctant Camel,Unspecified
+the Insomniac Owl,Unspecified
+the Wounded Stag,Unspecified
+the Grasshopper's Nephew,Unspecified
+the Flea Circus,Unspecified
+the Unwashed Wolf,Unspecified
+the Snoring Hippopotamus,Unspecified
+the Feral Pigeon,Unspecified
+the Borrowed Bee,Unspecified
+the Nervous Ant,Unspecified
+the Sleepy Ferret,Unspecified
+the Toothless Tiger,Unspecified
+the Drowned Rat,Unspecified
+the Spotted Eel,Unspecified
+the Naked Mole,Unspecified
+the Stubborn Mule,Unspecified
+the Wandering Gull,Unspecified
+the Borrowed Kite,Unspecified
+the Gravity Defier,Unspecified
+the Vacuum Dweller,Unspecified
+the Asteroid Magnet,Unspecified
+the Photon Drifter,Unspecified
+the Quasar Fisher,Unspecified
+the Nebula Nibbler,Unspecified
+the Comet Chaser,Unspecified
+the Black Hole Angler,Unspecified
+the Solar Flare,Unspecified
+the Gravity Tester,Unspecified
+the Vacuum Salesman,Unspecified
+the Impossible Chef,Unspecified
+the Parallax Walker,Unspecified
+the Time Zone Drifter,Unspecified
+the Zero Gravity Fiddler,Unspecified
+the Orbit Skater,Unspecified
+the Singularity Swimmer,Unspecified
+the Wormhole Packer,Unspecified
+the Dark Matter Clerk,Unspecified
+the Solar Wind Waiter,Unspecified
+the Light Photon Courier,Unspecified
+the Neutron Accountant,Unspecified
+the Redshift Bookkeeper,Unspecified
+the Quasar Watchman,Unspecified
+the Parallax Salesman,Unspecified
+the Gravity Inspector,Unspecified
+the Asteroid Tenant,Unspecified
+the Solar Sail Maker,Unspecified
+the Cryogenic Napper,Unspecified
+the Momentum Merchant,Unspecified
+the Orbital Decay Watchman,Unspecified
+the Photon Accountant,Unspecified
+the Dark Energy Clerk,Unspecified
+the Gravity Storm Farmer,Unspecified
+the Vacuum Seamstress,Unspecified
+the Comet Gardener,Unspecified
+the Nebula Surveyor,Unspecified
+the Parallax Bookbinder,Unspecified
+the Singularity Postman,Unspecified
+the Unpaid Electrician,Unspecified
+the Exiled Accountant,Unspecified
+the Dismissed Navigator,Unspecified
+the Retired Gravity,Unspecified
+the Trained Mole,Unspecified
+the Certified Disaster,Unspecified
+the Acting Captain,Unspecified
+the Acting Admiral,Unspecified
+the Provisional Pilot,Unspecified
+the Suspension Fulfiller,Unspecified
+the Refund Machine,Unspecified
+the Reassigned Clerk,Unspecified
+the Overtime Volunteer,Unspecified
+the Understaffed Officer,Unspecified
+the Misfiled Envoy,Unspecified
+the Unpromoted Admiral,Unspecified
+the Overqualified Baggage Handler,Unspecified
+the Retired Walkie Talkie,Unspecified
+the Stand In Dock Supervisor,Unspecified
+the Temporary Gravity,Unspecified
+the Reluctant Lighthouse Keeper,Unspecified
+the Off Shift Lighthouse Keeper,Unspecified
+the Unpaid Usher,Unspecified
+the Provisional Treasurer,Unspecified
+the Interim Compass,Unspecified
+the Suspended Pilot,Unspecified
+the Unassigned Clerk,Unspecified
+the Acting Quartermaster,Unspecified
+the Retired Foresight,Unspecified
+the Provisional Deputy,Unspecified
+the Overlooked Inspector,Unspecified
+the Unpaid Navigator,Unspecified
+the Relieved Commander,Unspecified
+the Interim Steward,Unspecified
+the Dismissed Cook,Unspecified
+the King of Salt,Unspecified
+the Keeper of Keys,Unspecified
+the Sower of Stars,Unspecified
+the Widow of the Yard,Unspecified
+the Baron of Nowhere,Unspecified
+the Widow of the Reach,Unspecified
+the Shepherd of Moths,Unspecified
+the Sculptor of Smoke,Unspecified
+the Painter of Doors,Unspecified
+the Surgeon of Second Chances,Unspecified
+the Archivist of Storms,Unspecified
+the Tutor of Kittens,Unspecified
+the Baker of Broken Promises,Unspecified
+the Custodian of Lost Property,Unspecified
+the Holder of Small Change,Unspecified
+the Reader of Unsent Letters,Unspecified
+the Cleaner of Spilled Gravity,Unspecified
+the Steward of Empty Rooms,Unspecified
+the Usher of Latecomers,Unspecified
+the Weaver of Small Repairs,Unspecified
+the Keeper of the Second Shift,Unspecified
+the Broker of Unlucky Odds,Unspecified
+the Cartographer of Elsewhere,Unspecified
+the Tenderer of Impossible Contracts,Unspecified
+the Scribe of Petty Crumbs,Unspecified
+Nine Lives,Unspecified
+Two Left Thumbs,Unspecified
+Third Shift,Unspecified
+Last Copy,Unspecified
+Three Sheets to the Wind,Unspecified
+Half a Ship,Unspecified
+Fourteen Pound Hammer,Unspecified
+Split End,Unspecified
+Second Wind,Unspecified
+Seventh Wage,Unspecified
+Loose Ends,Unspecified
+Hard Bitten,Unspecified
+Twice Shy,Unspecified
+Long Odds,Unspecified
+Short Measure,Unspecified
+Break-even,Unspecified
+Bottom Line,Unspecified
+Top Shelf,Unspecified
+Dead Reckoning,Unspecified
+Bluebeard,Unspecified
+Breadline,Unspecified
+Backwater,Unspecified
+Coldfeet,Unspecified
+Greenhorn,Unspecified
+Wetnose,Unspecified
+Drydock,Unspecified
+Saltwind,Unspecified
+Iron Hand,Unspecified
+Velvet Glove,Unspecified
+Open Book,Unspecified
+Quiet Storm,Unspecified
+Loud Silence,Unspecified
+Free Fall,Unspecified
+High Water,Unspecified
+Low Bridge,Unspecified
+Old Salt,Unspecified
+New Blood,Unspecified
+Old Hands,Unspecified
+Cold Comfort,Unspecified
+Long Winters,Unspecified
+Short Notice,Unspecified
+Good Behaviour,Unspecified
+Bad Neighbourhood,Unspecified
+Loose Change,Unspecified
+Full Measure,Unspecified
+Half Measure,Unspecified
+Third Wheel,Unspecified
+Low Tide,Unspecified
+Slack Water,Unspecified
+Dry Run,Unspecified
+Dead Weight,Unspecified
+Hard Landing,Unspecified
+Soft Landing,Unspecified
+Late Comer,Unspecified
+Open Secret,Unspecified
+Closed Shop,Unspecified
+Common Sense,Unspecified
+Second Rate,Unspecified
+White Elephant,Unspecified
+Green Thumb,Unspecified
+Black Sheep,Unspecified
+Blue Blood,Unspecified
+Thin Ice,Unspecified
+Fat Chance,Unspecified
+Last Rites,Unspecified
+Small Print,Unspecified
+Long Arm,Unspecified
+Short Temper,Unspecified
+Straight Talk,Unspecified
+Round Peg,Unspecified
+Square Peg,Unspecified
+High Wire,Unspecified
+Low Hanging Fruit,Unspecified
+Sweet Talk,Unspecified
+Bitter Harvest,Unspecified
+Clean Break,Unspecified
+Fresh Start,Unspecified
+Old Score,Unspecified
+Hard Water,Unspecified
+Short Straw,Unspecified
+Long Way Round,Unspecified
+Cross Purposes,Unspecified
+Mixed Signals,Unspecified
+Loose Cannon,Unspecified
+Open Hands,Unspecified
+Cut Corner,Unspecified
+Blunt Instrument,Unspecified
+the Widow Maker,Unspecified
+the Bone Collector,Unspecified
+the Ash Reader,Unspecified
+the Quiet Scavenger,Unspecified
+the Patient Hunter,Unspecified
+the Sober Gravedigger,Unspecified
+the Polite Menace,Unspecified
+the Slow Grudge,Unspecified
+the Cold Remorse,Unspecified
+the Last Rites,Unspecified
+the Long Silence,Unspecified
+the Unfinished Business,Unspecified
+the Unpaid Debt,Unspecified
+the Spare Noose,Unspecified
+the Cheapest Grave,Unspecified
+the Quiet Passenger,Unspecified
+the Second Grave,Unspecified
+the Borrowed Coat,Unspecified
+the Owed Apology,Unspecified
+the Long Winter,Unspecified
+the Cold Harbour,Unspecified
+the Small Mercy,Unspecified
+the Narrow Door,Unspecified
+the Last Lantern,Unspecified
+the Owed Reckoning,Unspecified
+the Bitter Harvest,Unspecified
+the Quiet Debt,Unspecified
+the Long Count,Unspecified
+the Small Hours,Unspecified
+the Cold Comfort,Unspecified
+the Narrow Margin,Unspecified
+the Thin Ice,Unspecified
+the Last Locker,Unspecified
+the Black Ledger,Unspecified
+the Quiet Lantern,Unspecified
+the Slow Count,Unspecified
+the Empty Bottle,Unspecified
+the Long Winter Night,Unspecified
+the Small Grave,Unspecified
+the Bitter Cup,Unspecified
+the Quiet Passenger List,Unspecified
+the Wrong Berth,Unspecified
+the Leaky Gasket,Unspecified
+the Overdue Manifest,Unspecified
+the Salt in the Log,Unspecified
+the Bilge Alarm,Unspecified
+the Harbour Inspector,Unspecified
+the Drunken Navigator,Unspecified
+the Unmoored,Unspecified
+the Harbourmaster's Nephew,Unspecified
+the Missing Manifest,Unspecified
+the Double Mooring,Unspecified
+the Tar Finger,Unspecified
+the Rope Maker,Unspecified
+Clean Deck,Unspecified
+Storm Glass,Unspecified
+Bilge Pump,Unspecified
+the Late Freighter,Unspecified
+the Wrong Cargo,Unspecified
+the Shift Bell,Unspecified
+the Tug Master,Unspecified
+the Dry Dock Regular,Unspecified
+the Pilot Boat Habitual,Unspecified
+the Unlit Lamp,Unspecified
+the Harbour Wall,Unspecified
+the Cold Anchor,Unspecified
+the Overboard Habit,Unspecified
+the Shallow Draft,Unspecified
+the Deep Draft,Unspecified
+the Last Ferry,Unspecified
+the Empty Hold,Unspecified
+the Wrong Manifest,Unspecified
+the Late Quarantine,Unspecified
+the Soundings Reader,Unspecified
+the Cold Plimsoll,Unspecified
+the Harbour Rumour,Unspecified
+the Quiet Harbour Master,Unspecified
+the Dry Dock Habitual,Unspecified
+the Baronet,Male
+the Land Baron,Male
+the Old Man,Male
+the Iron Man,Male
+the Quiet Man,Male
+the Salted Old Man,Male
+the Dog Father,Male
+the Old Salt,Male
+the Long Watch,Male
+the Silent Partner,Male
+the Baroness,Female
+the Land Lady,Female
+the Old Woman,Female
+the Iron Lady,Female
+Mother Hubbard,Female
+the Mistress of Keys,Female
+the Salted Mermaid,Female
+the Harbour Light,Female
+the Quiet Weaver,Female

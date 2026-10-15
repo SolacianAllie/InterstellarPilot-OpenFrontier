@@ -1429,6 +1429,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   FirstNamesFile: {fileID: 4900000, guid: 2a61080996b2fb34e81ad1cdad2aaa39, type: 3}
   LastNamesFile: {fileID: 4900000, guid: cb3d4f648c33bc84c9812ce0461d1bef, type: 3}
+  EpithetsFile: {fileID: 4900000, guid: c8437c06aef74c5c9e2be26320ea08f5, type: 3}
 --- !u!4 &4026196548002408
 Transform:
   m_ObjectHideFlags: 0

@@ -731,7 +731,12 @@ namespace OpenFrontier.IP.Engine
 			else if (hasGeneratedName)
 			{
 				Name = EngineASX.Instance.CharacterNames.GetName(generatedFirstNameId, generatedLastNameId);
-				ShortName = ShortenName(Name);
+				// ShortenName initialises every word but the last, so an
+				// epithet-bearing pilot would come out as "J. the Bagel Thief".
+				// CharacterNames owns that case and returns the given name
+				// instead, or null when this pilot has an ordinary surname.
+				ShortName = EngineASX.Instance.CharacterNames.GetShortName(generatedFirstNameId, generatedLastNameId)
+					?? ShortenName(Name);
 			}
 			else
 			{
