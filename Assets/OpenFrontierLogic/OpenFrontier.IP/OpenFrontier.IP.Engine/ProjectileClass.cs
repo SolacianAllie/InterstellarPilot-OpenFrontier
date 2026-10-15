@@ -137,23 +137,25 @@ namespace OpenFrontier.IP.Engine
 		/// seeker can hold it. Zero means every ship counts.
 		/// </summary>
 		/// <remarks>
-		/// Measured as what the ship is putting out - which is what its engines
-		/// are producing - and not as what it is storing.
+		/// Venting is visibility. This is measured as what a ship is actually
+		/// throwing out - what it can shed, times how much it has to shed - and
+		/// not as what it is storing or as what its engines are producing.
 		///
-		/// Storing is the obvious mistake and was the first thing tried. Heat in
-		/// equals heat out at steady state, so a perfectly cooled hull is
-		/// emitting exactly as much as a saturated one; it is just not carrying
-		/// any. Measuring the store made the ship running flat out the dimmest
-		/// thing in the sector.
+		/// Both of those were tried and both are wrong in opposite directions.
+		/// The store alone makes a well-cooled hull the dimmest thing in the
+		/// sector. The engine's output alone makes a ship with no radiator the
+		/// brightest, because it is running flat out with nowhere to put the heat
+		/// - exactly backwards, since a shut radiator means nothing escapes.
 		///
-		/// So venting does not change a signature. What thermal vents buy is the
-		/// ability to run hot without cooking, and that is a separate consequence
-		/// from being seen - a ship can be the brightest thing in a sector and
-		/// perfectly comfortable, which is correct.
+		/// So the trade is the interesting one: fitting a big thermal vent makes
+		/// a ship a bright, obvious target to anything looking for heat, and
+		/// fitting none makes it dark and unable to run hot for long.
 		///
 		/// Because every thruster's ThermalLoad is its own EnginePower times one
-		/// constant, hull size is the heat profile: a scout barely registers
-		/// and a battleship lights up the sector.
+		/// constant, hull size sets the ceiling on how hot a ship can get: a
+		/// scout tops out well below what a radiator can vent, so it can never
+		/// out-radiate a battleship however well vented, while a battleship
+		/// saturates and becomes the brightest thing in the sector.
 		///
 		/// It lives on the projectile class so a missile can be tuned to how good
 		/// its seeker actually be. Zero is the default because that is what every

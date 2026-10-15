@@ -340,25 +340,34 @@ namespace OpenFrontier.IP.Engine
 		/// hold it.
 		/// </summary>
 		/// <remarks>
-		/// The signature is what the ship is putting out, which the game already
-		/// knows: it is exactly the figure the engine feeds into the hull every
-		/// frame, so reading it costs nothing and cannot drift from what the
-		/// ship is actually doing.
+		/// Venting is visibility. What escapes is the lesser of what the engines
+		/// are putting out and what the ship can get rid of - a ship cannot shed
+		/// heat it has not made, and cannot make heat faster than it can leave.
+		/// Hull size sets the ceiling on that, because every thruster's
+		/// ThermalLoad is its own EnginePower times one constant.
 		///
-		/// Using stored heat instead would have been the obvious mistake, and it
-		/// was the first thing tried. A perfectly cooled hull stores nothing, so
-		/// measuring the store makes the ship running its engines flat out the
-		/// dimmest thing in the sector - backwards, since heat in equals heat out
-		/// and a well-vented ship is emitting everything it makes.
+		/// The stored heat is deliberately NOT part of this, and getting that
+		/// wrong is what produced two separate backwards results in a row.
 		///
-		/// Because every thruster's ThermalLoad is its own EnginePower times one
-		/// constant, hull size is the heat profile: a scout barely registers and
-		/// a battleship lights up the sector.
+		/// Multiplying stored heat by the vent rate says a well-vented ship is
+		/// invisible, because it has vented itself down to nothing and has nothing
+		/// left to throw out - so fitting a better vent would make you harder to
+		/// see, which is precisely backwards.
 		///
-		/// This is also the one place Silent Running belongs when it is built. A
-		/// toggle that shuts the radiator should force this to zero, rather than
-		/// becoming a second parallel check the other three seekers never hear
-		/// about.
+		/// Using the engine's output alone says the opposite and just as wrongly:
+		/// a ship with no radiator at all is running flat out with nowhere to put
+		/// the heat, and becomes the brightest thing in the sector - also
+		/// backwards, since a shut radiator means nothing escapes.
+		///
+		/// Neither needs the stored figure because it is clamped to 1 and lags
+		/// the engine by seconds. Reading it would also mean a seeker could not
+		/// see a ship that was plainly running its engines, which is not how a
+		/// plume works.
+		///
+		/// This is where Silent Running belongs when it is built. It has to force
+		/// the radiator shut rather than merely stop asking for vents, because
+		/// stopping only drops this to the safety net - which is a very good vent
+		/// and not a stealth mode at all.
 		/// </remarks>
 		private bool HasIrSignature(Unit target)
 		{
@@ -405,20 +414,18 @@ namespace OpenFrontier.IP.Engine
 				return 0f;
 			}
 			UnitEngineComponent engine = unit.Components.EngineComponent;
-			if (engine == null || engine.EngineClass == null)
+			if (engine == null)
 			{
 				return 0f;
 			}
+			// Engines shut: no plume, and AddFlightHeat is never reached either,
+			// because a shut engine produces no force to push with.
 			if (engine.EngineThrottle <= 0f)
 			{
-				// Engines shut. No plume, and AddFlightHeat is never reached
-				// either, because a shut engine produces no force to push with.
 				return 0f;
 			}
-			// The same figure UnitEngineComponent feeds into the hull each frame,
-			// boost included - so what the seeker reads and what the ship
-			// accumulates cannot drift apart.
-			return engine.EngineClass.ThermalLoad * engine.BoostMultiplier;
+			float produced = engine.EngineClass.ThermalLoad * engine.BoostMultiplier;
+			return Mathf.Min(produced, unit.Components.EffectiveVentRate);
 		}
 
 		/// <summary>

@@ -533,21 +533,28 @@ namespace OpenFrontier.IP.Engine
 		}
 
 		/// <summary>
-		/// How much heat per second this ship sheds, and so how much of what it is
-		/// producing actually gets out.
+		/// How much heat per second this ship sheds, and so how much heat it is
+		/// throwing out into space.
 		/// </summary>
 		/// <remarks>
-		/// Fitting thermal vents REMOVES the safety net. Once a ship has vents they
-		/// are the only way heat leaves it - there is no baseline underneath them -
-		/// which makes fitting one a commitment rather than an upgrade: a badly
-		/// vented ship cooks, and a well vented one is quieter to an infrared
-		/// seeker than it was before, because a cooler hull is putting less flux
-		/// into space.
+		/// Venting is visibility. Heat in equals heat out at steady state, so a
+		/// ship radiates in proportion to how fast it can get rid of what it is
+		/// making - which makes a ship with a big radiator a bright ship and a
+		/// ship with none a dark one. That is why this is the number an infrared
+		/// seeker reads, and it is the whole reason Silent Running is worth
+		/// having: shut the radiator and nothing leaves at all.
 		///
-		/// A ship with no vents at all gets the safety net instead, shedding as
-		/// fast as its own engine makes heat. That can never cook, and its heat can
-		/// never reach the top of its range, which is what stops an unvented hull
-		/// sitting pinned at maximum heat for the rest of an engagement.
+		/// Fitting thermal vents REMOVES the safety net. Once a ship has vents
+		/// they are the only way heat leaves it, so fitting one is a commitment
+		/// rather than an upgrade - a badly vented ship cooks, and a well vented
+		/// one is the brightest thing in the sector.
+		///
+		/// The net underneath is deliberately tiny. It has to be enough that an
+		/// unvented hull recovers rather than sitting pinned at maximum heat for
+		/// the rest of an engagement, and not enough to make fitting a vent - and
+		/// with it being seen - optional. It also used not to apply to ships at
+		/// all, being wired behind a null check on the component holder that no
+		/// ship has, which left every ventless ship unable to cool whatsoever.
 		///
 		/// The Systems multiplier is applied live rather than cached, because the
 		/// player can move power between pips at any time and that has to show up
@@ -561,11 +568,6 @@ namespace OpenFrontier.IP.Engine
 				if (vents > 0f)
 				{
 					return vents * SystemsPowerMultiplier;
-				}
-				UnitEngineComponent engine = EngineComponent;
-				if (engine != null && engine.EngineClass != null)
-				{
-					return engine.EngineClass.ThermalLoad;
 				}
 				return Unit.BaseVenting;
 			}

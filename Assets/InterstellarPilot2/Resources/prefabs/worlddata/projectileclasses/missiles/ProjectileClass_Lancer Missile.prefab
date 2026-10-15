@@ -71,7 +71,7 @@ MonoBehaviour:
   SeekerReacquireAngle: 90
   SeekerLockPersistence: 3
   SeekerBlindDrift: 4
-  IrEngineHeatThreshold: 0.6
+  IrEngineHeatThreshold: 0.1
   SeekerCheckInterval: 0.1
   MaxMoveRange: 12000
   MiningDamageMultiplier: 0.1
