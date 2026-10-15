@@ -166,12 +166,23 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				float density = 1.0 - exp(-tau * _Density);
 
 				// Hue is NOT driven by density. A warm push keyed to how much air
-				// the ray crossed reddened the DENSE CORE of the band, which is
-				// the atmosphere's own colour in every reference -- and because
-				// blue lerped toward orange passes through grey, it desaturated
-				// that core to beige. Warmth belongs to the sun's geometry
-				// alone, which is what the next block keys off.
-				fixed3 airColor = _AtmoColor.rgb;
+				// the VIEW ray crossed reddened the DENSE CORE of the band,
+				// which is the atmosphere's own colour in every reference --
+				// and because blue lerped toward orange passes through grey, it
+				// desaturated that core to beige.
+				//
+				// airColor is therefore not a constant either: it is resolved
+				// further down, once the sun's geometry is known. The air's own
+				// glow is scattered sunlight, and that sunlight crossed the
+				// sun's air mass before it had anything to scatter -- about one
+				// air mass at the sub-solar limb, tens at the terminator limb.
+				// Leaving it at a flat _AtmoColor is what put a blue rim around
+				// the night side, in the band where the sun is low and the arc
+				// has already faded: maximum air mass, minimum arc, and an air
+				// colour still claiming to be clear cyan. That is the blue the
+				// night-side render showed, and it is the one part of the
+				// atmosphere that cannot be right -- no amount of light through
+				// that much air comes out blue.
 
 				// day/night: the shell is concentric with the planet, so the
 				// shell normal IS the planet's normal at this limb point.
@@ -192,13 +203,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// stops at the terminator: generous toward the sun, zero at and
 				// beyond ndl = 0.
 				float dayAir = smoothstep(0.0, 0.35, ndl);
-				// The sunset arc is the opposite case: it lives ON the
-				// terminator, and the glow there is on the night side of it by
-				// definition, so it keeps the old wide window. Left unchanged
-				// deliberately -- its peak was measured against the reference
-				// (0.719 at 76 degrees phase), and brightening it here would
-				// invalidate that.
-				float dayArc = smoothstep(-0.2, 0.3, ndl);
+
 
 				// The glowing arc: a short segment of the limb centred on wherever
 				// the sun actually IS on screen.
@@ -291,8 +296,14 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				float sunBehind = saturate((_ForwardBias - dot(l, v))
 				                            * rcp(max(1e-3, _ForwardRange)));
 
+				// No day window on this one. It was tried and it is wrong: the sunset
+				// glow is on the night side of the terminator by definition, so a
+				// gate that reaches zero below ndl = -0.2 deletes the entire
+				// night-side rim -- which is the case most of the references are.
+				// The gate that matters is sunBehind above. bearing already keeps
+				// the arc off the unlit limb, since it falls to zero there anyway.
 				float arc = pow(bearing, _SunBleedPower)
-				          * dayArc * sunBehind * _SunBleed;
+				          * sunBehind * _SunBleed;
 
 				// The general air along the lit limb, kept deliberately
 				// modest so the warm arc reads as the sun rather than as the
@@ -312,6 +323,13 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// cyan has a high green and blue to fall back to. The references
 				// show it staying warm as it dims.
 				fixed3 sunset = lerp(_SunRimColor.rgb, _SunRimDeep.rgb, airMass);
+
+				// The air's own colour, reddened by the SAME air mass. This is the
+				// term that decides what the rim looks like where the arc has faded,
+				// and previously it was a flat _AtmoColor -- so the night-side limb
+				// came out blue exactly where the sun was lowest.
+				fixed3 airColor = lerp(_AtmoColor.rgb, sunset, airMass);
+
 				fixed3 tint = lerp(airColor, sunset, saturate(arc))
 				            * density * airGlow * lightCol;
 
