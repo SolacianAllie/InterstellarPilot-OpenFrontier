@@ -73,6 +73,12 @@ namespace OpenFrontier.IP.Engine
 		private float blindTime;
 
 		/// <summary>Time the previous evaluation ran, so blind time is real seconds.</summary>
+		/// <summary>
+		/// Last time an evaluation ran. Kept for the blind-time reset on a fresh
+		/// seeker and nothing else - the interval itself is derived from
+		/// <see cref="ProjectileClass.SeekerCheckInterval"/>, not from the gap
+		/// between two runs.
+		/// </summary>
 		private float lastEvaluationTime;
 
 		/// <summary>Time the next evaluation is due, in <see cref="Time.time"/>.</summary>
@@ -195,18 +201,29 @@ namespace OpenFrontier.IP.Engine
 				float interval = missile.ProjectileClass.SeekerCheckInterval > 0f
 					? missile.ProjectileClass.SeekerCheckInterval
 					: DefaultCheckInterval;
-				// The first evaluation has no previous one to measure against,
-				// so it costs no blind time - a missile must not be written off
-				// in the frame it launches.
-				float elapsed = lastEvaluationTime > 0f ? now - lastEvaluationTime : 0f;
 				lastEvaluationTime = now;
 				nextEvaluationTime = now + interval;
-				Evaluate(elapsed);
+				Evaluate();
 			}
 			if (!hasLock)
 			{
 				float drift = missile.ProjectileClass.SeekerBlindDrift * deltaTime;
-				lastKnownPosition += lastKnownVelocity * deltaTime;
+				// Dead-reckon, but only for as long as the seeker would still be
+				// willing to wait for the target to come back. After that the aim
+				// point stops advancing and simply holds where the track ended.
+				//
+				// Without that bound a missile which never actually acquires -
+				// and there is a whole class of those, because a target that
+				// never radiates is never acquired - extrapolates the target's
+				// launch velocity for the missile's entire flight. The aim point
+				// recedes faster than the missile can follow, it curves after it
+				// forever, and it leaves the engagement in a wide arc while
+				// pointed confidently at a place the target was never going to be.
+				blindTime += deltaTime;
+				if (blindTime <= missile.ProjectileClass.SeekerLockPersistence)
+				{
+					lastKnownPosition += lastKnownVelocity * deltaTime;
+				}
 				// The guess wanders in the combat plane. Nothing sensible moves
 				// up or down here - units are Y-frozen - so the third component
 				// is left at zero rather than pretending to be uncertain in 3D.
@@ -218,18 +235,29 @@ namespace OpenFrontier.IP.Engine
 		/// <summary>
 		/// Asks the one question that differs per seeker: can I see it?
 		/// </summary>
-		/// <param name="elapsed">Real seconds since the previous evaluation.</param>
-		private void Evaluate(float elapsed)
+		private void Evaluate()
 		{
-			if (missile.ProjectileClass.GuidanceType == MissileGuidanceType.IR)
-			{
-				HuntForHotterContact();
-			}
 			Unit target = missile.Target;
 			if (target == null)
 			{
+				// Nothing to hunt for. This has to be checked before the hunt
+				// rather than after it, because a missile that has given up has a
+				// null target and the hunt would read that as "the current target
+				// radiates nothing" and latch onto the first ship it walked past,
+				// resurrecting a missile that had already finished.
 				hasLock = false;
 				return;
+			}
+			if (missile.ProjectileClass.GuidanceType == MissileGuidanceType.IR
+				&& blindTime < missile.ProjectileClass.SeekerLockPersistence)
+			{
+				HuntForHotterContact();
+				target = missile.Target;
+				if (target == null)
+				{
+					hasLock = false;
+					return;
+				}
 			}
 			Vector3 toTarget = target.transform.position - missile.transform.position;
 			float distance = toTarget.magnitude;
@@ -240,10 +268,11 @@ namespace OpenFrontier.IP.Engine
 				Acquire(target);
 				return;
 			}
-			// Note that lastKnownPosition is only ever written by Acquire, so a
-			// seeker that has never held anything has nothing to dead-reckon
+			// Note that lastKnownPosition is only ever written by Acquire or by
+			// the launch fix, so a seeker with neither has nothing to dead-reckon
 			// from and no picture to fly. That is deliberate, and the caller
-			// relies on it: a missile that never saw its target is a rock.
+			// relies on it: a missile that never saw its target and was never
+			// told where it was is a rock.
 			float dot = Vector3.Dot(toTarget / distance, missile.transform.forward);
 			float threshold = hasLock ? lockDot : reacquireDot;
 			if (dot >= threshold && SeesTarget(target, distance))
@@ -253,14 +282,21 @@ namespace OpenFrontier.IP.Engine
 			else
 			{
 				hasLock = false;
-				blindTime += elapsed;
-				// Persistence only starts mattering once the seeker has held
-				// something. Otherwise a missile launched outside its own cone
-				// would abandon the shot in one evaluation.
-				if (hasEverLocked && blindTime >= missile.ProjectileClass.SeekerLockPersistence)
-				{
-					missile.LoseTargetPermanently();
-				}
+			}
+			// Blind time is accumulated per frame in Update rather than here, so
+			// that it is real seconds and does not depend on the seeker's own
+			// evaluation interval.
+			//
+			// This deliberately no longer requires the seeker to have held
+			// something first. A missile that launched with only a fix and never
+			// acquired - which is every shot at a target that never radiates -
+			// used to have no way to give up at all, and flew the whole engagement
+			// chasing a dead-reckoned point. It flies to where the target was, the
+			// target is not there, and it goes straight on. That is the honest
+			// outcome and it is what the other three seekers already did.
+			if (!hasLock && blindTime >= missile.ProjectileClass.SeekerLockPersistence)
+			{
+				missile.LoseTargetPermanently();
 			}
 		}
 
