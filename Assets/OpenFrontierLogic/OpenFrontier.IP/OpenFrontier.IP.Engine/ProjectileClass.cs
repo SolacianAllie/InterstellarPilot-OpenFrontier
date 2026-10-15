@@ -260,6 +260,23 @@ namespace OpenFrontier.IP.Engine
 
 		public float TimedExplosionInaccuracy = 30f;
 
+		/// <summary>
+		/// How fast the nose slews towards the flight path, in degrees a second.
+		/// </summary>
+		/// <remarks>
+		/// Not how fast the missile turns - that is
+		/// <see cref="LateralThrustPower"/> over the speed, and it is much the
+		/// slower of the two. This is only the attitude, and it is deliberately
+		/// quicker than the path so the missile visibly points where it is going
+		/// to be rather than where it is, which is what a vehicle with jets at
+		/// the front looks like.
+		///
+		/// It was three or four times quicker than it should have been when this
+		/// was introduced, which put the Lancer's nose round a full circle in
+		/// 1.3 seconds while its flight path could not turn through a right
+		/// angle in two. A missile pointing hard one way and travelling another
+		/// reads as broken rather than as manoeuvring.
+		/// </remarks>
 		public float TurnRate = 90f;
 
 		/// <summary>
@@ -281,9 +298,28 @@ namespace OpenFrontier.IP.Engine
 		/// target that turns hard enough to stay outside the steering cone buys
 		/// itself distance rather than a re-aim.
 		///
-		/// Compared with the main thruster it should be the weaker of the two.
-		/// A missile that accelerates faster than it can turn is a missile that
-		/// commits, which is what makes a turn-and-run target work.
+		/// Compared with the main thruster it should be much the weaker of the
+		/// two, and by a lot. A missile that can turn as fast as it accelerates
+		/// is a missile that tracks, and a missile that tracks makes manoeuvring
+		/// worthless.
+		///
+		/// This is the number that was wrong by three or four times over, and
+		/// the reason is worth keeping. Set at roughly 0.6 of ThrustPower it gave
+		/// every missile a path turn rate around 70 degrees a second, and the
+		/// fastest real ships in the game turn at 60 to 78 - so a missile was
+		/// out-turning the ship it was chasing and jinking did nothing at all.
+		///
+		/// The reference's equivalent is a g-limit, and it caps the turn rate at
+		/// 9.81 times the g-limit over the speed, which falls as the missile
+		/// goes faster: a constant lateral acceleration already turns a path more
+		/// slowly the quicker you are going, and that is the whole of the effect.
+		/// At their speeds and a g-limit of nine it comes out near 17 degrees a
+		/// second, an order of magnitude under what this was set to.
+		///
+		/// What is wanted instead is a missile that turns slower than the ships
+		/// it is chasing, so that a pilot who turns can open the range, and
+		/// slower than nothing - a missile still has to beat a battleship, which
+		/// turns at 14 degrees a second.
 		/// </remarks>
 		public float LateralThrustPower = 1f;
 
