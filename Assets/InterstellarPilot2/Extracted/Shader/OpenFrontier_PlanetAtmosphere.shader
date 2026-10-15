@@ -166,7 +166,10 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		// 0.22 lost the rim by about 6 degrees off axis; 0.12 carries it to
 		// 4 with something to see, and still reaches black by 1. 0 is
 		// pure physics, which leaves a visible ring at exact alignment.
-		_EclipseDepth ("Eclipse Depth", Range(0, 1)) = 0.12
+		// 0.06, not 0.12. Half the fade, so the whole limb sits higher.
+		// This is a pure gain on the transmitted light and does not touch
+		// its hue, so R/B at the terminator stays 3.8 either way.
+		_EclipseDepth ("Eclipse Depth", Range(0, 1)) = 0.06
 		// A small additive core, for the hot line right where the sun is
 		// coming up.
 		// 0.5, not 1.0. At 1.0 this term was as large again as the air
@@ -175,7 +178,24 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		// How far past the terminator the sun's light still reaches. Softens
 		// the day/night edge of the shell, which would otherwise be a hard
 		// circle where cosZ crosses zero.
-		_TwilightReach ("Twilight Reach", Range(0.01, 0.9)) = 0.45
+		// 0.70, not 0.45. This is the dial that wraps the colour around the
+		// limb, and the reason it was needed is that the air mass was never
+		// the thing switching the far side off. At sun 20 off axis the far
+		// limb has cosZ = -0.342, the air mass is already clamped at the
+		// grazing value, and the colour is sitting there ready -- but
+		// dayLit reads 0.097 and throws it away. The gate, not the air.
+		//
+		// Far-side luminance (the point furthest from the sun's bearing):
+		//
+		//   _TwilightReach    sun 6    sun 12   sun 20
+		//       0.45          0.062     0.050     0.011
+		//       0.70          0.071     0.074     0.041
+		//       0.90          0.074     0.084     0.056
+		//
+		// 0.90 also puts the terminator band's own window in reach of the
+		// day side, so 0.70 is the compromise that wraps without the whole
+		// limb reading as lit.
+		_TwilightReach ("Twilight Reach", Range(0.01, 0.9)) = 0.7
 
 		[Header(Airglow)]
 		// Chemical emission in the upper atmosphere. It is not a sunset and
@@ -189,7 +209,10 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		[Header(Output)]
 		_Transparency ("Transparency", Float) = 3
 		// Final output trim. See the note at the return.
-		_OutputScale ("Output Scale", Range(0.02, 1)) = 0.2
+		// 0.26, not 0.20. The crest was reading 0.88 at sun 12 off axis,
+		// which is well under the ~1.0 where Neutral starts washing the
+		// hue out, so there was headroom going up as well as down.
+		_OutputScale ("Output Scale", Range(0.02, 1)) = 0.26
 		// Blocks the forward-scattered rim when the sun is behind the viewer,
 		// where the terminator coincides with the whole silhouette and the limb
 		// would ring warm all the way round.
@@ -408,6 +431,16 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				//       1.0            11.9   0.336       37.1%       5.1
 				//       1.2             9.7   0.425       47.0%       3.8
 				//       2.0             4.4   0.771       85.2%       1.8
+				//       2.6             2.4   0.95    100.0%       0.7
+				//
+				// Do NOT go past about 1.5 here to brighten the outline. Past
+				// that the clamp drops the air mass so low that the
+				// extinction stops reddening anything, scatterTint's blue
+				// selection stops having anything to cancel, and the outline
+				// goes blue-white. Measured at 2.6 the terminator R/B is 0.7
+				// -- blue. Brightening the outline is a gain problem, not an
+				// air mass problem, and it is the same trap _ScatterFlat fell
+				// into before it.
 				//
 				// The day limb is untouched at any of these: its air masses
 				// are 2.9 to 5.8 at 20 degrees off axis, all below the
