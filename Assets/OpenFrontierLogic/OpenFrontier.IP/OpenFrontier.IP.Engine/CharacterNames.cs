@@ -80,42 +80,33 @@ namespace OpenFrontier.IP.Engine
 		private const float EpithetChance = 0.28f;
 
 		/// <summary>
-		/// Of the pilots who do get an epithet, how the name is arranged.
-		/// Trailing is tested first and at the value it already used, so every
-		/// pilot who had a trailing epithet keeps one - the other two layouts
-		/// are carved out of the inline bucket that was left over.
+		/// Of the pilots who do get an epithet, how many read as a callsign
+		/// with no surname rather than as a person with a nickname.
 		/// </summary>
 		/// <remarks>
-		/// Todd "The Blaster" McQuinn, the inline form, splits the name in two
-		/// and is the most distinctive of the three. Heinz Metz, The Quiet
-		/// Princess keeps the name whole and reads as a byline. Jeff The
-		/// Asteroid Blaster drops the surname entirely and reads as a callsign
-		/// or a wanted poster. All three are good, and having only one of them
-		/// makes it a tic.
+		/// Two layouts, and they are opposites rather than variants:
 		///
-		/// So of all pilots: about 12.6% trailing, 8.4% inline, 7.0%
-		/// surname-free, and 72% with an ordinary name.
+		///   Todd "The Blaster" McQuinn    inline, surname kept
+		///   Jeff The Asteroid Blaster      surname-free
+		///
+		/// The surname-free one is unquoted, which is what makes it read as a
+		/// callsign or a wanted poster rather than as a person with a nickname.
+		///
+		/// So of all pilots: about 12.6% surname-free, 15.4% inline, 72% with
+		/// an ordinary name.
+		///
+		/// A third layout - surname kept, epithet trailing after it, "Heinz
+		/// Metz, The Quiet Princess" - existed briefly and was cut. The
+		/// threshold below is the one it used, with the two branches swapped
+		/// rather than renumbered, so the set of pilots reading inline is
+		/// exactly the set that read inline before.
 		/// </remarks>
-		private const float TrailingEpithetShare = 0.45f;
-
-		/// <summary>Cumulative with the above: below this is inline, above is
-		/// surname-free.</summary>
-		private const float InlineEpithetShare = 0.75f;
-
-		/// <summary>
-		/// Between the surname and a trailing epithet. A comma rather than a
-		/// bare space, because "Heinz Metz The Quiet Princess" reads as three
-		/// surnames until you notice the capital.
-		/// </summary>
-		private const string TrailingEpithetSeparator = ", ";
+		private const float GivenOnlyEpithetShare = 0.45f;
 
 		private enum EpithetLayout
 		{
 			/// Todd "The Blaster" McQuinn
 			Inline,
-
-			/// Heinz Metz, The Quiet Princess
-			Trailing,
 
 			/// Jeff The Asteroid Blaster - given name only, no surname at all
 			GivenOnly
@@ -300,12 +291,13 @@ namespace OpenFrontier.IP.Engine
 			// Salted, so the layout is uncorrelated with both the gate that
 			// decided the pilot gets an epithet and the draw that chose which
 			// one. Without the salt the two would move together.
+			// The threshold is the one the trailing layout used, and the
+			// branches are swapped rather than renumbered, so the set of pilots
+			// reading inline is exactly the set that read inline before. Only
+			// the ones that read trailing move, and they have to move - that is
+			// what deleting the form means.
 			float layout = StableHash01(firstNameIndex, lastNameIndex, 0x9E3779B9u);
-			if (layout < TrailingEpithetShare)
-			{
-				return EpithetLayout.Trailing;
-			}
-			return layout < InlineEpithetShare ? EpithetLayout.Inline : EpithetLayout.GivenOnly;
+			return layout < GivenOnlyEpithetShare ? EpithetLayout.GivenOnly : EpithetLayout.Inline;
 		}
 
 		/// <summary>
@@ -370,13 +362,6 @@ namespace OpenFrontier.IP.Engine
 					string epithet = CapitaliseEpithet(epithets[epithetIndex].Value);
 					switch (GetEpithetLayout(firstNameIndex, lastNameIndex))
 					{
-						case EpithetLayout.Trailing:
-							// Heinz Metz, The Quiet Princess
-							//
-							// The surname is kept here, same as inline. A trailing
-							// epithet is an addition to the name, not a replacement
-							// for half of it.
-							return given + " " + surname + TrailingEpithetSeparator + epithet;
 						case EpithetLayout.GivenOnly:
 							// Jeff The Asteroid Blaster
 							//
@@ -385,9 +370,9 @@ namespace OpenFrontier.IP.Engine
 							// person with a nickname.
 							//
 							// Dropping the surname is safe here where it was not safe
-							// before, because this is ONE layout of three rather than all
-							// of them - trailing and inline both keep the surname, so
-							// the pool does not lose its largest dimension. It only
+							// before, because this is ONE layout of two rather than
+							// all of them - inline still keeps the surname, so the
+							// pool does not lose its largest dimension. It only
 							// gives some pilots a shorter name.
 							return given + " " + epithet;
 						default:
