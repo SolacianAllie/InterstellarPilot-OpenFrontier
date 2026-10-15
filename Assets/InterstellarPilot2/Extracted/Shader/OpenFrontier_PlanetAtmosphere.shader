@@ -203,15 +203,19 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// Guard the degenerate case where the sun lies along the view
 				// axis. |sunPerp| is the sine of the angle between the sun
 				// and the view axis, so it collapses toward zero precisely
-				// when the sun is behind the viewer -- and the bearing below
+				// when the sun is behind the planet -- and the bearing below
 				// divides by it. 1e-4 was far too permissive: at the sun dead
 				// behind, |sunPerp| is still 0.11, the guard passed, and the
 				// bearing came out of a near-zero denominator as an
-				// essentially arbitrary azimuth. 0.12 is about 7 degrees off
-				// axis, below which there is no meaningful screen bearing
-				// to aim at.
+				// essentially arbitrary azimuth.
+				//
+				// This guard applies to the BEARING ONLY. 0.02 is about 1
+				// degree off the view axis, which is genuinely where the
+				// azimuth stops being a direction and becomes a rounding
+				// error. An earlier 0.12 (~7 deg) was too far in, and it was
+				// also applied to forwardScatter below -- see there.
 				float sunLen = length(sunPerp);
-				float bearing = (sunLen > 0.12)
+				float bearing = (sunLen > 0.02)
 					? dot(nPerp, sunPerp) / (length(nPerp) * sunLen)
 					: 0.0;
 
@@ -231,11 +235,21 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				//
 				//   sun dead behind camera  dot +0.99   0.55 -> 0.00
 				//   sun over your shoulder   dot +0.84   0.39 -> 0.00
-				//   sun at 90 degrees       dot +0.28   0.09 -> 0.01
-				//   sun beyond the planet   dot -0.95   0.59 -> 0.59  (kept)
-				float forwardScatter = (sunLen <= 0.12)
-					? 0.0
-					: saturate((_ForwardBias - dot(l, v)) * rcp(max(1e-3, _ForwardRange)));
+				//   sun at 90 degrees       dot +0.10   0.09 -> 0.04
+				//   sun beyond the planet   dot -0.95   0.72 -> 0.72  (kept)
+				//
+				// Deliberately NOT gated on sunLen. Forward scattering is a
+				// question about dot(l, v) alone -- is the sun on the far side
+				// of this limb point from the camera -- and has nothing to do
+				// with how far off the view axis it happens to be. Coupling
+				// the two was a bug that killed the arc in exactly the case it
+				// exists for: with the sun 6 degrees off the axis BEHIND the
+				// planet, |sunPerp| is only 0.10, the old 0.12 guard fired, and
+				// peak arc came out 0.000 instead of 0.47. An ill-defined
+				// bearing is a reason to drop the bearing, never a reason to
+				// drop the scattering.
+				float forwardScatter = saturate((_ForwardBias - dot(l, v))
+				                               * rcp(max(1e-3, _ForwardRange)));
 
 				// BOTH factors are needed, and dropping either one breaks it:
 				//
