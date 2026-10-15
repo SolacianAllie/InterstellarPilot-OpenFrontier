@@ -4,6 +4,15 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_SunRimColor ("Sun Rim Color", Color) = (1,0.62,0.30,1)
 		_SunRimDeep ("Sun Rim Deep Color", Color) = (1,0.30,0.12,1)
 		_SunExtinction ("Sun Extinction", Range(0, 1.5)) = 0.25
+		// A SECOND extinction, for the eclipse path alone.
+		//
+		// horizonPath and airMass are different quantities and lumping them
+		// under one coefficient cost the twilight band. Raising
+		// _SunExtinction to retract the rim also dims airMass, which is
+		// the same sunlight lighting the terminator band -- measured, that
+		// band lost 43 percent at the terminator. Split, the band is
+		// bit-identical, because horizonPath is zero side-on.
+		_SunEclipseExtinction ("Sun Eclipse Extinction", Range(0, 4)) = 0.9
 		_SunReddening ("Sun Reddening", Range(0.1, 2)) = 0.4
 		_Size ("Size", Float) = 0.75
 		_Falloff ("Falloff", Float) = 2
@@ -44,6 +53,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			fixed4 _SunRimColor;
 			fixed4 _SunRimDeep;
 			float _SunExtinction;
+			float _SunEclipseExtinction;
 			float _SunReddening;
 			float _Size;
 			float _Falloff;
@@ -363,8 +373,14 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// positive until the very last moment, so the cyan air glow summed
 				// with the orange arc and desaturated to white -- the white being a
 				// tonemap artifact of that brightness, not of any hue in here.
+				//
+				// This is the term that retracts the rim: zero at the sun's screen
+				// bearing, growing without bound as the sun swings behind. Bounded
+				// by the max(0.02) above rather than by a cap of its own, which is
+				// what stops the divide reaching infinity at exact overlap.
 				float horizonPath = rcp(max(0.02, sunLen)) - 1.0;
-				float transmit = exp(-(airMass + horizonPath) * _SunExtinction);
+				float transmit = exp(-airMass * _SunExtinction
+				                  - horizonPath * _SunEclipseExtinction);
 
 				// Whether the arc shows at all.
 				//
