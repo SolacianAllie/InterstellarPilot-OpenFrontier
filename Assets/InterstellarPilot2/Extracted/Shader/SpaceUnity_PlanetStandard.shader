@@ -27,6 +27,12 @@ Shader "SpaceUnity/PlanetStandard" {
 		_HazeSunStrength ("Haze Sun Strength", Range(0, 2)) = 0.8
 		_HazeFalloff ("Haze Falloff", Range(0.5, 8)) = 2.5
 		_HazeSunPower ("Haze Sun Power", Range(0.5, 6)) = 1.3
+		[Header(SpecMap)]
+		_WaterFloor ("Water Floor", Range(0, 1)) = 0.32
+		_WaterRange ("Water Range", Range(0.02, 1)) = 0.2
+		_WaterSmoothness ("Water Smoothness", Range(0, 1)) = 0.92
+		_LandSmoothness ("Land Smoothness", Range(0, 1)) = 0.12
+		_SnowSmoothness ("Snow Smoothness", Range(0, 1)) = 0.3
 	}
 	SubShader {
 		Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
@@ -62,6 +68,11 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _HazeSunStrength;
 				float _HazeFalloff;
 				float _HazeSunPower;
+				float _WaterFloor;
+				float _WaterRange;
+				float _WaterSmoothness;
+				float _LandSmoothness;
+				float _SnowSmoothness;
 			CBUFFER_END
 
 			struct Attributes {
@@ -132,19 +143,66 @@ float nightMask = saturate(-ndl * 2.0);
 half3 emission = lightsTex * _LightScale * nightMask
 			   + emissionTex * _EmissionScale;
 
+				// Sampled before the SurfaceData so the spec block can read it.
+				// Defaults to black, and a black spec map gives waterMask 0 and
+				// snowMask 0 -- matte terrain, which is the safe reading of a
+				// missing map rather than a fully mirrored planet.
+				half4 specTex = SAMPLE_TEXTURE2D(_SpecMap, sampler_SpecMap, input.uv);
+
 				SurfaceData surfaceData = (SurfaceData)0;
 				surfaceData.albedo = albedoTex.rgb;
 				surfaceData.metallic = 0.0;
 
-				// spec map: green channel = land specularity, red channel =
-				// ocean specularity. Both surfaces are reflective, so land
-				// drives specular strength and ocean drives smoothness.
+				// Spec map convention, read out of the maps rather than guessed.
+				// Checked on alpine_02, ocean_05, desert_04 and snow_01, which
+				// all agree:
 				//
-				// A constant fallback is kept so a black / missing spec map
-				// still renders rather than going completely matte.
-				half4 specTex = SAMPLE_TEXTURE2D(_SpecMap, sampler_SpecMap, input.uv);
-				surfaceData.specular = specTex.g * 0.6f + 0.1f;
-				surfaceData.smoothness = specTex.r * 0.6f + 0.15f;
+				//   G = WATER.  Clusters hard around 0.50 over ocean and
+				//       0.13-0.30 over land, so it needs remapping; using it
+				//       raw never reaches 1.
+				//   R = SNOW / ICE.  Zero over water, zero over most land,
+				//       0.6-0.97 on the bright caps.
+				//   B = 0 in every map.
+				//
+				// This was previously read the other way round -- the comment
+				// claimed green was land and red was ocean -- so the ocean was
+				// shaded matte and the land came out glossy.
+				float waterMask = saturate((specTex.g - _WaterFloor) * rcp(max(1e-3, _WaterRange)));
+				float snowMask  = saturate(specTex.r);
+
+				// Smoothness is what actually drives the look, for the reason
+				// in the F0 note below.
+				//
+				// Measured, the old formula (R*0.6+0.15) gave:
+				//     ocean 0.15 (matte)   rock 0.15   snow 0.70 (a mirror)
+				// i.e. exactly backwards, and 0.70 on terrain is polished
+				// chrome. That is the hard white blobs in the screenshot.
+				//
+				// Correctly read it gives:
+				//     ocean 0.86 (mirror)  rock 0.12 (matte)  snow 0.39
+				float landSmoothness = _LandSmoothness + snowMask * _SnowSmoothness;
+				surfaceData.smoothness = lerp(landSmoothness, _WaterSmoothness, waterMask);
+
+				// F0 -- normal-incidence reflectance.
+				//
+				// NOTE: surfaceData.specular is NOT assigned, and that is
+				// deliberate. URP only reads it when the _SPECULAR_SETUP
+				// variant is enabled; this shader never enables it, so
+				// InitializeBRDFData takes the #else branch and hardcodes
+				//     brdfSpecular = lerp(kDielectricSpec, albedo, metallic)
+				// with metallic = 0, i.e. a flat F0 of 0.04 for every texel.
+				// Assigning specular here did nothing at all for as long as
+				// that variant was off -- it was a line that looked like it
+				// controlled reflectance and controlled nothing.
+				//
+				// 0.04 is also the right answer physically: terrain is
+				// dielectric, and the sea reads bright toward the limb
+				// because of the grazing-angle Fresnel rise, which URP
+				// already applies through grazingTerm. Raising F0 over the
+				// water on top of that is what turns the ocean into a mirror.
+				// If per-texel F0 is ever genuinely wanted it needs
+				// #pragma multi_compile _ _SPECULAR_SETUP and the keyword set
+				// on the material, which also changes how diffuse is derived.
 				surfaceData.normalTS = normalTS;
 				surfaceData.emission = emission;
 				surfaceData.occlusion = 1.0;
