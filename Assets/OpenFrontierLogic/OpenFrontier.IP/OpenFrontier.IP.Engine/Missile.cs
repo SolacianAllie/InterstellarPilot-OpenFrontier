@@ -66,6 +66,38 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
+		/// <summary>
+		/// How badly dazzled this seeker is, and how fast that wears off.
+		/// </summary>
+		/// <remarks>
+		/// A flare does not break a lock the way an ECM disrupts one - it
+		/// blinds, and a blind seeker recovers. So this decays rather than
+		/// latching, and the IR seeker asks about it on every evaluation instead
+		/// of losing the target outright. That is what makes a flare a thing you
+		/// deploy into a salvo rather than a thing that ends one: the flare
+		/// burns out, the seeker comes back, and whether the missile got close
+		/// enough in between is the fight.
+		/// </remarks>
+		[SerializeField]
+		private float dazzle;
+
+		private const float DazzleDecayPerSecond = 0.75f;
+
+		/// <summary>Whether a flare is currently blinding this seeker.</summary>
+		public bool IsDazzled => dazzle > 0f;
+
+		/// <summary>
+		/// Blinds this seeker for a while. Called by a flare, not by the
+		/// seeker - the flare finds the missiles, the same way an ECM does.
+		/// </summary>
+		public void AddDazzle(float amount)
+		{
+			if (amount > 0f)
+			{
+				dazzle += amount;
+			}
+		}
+
 		public Projectile Projectile => projectile;
 
 		public Rigidbody RBody => projectile?.RBody;
@@ -100,6 +132,7 @@ namespace OpenFrontier.IP.Engine
 		public void Init()
 		{
 			disrupted = false;
+			dazzle = 0f;
 			hasAquiredTarget = false;
 			lastDotToTarget = 0f;
 			lastTargetDist = 0f;
@@ -148,6 +181,10 @@ namespace OpenFrontier.IP.Engine
 		private void Update()
 		{
 			UpdateTarget();
+			if (dazzle > 0f)
+			{
+				dazzle = Mathf.Max(0f, dazzle - DazzleDecayPerSecond * Time.deltaTime);
+			}
 			if (ProjectileClass.IsHoming)
 			{
 				if (projectile.Target != null)

@@ -98,6 +98,7 @@ MonoBehaviour:
   CompatibleProjectiles:
   - {fileID: 114724804207875695, guid: 2ffc420159926c54d8e9175bfd50d984, type: 2}
   - {fileID: 114724804207875695, guid: 7ac2facf5284d9b4b92b1364c5039392, type: 2}
+  - {fileID: 114724804207875695, guid: a8d421813afe4ad0ab783b8ae2279e99, type: 2}
   ProjectileTurretType: 2
   UseSubTargetPositions: 0
 --- !u!114 &114618682377417806

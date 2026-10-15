@@ -247,9 +247,11 @@ namespace OpenFrontier.IP.Engine
 
 				case MissileGuidanceType.IR:
 					// Follows the target's own heat, so a cloaked ship has no
-					// signature to follow. An ECM puff does nothing for it,
-					// which is exactly why carrying one is a choice.
-					return !target.IsFullyCloaked;
+					// signature to follow and a flare in the same part of the
+					// sky is indistinguishable from the ship itself. An ECM puff
+					// does nothing for it, which is exactly why carrying one is
+					// a choice rather than an answer.
+					return !target.IsFullyCloaked && !missile.IsDazzled;
 
 				case MissileGuidanceType.SARH:
 					// Semi-active: it is riding a signal the target is putting

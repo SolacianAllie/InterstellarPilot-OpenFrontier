@@ -1,0 +1,89 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1709254077376921
+GameObject:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Component:
+  - component: {fileID: 4730242686860875}
+  - component: {fileID: 114724804207875695}
+  m_Layer: 0
+  m_Name: ProjectileClass_Flare I
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4730242686860875
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -7.636985, y: 5.0332284, z: -52.005474}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &114724804207875695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b6b4adad8116709bc780106eed9f715, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  EffectiveFiringRangeStationery: 10000
+  EffectiveFiringRangeAgainstMobile: 10000
+  IsWeapon: 0
+  Name: Flare I
+  IsConventionalWeapon: 1
+  AmmoClass: {fileID: 114724804207875695, guid: 27ae4e7af7ce5504e8c0567c1388e285, type: 2}
+  AmmoRequirement: 1
+  BurstRounds: 1
+  BurstTimeBetweenRounds: 0.2
+  CollisionEnabled: 0
+  CreateExplosionWhenExpired: 0
+  Damage: 10
+  DamageFuzziness: 0.1
+  DefaultAmmoComplement: 5
+  DestroyOnCollide: 0
+  DestroyOnCollideDelayTime: 0
+  ExplosionClass: {fileID: 0}
+  HomingAquiredTargetThreshold: 0.5
+  HomingCanLoseTarget: 0
+  HomingLostTargetDotThreshold: 0.25
+  IsHoming: 0
+  IsMine: 0
+  MaxMoveRange: 0
+  MiningDamageMultiplier: 0.1
+  MoveSpeed: 3
+  ParentExplosionToTarget: 0
+  ProjectilePrefab: {fileID: 1709254077376921, guid: 2495ff50129b4af2b4173fea1179c656, type: 2}
+  RotateTowardsTarget: 1
+  SetDamageUsingEnergyCost: 0
+  ShieldDamageType: 0
+  ThrustPower: 1
+  MinThrust: 0.2
+  TimedDestruction: 0
+  TimedExplosionInaccuracy: 30
+  TurnRate: 90
+  InheritParentVelocity: 1
+  InheritParentVelocityMultiplier: 0.75
+  InaccuracyMultiplier: 1
+  MissileIntelligentGuidanceMaxDist: 200
+  MissileIntelligentGuidance: 1
+  MinTimeBeforeGuidanceActivation: 1
+  MaxTimeBeforeGuidanceActivation: 2
+  MaxDuration: 4
