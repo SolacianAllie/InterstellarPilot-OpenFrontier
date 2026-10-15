@@ -12,7 +12,17 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		// the same sunlight lighting the terminator band -- measured, that
 		// band lost 43 percent at the terminator. Split, the band is
 		// bit-identical, because horizonPath is zero side-on.
-		_SunEclipseExtinction ("Sun Eclipse Extinction", Range(0, 4)) = 0.9
+		// 0.45, not 0.9. The span no longer depends on this at all --
+		// measured, 23.0 degrees at sun 12 off axis for every value from
+		// 0.9 down to 0.18, because the narrowing is the lobe's job and
+		// this is a flat scale on top of it. So it is purely a brightness
+		// dial now and can be set by how bright the crescent has to read
+		// instead of by how wide it is. At 0.9 the crest at sun 12 off axis
+		// measured luminance 0.021, which after the 0.4 output scale is
+		// effectively black -- the 'invisible' in the report. 0.45 gives 5x
+		// that there and only 1.5x at sun 31, so it lifts the near-eclipse
+		// crescent far more than the geometries already tuned.
+		_SunEclipseExtinction ("Sun Eclipse Extinction", Range(0, 4)) = 0.45
 		_SunReddening ("Sun Reddening", Range(0.1, 2)) = 0.4
 		_Size ("Size", Float) = 0.75
 		_Falloff ("Falloff", Float) = 2
@@ -390,6 +400,30 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				float transmit = exp(-airMass * _SunExtinction
 				                  - horizonPath * _SunEclipseExtinction);
 
+				// The HUE needs the absolute path too, and this is where that used
+				// to go missing.
+				//
+				// airMass above is air mass RELATIVE to the crest, so it is zero
+				// at the crest BY CONSTRUCTION. The comment on it says outright
+				// that it "says nothing about how much light is left" -- true, and
+				// then both sunset and airColor were built from it alone. So the
+				// rim's hue was computed as if the sunlight had crossed nothing at
+				// the brightest point on the planet.
+				//
+				// Measured, sun 12 degrees off axis: horizonPath 3.81, so the crest
+				// is behind nearly four air masses and should be deep red, while
+				// airMass there read 0 and the rim came out cyan.
+				//
+				// horizonPath is exactly that missing term -- it is 1/sunLen - 1,
+				// the air mass AT the crest, and every other point on the limb has
+				// more. Added in the same _SunReddening units the rest of the ramp
+				// is in, so the rim warms from orange to deep red as the sun swings
+				// behind: +0.06 at 60 degrees off axis, +0.38 at 31, fully
+				// saturated at 12.
+				//
+				// horizonPath is zero side-on, so the day side is bit-identical.
+				float hueMass = saturate(airMass + horizonPath * _SunReddening);
+
 				// Whether the arc shows at all.
 				//
 				// Honest framing: this is NO LONGER a scattering-angle gate. Both
@@ -513,7 +547,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// the air's cyan made the far end of the rim go grey-blue, because
 				// cyan has a high green and blue to fall back to. The references
 				// show it staying warm as it dims.
-				fixed3 sunset = lerp(_SunRimColor.rgb, _SunRimDeep.rgb, airMass);
+				fixed3 sunset = lerp(_SunRimColor.rgb, _SunRimDeep.rgb, hueMass);
 
 				// The air's own colour, reddened by the SAME air mass. This is the
 				// term that decides what the rim looks like where the arc has faded,
@@ -521,7 +555,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// came out blue exactly where the sun was lowest.
 				// Two stages, matching the surface shader's hazeTint for the same
 				// reason: one lerp from cyan to orange goes through grey.
-				half3 warm = saturate(airMass * sunBehind);
+				half3 warm = saturate(hueMass * sunBehind);
 				fixed3 airColor = lerp(lerp(_AtmoColor.rgb, _SunRimColor.rgb, warm),
 				                      _SunRimDeep.rgb, warm * warm);
 
@@ -538,6 +572,17 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// It is not a sunset, and nothing about it has crossed a
 				// terminator, so it takes the air's own colour instead:
 				// R/B 8.3 red -> 0.3 cyan on the night limb.
+				//
+				// It is also now gated by (1 - dayAir). It had no gate at all --
+				// not dayAir, not limb -- so it was being paid on the sunlit limb
+				// as well as the unlit one, and being CYAN that cancelled the
+				// sunset colour directly rather than merely adding to it.
+				// Measured at the crest with the sun 12 degrees off axis it
+				// was 42% of the total, and the whole limb came out with R, G
+				// and B within 13% of each other -- grey. It is meant to be the
+				// floor UNDER the unlit limb, and airglow is not visible
+				// against a sunlit sky anyway, so fading it in as the terminator
+				// crosses is both the role it was written for and the honest one.
 				// The SAME lobe, as a multiplier on the air term.
 				//
 				// This was the term actually painting the full-half line, and
@@ -560,7 +605,8 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				fixed3 tint = lerp(airColor, sunset, saturate(arc))
 				            * density * (limb * dayAir * _AtmoGlow * transmit)
 				            * lightCol
-				          + _AtmoColor.rgb * (density * _NightGlow * lightCol);
+				          + _AtmoColor.rgb
+				            * (density * _NightGlow * (1.0 - dayAir) * lightCol);
 
 				// A small additive core on top, for the hot line right where
 				// the sun is coming up.
