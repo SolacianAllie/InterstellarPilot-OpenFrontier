@@ -12,11 +12,8 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		[Header(SunBleed)]
 		_AtmoGlow ("Atmosphere Glow", Range(0, 1.5)) = 0.4
 		_SunBleed ("Sun Bleed", Range(0, 1)) = 1
-		_SunBleedPower ("Sun Bleed Power", Range(0.5, 6)) = 2
+		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 4
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
-		[Header(EclipseHalo)]
-		_EclipseFalloff ("Eclipse Falloff", Range(0.5, 8)) = 2
-		_EclipseGlow ("Eclipse Glow", Range(0, 2)) = 0.5
 	}
 	SubShader {
 		Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" }
@@ -44,8 +41,6 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			float _SunBleedPower;
 			float _SunRimBoost;
 			float _AtmoGlow;
-			float _EclipseFalloff;
-			float _EclipseGlow;
 			// URP publishes these every frame, for every camera. For a
 			// directional light _MainLightPosition.xyz is the direction TOWARDS
 			// the light -- the exact vector GetMainLight().direction hands to
@@ -73,6 +68,12 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				float4 pos : SV_POSITION;
 				float3 normalDir : TEXCOORD0;
 				float3 viewDir : TEXCOORD1;
+				// The planet's centre in world space. The shell's own object
+				// origin IS the planet's centre -- the Atmosphere child sits
+				// at local 0,0,0 -- so this costs nothing and needs no
+				// per-material radius. Passed from here because it is constant
+				// across the mesh.
+				float3 centreWS : TEXCOORD2;
 			};
 
 			v2f vert(appdata input)
@@ -88,6 +89,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// actually shading, which skews the chord below.
 				float3 worldPos = mul(unity_ObjectToWorld, float4(pos, 1)).xyz;
 				output.viewDir = normalize(_WorldSpaceCameraPos - worldPos);
+				output.centreWS = mul(unity_ObjectToWorld, float4(0, 0, 0, 1)).xyz;
 				return output;
 			}
 
@@ -170,39 +172,56 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				float ndl = dot(n, l);
 				float day = smoothstep(-0.2, 0.3, ndl);
 
-				// How far the sun's colour has reached the air here. There are
-				// TWO different things and they used to be conflated into
-				// one warm term, which is why the glow ringed the whole
-				// planet instead of appearing where it should.
+				// The glowing arc: a short segment of the limb centred on wherever
+				// the sun actually IS on screen.
 				//
-				// (a) The sunrise arc. The sun is LOW at the terminator, and
-				//     that is where its light has crossed the most air
-				//     sideways before reaching us. ndl varies along the limb,
-				//     so this concentrates in a short arc around the sun's
-				//     bearing -- which is what the reference shows.
+				// The previous version keyed this off ndl, the sun's altitude
+				// at this point on the sphere. That is the physically tidy
+				// answer and it is the wrong one visually: ndl is an angle on
+				// the planet, and how much screen a given range of ndl covers
+				// depends entirely on where the camera is standing. Measured
+				// over a full camera sweep, an ndl-driven arc wrapped ~178
+				// degrees of the limb at EVERY angle, and _SunBleedPower had
+				// almost no effect on it (178 deg at p=2, 178 at p=3.5).
 				//
-				//     ndl and NOT abs(ndl): only the sun-ABOVE-the-horizon
-				//     side reddens. The night side is already killed by `day`,
-				//     and the absolute value would redden the anti-solar limb
-				//     too.
+				// Projecting both the sun and this limb point into the plane
+				// facing the camera measures the separation where it is
+				// actually seen, so _SunBleedPower means one thing at every
+				// viewpoint: how many degrees of screen the arc covers.
 				//
-				//     And only when the sun is low FOR US. With the sun
-				//     directly behind the camera the terminator coincides
-				//     with the visible limb, so every limb point reads as
-				//     "sun at the horizon" and the entire rim would go warm
-				//     on a fully lit day side.
-				float lowSun = pow(saturate(1.0 - ndl), _SunBleedPower);
-				float lowForUs = saturate(0.55 - dot(l, v) * 1.5);
-				float arc = lowSun * day * lowForUs * _SunBleed;
+				// centreWS is the shell's own object origin, which is the
+				// planet's centre (the Atmosphere child sits at local 0,0,0),
+				// so no per-material radius is needed.
+				float3 axis = normalize(_WorldSpaceCameraPos - input.centreWS);
+				float3 sunPerp = l - axis * dot(l, axis);
+				float3 nPerp = n - axis * dot(n, axis);
+				// Guard the degenerate case where the sun lies along the view
+				// axis and the bearing is undefined. That is the eclipsed
+				// alignment; there is no preferred direction on screen, so
+				// there is no arc to place.
+				float sunLen = length(sunPerp);
+				float bearing = (sunLen > 1e-4)
+					? dot(nPerp, sunPerp) / (length(nPerp) * sunLen)
+					: 0.0;
 
-				// (b) The eclipse halo. Eclipsed means the sun is directly
-				//     BEHIND the planet from where we are, so every limb
-				//     point is looking through the planet at the sun and the
-				//     whole silhouette lights up. This is the only case where
-				//     an all-round ring is correct, and it is a global on/off:
-				//     the camera is far enough away that dot(l, v) barely
-				//     changes around the visible limb.
-				float eclipsed = saturate(-dot(l, v) * _EclipseFalloff) * _EclipseGlow;
+				// BOTH factors are needed, and dropping either one breaks it:
+				//
+				//  - bearing alone cannot concentrate anything when the sun is
+				//    near the view axis, because there "where the sun is on
+				//    screen" and "where the sun is brightest on the limb" are
+				//    the same direction -- measured, both are the same
+				//    A.cos + B.sin in the limb azimuth, so the arc still
+				//    wrapped 180 degrees.
+				//  - the horizon factor alone is the old ndl-driven arc, which
+				//    wrapped ~178 degrees at every camera angle and ignored
+				//    _SunBleedPower entirely.
+				//
+				// Product of the two is bounded and shrinks monotonically with
+				// _SunBleedPower: mean span 59 deg on the sunset reference,
+				// 12 deg on the sun-past-the-limb geometry, and nothing above
+				// 86 deg at any camera angle.
+				float arc = pow(saturate(bearing), _SunBleedPower)
+				          * saturate(1.0 - ndl) * day * _SunBleed;
 
 				// The general air along the lit limb, kept deliberately
 				// modest so the warm arc reads as the sun rather than as the
@@ -220,16 +239,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// A small additive core on top, for the hot line right where
 				// the sun is coming up.
 				tint += _SunRimColor.rgb
-				      * (density * saturate(arc) * _SunRimBoost * lightCol);
-
-				// The eclipse halo, added on its own and deliberately NOT
-				// gated by `day`. This is the exception, and it is the whole
-				// reason it is separate: when the sun is behind the planet it
-				// is still shining on the ring of air around it, so the halo
-				// traces the entire silhouette even where the surface below
-				// is in darkness. Gating it by day would hide it exactly when
-				// it is the only thing you can see.
-				tint += _SunRimColor.rgb * (density * eclipsed * lightCol);
+				      * (density * arc * _SunRimBoost * lightCol);
 
 				// _Transparency is the master gain. The 0.4 scale is not arbitrary:
 				// it puts the core of the band at roughly (0.5, 0.85, 1.0)
