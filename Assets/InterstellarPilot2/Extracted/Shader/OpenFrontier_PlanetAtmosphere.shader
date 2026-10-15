@@ -366,13 +366,21 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// that is in shadow. That is what an arch is, and it is why this is not
 				// the wrap that _AtmoGlow was deliberately prevented from doing: this
 				// peaks where bearing is 0 and dies at both the sub-solar and the
-				// anti-solar limb, so it cannot ring the planet.
+				// anti-solar limb.
+				//
+				// The width here was a ring, not an arch, and the reason is that
+				// |bearing| measures distance to a crossing in BOTH directions and
+				// there are two crossings. At the shipped 2.2 the lobe reached 63
+				// degrees either side of each, which is 252 of 360 degrees of limb
+				// -- the whole planet went red. At 1.1 with a cubic it is 25
+				// degrees either side, 98 degrees total, so the day side between
+				// the two arches is clear.
 				//
 				// It is sunlight, not the air's own scattered colour, so it ADDS. That
 				// matters: lerping the air from cyan toward orange passes through
 				// grey, measured at (0.61, 0.66, 0.69) right at the terminator, so the
 				// air was greying out at precisely the point it should be reddest.
-				float arch = pow(saturate(1.0 - abs(bearing) * 2.2), 2.0) * sunBehind;
+				float arch = pow(saturate(1.0 - abs(bearing) * 1.1), 3.0) * sunBehind;
 
 				// Two colours, and the sun REPLACES rather than adds. Additive
 				// warm on top of full-strength air washes the two together
