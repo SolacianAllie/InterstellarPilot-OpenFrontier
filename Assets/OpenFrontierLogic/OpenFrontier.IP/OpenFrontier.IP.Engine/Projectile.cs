@@ -213,6 +213,34 @@ namespace OpenFrontier.IP.Engine
 			{
 				missile.Init();
 				missile.LoseTargetDistance = sourceActiveTurret.TurretClass.MaxFiringRange * 1.1f;
+				// The missile's own speed, along the nose it has already been
+				// aimed down, added ON TOP of anything inherited from the
+				// launcher. Added, not assigned: see below.
+				//
+				// A homing missile used to be handed the launcher's velocity
+				// and nothing else - 0.8 of it, in the launcher's direction -
+				// and then have to accelerate up to its own speed from there.
+				// So at the instant of firing a missile had no velocity of its
+				// own whatsoever, and its momentum and the direction its thrust
+				// pushed it were set by the firing ship alone. That is the
+				// launch platform's velocity, wearing the missile's name.
+				//
+				// The countermeasure below has always done it the right way,
+				// assigning the inherited velocity and then adding its own
+				// forward speed on top, and this brings the missile in line
+				// with it rather than inventing a second convention.
+				//
+				// It also puts something back that the seeker can work with.
+				// A missile now leaves the tube already travelling towards the
+				// target, so the inherited launcher velocity is the only part of
+				// its momentum pointing the wrong way - and nulling that out
+				// while it flies is the cost of firing from a ship that is
+				// moving, which is what makes firing from a fast ship a choice
+				// rather than a free win.
+				if (rBody != null)
+				{
+					rBody.linearVelocity += transform.forward * missile.LaunchSpeed;
+				}
 			}
 			if (countermeasure != null)
 			{
