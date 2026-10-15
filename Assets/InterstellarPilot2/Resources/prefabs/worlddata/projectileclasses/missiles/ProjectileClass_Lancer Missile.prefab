@@ -84,7 +84,7 @@ MonoBehaviour:
   ShieldDamageType: 0
   ThrustPower: 260
   LateralThrustPower: 160
-  SelfDestructAtSpeed: 78
+  SelfDestructDelay: 6
   TangibleDelay: 1
   TangibleRangeFromLauncher: 80
   MinThrust: 0.2

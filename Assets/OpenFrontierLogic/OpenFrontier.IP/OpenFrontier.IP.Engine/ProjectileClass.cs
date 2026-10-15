@@ -288,17 +288,38 @@ namespace OpenFrontier.IP.Engine
 		public float LateralThrustPower = 1f;
 
 		/// <summary>
-		/// Below this speed a missile that has no engine left detonates rather
-		/// than coasting. Zero disables it.
+		/// How long a missile may have nothing at all to fly at before it gives
+		/// up and detonates. Zero means it flies until it runs out of fuel.
 		/// </summary>
 		/// <remarks>
-		/// A spent missile drifting on through the engagement is not a threat
-		/// and is not interesting, but it does go on hitting things for as long
-		/// as the sector lasts. This is the reference's rule and it is a good
-		/// one: a missile whose engine is off and which is no longer closing
-		/// detonates where it is.
+		/// What this replaces is worth recording, because the obvious version of
+		/// it detonates every missile in the game on its first frame.
+		///
+		/// The reference's rule is a speed floor, and it works there because their
+		/// motors burn out on fuel - a dead motor is a real state, and a missile
+		/// coasting on a dead motor falls through the floor. Ours has no such
+		/// state: thrust is modulated between MinThrust and one and never to
+		/// zero, so a missile always converges on some fraction of ThrustPower and
+		/// never crosses a speed floor for that reason.
+		///
+		/// On top of that the launch phase is the worst possible place for a speed
+		/// test. Guidance does not activate immediately, and a missile spends that
+		/// window at MinThrust, so its speed is heading for a fifth of
+		/// ThrustPower while any sensible floor sits above that. Every missile
+		/// would be below its own floor before it had done anything.
+		///
+		/// What is actually true here is that a missile can be a rock - fired at a
+		/// target it never sees, never lases, or never has a launcher picture on -
+		/// and then it has nothing to steer by for the rest of its life. That is
+		/// worth ending and it can be asked directly instead of inferred from
+		/// speed.
+		///
+		/// Six seconds is long enough that a missile which briefly loses its
+		/// picture - which every seeker does, and which is the entire point of
+		/// them - is in no danger, and short enough that a dud does not cruise the
+		/// sector for the rest of the engagement still hitting things.
 		/// </remarks>
-		public float SelfDestructAtSpeed;
+		public float SelfDestructDelay;
 
 		/// <summary>
 		/// Seconds after firing before this missile can hit anything at all.

@@ -93,6 +93,12 @@ namespace OpenFrontier.IP.Engine
 		/// </remarks>
 		private Vector3 launchPosition;
 
+		/// <summary>
+		/// When this missile first found it had nothing to fly at, or -1 if it
+		/// currently has something. See <see cref="CheckSelfDestruct"/>.
+		/// </summary>
+		private float blindSinceLaunch = -1f;
+
 		public float Thrust
 		{
 			get
@@ -230,7 +236,18 @@ namespace OpenFrontier.IP.Engine
 			tangible = false;
 			launchedAt = Time.time;
 			launchPosition = transform.position;
-			thrust = MinThrust;
+			blindSinceLaunch = -1f;
+			// Full thrust from the instant it leaves the tube.
+			//
+			// This used to be MinThrust, on the reasoning that a missile ramps up
+			// once it is being guided. But guidance does not activate for a fifth
+			// of a second to two thirds, and in that window the missile is
+			// thrusting at a fifth of its power - so its speed converges on a
+			// fifth of ThrustPower rather than all of it. That is not a missile
+			// warming up, it is a missile unable to reach its own top speed, and
+			// it is slow for the whole of the phase in which it is least able to
+			// defend itself.
+			thrust = 1f;
 			projectile.Unit.SetRBody();
 			maxSpd = UnitEngineClass.CalculateMaxSpeed(ProjectileClass.ThrustPower, RBody.linearDamping, RBody.mass);
 			timeWhenGuidanceActivates = Time.time + Random.Range(ProjectileClass.MinTimeBeforeGuidanceActivation, ProjectileClass.MaxTimeBeforeGuidanceActivation);
@@ -484,28 +501,51 @@ namespace OpenFrontier.IP.Engine
 		}
 
 		/// <summary>
-		/// A missile whose engine is spent and which is no longer closing
-		/// detonates where it is.
+		/// A missile that has never had anything to fly at gives up and
+		/// detonates, rather than drifting on through the engagement.
 		/// </summary>
 		/// <remarks>
-		/// Without this a missile that ran out of pursuit drifts on through the
-		/// engagement for as long as the sector lasts, still colliding with
-		/// things, and reads as a bug rather than as a dud. It is the reference's
-		/// rule and it is a good one.
+		/// This replaces a speed test, which is what the reference uses and which
+		/// was wrong for this game in a way that detonated every missile on its
+		/// first frame.
+		///
+		/// Their rule is 'the engine is off and the missile is below a speed',
+		/// because their motors burn out on fuel and a dead motor is a real state.
+		/// Ours has no such state: thrust is modulated between MinThrust and one,
+		/// never to zero, so a missile always converges on some fraction of
+		/// ThrustPower and never falls through a speed floor for the reason the
+		/// reference means.
+		///
+		/// Worse, it caught the launch phase. Guidance does not activate for a
+		/// fifth of a second and the missile spends that window at MinThrust, so
+		/// its speed was heading for a fifth of ThrustPower while the floor sat
+		/// at three tenths - and every missile in the game was below its own
+		/// floor before it had done anything at all.
+		///
+		/// What is actually true here is that a missile can be a rock: it can be
+		/// fired at a target it never sees, never lase, or never has a launcher
+		/// picture on, and then it has nothing to steer by for the rest of its
+		/// life. That is worth ending, and it can be tested directly rather than
+		/// inferred from speed.
 		/// </remarks>
 		private void CheckSelfDestruct()
 		{
-			float floor = ProjectileClass.SelfDestructAtSpeed;
-			if (floor <= 0f)
+			float delay = ProjectileClass.SelfDestructDelay;
+			if (delay <= 0f || seeker == null)
 			{
 				return;
 			}
-			Rigidbody body = RBody;
-			if (body == null)
+			if (seeker.HasPicture)
 			{
+				blindSinceLaunch = -1f;
 				return;
 			}
-			if (body.linearVelocity.magnitude < floor)
+			if (blindSinceLaunch < 0f)
+			{
+				blindSinceLaunch = Time.time;
+				return;
+			}
+			if (Time.time - blindSinceLaunch >= delay)
 			{
 				projectile.FinalizeProjectile(createExplosion: true, null, Target, transform.position);
 			}
