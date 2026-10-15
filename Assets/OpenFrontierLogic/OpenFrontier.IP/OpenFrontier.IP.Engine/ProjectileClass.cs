@@ -305,14 +305,17 @@ namespace OpenFrontier.IP.Engine
 		/// </summary>
 		/// <remarks>
 		/// Spawn protection, and the reason a missile does not kill the ship that
-		/// fired it. It is not a damage immunity so much as a recognition that a
-		/// missile is spawned inside the launcher and has not cleared it yet.
+		/// fired it. One second, which is the reference's own figure for the arming
+		/// time and a long time at these speeds - a missile from the fastest ship
+		/// in the game has covered a hundred metres by then.
 		///
-		/// The reference pairs this with a distance test, and so does this: see
-		/// <see cref="TangibleRangeFromLauncher"/>. Time alone is not enough,
-		/// because a missile fired from a very fast ship covers a great deal of
-		/// ground in half a second and would be solid again while still inside
-		/// its own launcher.
+		/// It is not a damage immunity so much as a recognition that a missile is
+		/// spawned inside the launcher and has not cleared it yet. The reference
+		/// pairs it with a distance test, and so does this: see
+		/// <see cref="TangibleRangeFromLauncher"/>. Both have to be satisfied, so
+		/// the longer of the two governs - and the distance is measured from the
+		/// muzzle rather than from the launcher, or a bay on a large hull would
+		/// start out already clear.
 		/// </remarks>
 		public float TangibleDelay;
 

@@ -74,6 +74,25 @@ namespace OpenFrontier.IP.Engine
 		/// </remarks>
 		private float launchedAt;
 
+		/// <summary>
+		/// Where this missile was when it left the tube, which is what the
+		/// spawn protection measures its clearance against.
+		/// </summary>
+		/// <remarks>
+		/// Not the launcher's own position, which is the obvious thing to measure
+		/// against and is wrong here for a reason worth writing down. A ship's
+		/// transform origin is amidships and its missile bays can be a very long
+		/// way from it, so a missile launched from a battleship's bow is already
+		/// further from its launcher's origin than the clearance radius before it
+		/// has moved at all - and the test passes instantly, which is exactly the
+		/// bug it was written to prevent.
+		///
+		/// Measuring from the muzzle is also independent of hull size, which is
+		/// what makes one authored number mean the same thing on a fighter and on
+		/// a cruiser.
+		/// </remarks>
+		private Vector3 launchPosition;
+
 		public float Thrust
 		{
 			get
@@ -210,6 +229,7 @@ namespace OpenFrontier.IP.Engine
 			commitRemaining = 0f;
 			tangible = false;
 			launchedAt = Time.time;
+			launchPosition = transform.position;
 			thrust = MinThrust;
 			projectile.Unit.SetRBody();
 			maxSpd = UnitEngineClass.CalculateMaxSpeed(ProjectileClass.ThrustPower, RBody.linearDamping, RBody.mass);
@@ -561,21 +581,30 @@ namespace OpenFrontier.IP.Engine
 				}
 				Unit launcher = projectile.SourceUnit;
 				float range = ProjectileClass.TangibleRangeFromLauncher;
-				if (launcher != null && range > 0f)
+				if (range > 0f)
 				{
-					Vector3 toLauncher = launcher.transform.position - transform.position;
-					if (toLauncher.sqrMagnitude < range * range)
+					// Measured from the muzzle, not from the launcher. See
+					// launchPosition - a bay on a large hull is already further
+					// from the ship's origin than the clearance radius, so
+					// measuring from the launcher lets a battleship's own missile
+					// out of its spawn protection before it has moved.
+					if ((transform.position - launchPosition).sqrMagnitude < range * range)
 					{
 						return false;
 					}
-					// Still being carried along with the hull rather than away
-					// from it. A ship turning hard as it fires sweeps its own
-					// missile sideways, and one that has cleared the radius is
-					// still inside it in every way that matters.
-					Vector3 travel = RBody.linearVelocity;
-					if (travel.sqrMagnitude > 0.0001f && Vector3.Dot(toLauncher, travel) < 0f)
+					// And it has to be separating from the launcher rather than
+					// being carried along with the hull. A ship turning hard as it
+					// fires sweeps its own missile sideways, and one that has
+					// cleared the radius is still inside the ship in every way
+					// that matters.
+					if (launcher != null)
 					{
-						return false;
+						Vector3 toLauncher = launcher.transform.position - transform.position;
+						Vector3 travel = RBody.linearVelocity;
+						if (travel.sqrMagnitude > 0.0001f && Vector3.Dot(toLauncher, travel) < 0f)
+						{
+							return false;
+						}
 					}
 				}
 				tangible = true;

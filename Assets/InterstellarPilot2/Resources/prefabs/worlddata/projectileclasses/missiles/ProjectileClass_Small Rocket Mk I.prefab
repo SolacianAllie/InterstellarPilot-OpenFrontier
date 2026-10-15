@@ -84,7 +84,7 @@ MonoBehaviour:
   ThrustPower: 200
   LateralThrustPower: 120
   SelfDestructAtSpeed: 60
-  TangibleDelay: 0.5
+  TangibleDelay: 1
   TangibleRangeFromLauncher: 80
   MinThrust: 0.8
   TimedDestruction: 1
