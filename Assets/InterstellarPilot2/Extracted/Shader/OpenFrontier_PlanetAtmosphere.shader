@@ -38,8 +38,24 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			float _ScaleHeight;
 			float _Density;
 			float _DepthTint;
-			// Set per frame by SunBillboard: world direction TOWARDS the sun.
-			float4 _SunDirectionWorld;
+			// URP publishes these every frame, for every camera. For a
+			// directional light _MainLightPosition.xyz is the direction TOWARDS
+			// the light -- the exact vector GetMainLight().direction hands to
+			// PlanetStandard. Using it means the shell's terminator and the
+			// surface's terminator are the same line by construction, instead
+			// of two systems each guessing where the sun is.
+			//
+			// This replaces _SunDirectionWorld, set by SunBillboard.LateUpdate.
+			// That bails out early when WorldCamera.Resolve() or cachedLight
+			// is null, leaving the global unset -- and an unset global is not
+			// the scene's real light. That is why the rim used to wrap all the
+			// way round the planet while the surface was correctly in shadow.
+			// Defaults to (0,0,1) when no main light is visible, so normalising
+			// is always safe.
+			float4 _MainLightPosition;
+			// _MainLightColor is BLACK when there is no main light, so it has
+			// to be guarded before being used as a tint -- see below.
+			float4 _MainLightColor;
 
 			struct appdata {
 				float4 vertex : POSITION;
@@ -71,7 +87,17 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			{
 				float3 n = normalize(input.normalDir);
 				float3 v = normalize(input.viewDir);
-				float3 l = (dot(_SunDirectionWorld.xyz, _SunDirectionWorld.xyz) < 0.0001) ? float3(0, 1, 0) : normalize(_SunDirectionWorld.xyz);
+				// Direction TOWARDS the sun -- the same one the surface is lit by.
+				float3 l = normalize(_MainLightPosition.xyz);
+
+				// Take the sun's colour as a HUE only, never as a brightness.
+				// URP sets _MainLightColor to black when there is no main light,
+				// and letting that through would black out the atmosphere;
+				// normalising keeps a red star tinting its air red without
+				// changing how bright the rim is.
+				float3 lightCol = _MainLightColor.rgb;
+				float lum = max(lightCol.r, max(lightCol.g, lightCol.b));
+				lightCol = (lum > 1e-4) ? lightCol / lum : float3(1.0, 1.0, 1.0);
 
 				// The radial coordinate that actually matters.
 				//
@@ -152,8 +178,8 @@ Shader "OpenFrontier/Planet Atmosphere" {
 
 				// two colours, as authored: the air itself, and the sun
 				// burning through it
-				fixed3 tint = air * density * (day + _NightGlow)
-				            + _SunRimColor.rgb * rim;
+				fixed3 tint = air * density * (day + _NightGlow) * lightCol
+				            + _SunRimColor.rgb * rim * lightCol;
 				// _Transparency is the master gain. The 0.4 scale is not arbitrary:
 				// it puts the core of the band at roughly (0.5, 0.85, 1.0)
 				// for a _AtmoColor near the default, which is where the

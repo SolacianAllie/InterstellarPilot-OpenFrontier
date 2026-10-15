@@ -196,9 +196,14 @@ namespace OpenFrontier.IP.Engine
 				anchorGlowRenderer.enabled = flag;
 			}
 			Vector3 vector = -cachedLight.transform.forward;
-			// Publish the sun direction for the planet atmosphere shader
-			// (day/night scattering follows the same light the sun shows).
-			Shader.SetGlobalVector("_SunDirectionWorld", new Vector4(vector.x, vector.y, vector.z, 0f));
+			// The planet atmosphere shader no longer reads a sun direction from
+			// here. It used _SunDirectionWorld, which this method sets, but that
+			// write was only reached when WorldCamera.Resolve() and cachedLight
+			// both resolved -- otherwise the global kept whatever it had, which
+			// is not the scene's light, and the atmosphere's terminator ended up
+			// somewhere other than the planet's. The shell now reads URP's
+			// _MainLightPosition instead, which is the same vector that lights
+			// the planet surface, so the two cannot disagree.
 			// 20000u on the planet layer: out with the planets, beyond
 			// the sky, so the sun can never clip into the backdrop.
 			// Asteroids/ships still occlude it (they render later in the

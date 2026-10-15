@@ -7,6 +7,13 @@ Shader "SpaceUnity/PlanetStandard" {
 		_LightScale ("_LightScale", Float) = 1
 		_Emission ("_Emission", 2D) = "black" {}
 		_EmissionScale ("_EmissionScale", Float) = 1
+		[Header(AerialPerspective)]
+		_HazeColor ("Haze Color", Color) = (0.45,0.80,1,1)
+		_HazeSunColor ("Haze Sun Color", Color) = (1,0.62,0.30,1)
+		_HazeStrength ("Haze Strength", Range(0, 1)) = 0.6
+		_HazeSunStrength ("Haze Sun Strength", Range(0, 2)) = 0.8
+		_HazeFalloff ("Haze Falloff", Range(0.5, 8)) = 2.5
+		_HazeSunPower ("Haze Sun Power", Range(1, 32)) = 4
 	}
 	SubShader {
 		Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
@@ -36,6 +43,12 @@ Shader "SpaceUnity/PlanetStandard" {
 				float4 _MainTex_ST;
 				float _LightScale;
 				float _EmissionScale;
+				float4 _HazeColor;
+				float4 _HazeSunColor;
+				float _HazeStrength;
+				float _HazeSunStrength;
+				float _HazeFalloff;
+				float _HazeSunPower;
 			CBUFFER_END
 
 			struct Attributes {
@@ -127,6 +140,44 @@ half3 emission = lightsTex * _LightScale * nightMask
 				surfaceData.clearCoatSmoothness = 0.0;
 
 				half4 color = UniversalFragmentPBR(inputData, surfaceData);
+
+				// Aerial perspective -- the other half of the atmosphere.
+				//
+				// The shell only ever draws OUTSIDE the silhouette, so the air
+				// stops dead at the planet's edge. That hard boundary is why the
+				// atmosphere reads as a sticker rather than as air sitting on top
+				// of the world. This is the inside half: looking at the surface
+				// near the limb, the view ray crosses a lot of atmosphere before
+				// it lands, and that air scatters light back over the terrain.
+				//
+				// Airmass through an exponential atmosphere goes as 1/cos of the
+				// angle between the view ray and the surface normal -- 1 looking
+				// straight down, unbounded at the limb. That is what concentrates
+				// the wash at the horizon instead of laying a flat tint over the
+				// whole disc.
+				//
+				// Note this is NOT the fresnel rim that used to live here. That
+				// one was emissive and drew a glowing edge, which is why it moved
+				// onto the shell. This is in-scattering over the terrain: a lerp
+				// toward a tint, so the surface stays visible underneath.
+				float mu = saturate(dot(normalWS, viewDirWS));        // 1 face-on, 0 at the limb
+				float grazing = pow(saturate(1.0 - mu), _HazeFalloff);
+
+				// Lit by the same ndl the surface already uses, so the haze can
+				// never disagree with the terminator.
+				float hazeLit = smoothstep(-0.15, 0.25, ndl);
+
+				// The sunrise arc washes the surface too, not just the shell.
+				// dot(V, -L) is high only when the sun is on the far side of
+				// this point from the camera -- beyond the planet, not behind
+				// you -- so this stays dark on a fully lit day side.
+				float hazeSun = pow(saturate(dot(viewDirWS, -mainLight.direction)), _HazeSunPower);
+
+				half3 hazeTint = lerp(_HazeColor.rgb, _HazeSunColor.rgb, saturate(hazeSun));
+				float hazeAmt = saturate(grazing * hazeLit
+					* (_HazeStrength + _HazeSunStrength * hazeSun));
+				color.rgb = lerp(color.rgb, hazeTint, hazeAmt);
+
 				color.rgb = MixFog(color.rgb, inputData.fogCoord);
 				return color;
 			}
