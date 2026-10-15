@@ -121,7 +121,9 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_SunBleedShape ("Sun Bleed Shape", Range(1, 12)) = 8
 		// A small additive core, for the hot line right where the sun is
 		// coming up.
-		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
+		// 0.5, not 1.0. At 1.0 this term was as large again as the air
+		// itself and, being untinted, it was most of the blow-out.
+		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 0.5
 		// How far past the terminator the sun's light still reaches. Softens
 		// the day/night edge of the shell, which would otherwise be a hard
 		// circle where cosZ crosses zero.
@@ -138,6 +140,8 @@ Shader "OpenFrontier/Planet Atmosphere" {
 
 		[Header(Output)]
 		_Transparency ("Transparency", Float) = 3
+		// Final output trim. See the note at the return.
+		_OutputScale ("Output Scale", Range(0.02, 1)) = 0.2
 		// Blocks the forward-scattered rim when the sun is behind the viewer,
 		// where the terminator coincides with the whole silhouette and the limb
 		// would ring warm all the way round.
@@ -178,6 +182,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			float _TwilightReach;
 			float _NightGlow;
 			float _Transparency;
+			float _OutputScale;
 			float _ForwardBias;
 			float _ForwardRange;
 
@@ -508,10 +513,19 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				               * dayLit * sunBehind * lightCol);
 
 				// A small additive core on top, for the hot line right where
-				// the sun is coming up. Same transmitted colour, so it reddens
-				// with everything else rather than staying white and turning
-				// the rim grey where the two overlap.
+				// the sun is coming up. Same transmitted colour AND the same
+				// Rayleigh selection as everything else.
+				//
+				// It was carrying the raw transmit with no scatterTint, which
+				// made the brightest and most-scattered light on the planet
+				// the ONLY term not Rayleigh-selected -- so the one place that
+				// should have been most blue was the one place that was not.
+				// Measured at the crest, side-on, that alone moved B/R from
+				// 1.52 to 2.61. The default was also 1.0, which made this
+				// un-tinted term as large again as the air itself and was most
+				// of the blow-out.
 				tint += transmit
+				      * scatterTint
 				      * (density * _SunRimBoost * shape * dayLit * sunBehind
 				         * lightCol);
 
@@ -524,12 +538,20 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				tint += _AtmoColor.rgb
 				      * (density * _NightGlow * (1.0 - skyLit) * lightCol);
 
-				// _Transparency is the master gain. The 0.4 scale is not
-				// arbitrary: it puts the core of the band at roughly
-				// (0.5, 0.85, 1.0) for an _AtmoColor near the default, which is
-				// where the reference limb actually sits. At 0.1 the whole
-				// shell rendered as dark navy.
-				return fixed4(tint * (_Transparency * 0.4), 1);
+				// Master gain. _OutputScale exists because the crest was sitting
+				// at 2.6 to 3.4 with every combination tried, and URP's
+				// tonemapper is Neutral (no override in OpenFrontier-URP.asset),
+				// which desaturates anything past about 0.8. A limb crest at
+				// 2.6 tonemaps to white however correct its hue was underneath
+				// -- measured, the blue the extinction model was producing
+				// survived as barely a tint.
+				//
+				// 0.20 puts the side-on crest at (0.49, 0.76, 1.29): a bright
+				// line that still reads cyan. A property rather than a constant
+				// because _Transparency is serialised as 3 on every atmosphere
+				// material, so changing a shader default for it would have had
+				// no effect at all.
+				return fixed4(tint * (_Transparency * _OutputScale), 1);
 			}
 			ENDHLSL
 		}
