@@ -41,7 +41,24 @@ Shader "SpaceUnity/PlanetStandard" {
 		_CloudBrightness ("Cloud Brightness", Range(0, 3)) = 1
 		_CloudParallax ("Cloud Parallax", Range(-0.1, 0.1)) = 0.008
 		_CloudWrap ("Cloud Wrap Light", Range(0, 1)) = 0.7
-		_CloudShadowStrength ("Cloud Shadow Strength", Range(0, 1)) = 0.5
+		// Normal and specular maps for the deck itself. Both sets already exist
+		// on disk and were never wired up. The normals are real data; the
+		// specular maps are FLAT -- every pixel identical, measured std 0.000
+		// with G = 0.110 on all nine -- so they give a uniform sheen and no
+		// variation until real ones are authored. Read as data, not colour.
+		_CloudNormals ("Cloud Normals", 2D) = "bump" {}
+		_CloudSpecular ("Cloud Specular", 2D) = "black" {}
+		_CloudNormalStrength ("Cloud Normal Strength", Range(0, 3)) = 1
+		_CloudSmoothness ("Cloud Smoothness", Range(0, 2)) = 1
+		// Gain on the shadow mask, applied BEFORE the strength cap. Separate
+		// from strength because the jobs differ: strength caps how dark a
+		// shadow may get, gain decides whether a faint map reaches that cap.
+		_CloudShadowSharpness ("Cloud Shadow Sharpness", Range(0.25, 16)) = 2.5
+		_CloudShadowStrength ("Cloud Shadow Strength", Range(0, 1)) = 0.7
+		// Pan and drift are a UV offset added before the parallax term, so all
+		// four cloud maps move together. Drift is UV per second off _Time.
+		_CloudPan ("Cloud Pan", Vector) = (0,0,0,0)
+		_CloudDrift ("Cloud Drift", Vector) = (0,0,0,0)
 		[Header(Twilight)]
 		_TwilightColor ("Twilight Color", Color) = (1.0,0.62,0.30,1)
 		_TwilightStrength ("Twilight Strength", Range(0, 1)) = 0.55
@@ -73,6 +90,8 @@ Shader "SpaceUnity/PlanetStandard" {
 			TEXTURE2D(_SpecMap);    SAMPLER(sampler_SpecMap);
 			TEXTURE2D(_Clouds);     SAMPLER(sampler_Clouds);
 			TEXTURE2D(_CloudShadows); SAMPLER(sampler_CloudShadows);
+			TEXTURE2D(_CloudNormals); SAMPLER(sampler_CloudNormals);
+			TEXTURE2D(_CloudSpecular); SAMPLER(sampler_CloudSpecular);
 			TEXTURE2D(_Emission);   SAMPLER(sampler_Emission);
 
 			CBUFFER_START(UnityPerMaterial)
@@ -92,12 +111,19 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _LandDetailSmoothness;
 				float4 _Clouds_ST;
 				float4 _CloudShadows_ST;
+				float4 _CloudNormals_ST;
+				float4 _CloudSpecular_ST;
 				float _CloudCoverage;
 				float _CloudSharpness;
 				float _CloudBrightness;
 				float _CloudParallax;
 				float _CloudWrap;
+				float _CloudNormalStrength;
+				float _CloudSmoothness;
+				float _CloudShadowSharpness;
 				float _CloudShadowStrength;
+				float4 _CloudPan;
+				float4 _CloudDrift;
 				float4 _TwilightColor;
 				float _TwilightStrength;
 				float _TwilightDim;
@@ -138,6 +164,12 @@ Shader "SpaceUnity/PlanetStandard" {
 				half3 normalTS = UnpackNormal(SAMPLE_TEXTURE2D(_Normals, sampler_Normals, input.uv));
 				half3 lightsTex = SAMPLE_TEXTURE2D(_Lights, sampler_Lights, input.uv).rgb;
 				half3 emissionTex = SAMPLE_TEXTURE2D(_Emission, sampler_Emission, input.uv).rgb;
+				// Sampled up here rather than down with the SurfaceData, because the
+				// city lights need to know where the water is -- see nightMask.
+				// Defaults to black, and a black spec map gives waterMask 0 and
+				// landMask 0 -- matte terrain, the safe reading of a missing map
+				// rather than a fully mirrored planet.
+				half4 specTex = SAMPLE_TEXTURE2D(_SpecMap, sampler_SpecMap, input.uv);
 
 				float3 viewDirWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
 				float3 bitangentWS = cross(input.normalWS, input.tangentWS.xyz) * input.tangentWS.w;
@@ -158,6 +190,13 @@ Shader "SpaceUnity/PlanetStandard" {
 				inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
 
 				Light mainLight = GetMainLight(inputData.shadowCoord);
+
+				// Geometric sun angle for this sample, and where the water is. Both
+				// are needed before the emission block. Neither may use the
+				// normal-mapped normal: whether a place is on the night side, and
+				// whether it is under water, are both properties of the sphere.
+				float geoNdL = dot(geoNormalWS, mainLight.direction);
+				float waterMask = saturate((specTex.g - _WaterFloor) * rcp(max(1e-3, _WaterRange)));
 				float ndl = dot(normalWS, mainLight.direction);
 
 				// Twilight -- the light itself reddening, which is what a
@@ -244,15 +283,26 @@ Shader "SpaceUnity/PlanetStandard" {
 // Both are plain maps rather than HDR keywords: at planet scale the
 // glow has to survive being minified into a few pixels, and a keyword
 // swap cannot be authored per feature.
-float nightMask = saturate(-ndl * 2.0);
-half3 emission = lightsTex * _LightScale * nightMask
-			   + emissionTex * _EmissionScale;
+				// Two fixes.
+				//
+				// 1. Basis. This was saturate(-ndl * 2) on the NORMAL-MAPPED ndl, so
+				//    a hill facing the sun on the night side drove ndl positive and
+				//    the city lights punched a hole exactly where the terrain relief
+				//    is steepest. Measured: a bump taking the map ndl from -0.60 to
+				//    +0.15 took the mask from 1.000 to 0.000. A city is not in
+				//    shadow because a mountain is. Same failure mode as the haze
+				//    leak -- a property of the sphere read off relief.
+				float nightMask = saturate(-geoNdL * 2.0);
+				//
+				// 2. Water. City-light maps of this kind are orthographic night
+				//    lights plates and they carry light out over open water -- the
+				//    street grids bleed well past every coastline. The spec map
+				//    already knows where the water is, so that gates them.
+				//    emissionTex is deliberately NOT gated: magma and glowing crystal
+				//    are meant to sit anywhere, including offshore.
+				half3 emission = lightsTex * _LightScale * nightMask * (1.0 - waterMask)
+							   + emissionTex * _EmissionScale;
 
-				// Sampled before the SurfaceData so the spec block can read it.
-				// Defaults to black, and a black spec map gives waterMask 0 and
-				// landMask 0 -- matte terrain, which is the safe reading of a
-				// missing map rather than a fully mirrored planet.
-				half4 specTex = SAMPLE_TEXTURE2D(_SpecMap, sampler_SpecMap, input.uv);
 
 				// Cloud layer. The art convention in *_clouds_diffuse.png is
 				// near-white RGB with the COVERAGE IN ALPHA, and the matching
@@ -265,9 +315,21 @@ half3 emission = lightsTex * _LightScale * nightMask
 				// UVs live in, so it stays consistent as the planet rotates.
 				float3 viewTangent = float3(dot(viewDirWS, input.tangentWS.xyz),
 				                             dot(viewDirWS, bitangentWS), 0.0);
-				float2 cloudUV = input.uv + viewTangent.xy * _CloudParallax;
+				// Pan and drift go in BEFORE the parallax term and before any _ST,
+				// so the deck, its normals, its specular and its shadow map all move
+				// as one. Parallax is last because it is the view-dependent part.
+				float2 cloudUV = input.uv
+				               + _CloudPan.xy
+				               + _CloudDrift.xy * _Time.y
+				               + viewTangent.xy * _CloudParallax;
 				half4 cloudTex = SAMPLE_TEXTURE2D(_Clouds, sampler_Clouds,
 				                                  TRANSFORM_TEX(cloudUV, _Clouds));
+				half3 cloudNTS = UnpackNormalScale(
+					SAMPLE_TEXTURE2D(_CloudNormals, sampler_CloudNormals,
+					                  TRANSFORM_TEX(cloudUV, _CloudNormals)),
+					_CloudNormalStrength);
+				half3 cloudSpecTex = SAMPLE_TEXTURE2D(_CloudSpecular, sampler_CloudSpecular,
+				                                      TRANSFORM_TEX(cloudUV, _CloudSpecular)).rgb;
 				half4 shadowTex = SAMPLE_TEXTURE2D(_CloudShadows, sampler_CloudShadows,
 				                                   TRANSFORM_TEX(cloudUV, _CloudShadows));
 
@@ -306,7 +368,6 @@ half3 emission = lightsTex * _LightScale * nightMask
 				// the GPU seeing water at 0.21 and land at 0.05 instead of
 				// 0.50 and 0.24 -- putting both below _WaterFloor and
 				// rendering the ocean matte. All 162 are now Linear.
-				float waterMask = saturate((specTex.g - _WaterFloor) * rcp(max(1e-3, _WaterRange)));
 				float landMask  = saturate(specTex.r);
 
 				// Smoothness is what actually drives the look, for the reason
@@ -375,7 +436,15 @@ half3 emission = lightsTex * _LightScale * nightMask
 				// emission: magma and city lights keep burning through the
 				// band instead of being dimmed with everything else.
 				half3 litTerm = (color.rgb - emissionTerm) * sunTint;
-				float cloudShadow = 1.0 - saturate(shadowTex.a) * _CloudShadowStrength;
+				// Gain first, then the strength cap. The order matters: strength alone
+				// cannot make a faint map visible. Measured alpha means across the shipped
+				// shadow maps: clouds_medium 0.371, clouds_locked 0.201, but
+				// clouds_aerial_shadow only 0.012 with 1.4% of texels above 0.3. At the
+				// old 0.5 cap those give 19% and 0.6% dimmings -- the second is not
+				// a shadow. The gain at 2.5 lifts the well-populated maps to that cap;
+				// the aerial map still needs its own dial, it is nearly empty.
+				float cloudShadow = 1.0 - saturate(shadowTex.a * _CloudShadowSharpness)
+				                   * _CloudShadowStrength;
 				color.rgb = emissionTerm + max(litTerm, 0.0) * cloudShadow;
 
 				// The deck itself. Clouds are a high-albedo layer sitting in the
@@ -383,9 +452,28 @@ half3 emission = lightsTex * _LightScale * nightMask
 				// terminator -- they scatter forward and stay visible a little
 				// past where the ground has gone dark, which is most of what
 				// sells them as being above it rather than painted on.
-				float cloudLight = saturate(dot(geoNormalWS, mainLight.direction) * _CloudWrap
+				// Lit off the deck's OWN normal, not the surface's. A cloud mass has
+				// relief of its own; lighting it from geoNormalWS made the deck perfectly
+				// smooth, which is most of why it read as painted on rather than above.
+				//
+				// The tangent frame is built on geoNormalWS, not the normal-mapped
+				// normal: the deck sits above the terrain, so terrain relief must not
+				// tilt it, same rule the haze and the cloud day/night gate already use.
+				float3 cloudNormalWS = normalize(TransformTangentToWorld(cloudNTS,
+					half3x3(input.tangentWS.xyz, bitangentWS, geoNormalWS)));
+				float cloudLight = saturate(dot(cloudNormalWS, mainLight.direction) * _CloudWrap
 				                           + (1.0 - _CloudWrap));
-				half3 cloudColour = cloudTex.rgb * (sunColour * _CloudBrightness * cloudLight);
+				
+				// Specular. Read as data like every other map in this shader: G is the
+				// gloss mask, scaled by _CloudSmoothness. The shipped cloud specular maps
+				// are flat at G = 0.110, so this is a uniform sheen until real ones exist.
+				// A thick cloud deck is not very glossy, hence the low default.
+				half cloudGloss = _CloudSmoothness * saturate(cloudSpecTex.g);
+				half3 cloudHalf = normalize(mainLight.direction + viewDirWS);
+				half cloudSpec = pow(saturate(dot(cloudNormalWS, cloudHalf)),
+					                      exp2(2.0 + 10.0 * cloudGloss)) * cloudGloss;
+				half3 cloudColour = cloudTex.rgb * (sunColour * _CloudBrightness * cloudLight)
+					                  + sunColour * cloudSpec;
 				color.rgb = lerp(color.rgb, cloudColour, cloudCov);
 
 				// Aerial perspective -- the other half of the atmosphere.
@@ -421,8 +509,6 @@ half3 emission = lightsTex * _LightScale * nightMask
 				//    Feeding the normal map into mu made the wash follow
 				//    every ridge and crater, so the limb read as a blotchy
 				//    band instead of the clean arc in the reference.
-				float geoNdL = dot(geoNormalWS, mainLight.direction);
-
 				float mu = saturate(dot(geoNormalWS, viewDirWS));  // 1 face-on, 0 at the limb
 				float grazing = pow(saturate(1.0 - mu), _HazeFalloff);
 
