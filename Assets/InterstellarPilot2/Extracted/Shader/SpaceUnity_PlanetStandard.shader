@@ -428,7 +428,15 @@ half3 emission = lightsTex * _LightScale * nightMask
 
 				// Lit or not, judged on the sphere's own terminator so the
 				// haze cannot leak onto the night side.
-				float hazeLit = smoothstep(-0.15, 0.25, geoNdL);
+				float hazeLit = smoothstep(0.0, 0.35, geoNdL);
+				// ...but the twilight band needs the old wide window, because
+				// it sits ON the terminator rather than on the daylit side of
+				// it. Same split as the atmosphere shell's dayAir / dayArc:
+				// aerial perspective stops at the terminator, the sunset glow
+				// straddles it. The clouds keep wrapping regardless -- that is
+				// _CloudWrap, a separate term, and it is the one that is
+				// supposed to reach past the terminator.
+				float twilightLit = smoothstep(-0.15, 0.25, geoNdL);
 
 				// The sunrise arc washes the surface too, not just the shell, and it
 				// has to be driven the SAME way the shell drives it or the two
@@ -454,7 +462,7 @@ half3 emission = lightsTex * _LightScale * nightMask
 				// bend to red instead of only doing it at the silhouette.
 				float hazeAmt = saturate(grazing * hazeLit
 					* (_HazeStrength + _HazeSunStrength * hazeSun)
-					+ twilight * _TwilightHaze * hazeLit);
+					+ twilight * _TwilightHaze * twilightLit);
 				color.rgb = lerp(color.rgb, hazeTint, hazeAmt);
 
 				color.rgb = MixFog(color.rgb, inputData.fogCoord);

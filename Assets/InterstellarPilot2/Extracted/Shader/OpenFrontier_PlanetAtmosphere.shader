@@ -175,7 +175,28 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// shell normal IS the planet's normal at this limb point.
 				// The test is correct even though we are shading a back face.
 				float ndl = dot(n, l);
-				float day = smoothstep(-0.2, 0.3, ndl);
+				// TWO windows, because "lit" means opposite things for the two
+				// terms that used to share one.
+				//
+				// The air's own glow must NOT wrap. smoothstep(-0.2, 0.3) left
+				// it alive 11.5 degrees past the terminator, so the cyan shell
+				// ringed the planet into the night side. That is the
+				// atmosphere wrapping round the planet, which is wrong here
+				// even though the clouds above it legitimately do it
+				// (_CloudWrap on the surface shader) -- the clouds scatter
+				// forward and sit on top of the surface, whereas what glows
+				// out here is light that came from the far side of the sphere
+				// and has the planet itself in the way. Its window therefore
+				// stops at the terminator: generous toward the sun, zero at and
+				// beyond ndl = 0.
+				float dayAir = smoothstep(0.0, 0.35, ndl);
+				// The sunset arc is the opposite case: it lives ON the
+				// terminator, and the glow there is on the night side of it by
+				// definition, so it keeps the old wide window. Left unchanged
+				// deliberately -- its peak was measured against the reference
+				// (0.719 at 76 degrees phase), and brightening it here would
+				// invalidate that.
+				float dayArc = smoothstep(-0.2, 0.3, ndl);
 
 				// The glowing arc: a short segment of the limb centred on wherever
 				// the sun actually IS on screen.
@@ -264,13 +285,13 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				                            * rcp(max(1e-3, _ForwardRange)));
 
 				float arc = pow(horizon, _SunBleedPower)
-				          * day * sunBehind * _SunBleed;
+				          * dayArc * sunBehind * _SunBleed;
 
 				// The general air along the lit limb, kept deliberately
 				// modest so the warm arc reads as the sun rather than as the
 				// atmosphere's own colour. At 1.0 this rings the whole lit
 				// limb evenly, which is the "glow all the way round" look.
-				float airGlow = day * _AtmoGlow + _NightGlow;
+				float airGlow = dayAir * _AtmoGlow + _NightGlow;
 
 				// Two colours, and the sun REPLACES rather than adds. Additive
 				// warm on top of full-strength air washes the two together
