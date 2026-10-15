@@ -7897,3 +7897,628 @@ Held In Trust,Held In Trust,2048
 Provisional Entry,Provisional Entry,2048
 Three Suns,Three Suns,2048
 Mori's Vista,Mori's,2048
+Ashcombe Town,Ashcombe Town,2050
+Ashcombe Starport,Ashcombe Starport,2050
+Ashcombe's Pride,Ashcombe's,2050
+Blackwater Town,Blackwater Town,2050
+Blackwater Starport,Blackwater Starport,2050
+Blackwater's Pride,Blackwater's,2050
+Brindlemoor Town,Brindlemoor Town,2050
+Brindlemoor Starport,Brindlemoor Starport,2050
+Brindlemoor's Pride,Brindlemoor's,2050
+Calderwood Town,Calderwood Town,2050
+Calderwood Starport,Calderwood Starport,2050
+Calderwood's Pride,Calderwood's,2050
+Dunmore Town,Dunmore Town,2050
+Dunmore Starport,Dunmore Starport,2050
+Dunmore's Pride,Dunmore's,2050
+Eastgate Town,Eastgate Town,2050
+Eastgate Starport,Eastgate Starport,2050
+Eastgate's Pride,Eastgate's,2050
+Fairholme Town,Fairholme Town,2050
+Fairholme Starport,Fairholme Starport,2050
+Fairholme's Pride,Fairholme's,2050
+Glenmara Town,Glenmara Town,2050
+Glenmara Starport,Glenmara Starport,2050
+Glenmara's Pride,Glenmara's,2050
+Harrowgate Town,Harrowgate Town,2050
+Harrowgate Starport,Harrowgate Starport,2050
+Harrowgate's Pride,Harrowgate's,2050
+Innisfree Town,Innisfree Town,2050
+Innisfree Starport,Innisfree Starport,2050
+Innisfree's Pride,Innisfree's,2050
+Kirkwall Town,Kirkwall Town,2050
+Kirkwall Starport,Kirkwall Starport,2050
+Kirkwall's Pride,Kirkwall's,2050
+Langley Town,Langley Town,2050
+Langley Starport,Langley Starport,2050
+Langley's Pride,Langley's,2050
+Marchmont Town,Marchmont Town,2050
+Marchmont Starport,Marchmont Starport,2050
+Marchmont's Pride,Marchmont's,2050
+Northgate Town,Northgate Town,2050
+Northgate Starport,Northgate Starport,2050
+Northgate's Pride,Northgate's,2050
+Oakhurst Town,Oakhurst Town,2050
+Oakhurst Starport,Oakhurst Starport,2050
+Oakhurst's Pride,Oakhurst's,2050
+Penrose Town,Penrose Town,2050
+Penrose Starport,Penrose Starport,2050
+Penrose's Pride,Penrose's,2050
+Quimby Town,Quimby Town,2050
+Quimby Starport,Quimby Starport,2050
+Quimby's Pride,Quimby's,2050
+Ravensmoor Town,Ravensmoor Town,2050
+Ravensmoor Starport,Ravensmoor Starport,2050
+Ravensmoor's Pride,Ravensmoor's,2050
+Stonebridge Town,Stonebridge Town,2050
+Stonebridge Starport,Stonebridge Starport,2050
+Stonebridge's Pride,Stonebridge's,2050
+Thornbury Town,Thornbury Town,2050
+Thornbury Starport,Thornbury Starport,2050
+Thornbury's Pride,Thornbury's,2050
+Underhill Town,Underhill Town,2050
+Underhill Starport,Underhill Starport,2050
+Underhill's Pride,Underhill's,2050
+Vexley Town,Vexley Town,2050
+Vexley Starport,Vexley Starport,2050
+Vexley's Pride,Vexley's,2050
+Westmere Town,Westmere Town,2050
+Westmere Starport,Westmere Starport,2050
+Westmere's Pride,Westmere's,2050
+Yarrowgate Town,Yarrowgate Town,2050
+Yarrowgate Starport,Yarrowgate Starport,2050
+Yarrowgate's Pride,Yarrowgate's,2050
+Ashcroft Town,Ashcroft Town,2050
+Ashcroft Starport,Ashcroft Starport,2050
+Ashcroft's Pride,Ashcroft's,2050
+Bramfield Town,Bramfield Town,2050
+Bramfield Starport,Bramfield Starport,2050
+Bramfield's Pride,Bramfield's,2050
+Coldstream Town,Coldstream Town,2050
+Coldstream Starport,Coldstream Starport,2050
+Coldstream's Pride,Coldstream's,2050
+Dunhaven Town,Dunhaven Town,2050
+Dunhaven Starport,Dunhaven Starport,2050
+Dunhaven's Pride,Dunhaven's,2050
+Eastwick Town,Eastwick Town,2050
+Eastwick Starport,Eastwick Starport,2050
+Eastwick's Pride,Eastwick's,2050
+Fairweather Town,Fairweather Town,2050
+Fairweather Starport,Fairweather Starport,2050
+Fairweather's Pride,Fairweather's,2050
+Glenhaven Town,Glenhaven Town,2050
+Glenhaven Starport,Glenhaven Starport,2050
+Glenhaven's Pride,Glenhaven's,2050
+Hollowbrook Town,Hollowbrook Town,2050
+Hollowbrook Starport,Hollowbrook Starport,2050
+Hollowbrook's Pride,Hollowbrook's,2050
+Ironvale Town,Ironvale Town,2050
+Ironvale Starport,Ironvale Starport,2050
+Ironvale's Pride,Ironvale's,2050
+Kirkbride Town,Kirkbride Town,2050
+Kirkbride Starport,Kirkbride Starport,2050
+Kirkbride's Pride,Kirkbride's,2050
+Longmere Town,Longmere Town,2050
+Longmere Starport,Longmere Starport,2050
+Longmere's Pride,Longmere's,2050
+Marchfield Town,Marchfield Town,2050
+Marchfield Starport,Marchfield Starport,2050
+Marchfield's Pride,Marchfield's,2050
+Northwind Town,Northwind Town,2050
+Northwind Starport,Northwind Starport,2050
+Northwind's Pride,Northwind's,2050
+Overdale Town,Overdale Town,2050
+Overdale Starport,Overdale Starport,2050
+Overdale's Pride,Overdale's,2050
+Penhallow Town,Penhallow Town,2050
+Penhallow Starport,Penhallow Starport,2050
+Penhallow's Pride,Penhallow's,2050
+Quicksilver Town,Quicksilver Town,2050
+Quicksilver Starport,Quicksilver Starport,2050
+Quicksilver's Pride,Quicksilver's,2050
+Ravensworth Town,Ravensworth Town,2050
+Ravensworth Starport,Ravensworth Starport,2050
+Ravensworth's Pride,Ravensworth's,2050
+Silverdale Town,Silverdale Town,2050
+Silverdale Starport,Silverdale Starport,2050
+Silverdale's Pride,Silverdale's,2050
+Thornhaven Town,Thornhaven Town,2050
+Thornhaven Starport,Thornhaven Starport,2050
+Thornhaven's Pride,Thornhaven's,2050
+Umberlee Town,Umberlee Town,2050
+Umberlee Starport,Umberlee Starport,2050
+Umberlee's Pride,Umberlee's,2050
+Valewood Town,Valewood Town,2050
+Valewood Starport,Valewood Starport,2050
+Valewood's Pride,Valewood's,2050
+Westbrook Town,Westbrook Town,2050
+Westbrook Starport,Westbrook Starport,2050
+Westbrook's Pride,Westbrook's,2050
+Yewfield Town,Yewfield Town,2050
+Yewfield Starport,Yewfield Starport,2050
+Yewfield's Pride,Yewfield's,2050
+Aldergate Town,Aldergate Town,2050
+Aldergate Starport,Aldergate Starport,2050
+Aldergate's Pride,Aldergate's,2050
+Brackenhill Town,Brackenhill Town,2050
+Brackenhill Starport,Brackenhill Starport,2050
+Brackenhill's Pride,Brackenhill's,2050
+Clearwater Town,Clearwater Town,2050
+Clearwater Starport,Clearwater Starport,2050
+Clearwater's Pride,Clearwater's,2050
+Downholme Town,Downholme Town,2050
+Downholme Starport,Downholme Starport,2050
+Downholme's Pride,Downholme's,2050
+Eastmarch Town,Eastmarch Town,2050
+Eastmarch Starport,Eastmarch Starport,2050
+Eastmarch's Pride,Eastmarch's,2050
+Fallowfield Town,Fallowfield Town,2050
+Fallowfield Starport,Fallowfield Starport,2050
+Fallowfield's Pride,Fallowfield's,2050
+Glenmorrow Town,Glenmorrow Town,2050
+Glenmorrow Starport,Glenmorrow Starport,2050
+Glenmorrow's Pride,Glenmorrow's,2050
+Hartsmere Town,Hartsmere Town,2050
+Hartsmere Starport,Hartsmere Starport,2050
+Hartsmere's Pride,Hartsmere's,2050
+Inglewood Town,Inglewood Town,2050
+Inglewood Starport,Inglewood Starport,2050
+Inglewood's Pride,Inglewood's,2050
+Jesmond Town,Jesmond Town,2050
+Jesmond Starport,Jesmond Starport,2050
+Jesmond's Pride,Jesmond's,2050
+Kirkhaven Town,Kirkhaven Town,2050
+Kirkhaven Starport,Kirkhaven Starport,2050
+Kirkhaven's Pride,Kirkhaven's,2050
+Lindenhall Town,Lindenhall Town,2050
+Lindenhall Starport,Lindenhall Starport,2050
+Lindenhall's Pride,Lindenhall's,2050
+Moorcroft Town,Moorcroft Town,2050
+Moorcroft Starport,Moorcroft Starport,2050
+Moorcroft's Pride,Moorcroft's,2050
+Netherby Town,Netherby Town,2050
+Netherby Starport,Netherby Starport,2050
+Netherby's Pride,Netherby's,2050
+Oakhanger Town,Oakhanger Town,2050
+Oakhanger Starport,Oakhanger Starport,2050
+Oakhanger's Pride,Oakhanger's,2050
+Pellowgate Town,Pellowgate Town,2050
+Pellowgate Starport,Pellowgate Starport,2050
+Pellowgate's Pride,Pellowgate's,2050
+Quartermain Town,Quartermain Town,2050
+Quartermain Starport,Quartermain Starport,2050
+Quartermain's Pride,Quartermain's,2050
+Riddlesworth Town,Riddlesworth Town,2050
+Riddlesworth Starport,Riddlesworth Starport,2050
+Riddlesworth's Pride,Riddlesworth's,2050
+Stanmere Town,Stanmere Town,2050
+Stanmere Starport,Stanmere Starport,2050
+Stanmere's Pride,Stanmere's,2050
+Thistledown Town,Thistledown Town,2050
+Thistledown Starport,Thistledown Starport,2050
+Thistledown's Pride,Thistledown's,2050
+Uppingham Town,Uppingham Town,2050
+Uppingham Starport,Uppingham Starport,2050
+Uppingham's Pride,Uppingham's,2050
+Vellamore Town,Vellamore Town,2050
+Vellamore Starport,Vellamore Starport,2050
+Vellamore's Pride,Vellamore's,2050
+Windermere Town,Windermere Town,2050
+Windermere Starport,Windermere Starport,2050
+Windermere's Pride,Windermere's,2050
+Yateley Town,Yateley Town,2050
+Yateley Starport,Yateley Starport,2050
+Yateley's Pride,Yateley's,2050
+Cranmoor Town,Cranmoor Town,2050
+Cranmoor Starport,Cranmoor Starport,2050
+Cranmoor's Pride,Cranmoor's,2050
+Duskwater Town,Duskwater Town,2050
+Duskwater Starport,Duskwater Starport,2050
+Duskwater's Pride,Duskwater's,2050
+Emberly Town,Emberly Town,2050
+Emberly Starport,Emberly Starport,2050
+Emberly's Pride,Emberly's,2050
+Foxglove Town,Foxglove Town,2050
+Foxglove Starport,Foxglove Starport,2050
+Foxglove's Pride,Foxglove's,2050
+Greyloch Town,Greyloch Town,2050
+Greyloch Starport,Greyloch Starport,2050
+Greyloch's Pride,Greyloch's,2050
+Hollowmere Town,Hollowmere Town,2050
+Hollowmere Starport,Hollowmere Starport,2050
+Hollowmere's Pride,Hollowmere's,2050
+Ironbridge Town,Ironbridge Town,2050
+Ironbridge Starport,Ironbridge Starport,2050
+Ironbridge's Pride,Ironbridge's,2050
+Netherfold Town,Netherfold Town,2050
+Netherfold Starport,Netherfold Starport,2050
+Netherfold's Pride,Netherfold's,2050
+Oakenshaw Town,Oakenshaw Town,2050
+Oakenshaw Starport,Oakenshaw Starport,2050
+Oakenshaw's Pride,Oakenshaw's,2050
+Quarrenden Town,Quarrenden Town,2050
+Quarrenden Starport,Quarrenden Starport,2050
+Quarrenden's Pride,Quarrenden's,2050
+Saltmarsh Town,Saltmarsh Town,2050
+Saltmarsh Starport,Saltmarsh Starport,2050
+Saltmarsh's Pride,Saltmarsh's,2050
+Thurlby Town,Thurlby Town,2050
+Thurlby Starport,Thurlby Starport,2050
+Thurlby's Pride,Thurlby's,2050
+Vantage Town,Vantage Town,2050
+Vantage Starport,Vantage Starport,2050
+Vantage's Pride,Vantage's,2050
+Windhollow Town,Windhollow Town,2050
+Windhollow Starport,Windhollow Starport,2050
+Windhollow's Pride,Windhollow's,2050
+Yarrowmoor Town,Yarrowmoor Town,2050
+Yarrowmoor Starport,Yarrowmoor Starport,2050
+Yarrowmoor's Pride,Yarrowmoor's,2050
+Abernathy Town,Abernathy Town,2050
+Abernathy Starport,Abernathy Starport,2050
+Abernathy's Pride,Abernathy's,2050
+Blackthorn Town,Blackthorn Town,2050
+Blackthorn Starport,Blackthorn Starport,2050
+Blackthorn's Pride,Blackthorn's,2050
+Calderum Town,Calderum Town,2050
+Calderum Starport,Calderum Starport,2050
+Calderum's Pride,Calderum's,2050
+Draycott Town,Draycott Town,2050
+Draycott Starport,Draycott Starport,2050
+Draycott's Pride,Draycott's,2050
+Elmsworth Town,Elmsworth Town,2050
+Elmsworth Starport,Elmsworth Starport,2050
+Elmsworth's Pride,Elmsworth's,2050
+Fairbriar Town,Fairbriar Town,2050
+Fairbriar Starport,Fairbriar Starport,2050
+Fairbriar's Pride,Fairbriar's,2050
+Garnock Town,Garnock Town,2050
+Garnock Starport,Garnock Starport,2050
+Garnock's Pride,Garnock's,2050
+Halloran Town,Halloran Town,2050
+Halloran Starport,Halloran Starport,2050
+Halloran's Pride,Halloran's,2050
+Isherwood Town,Isherwood Town,2050
+Isherwood Starport,Isherwood Starport,2050
+Isherwood's Pride,Isherwood's,2050
+Jessamine Town,Jessamine Town,2050
+Jessamine Starport,Jessamine Starport,2050
+Jessamine's Pride,Jessamine's,2050
+Larkin Town,Larkin Town,2050
+Larkin Starport,Larkin Starport,2050
+Larkin's Pride,Larkin's,2050
+Merriwether Town,Merriwether Town,2050
+Merriwether Starport,Merriwether Starport,2050
+Merriwether's Pride,Merriwether's,2050
+Nightingale Town,Nightingale Town,2050
+Nightingale Starport,Nightingale Starport,2050
+Nightingale's Pride,Nightingale's,2050
+Pemberton Town,Pemberton Town,2050
+Pemberton Starport,Pemberton Starport,2050
+Pemberton's Pride,Pemberton's,2050
+Sedgemoore Town,Sedgemoore Town,2050
+Sedgemoore Starport,Sedgemoore Starport,2050
+Sedgemoore's Pride,Sedgemoore's,2050
+Trelawney Town,Trelawney Town,2050
+Trelawney Starport,Trelawney Starport,2050
+Trelawney's Pride,Trelawney's,2050
+Vesperine Town,Vesperine Town,2050
+Vesperine Starport,Vesperine Starport,2050
+Vesperine's Pride,Vesperine's,2050
+Wrenford Town,Wrenford Town,2050
+Wrenford Starport,Wrenford Starport,2050
+Wrenford's Pride,Wrenford's,2050
+Yardley Town,Yardley Town,2050
+Yardley Starport,Yardley Starport,2050
+Yardley's Pride,Yardley's,2050
+Abernethy Town,Abernethy Town,2050
+Abernethy Starport,Abernethy Starport,2050
+Abernethy's Pride,Abernethy's,2050
+Blythe Town,Blythe Town,2050
+Blythe Starport,Blythe Starport,2050
+Blythe's Pride,Blythe's,2050
+Calderon Town,Calderon Town,2050
+Calderon Starport,Calderon Starport,2050
+Calderon's Pride,Calderon's,2050
+Dunmoss Town,Dunmoss Town,2050
+Dunmoss Starport,Dunmoss Starport,2050
+Dunmos's Pride,Dunmos's,2050
+Edgeley Town,Edgeley Town,2050
+Edgeley Starport,Edgeley Starport,2050
+Edgeley's Pride,Edgeley's,2050
+Fallowmere Town,Fallowmere Town,2050
+Fallowmere Starport,Fallowmere Starport,2050
+Fallowmere's Pride,Fallowmere's,2050
+Grimshaw Town,Grimshaw Town,2050
+Grimshaw Starport,Grimshaw Starport,2050
+Grimshaw's Pride,Grimshaw's,2050
+Ingoldsby Town,Ingoldsby Town,2050
+Ingoldsby Starport,Ingoldsby Starport,2050
+Ingoldsby's Pride,Ingoldsby's,2050
+Jarrow Town,Jarrow Town,2050
+Jarrow Starport,Jarrow Starport,2050
+Jarrow's Pride,Jarrow's,2050
+Kipping Town,Kipping Town,2050
+Kipping Starport,Kipping Starport,2050
+Kipping's Pride,Kipping's,2050
+Lacertus Town,Lacertus Town,2050
+Lacertus Starport,Lacertus Starport,2050
+Lacertu's Pride,Lacertu's,2050
+Mowbray Town,Mowbray Town,2050
+Mowbray Starport,Mowbray Starport,2050
+Mowbray's Pride,Mowbray's,2050
+Nethercott Town,Nethercott Town,2050
+Nethercott Starport,Nethercott Starport,2050
+Nethercott's Pride,Nethercott's,2050
+Overbeck Town,Overbeck Town,2050
+Overbeck Starport,Overbeck Starport,2050
+Overbeck's Pride,Overbeck's,2050
+Pellworth Town,Pellworth Town,2050
+Pellworth Starport,Pellworth Starport,2050
+Pellworth's Pride,Pellworth's,2050
+Quimbridge Town,Quimbridge Town,2050
+Quimbridge Starport,Quimbridge Starport,2050
+Quimbridge's Pride,Quimbridge's,2050
+Sheringham Town,Sheringham Town,2050
+Sheringham Starport,Sheringham Starport,2050
+Sheringham's Pride,Sheringham's,2050
+Tregarth Town,Tregarth Town,2050
+Tregarth Starport,Tregarth Starport,2050
+Tregarth's Pride,Tregarth's,2050
+Vandermeer Town,Vandermeer Town,2050
+Vandermeer Starport,Vandermeer Starport,2050
+Vandermeer's Pride,Vandermeer's,2050
+Windrush Town,Windrush Town,2050
+Windrush Starport,Windrush Starport,2050
+Windrush's Pride,Windrush's,2050
+Yarrowby Town,Yarrowby Town,2050
+Yarrowby Starport,Yarrowby Starport,2050
+Yarrowby's Pride,Yarrowby's,2050
+Boulton Town,Boulton Town,2050
+Boulton Starport,Boulton Starport,2050
+Boulton's Pride,Boulton's,2050
+Arkwright Town,Arkwright Town,2050
+Arkwright Starport,Arkwright Starport,2050
+Arkwright's Pride,Arkwright's,2050
+Bramah Town,Bramah Town,2050
+Bramah Starport,Bramah Starport,2050
+Bramah's Pride,Bramah's,2050
+Bessemer Town,Bessemer Town,2050
+Bessemer Starport,Bessemer Starport,2050
+Bessemer's Pride,Bessemer's,2050
+Maudslay Town,Maudslay Town,2050
+Maudslay Starport,Maudslay Starport,2050
+Maudslay's Pride,Maudslay's,2050
+Nasmyth Town,Nasmyth Town,2050
+Nasmyth Starport,Nasmyth Starport,2050
+Nasmyth's Pride,Nasmyth's,2050
+Rennie Town,Rennie Town,2050
+Rennie Starport,Rennie Starport,2050
+Rennie's Pride,Rennie's,2050
+Telford Town,Telford Town,2050
+Telford Starport,Telford Starport,2050
+Telford's Pride,Telford's,2050
+Jessop Town,Jessop Town,2050
+Jessop Starport,Jessop Starport,2050
+Jessop's Pride,Jessop's,2050
+Fairbairn Town,Fairbairn Town,2050
+Fairbairn Starport,Fairbairn Starport,2050
+Fairbairn's Pride,Fairbairn's,2050
+Whitworth Town,Whitworth Town,2050
+Whitworth Starport,Whitworth Starport,2050
+Whitworth's Pride,Whitworth's,2050
+Marc Town,Marc Town,2050
+Marc Starport,Marc Starport,2050
+Marc's Pride,Marc's,2050
+Isambard Town,Isambard Town,2050
+Isambard Starport,Isambard Starport,2050
+Isambard's Pride,Isambard's,2050
+Torricelli Town,Torricelli Town,2050
+Torricelli Starport,Torricelli Starport,2050
+Torricelli's Pride,Torricelli's,2050
+Viviani Town,Viviani Town,2050
+Viviani Starport,Viviani Starport,2050
+Viviani's Pride,Viviani's,2050
+Hooke Town,Hooke Town,2050
+Hooke Starport,Hooke Starport,2050
+Hooke's Pride,Hooke's,2050
+Barrow Town,Barrow Town,2050
+Barrow Starport,Barrow Starport,2050
+Barrow's Pride,Barrow's,2050
+Wallis Town,Wallis Town,2050
+Wallis Starport,Wallis Starport,2050
+Walli's Pride,Walli's,2050
+Halley Town,Halley Town,2050
+Halley Starport,Halley Starport,2050
+Halley's Pride,Halley's,2050
+Flamsteed Town,Flamsteed Town,2050
+Flamsteed Starport,Flamsteed Starport,2050
+Flamsteed's Pride,Flamsteed's,2050
+Bradley Town,Bradley Town,2050
+Bradley Starport,Bradley Starport,2050
+Bradley's Pride,Bradley's,2050
+Jarry Town,Jarry Town,2050
+Jarry Starport,Jarry Starport,2050
+Jarry's Pride,Jarry's,2050
+Blenkinsop Town,Blenkinsop Town,2050
+Blenkinsop Starport,Blenkinsop Starport,2050
+Blenkinsop's Pride,Blenkinsop's,2050
+Cavour Town,Cavour Town,2050
+Cavour Starport,Cavour Starport,2050
+Cavour's Pride,Cavour's,2050
+Casale Town,Casale Town,2050
+Casale Starport,Casale Starport,2050
+Casale's Pride,Casale's,2050
+Giolitti Town,Giolitti Town,2050
+Giolitti Starport,Giolitti Starport,2050
+Giolitti's Pride,Giolitti's,2050
+Marconi Town,Marconi Town,2050
+Marconi Starport,Marconi Starport,2050
+Marconi's Pride,Marconi's,2050
+Tesla Town,Tesla Town,2050
+Tesla Starport,Tesla Starport,2050
+Tesla's Pride,Tesla's,2050
+Ericsson Town,Ericsson Town,2050
+Ericsson Starport,Ericsson Starport,2050
+Ericsson's Pride,Ericsson's,2050
+Baudot Town,Baudot Town,2050
+Baudot Starport,Baudot Starport,2050
+Baudot's Pride,Baudot's,2050
+Babbage Town,Babbage Town,2050
+Babbage Starport,Babbage Starport,2050
+Babbage's Pride,Babbage's,2050
+Lovelace Town,Lovelace Town,2050
+Lovelace Starport,Lovelace Starport,2050
+Lovelace's Pride,Lovelace's,2050
+Hollerith Town,Hollerith Town,2050
+Hollerith Starport,Hollerith Starport,2050
+Hollerith's Pride,Hollerith's,2050
+Eckert Town,Eckert Town,2050
+Eckert Starport,Eckert Starport,2050
+Eckert's Pride,Eckert's,2050
+Atanasoff Town,Atanasoff Town,2050
+Atanasoff Starport,Atanasoff Starport,2050
+Atanasoff's Pride,Atanasoff's,2050
+Zworykin Town,Zworykin Town,2050
+Zworykin Starport,Zworykin Starport,2050
+Zworykin's Pride,Zworykin's,2050
+Kubischkin Town,Kubischkin Town,2050
+Kubischkin Starport,Kubischkin Starport,2050
+Kubischkin's Pride,Kubischkin's,2050
+Rydberg Town,Rydberg Town,2050
+Rydberg Starport,Rydberg Starport,2050
+Rydberg's Pride,Rydberg's,2050
+Zeeman Town,Zeeman Town,2050
+Zeeman Starport,Zeeman Starport,2050
+Zeeman's Pride,Zeeman's,2050
+Meitner Town,Meitner Town,2050
+Meitner Starport,Meitner Starport,2050
+Meitner's Pride,Meitner's,2050
+Arkel Town,Arkel Town,2050
+Arkel Starport,Arkel Starport,2050
+Arkel's Pride,Arkel's,2050
+Ptolemy Town,Ptolemy Town,2050
+Ptolemy Starport,Ptolemy Starport,2050
+Ptolemy's Pride,Ptolemy's,2050
+Bianchini Town,Bianchini Town,2050
+Bianchini Starport,Bianchini Starport,2050
+Bianchini's Pride,Bianchini's,2050
+Alhazen Town,Alhazen Town,2050
+Alhazen Starport,Alhazen Starport,2050
+Alhazen's Pride,Alhazen's,2050
+Nasireddin Town,Nasireddin Town,2050
+Nasireddin Starport,Nasireddin Starport,2050
+Nasireddin's Pride,Nasireddin's,2050
+Ulugh Town,Ulugh Town,2050
+Ulugh Starport,Ulugh Starport,2050
+Ulugh's Pride,Ulugh's,2050
+Beg Town,Beg Town,2050
+Beg Starport,Beg Starport,2050
+Beg's Pride,Beg's,2050
+Bicchieri Town,Bicchieri Town,2050
+Bicchieri Starport,Bicchieri Starport,2050
+Bicchieri's Pride,Bicchieri's,2050
+Hevelius Town,Hevelius Town,2050
+Hevelius Starport,Hevelius Starport,2050
+Heveliu's Pride,Heveliu's,2050
+Olbers Town,Olbers Town,2050
+Olbers Starport,Olbers Starport,2050
+Olber's Pride,Olber's,2050
+Piazzi Town,Piazzi Town,2050
+Piazzi Starport,Piazzi Starport,2050
+Piazzi's Pride,Piazzi's,2050
+LeVerrier Town,LeVerrier Town,2050
+LeVerrier Starport,LeVerrier Starport,2050
+LeVerrier's Pride,LeVerrier's,2050
+Leavitt Town,Leavitt Town,2050
+Leavitt Starport,Leavitt Starport,2050
+Leavitt's Pride,Leavitt's,2050
+Lowell Town,Lowell Town,2050
+Lowell Starport,Lowell Starport,2050
+Lowell's Pride,Lowell's,2050
+Messier Town,Messier Town,2050
+Messier Starport,Messier Starport,2050
+Messier's Pride,Messier's,2050
+Hodge Town,Hodge Town,2050
+Hodge Starport,Hodge Starport,2050
+Hodge's Pride,Hodge's,2050
+Shkaplerov Town,Shkaplerov Town,2050
+Shkaplerov Starport,Shkaplerov Starport,2050
+Shkaplerov's Pride,Shkaplerov's,2050
+Umov Town,Umov Town,2050
+Umov Starport,Umov Starport,2050
+Umov's Pride,Umov's,2050
+Maunder Town,Maunder Town,2050
+Maunder Starport,Maunder Starport,2050
+Maunder's Pride,Maunder's,2050
+Aristoge Town,Aristoge Town,2050
+Aristoge Starport,Aristoge Starport,2050
+Aristoge's Pride,Aristoge's,2050
+Hook Town,Hook Town,2050
+Hook Starport,Hook Starport,2050
+Hook's Pride,Hook's,2050
+Kepler Town,Kepler Town,2050
+Kepler Starport,Kepler Starport,2050
+Kepler's Pride,Kepler's,2050
+Herschon Town,Herschon Town,2050
+Herschon Starport,Herschon Starport,2050
+Herschon's Pride,Herschon's,2050
+Tycho Town,Tycho Town,2050
+Tycho Starport,Tycho Starport,2050
+Tycho's Pride,Tycho's,2050
+Laplace Town,Laplace Town,2050
+Laplace Starport,Laplace Starport,2050
+Laplace's Pride,Laplace's,2050
+Gauss Town,Gauss Town,2050
+Gauss Starport,Gauss Starport,2050
+Gaus's Pride,Gaus's,2050
+Riemann Town,Riemann Town,2050
+Riemann Starport,Riemann Starport,2050
+Riemann's Pride,Riemann's,2050
+Raman Town,Raman Town,2050
+Raman Starport,Raman Starport,2050
+Raman's Pride,Raman's,2050
+Oppenheimer Town,Oppenheimer Town,2050
+Oppenheimer Starport,Oppenheimer Starport,2050
+Oppenheimer's Pride,Oppenheimer's,2050
+Feynman Town,Feynman Town,2050
+Feynman Starport,Feynman Starport,2050
+Feynman's Pride,Feynman's,2050
+Hubble Town,Hubble Town,2050
+Hubble Starport,Hubble Starport,2050
+Hubble's Pride,Hubble's,2050
+Rubin Town,Rubin Town,2050
+Rubin Starport,Rubin Starport,2050
+Rubin's Pride,Rubin's,2050
+Teller Town,Teller Town,2050
+Teller Starport,Teller Starport,2050
+Teller's Pride,Teller's,2050
+Bethe Town,Bethe Town,2050
+Bethe Starport,Bethe Starport,2050
+Bethe's Pride,Bethe's,2050
+Chandrasekhar Town,Chandrasekhar Town,2050
+Chandrasekhar Starport,Chandrasekhar Starport,2050
+Chandrasekhar's Pride,Chandrasekhar's,2050
+Grote Town,Grote Town,2050
+Grote Starport,Grote Starport,2050
+Grote's Pride,Grote's,2050
+Fermi Town,Fermi Town,2050
+Fermi Starport,Fermi Starport,2050
+Fermi's Pride,Fermi's,2050
+Bosun's Pride,Bosun's,2050
+Skipper's Pride,Skipper's,2050
+Master's Pride,Master's,2050
+Navigator's Pride,Navigator's,2050
+Engineer's Pride,Engineer's,2050
+Cook's Pride,Cook's,2050
+Purser's Pride,Purser's,2050
+Clerk's Pride,Clerk's,2050
+Factor's Pride,Factor's,2050
+Steward's Pride,Steward's,2050
+Hostler's Pride,Hostler's,2050
+Rigger's Pride,Rigger's,2050
+Trimmer's Pride,Trimmer's,2050
+Chainman's Pride,Chainman's,2050
+Quartermaster's Pride,Quartermaster's,2050
+Barman's Pride,Barman's,2050
