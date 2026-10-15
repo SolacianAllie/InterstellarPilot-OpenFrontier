@@ -254,18 +254,29 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		}
 
 		/// <summary>
-		/// Whether the ship's nose is close enough to the target's bearing for
-		/// this launcher to fire, per <see cref="TurretClass.LauncherFacingArc"/>.
+		/// How far off the ship's nose the target must be before this turret
+		/// will fire at it, in degrees. Zero means no requirement.
 		/// </summary>
 		/// <remarks>
-		/// Same bearing arithmetic as <see cref="IsLocalDirectionInFiringArc"/>,
-		/// measured from the hull rather than from a bay, and flattened onto
-		/// the combat plane because units are Y-frozen and "below the ship" is
-		/// not a direction anything can be in.
+		/// This is the other half of a bay's WeaponArc: the arc asks whether a
+		/// bay is rotated towards the target, this asks whether the ship is.
+		/// Both matter for a launcher and neither matters for a gun, because a
+		/// gun is aimed by the shot itself.
+		///
+		/// For a projectile turret this is not an independent number - it is the
+		/// loaded missile's own seeker cone. Nothing ever rotates an
+		/// ActiveTurret, so a homing missile launches along whatever rotation
+		/// the launcher inherits, which is the hull's, and its seeker can only
+		/// look where the missile is pointing. Letting a ship launch a missile
+		/// outside the arc that missile can even see would mean spending the
+		/// whole flight failing to acquire, so the launch requirement and the
+		/// cone are the same angle and are stored once, on the missile.
 		/// </remarks>
+		protected virtual float RequiredLaunchAngle => 0f;
+
 		private bool IsShipFacingTarget(Unit target)
 		{
-			float halfAngle = TurretClass.LauncherFacingArc;
+			float halfAngle = RequiredLaunchAngle;
 			if (halfAngle <= 0f)
 			{
 				return true;

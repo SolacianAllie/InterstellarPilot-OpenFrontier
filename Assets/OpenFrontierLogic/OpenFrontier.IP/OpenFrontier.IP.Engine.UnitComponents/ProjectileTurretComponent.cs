@@ -151,6 +151,30 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		protected override bool NeedsLaserDesignation =>
 			curProjectileClass != null && curProjectileClass.GuidanceType == MissileGuidanceType.Optical;
 
+		/// <summary>
+		/// The ship has to be pointed within the loaded missile's own seeker
+		/// cone before it will launch it.
+		/// </summary>
+		/// <remarks>
+		/// Not a number of its own, and deliberately so. A missile leaves along
+		/// the hull's nose because nothing ever rotates a turret, and its seeker
+		/// can only look along the missile's nose - so the arc the ship must be
+		/// pointing within and the arc the missile can see are the same arc.
+		/// Storing it twice let the two disagree, and every value they disagreed
+		/// on was a launch that could not possibly work.
+		///
+		/// Reading the loaded missile rather than the launcher means a launcher
+		/// holding a wide-cone round can shoot much further off the bow than one
+		/// holding a tight-cone round, which is the right way round: the tight
+		/// one is the missile that needs the ship pointed at the target.
+		///
+		/// A missile with no cone at all - SeekerConeAngle zero, which is what
+		/// every prefab written before the field existed reads - imposes no
+		/// requirement, which is also what it did before.
+		/// </remarks>
+		protected override float RequiredLaunchAngle =>
+			curProjectileClass != null ? curProjectileClass.SeekerConeAngle : 0f;
+
 		public void SelectFirstProjectileClass(bool conventionalWeaponsOnly)
 		{
 			if (PopulateProjectileClasses(ignoreAmmo: true, sort: true, conventionalWeaponsOnly) > 0)

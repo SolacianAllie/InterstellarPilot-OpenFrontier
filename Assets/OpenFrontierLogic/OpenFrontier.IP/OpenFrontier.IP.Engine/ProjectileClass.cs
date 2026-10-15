@@ -57,11 +57,22 @@ namespace OpenFrontier.IP.Engine
 		/// it is the one to author: 0.5 is not obviously 60 degrees, and every
 		/// missile in the game wants a different number.
 		///
+		/// It is a half-angle, measured from the missile's nose, so 90 means it
+		/// sees 90 degrees either side of straight ahead and 180 degrees
+		/// across in total.
+		///
+		/// It decides two things, because they are the same thing. The seeker
+		/// cannot see past it - and the launching ship cannot fire the missile
+		/// at a target outside it, because a missile leaves along the hull's
+		/// nose and would spend the whole flight unable to acquire. So the
+		/// launch arc is read from here rather than stored on the turret.
+		///
 		/// Zero means unset, which is what every prefab written before this
 		/// field existed reads, and zero means NO cone - the missile sees in
-		/// every direction exactly as it always did. That is deliberate: it
-		/// makes the field safe to add to existing content, and it means a
-		/// missile that predates seekers keeps behaving like one.
+		/// every direction exactly as it always did, and imposes no launch
+		/// requirement. That is deliberate: it makes the field safe to add to
+		/// existing content, and it means a missile that predates seekers keeps
+		/// behaving like one.
 		/// </remarks>
 		public float SeekerConeAngle;
 

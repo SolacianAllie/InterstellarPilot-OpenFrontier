@@ -87,7 +87,6 @@ MonoBehaviour:
   FirePrewarmTime: 0
   InaccuracyPower: 1
   MaxFiringRange: 12000
-  LauncherFacingArc: 40
   InaccuracyMultiplier: 1
   MinAppliedDamage: 0.8
   MinFiringRange: 180
