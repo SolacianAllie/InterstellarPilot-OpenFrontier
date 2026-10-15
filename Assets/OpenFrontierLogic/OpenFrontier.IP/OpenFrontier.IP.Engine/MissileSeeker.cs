@@ -283,6 +283,25 @@ namespace OpenFrontier.IP.Engine
 			if (missile.ProjectileClass.GuidanceType == MissileGuidanceType.IR
 				&& blindTime < missile.ProjectileClass.SeekerLockPersistence)
 			{
+				// Nothing on this thing radiates at all, so there is nothing for a
+				// heat seeker to follow and it must not be able to fly into it.
+				//
+				// A station is the case that matters, and the rule is that
+				// infrared does not kill stations - that is what the optical
+				// seeker is for. The reference bails on exactly this at launch:
+				// its Initialize calls LoseLock() when !targetUnit.HasIRSignature().
+				//
+				// This has to be an outright give-up rather than a dropped lock,
+				// because a dropped lock does not stop the missile hitting. The
+				// collision test only asks whether the projectile still has a
+				// target, not whether the seeker ever saw one, so a missile that
+				// merely lost the picture would sail into the station anyway.
+				if (!CanRadiateAtAll(target))
+				{
+					missile.LoseTargetPermanently();
+					hasLock = false;
+					return;
+				}
 				// Only a countermeasure puff can move an infrared seeker off the
 				// ship it was sent after. It never changes its mind about the ship
 				// itself - see CaptureByHotterDecoy.
@@ -521,6 +540,41 @@ namespace OpenFrontier.IP.Engine
 		/// stopping only drops this to the safety net - which is a very good vent
 		/// and not a stealth mode at all.
 		/// </remarks>
+		/// <summary>
+		/// Whether this unit has anything on it that can radiate heat at all, as
+		/// opposed to merely not radiating very much at the moment.
+		/// </summary>
+		/// <remarks>
+		/// The two are different questions and only one of them should end a
+		/// pursuit outright.
+		///
+		/// A ship with its engines shut has a heat source that is currently dark,
+		/// and that is a transient state the seeker should coast through on dead
+		/// reckoning and give up on when the persistence timer runs out. A station
+		/// has no heat source at all - it has no engines to shut - and there is no
+		/// version of that where the infrared seeker sees it. Which is the rule
+		/// that infrared does not kill stations, and the optical seeker exists
+		/// precisely because it will.
+		///
+		/// A countermeasure puff counts, being a burning gas cloud rather than
+		/// something with engines. The reference's test is literally the same
+		/// shape: HasIRSignature() is IRSources.Count &gt; 0, and an engine at idle
+		/// still has one.
+		/// </remarks>
+		private static bool CanRadiateAtAll(Unit target)
+		{
+			if (target == null)
+			{
+				return false;
+			}
+			if (target.CountermeasureCloud != null)
+			{
+				return true;
+			}
+			UnitEngineComponent engine = target.Components != null ? target.Components.EngineComponent : null;
+			return engine != null;
+		}
+
 		private bool HasIrSignature(Unit target)
 		{
 			float threshold = missile.ProjectileClass.IrEngineHeatThreshold;
@@ -1085,6 +1139,15 @@ namespace OpenFrontier.IP.Engine
 			Unit target = missile.Target;
 			if (target == null || target.transform == null)
 			{
+				return false;
+			}
+			if (missile.ProjectileClass.GuidanceType == MissileGuidanceType.IR
+				&& !CanRadiateAtAll(target))
+			{
+				// Nothing on it to follow, so there is nothing to be told either.
+				// The missile goes out as a rock rather than flying the first half
+				// second at a station and giving up on it, and - more to the point -
+				// without a fix it has no reason to arrive there and collide.
 				return false;
 			}
 			lastKnownPosition = target.transform.position;
