@@ -119,6 +119,10 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		// Power applied to how far the sun is behind, so the tightening
 		// concentrates near alignment instead of starting at the limb.
 		_SunBleedShape ("Sun Bleed Shape", Range(1, 12)) = 8
+		// NOT physics. The previous shader's unbounded eclipse extinction,
+		// restored so the rim fades out at alignment as it used to. See
+		// the note in the fragment stage. 0 is pure physics.
+		_EclipseDepth ("Eclipse Depth", Range(0, 1)) = 0.22
 		// A small additive core, for the hot line right where the sun is
 		// coming up.
 		// 0.5, not 1.0. At 1.0 this term was as large again as the air
@@ -178,6 +182,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			float _SunBleedPower;
 			float _SunBleedTighten;
 			float _SunBleedShape;
+			float _EclipseDepth;
 			float _SunRimBoost;
 			float _TwilightReach;
 			float _NightGlow;
@@ -325,6 +330,15 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// "the sun's ray goes round the planet to reach it".
 				// ----------------------------------------------------------------
 				float cosZ = dot(n, l);
+
+				// |sunPerp| is the sine of the sun's angle off the view axis. It
+				// collapses toward zero when the sun lies along the view axis,
+				// which matters below and for _EclipseDepth.
+				float3 axis = normalize(_WorldSpaceCameraPos - input.centreWS);
+				float3 sunPerp = l - axis * dot(l, axis);
+				// |sunPerp| is the sine of the sun's angle off the view axis. It
+				// collapses toward zero when the sun lies along the view axis.
+				float sunLen = length(sunPerp);
 				float grazing = sqrt(2.0 * UNITY_PI * rcp(max(1e-4, _ScaleHeight)))
 				              * exp(-z0 * invH);
 				float secant = rcp(max(cosZ, 1e-3));
@@ -362,6 +376,30 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				const float3 SIGMA_R = float3(0.581, 1.000, 1.957);
 				float3 sigma = SIGMA_R * _Rayleigh + _Aerosol;
 				float3 transmit = exp(-sigma * airMass);
+
+				// The previous shader's separate eclipse extinction, restored.
+				//
+				// This is NOT physics and is not part of the air mass. It is
+				// here because the rebuild quietly changed it, by replacing
+				// an UNBOUNDED term with a bounded one. horizonPath =
+				// 1/sunLen - 1 reaches 56 at 1 degree off axis, so at 0.22 the
+				// old crest was multiplied by exp(-12.4) = 4e-6. The bounded
+				// grazing air mass is 32.4 by design, so the crest now sits at
+				// transmit_red 0.0796 instead -- five orders of magnitude
+				// more visible at alignment, and that is how the lobe's noise
+				// became visible at all. The old shader had the degenerate
+				// basis too; it was simply multiplied away.
+				//
+				// 0.22 is the value the previous shader shipped with, and 0
+				// restores pure physics. The difference, measured on the red
+				// channel at the crest:
+				//
+				//     sun 16 off axis   0.753 -> 0.423
+				//     sun  6 off axis   0.473 -> 0.072
+				//     sun  1 off axis   0.080 -> 3e-7
+				//
+				float eclipsePath = rcp(max(0.02, sunLen)) - 1.0;
+				transmit *= exp(-eclipsePath * _EclipseDepth);
 				// Per-material hue on the beam, normalised so it cannot change
 				// how bright the rim is.
 				//
@@ -474,21 +512,38 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// and this is what does; _SunBleedTighten 0 turns it off and
 				// leaves the width to the physics.
 				// ----------------------------------------------------------------
-				float3 axis = normalize(_WorldSpaceCameraPos - input.centreWS);
-				float3 sunPerp = l - axis * dot(l, axis);
-				float3 nPerp = n - axis * dot(n, axis);
-				// |sunPerp| is the sine of the sun's angle off the view axis. It
-				// collapses toward zero when the sun lies along the view axis,
-				// where an azimuth stops being a direction and becomes a
-				// rounding error. 0.02 is about 1 degree.
-				float sunLen = length(sunPerp);
-				float lobe = (sunLen > 0.02)
-				           ? pow(saturate(dot(nPerp, sunPerp)
-				                            / max(1e-4, length(nPerp) * sunLen)),
+
+				// "Brightest at the sun's bearing" is the same statement as
+				// "brightest where the sun's ray is shortest", and cosZ already
+				// says that. It was previously measured as a screen AZIMUTH --
+				// dot(nPerp, sunPerp)/(|nPerp| * sunLen) -- and that basis is
+				// what produced the rotating behaviour.
+				//
+				// sunPerp goes to zero as the sun lines up with the view axis, and
+				// so does its DIRECTION. Past that point the azimuth is not a
+				// quantity that exists; it is whatever the last few bits of float
+				// noise happen to say, and it changes as the planet turns.
+				// Measured, perturbing the sun by 0.05 degrees -- far under a
+				// pixel -- moves the basis by:
+				//
+					//     sun off axis    6d    3d    1d   0.3d
+					//     basis drift   0.47  0.94  2.73  8.13 degrees
+				//
+				// and at alignment the exponent here is 3 + 28 = 31, so cos^31 is
+				// a spike a couple of degrees wide. A basis drifting by more than
+				// its own width walks a bright patch right round the limb.
+				//
+				// The normalisation is CLAMPED rather than guarded. A threshold
+				// that zeroes the lobe is what produced the hard cut; a clamp
+				// below about 6 degrees off axis keeps the basis well
+				// conditioned, stays exactly the true bearing above it, and
+				// degrades continuously into the uniform ring the extinction
+				// already draws -- which is the correct answer when there is no
+				// bearing to point at.
+				float lobe = pow(saturate(cosZ * rcp(max(0.10, sunLen))),
 				                 _SunBleedPower
 				                 + pow(saturate(-dot(l, v)), _SunBleedShape)
-				                   * _SunBleedTighten)
-				           : 0.0;
+				                   * _SunBleedTighten);
 
 				// The lobe REDISTRIBUTES the scattered light; it does not
 				// attenuate it. Multiplying the whole profile by cos^P deleted
@@ -528,6 +583,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				      * scatterTint
 				      * (density * _SunRimBoost * shape * dayLit * sunBehind
 				         * lightCol);
+
 
 				// Airglow. Faded out where the sky is already sunlit, because
 				// airglow is not visible against a daylit sky -- and because
