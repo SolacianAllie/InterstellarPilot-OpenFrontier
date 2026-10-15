@@ -2,6 +2,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 	Properties {
 		_AtmoColor ("Atmosphere Color", Vector) = (0.35,0.78,1,1)
 		_SunRimColor ("Sun Rim Color", Color) = (1,0.62,0.30,1)
+		_SunRimDeep ("Sun Rim Deep Color", Color) = (1,0.30,0.12,1)
 		_Size ("Size", Float) = 0.75
 		_Falloff ("Falloff", Float) = 2
 		_Transparency ("Transparency", Float) = 3
@@ -12,7 +13,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		[Header(SunBleed)]
 		_AtmoGlow ("Atmosphere Glow", Range(0, 1.5)) = 0.4
 		_SunBleed ("Sun Bleed", Range(0, 1)) = 1
-		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 4
+		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 2
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
 		[Header(ForwardScatter)]
 		_ForwardBias ("Forward Bias", Range(-1, 1)) = 1
@@ -34,6 +35,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 
 			fixed4 _AtmoColor;
 			fixed4 _SunRimColor;
+			fixed4 _SunRimDeep;
 			float _Size;
 			float _Falloff;
 			float _Transparency;
@@ -220,71 +222,76 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// so no per-material radius is needed.
 				float3 axis = normalize(_WorldSpaceCameraPos - input.centreWS);
 				float3 sunPerp = l - axis * dot(l, axis);
+				float3 nPerp = n - axis * dot(n, axis);
 
 				// |sunPerp| is the sine of the angle between the sun and the view
-				// axis. It collapses toward zero precisely when the sun lies along
-				// that axis, which is the degenerate case guarded below.
+				// axis, and it is what the bearing divides by. It collapses toward
+				// zero precisely when the sun lies along the view axis. 0.02 is
+				// about 1 degree off-axis, where the azimuth stops being a
+				// direction and becomes a rounding error.
 				float sunLen = length(sunPerp);
+				float bearing = (sunLen > 0.02)
+					? saturate(dot(nPerp, sunPerp) / (length(nPerp) * sunLen))
+					: 0.0;
 
-				// WHERE the arc goes: the two points where the TERMINATOR meets the
-				// silhouette. That is the only place on the limb where the sun is
-				// exactly at the horizon for that sample, so it is the only place
-				// the light has genuinely crossed a long atmospheric path and still
-				// arrived.
+				// BRIGHTNESS follows the sun's screen bearing -- 1 where this limb
+				// point faces the sun most directly.
 				//
-				// At the silhouette n is perpendicular to v, so n lies in the 2D
-				// plane spanned by sunPerp and (l x v). Writing
-				//     n = a*sunPerpDir + b*(l x v)
-				// and noting l is perpendicular to (l x v), the sun angle of that
-				// sample is ndl = a*sunLen, hence
-				//     b = sqrt(1 - (ndl/sunLen)^2)
-				// with no cross product needed. Checked against the explicit
-				// cross-product component all the way round the limb: max error
-				// 0.000000.
+				// This has been wrong twice and the sequence is worth recording.
+				// It was first keyed on ndl, the sun's ALTITUDE at this point on
+				// the sphere, which is the physically tidy answer and the wrong one
+				// visually: ndl is an angle on the sphere, so where it peaks on
+				// SCREEN moves as you orbit, and it wrapped most of the limb at
+				// every camera angle.
 				//
-				// This REPLACES a screen-bearing term, which was measuring the other
-				// end of the same decomposition. bearing is a; it peaks at the
-				// SUB-SOLAR limb (where it is local noon) and is exactly ZERO at the
-				// terminator crossings. It aimed the warm arc at peak daylight and
-				// blanked it precisely where both references put it. At the limb a
-				// and b are complementary, a^2 + b^2 = 1, so it was never a
-				// concentration that could be reweighted -- it was the wrong end.
+				// It was then replaced by the complementary component of the same
+				// decomposition, on the argument that the arc belongs at the
+				// terminator-limb crossings. That was half right. The crossings
+				// are where the air mass is greatest, but three night-side
+				// references -- sun cresting the limb, a crescent at upper left, a
+				// bright ring around a dark planet -- are all brightest at the
+				// SUN'S BEARING, which is a quarter of the way round from the
+				// crossings. Those two places are 90 degrees apart on the limb and
+				// driving brightness from the crossings put the highlight exactly
+				// where the references show it dimmest.
 				//
-				// b is two-sided by construction: it decays toward the sub-solar
-				// limb AND toward the night limb. That is why the old
-				// saturate(1.0 - ndl) is gone rather than retuned. It was
-				// one-sided -- flat at 1.0 across the entire night side -- and so
-				// wrapped ~264 degrees of the limb at the reference geometry, where
-				// this form spans 69.
-				float horizon = (sunLen > 0.02)
-					? sqrt(saturate(1.0 - ndl * ndl * rcp(sunLen * sunLen)))
-					: 1.0;
+				// At the silhouette ndl = bearing * sunLen, so bearing and ndl are
+				// the same axis rescaled -- which is why this is a rescale and not
+				// a reversal: ndl peaks with the sun's bearing on screen too. What
+				// was wrong was the saturate(1 - ndl) taper, which dimmed the peak
+				// to 0.23 of its value at sunLen 0.77.
+				//
+				// The taper is gone entirely. dayArc already keeps the arc off the
+				// unlit limb, and with it gone the rim spans about 90 degrees
+				// either side of the bearing at _SunBleedPower 2, which is where
+				// all three references have it fading out.
+				//
+				// HUE follows air mass, which is a DIFFERENT function again and was
+				// missing entirely -- one colour cannot express a sunset. Real air
+				// mass goes as 1/cos(zenith) = 1/ndl, so normalised to the bearing
+				// it is 1/bearing - 1. That shape matters: most of the reddening
+				// happens within the first 40 degrees off the bearing and then
+				// saturates, which is why the references read as a short bright
+				// orange crest bleeding into a long deep red tail rather than a
+				// slow even gradient.
+				float airMass = saturate(rcp(max(0.05, bearing)) - 1.0);
 
 				// Whether the arc shows at all.
 				//
 				// Honest framing: this is NO LONGER a scattering-angle gate. Both
-				// references show the warm limb from viewpoints where dot(l, v) is
-				// firmly POSITIVE -- the front-on earth measures +0.71 -- and gating
-				// on forward scattering alone suppressed every frame that mattered,
-				// giving peak arc 0.000 there.
+				// day-side and night-side references show the warm limb where
+				// dot(l, v) is positive, and a forward-scattering gate suppressed
+				// every frame that mattered.
 				//
-				// What it does still have to do is kill one specific artifact: with
-				// the sun behind the viewer the terminator coincides with the whole
-				// silhouette, horizon goes to 1.0 everywhere, and the limb rings warm
-				// all the way round. That is the rejected "glow all the way round"
-				// look, and it is what this term blocks -- the arc only opens once
-				// the sun is far enough round from dead behind. At the new default
-				// of 1.0 the gate is shut at dot(l, v) near 1 and fully open by
-				// dot(l, v) near 0.
-				//
-				// Not gated on sunLen: this asks how far round the sun is from the
-				// view axis, which is well defined whether or not that axis passes
-				// through the planet. An ill-defined bearing is a reason to drop the
-				// bearing, never a reason to drop the scattering.
+				// What it still has to do is kill one specific artifact: with the
+				// sun behind the viewer the terminator coincides with the whole
+				// silhouette, and the limb would ring warm all the way round. That
+				// is the rejected "glow all the way round" look, and it is what
+				// this term blocks.
 				float sunBehind = saturate((_ForwardBias - dot(l, v))
 				                            * rcp(max(1e-3, _ForwardRange)));
 
-				float arc = pow(horizon, _SunBleedPower)
+				float arc = pow(bearing, _SunBleedPower)
 				          * dayArc * sunBehind * _SunBleed;
 
 				// The general air along the lit limb, kept deliberately
@@ -297,12 +304,20 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// warm on top of full-strength air washes the two together
 				// into cream, which is why they used to collapse into one
 				// colour instead of reading as a bleed.
-				fixed3 tint = lerp(airColor, _SunRimColor.rgb, saturate(arc))
+				// TWO sunset colours, lerped by air mass. Looking straight down the
+				// sun's rays the path is short and the light barely changes; at the
+				// horizon it has crossed dozens of air masses and arrives deep red.
+				// A single colour cannot span that -- and lerping one colour from
+				// the air's cyan made the far end of the rim go grey-blue, because
+				// cyan has a high green and blue to fall back to. The references
+				// show it staying warm as it dims.
+				fixed3 sunset = lerp(_SunRimColor.rgb, _SunRimDeep.rgb, airMass);
+				fixed3 tint = lerp(airColor, sunset, saturate(arc))
 				            * density * airGlow * lightCol;
 
 				// A small additive core on top, for the hot line right where
 				// the sun is coming up.
-				tint += _SunRimColor.rgb
+				tint += sunset
 				      * (density * arc * _SunRimBoost * lightCol);
 
 				// _Transparency is the master gain. The 0.4 scale is not arbitrary:
