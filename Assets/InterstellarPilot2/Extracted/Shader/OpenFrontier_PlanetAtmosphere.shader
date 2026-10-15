@@ -13,14 +13,14 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		// from the sun's screen bearing). 0.5 is 30 degrees of limb.
 		// How far past the terminator the air still glows, as a sine of the
 		// sun's altitude. 0.45 is about 26.7 degrees; 0.2 is 11.5.
-		_TwilightReach ("Twilight Reach", Range(0, 0.9)) = 0.45
+		_TwilightReach ("Twilight Reach", Range(0, 0.9)) = 0.3
 		[Header(Volume)]
 		_ScaleHeight ("Scale Height", Range(0.002, 0.1)) = 0.006
 		_Density ("Density", Range(0.3, 12)) = 3
 		[Header(SunBleed)]
 		_AtmoGlow ("Atmosphere Glow", Range(0, 1.5)) = 0.4
 		_SunBleed ("Sun Bleed", Range(0, 1)) = 1
-		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 2
+		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 3
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
 		[Header(ForwardScatter)]
 		_ForwardBias ("Forward Bias", Range(-1, 1)) = 1
