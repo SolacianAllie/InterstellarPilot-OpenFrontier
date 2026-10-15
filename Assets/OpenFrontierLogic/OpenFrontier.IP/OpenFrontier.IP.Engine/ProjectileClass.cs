@@ -137,15 +137,19 @@ namespace OpenFrontier.IP.Engine
 		/// seeker can hold it. Zero means every ship counts.
 		/// </summary>
 		/// <remarks>
-		/// Measured as flux - the ship's stored heat multiplied by the rate it
-		/// can shed that heat - rather than as the store alone. The game already
-		/// keeps both numbers, so reading them costs nothing.
+		/// Measured as what the ship is putting out - which is what its engines
+		/// are producing - and not as what it is storing.
 		///
-		/// Flux rather than store is the whole point. A ship running Silent
-		/// Running has the most stored heat in the sector, because with the
-		/// vents shut nothing leaves and it climbs to the top of its range,
-		/// while being thermally invisible. Reading the store would make that
-		/// trade-off exactly backwards.
+		/// Storing is the obvious mistake and was the first thing tried. Heat in
+		/// equals heat out at steady state, so a perfectly cooled hull is
+		/// emitting exactly as much as a saturated one; it is just not carrying
+		/// any. Measuring the store made the ship running flat out the dimmest
+		/// thing in the sector.
+		///
+		/// So venting does not change a signature. What thermal vents buy is the
+		/// ability to run hot without cooking, and that is a separate consequence
+		/// from being seen - a ship can be the brightest thing in a sector and
+		/// perfectly comfortable, which is correct.
 		///
 		/// Because every thruster's ThermalLoad is its own EnginePower times one
 		/// constant, hull size is the heat profile: a scout barely registers

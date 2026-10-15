@@ -1373,13 +1373,22 @@ namespace OpenFrontier.IP.Engine
 		}
 
 		/// <summary>
-		/// Heat per second a ship sheds with no vents at all.
+		/// Heat per second a unit with no engine and no vents at all sheds.
 		/// </summary>
 		/// <remarks>
-		/// Without this a ship that fits no thermal vents can never cool once it
-		/// is warm, and overheat damage becomes an unrecoverable death spiral.
-		/// Small on purpose: enough that an unvented ship recovers slowly if it
-		/// stops its guns, not enough to make vents optional.
+		/// This used to be the fallback for any ship fitting no thermal vents,
+		/// and it is what stopped an unvented hull cooking - but it was wired
+		/// behind a null check on the component holder, which no ship ever has,
+		/// so it never actually ran for one. A ship with components and no vents
+		/// got an effective rate of zero and its heat climbed to the top of its
+		/// range and stayed there.
+		///
+		/// The fallback a ventless ship actually gets now lives on
+		/// <see cref="UnitComponentHolder.EffectiveVentRate"/> and is the engine's
+		/// own ThermalLoad, which is strictly better: it scales with the ship
+		/// rather than being one flat number for every hull in the game. What
+		/// remains here is for the things that have neither an engine nor a
+		/// component holder, where there is nothing better to go on.
 		/// </remarks>
 		public const float BaseVenting = 0.05f;
 

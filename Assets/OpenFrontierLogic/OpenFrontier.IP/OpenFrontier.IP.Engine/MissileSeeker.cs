@@ -340,29 +340,25 @@ namespace OpenFrontier.IP.Engine
 		/// hold it.
 		/// </summary>
 		/// <remarks>
-		/// The signature is the heat actually leaving the ship, which is its
-		/// stored heat multiplied by how fast it can dump it - and the game
-		/// already keeps both numbers. <see cref="Unit.Heat"/> is the stored
-		/// figure, fed by the engine's ThermalLoad and shed every frame by
-		/// <see cref="UnitComponentHolder.EffectiveVentRate"/>. Multiplying them
-		/// is the flux: what an infrared seeker could actually see.
+		/// The signature is what the ship is putting out, which the game already
+		/// knows: it is exactly the figure the engine feeds into the hull every
+		/// frame, so reading it costs nothing and cannot drift from what the
+		/// ship is actually doing.
 		///
-		/// Using stored heat alone would have been the obvious mistake. It is
-		/// what a ship running Silent Running has most of: with the vents shut
-		/// nothing leaves, so heat climbs to the top of its range while the ship
-		/// is, thermally speaking, invisible. Measuring the flux rather than
-		/// the store is what makes that trade-off work - Silent Running gives
-		/// up the ability to shed heat, and with it the ability to hide from a
-		/// heat seeker, and pays for it by cooking.
+		/// Using stored heat instead would have been the obvious mistake, and it
+		/// was the first thing tried. A perfectly cooled hull stores nothing, so
+		/// measuring the store makes the ship running its engines flat out the
+		/// dimmest thing in the sector - backwards, since heat in equals heat out
+		/// and a well-vented ship is emitting everything it makes.
 		///
-		/// Because every thruster's ThermalLoad is its own EnginePower times the
-		/// same constant, hull size is the profile: a scout barely registers and
+		/// Because every thruster's ThermalLoad is its own EnginePower times one
+		/// constant, hull size is the heat profile: a scout barely registers and
 		/// a battleship lights up the sector.
 		///
 		/// This is also the one place Silent Running belongs when it is built. A
-		/// toggle that shuts the vents should zero the radiated figure here,
-		/// rather than becoming a second parallel check the other three seekers
-		/// never hear about.
+		/// toggle that shuts the radiator should force this to zero, rather than
+		/// becoming a second parallel check the other three seekers never hear
+		/// about.
 		/// </remarks>
 		private bool HasIrSignature(Unit target)
 		{
@@ -376,13 +372,31 @@ namespace OpenFrontier.IP.Engine
 		}
 
 		/// <summary>
-		/// How much heat a ship is currently dumping into space.
+		/// How much heat a ship is putting out into space right now.
 		/// </summary>
 		/// <remarks>
-		/// Deliberately the same figure <see cref="Unit.TickHeat"/> sheds by,
-		/// including its BaseVenting fallback for a hull with no vents at all.
-		/// A ship with no vents still radiates, just slowly, and reading
-		/// EffectiveVentRate alone would report it as radiating nothing.
+		/// This is what the engines are producing, not what the ship is storing,
+		/// and the difference is not a detail. Heat in equals heat out at steady
+		/// state, so a ship that is venting perfectly is emitting exactly as much
+		/// as it is making - and a ship that is storing a great deal is emitting
+		/// the same, just while it holds it. Reading the store would make a
+		/// well-cooled hull the dimmest thing in the sector, which is backwards:
+		/// the cool hull is the one running its engines flat out.
+		///
+		/// Which is also why venting does not change a signature. What vents buy
+		/// is the ability to run hot without cooking - the stored heat, and so
+		/// eventually the overheat - and that is a different consequence from
+		/// being seen. A ship can be the brightest thing in a sector and perfectly
+		/// comfortable, and that is correct.
+		///
+		/// This is where Silent Running belongs. Shutting the radiator stops
+		/// heat escaping, so what the engines produce stops being emitted and only
+		/// accumulates - which is a hard zero here rather than a second parallel
+		/// check the other three seekers never hear about.
+		///
+		/// Hull size is the profile, and it comes straight from the engine: every
+		/// thruster's ThermalLoad is its own EnginePower times one constant, so a
+		/// scout barely registers and a battleship lights up the sector.
 		/// </remarks>
 		public static float RadiatedHeat(Unit unit)
 		{
@@ -390,12 +404,21 @@ namespace OpenFrontier.IP.Engine
 			{
 				return 0f;
 			}
-			float ventRate = unit.Components.EffectiveVentRate;
-			if (ventRate <= 0f)
+			UnitEngineComponent engine = unit.Components.EngineComponent;
+			if (engine == null || engine.EngineClass == null)
 			{
-				ventRate = Unit.BaseVenting;
+				return 0f;
 			}
-			return unit.Heat * ventRate;
+			if (engine.EngineThrottle <= 0f)
+			{
+				// Engines shut. No plume, and AddFlightHeat is never reached
+				// either, because a shut engine produces no force to push with.
+				return 0f;
+			}
+			// The same figure UnitEngineComponent feeds into the hull each frame,
+			// boost included - so what the seeker reads and what the ship
+			// accumulates cannot drift apart.
+			return engine.EngineClass.ThermalLoad * engine.BoostMultiplier;
 		}
 
 		/// <summary>

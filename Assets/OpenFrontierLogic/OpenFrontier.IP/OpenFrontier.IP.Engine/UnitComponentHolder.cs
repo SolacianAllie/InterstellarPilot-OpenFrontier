@@ -495,33 +495,81 @@ namespace OpenFrontier.IP.Engine
 		///
 		/// Vents sum - two of them shed twice what one does.
 		///
-		/// Nothing reads this yet, because there is no heat system. It is here
-		/// so the number exists before the thing that consumes it does, and so
-		/// that losing a vent to a lucky hit is already a loss.
+		/// Cached, because this walks every bay and it is now read per frame by
+		/// the heat tick and once per candidate by every infrared missile hunting
+		/// for something hotter - which made the hunt cost units times bays on
+		/// every evaluation. Invalidated whenever a component is registered or
+		/// deregistered, which is the only thing that can change the answer.
 		/// </remarks>
 		public float TotalVentRate
 		{
 			get
 			{
-				float total = 0f;
-
-				for (int i = 0; i < bays.Count; i++)
+				if (cachedTotalVentRate < 0f)
 				{
-					if (bays[i].InstalledComponentClass is ThermalVentClass vent)
+					float total = 0f;
+					for (int i = 0; i < bays.Count; i++)
 					{
-						total += vent.VentRate;
+						if (bays[i].InstalledComponentClass is ThermalVentClass vent)
+						{
+							total += vent.VentRate;
+						}
 					}
+					cachedTotalVentRate = total;
 				}
-
-				return total;
+				return cachedTotalVentRate;
 			}
 		}
 
+		private float cachedTotalVentRate = -1f;
+
 		/// <summary>
-		/// Total venting once the Systems pips are applied. A ship that has put
-		/// its power into engines or weapons sheds heat more slowly.
+		/// Forgets the cached vent total. Called when components change, which is
+		/// the only thing that can change it.
 		/// </summary>
-		public float EffectiveVentRate => TotalVentRate * SystemsPowerMultiplier;
+		public void InvalidateVentRate()
+		{
+			cachedTotalVentRate = -1f;
+		}
+
+		/// <summary>
+		/// How much heat per second this ship sheds, and so how much of what it is
+		/// producing actually gets out.
+		/// </summary>
+		/// <remarks>
+		/// Fitting thermal vents REMOVES the safety net. Once a ship has vents they
+		/// are the only way heat leaves it - there is no baseline underneath them -
+		/// which makes fitting one a commitment rather than an upgrade: a badly
+		/// vented ship cooks, and a well vented one is quieter to an infrared
+		/// seeker than it was before, because a cooler hull is putting less flux
+		/// into space.
+		///
+		/// A ship with no vents at all gets the safety net instead, shedding as
+		/// fast as its own engine makes heat. That can never cook, and its heat can
+		/// never reach the top of its range, which is what stops an unvented hull
+		/// sitting pinned at maximum heat for the rest of an engagement.
+		///
+		/// The Systems multiplier is applied live rather than cached, because the
+		/// player can move power between pips at any time and that has to show up
+		/// immediately. It is a couple of field reads, unlike the bay walk.
+		/// </remarks>
+		public float EffectiveVentRate
+		{
+			get
+			{
+				float vents = TotalVentRate;
+				if (vents > 0f)
+				{
+					return vents * SystemsPowerMultiplier;
+				}
+				UnitEngineComponent engine = EngineComponent;
+				if (engine != null && engine.EngineClass != null)
+				{
+					return engine.EngineClass.ThermalLoad;
+				}
+				return Unit.BaseVenting;
+			}
+		}
 
 		/// <summary>
 		/// Sums the mass of everything fitted and hands it to the unit.
@@ -1484,6 +1532,7 @@ namespace OpenFrontier.IP.Engine
 			{
 				utilityMounts.Add(mount);
 			}
+			InvalidateVentRate();
 		}
 
 		/// <summary>
@@ -1522,6 +1571,7 @@ namespace OpenFrontier.IP.Engine
 			{
 				utilityMounts.Remove(mount);
 			}
+			InvalidateVentRate();
 		}
 
 		public void DecreaseComponentRechargePriority(ComponentBase component)
