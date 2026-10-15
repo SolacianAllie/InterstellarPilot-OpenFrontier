@@ -107,10 +107,10 @@ namespace OpenFrontier.IP.Engine
 		/// </summary>
 		/// <remarks>
 		/// This used to also reject a fully cloaked target, which made cloak
-		/// defeat every missile in the game. Cloak is a seeker question now -
-		/// it blinds IR and SARH and does nothing to ARH or a laser - so it is
-		/// asked by <see cref="MissileSeeker"/> instead, and this is only
-		/// asking whether the thing still exists.
+		/// defeat every missile in the game outright. Cloak is a seeker
+		/// question now - each type answers it differently, and none of them
+		/// answers it here - so it is asked by <see cref="MissileSeeker"/>
+		/// instead, and this is only asking whether the thing still exists.
 		/// </remarks>
 		public bool IsTargetValid
 		{

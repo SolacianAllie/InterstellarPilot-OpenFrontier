@@ -92,4 +92,4 @@ MonoBehaviour:
   MissileIntelligentGuidance: 1
   MinTimeBeforeGuidanceActivation: 1
   MaxTimeBeforeGuidanceActivation: 2
-  MaxDuration: 0
+  MaxDuration: 15

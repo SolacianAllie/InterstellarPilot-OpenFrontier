@@ -27,6 +27,38 @@ namespace OpenFrontier.IP
 			return Maths.WrapValue(degrees, -180f, 180f);
 		}
 
+		/// <summary>
+		/// Whether a world point lies within <paramref name="halfAngleDegrees"/>
+		/// of the nose of <paramref name="from"/>.
+		/// </summary>
+		/// <remarks>
+		/// Bearing only, and flattened onto the combat plane. Units are
+		/// Y-frozen - RigidBodyFreezeY is true by default and three prefabs in
+		/// the whole game unfreeze it - so "below the ship" is not a direction
+		/// anything can be in, and letting a pitch term into this would only
+		/// mean a ship that drifted slightly in Y mysteriously stopped being
+		/// in front of you.
+		///
+		/// This is the question "is that ship pointing at this", which several
+		/// unrelated systems need to ask - a launcher deciding whether it may
+		/// fire, a semi-active seeker deciding whether it may hold a cloaked
+		/// contact - and each was answering it with its own copy of the same
+		/// arithmetic.
+		/// </remarks>
+		public static bool IsWithinBearing(Transform from, Vector3 worldPoint, float halfAngleDegrees)
+		{
+			Vector3 local = from.InverseTransformPoint(worldPoint);
+			Vector3 flat = new Vector3(local.x, 0f, local.z);
+			if (flat.sqrMagnitude <= 0.000001f)
+			{
+				// On top of us. There is no bearing to be outside of, and
+				// whatever minimum range the caller has is what decides it.
+				return true;
+			}
+			float bearing = WrapDegreesForBearing(Quaternion.LookRotation(flat, Vector3.up).eulerAngles.y);
+			return Mathf.Abs(bearing) <= halfAngleDegrees;
+		}
+
 		public static float? CalculateProjectileHeading(float bearingToTarget, float angleAtBow, float targetSpeed, float projectileSpeed)
 		{
 			if (targetSpeed < 0f || projectileSpeed < 0f)

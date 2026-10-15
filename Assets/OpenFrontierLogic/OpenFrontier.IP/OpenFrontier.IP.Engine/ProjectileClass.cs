@@ -100,6 +100,27 @@ namespace OpenFrontier.IP.Engine
 		/// </summary>
 		public float SeekerCheckInterval;
 
+		/// <summary>
+		/// How far off the launching ship's nose a cloaked contact has to be
+		/// for this seeker to keep hold of it, in degrees. Zero means it cannot
+		/// hold one at all.
+		/// </summary>
+		/// <remarks>
+		/// Only a semi-active seeker reads this. It rides the launching ship's
+		/// radar picture rather than a radar of its own, so when the ship it
+		/// was fired from turns away, the picture goes with it and the missile
+		/// goes blind to a contact it had already found. An active seeker does
+		/// not care what the launcher is doing - its own cone has already
+		/// decided the question by the time cloak matters - which is the whole
+		/// practical difference between the two, and the reason a ship under
+		/// ARH missiles has to fight them rather than turn away.
+		///
+		/// Zero is the default because that is what every prefab written before
+		/// this field existed reads, and zero is what cloak did to every
+		/// missile in the base game.
+		/// </remarks>
+		public float SeekerCloakedHoldArc;
+
 		public bool IsMine;
 
 		/// <summary>

@@ -231,6 +231,59 @@ namespace OpenFrontier.IP.Engine
 		/// the drift are shared by all of them; this is what the cone is being
 		/// pointed at.
 		/// </summary>
+		/// <summary>
+		/// Whether this seeker can still hold a contact that has gone to cloak.
+		/// </summary>
+		/// <remarks>
+		/// Cloak stops being a contact being invisible and starts being a
+		/// contact being hard to keep, which is a better thing for it to be.
+		/// Three things have to line up, and they are the three ways a ship
+		/// should be able to break a radar lock it did not have before:
+		///
+		/// It must have been seen first. A missile fired at a ship that was
+		/// already cloaked has no picture to hold, so it stays blind - which is
+		/// what stops cloak from being a free pass against a fresh salvo.
+		///
+		/// And then what "keeping hold" means depends on the seeker, which is
+		/// the whole practical difference between the two radar types. An
+		/// active seeker carries its own radar, so by the time cloak is in
+		/// play its own cone has already answered the question and the contact
+		/// simply stays held - the launcher can turn away and it does not
+		/// matter. A semi-active seeker is riding the launching ship's picture,
+		/// so the launcher has to keep its nose on the target, and a ship that
+		/// cloaks and then turns away breaks it.
+		///
+		/// The missile's own cone gates all of this already - by the time this
+		/// is asked the contact is inside it - so only the semi-active case
+		/// needs an angle of its own.
+		/// </remarks>
+		/// <param name="target">The contact being asked about.</param>
+		/// <param name="needsLauncherArc">
+		/// True for a seeker riding the launcher's picture, false for one
+		/// carrying its own radar.
+		/// </param>
+		private bool CanHoldCloaked(Unit target, bool needsLauncherArc)
+		{
+			if (!target.IsFullyCloaked)
+			{
+				return true;
+			}
+			if (!hasEverLocked)
+			{
+				return false;
+			}
+			if (!needsLauncherArc)
+			{
+				return true;
+			}
+			Unit launcher = missile.Projectile.SourceUnit;
+			if (launcher == null)
+			{
+				return false;
+			}
+			return Geometry.IsWithinBearing(launcher.transform, target.transform.position, missile.ProjectileClass.SeekerCloakedHoldArc);
+		}
+
 		private bool SeesTarget(Unit target, float distance)
 		{
 			switch (missile.ProjectileClass.GuidanceType)
@@ -243,22 +296,30 @@ namespace OpenFrontier.IP.Engine
 					// mount has to have swung onto it. That is the whole
 					// weakness of this type, and the reason it is at the bottom
 					// of the order.
-					return IsDesignated(target);
+					//
+					// Cloak still beats it, even though the designator is holding
+					// a beam on a ship it has already identified. Letting the
+					// laser through would make this the one seeker in the game
+					// that nothing can beat except losing the mount, and it is
+					// meant to be the weakest of the four.
+					return !target.IsFullyCloaked && IsDesignated(target);
 
 				case MissileGuidanceType.IR:
 					// Follows the target's own heat, so a cloaked ship has no
-					// signature to follow and a flare in the same part of the
-					// sky is indistinguishable from the ship itself. An ECM puff
-					// does nothing for it, which is exactly why carrying one is
-					// a choice rather than an answer.
+					// signature to follow at all - there is nothing left to hold,
+					// and no amount of having seen it beforehand brings the heat
+					// back. A flare in the same part of the sky is
+					// indistinguishable from the ship itself. An ECM puff does
+					// nothing for it, which is exactly why carrying one is a
+					// choice rather than an answer.
 					return !target.IsFullyCloaked && !missile.IsDazzled;
 
 				case MissileGuidanceType.SARH:
-					// Semi-active: it is riding a signal the target is putting
-					// out, so the target has to be emitting - and the ECM
-					// exists precisely to break that signal up. This is the one
-					// seeker the ECM work actually pays off against.
-					return !target.IsFullyCloaked && !missile.IsDisrupted;
+					// Semi-active: it is riding the launching ship's radar
+					// picture, so the ECM beats it by breaking that picture up,
+					// and cloak beats it by taking the ship out of the
+					// launcher's nose. It is the only seeker with two answers.
+					return !missile.IsDisrupted && CanHoldCloaked(target, needsLauncherArc: true);
 
 				case MissileGuidanceType.ARH:
 				default:
@@ -267,13 +328,12 @@ namespace OpenFrontier.IP.Engine
 					// and a jammer does not care whose radar it is. So an ECM
 					// beats this one too.
 					//
-					// That does not make ARH any less the hardest lock in the
-					// game to shake, because being jammed is the only thing that
-					// beats it: it is still the widest cone, the longest blind
-					// tolerance, and the only seeker that neither cloak nor a
-					// flare touches. One countermeasure against one seeker, the
-					// same as every other row in this switch.
-					return !missile.IsDisrupted;
+					// Cloak does not, and neither does the launcher wandering
+					// off - the missile's own cone is the whole story here, and
+					// it is the widest cone in the game. That is what makes ARH
+					// the hardest lock to shake: jammed is the only thing that
+					// beats it.
+					return !missile.IsDisrupted && CanHoldCloaked(target, needsLauncherArc: false);
 			}
 		}
 

@@ -270,16 +270,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 			{
 				return true;
 			}
-			Vector3 local = Unit.transform.InverseTransformPoint(target.transform.position);
-			Vector3 flat = new Vector3(local.x, 0f, local.z);
-			if (flat.sqrMagnitude <= 0.000001f)
-			{
-				// Target is on top of us. There is no bearing to be outside of,
-				// and MinFiringRange is what decides this case.
-				return true;
-			}
-			float bearing = Geometry.WrapDegreesForBearing(Quaternion.LookRotation(flat, Vector3.up).eulerAngles.y);
-			return Mathf.Abs(bearing) <= halfAngle;
+			return Geometry.IsWithinBearing(Unit.transform, target.transform.position, halfAngle);
 		}
 
 		public bool IsUnitReadyToFire()

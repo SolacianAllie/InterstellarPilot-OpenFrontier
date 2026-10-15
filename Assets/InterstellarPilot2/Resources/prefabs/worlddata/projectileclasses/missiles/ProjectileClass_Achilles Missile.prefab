@@ -71,6 +71,7 @@ MonoBehaviour:
   SeekerReacquireAngle: 60
   SeekerLockPersistence: 2
   SeekerBlindDrift: 6
+  SeekerCloakedHoldArc: 45
   SeekerCheckInterval: 0.1
   MaxMoveRange: 20000
   MiningDamageMultiplier: 0.1
