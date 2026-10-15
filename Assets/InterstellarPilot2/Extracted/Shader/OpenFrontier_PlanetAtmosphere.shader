@@ -11,7 +11,9 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_NightGlow ("Night Glow", Range(0, 0.3)) = 0.03
 		// How far round past the terminator the air still glows, as cos(angle
 		// from the sun's screen bearing). 0.5 is 30 degrees of limb.
-		_TwilightReach ("Twilight Reach", Range(0.1, 0.95)) = 0.5
+		// How far past the terminator the air still glows, as a sine of the
+		// sun's altitude. 0.45 is about 26.7 degrees; 0.2 is 11.5.
+		_TwilightReach ("Twilight Reach", Range(0, 0.9)) = 0.45
 		[Header(Volume)]
 		_ScaleHeight ("Scale Height", Range(0.002, 0.1)) = 0.006
 		_Density ("Density", Range(0.3, 12)) = 3
@@ -244,32 +246,28 @@ Shader "OpenFrontier/Planet Atmosphere" {
 					? saturate(dot(nPerp, sunPerp) / (length(nPerp) * sunLen))
 					: 0.0;
 
-				// Day/night gate, in BEARING rather than ndl.
+				// Day/night gate, in ndl -- the sun's altitude at this limb point.
 				//
-				// This is the term that smears the limb, and the units were the bug.
-				// ndl = bearing * sunLen, and sunLen = sqrt(1 - dot(l,v)^2), so
-				// as the sun swings toward the view axis the WHOLE limb compresses
-				// into a narrow ndl range. A window in ndl is then a window in
-				// sunLen, and its width in DEGREES OF LIMB changes with the camera:
+				// An attempt was made to window this in bearing instead, on the
+				// grounds that bearing is the angle from the terminator and so does
+				// not change width with the camera. That was right about the
+				// geometry and catastrophically wrong about the variable:
 				//
-				//   dot(l,v) = 0.00   window reaches 26.7 deg past the terminator
-				//   dot(l,v) = -0.90  window reaches 11.3 deg past
+				//     float bearing = saturate(dot(nPerp, sunPerp) / (|nPerp| * sunLen));
 				//
-				// Worse, past the point where the limb's own ndl range is narrower
-				// than the window, the profile develops a long tail instead of an
-				// edge. Measured at dot(l,v) = -0.90, dayAir read 0.67 at 105 deg,
-				// 0.38 at 120, 0.17 at 135 -- that tail is the ring.
+				// is SATURATEd, so it is |cos| and can never be negative. It does
+				// not distinguish day from night at all. Any window with a negative
+				// lower bound in bearing is therefore unreachable, and
+				// smoothstep(-0.5, 0.05, bearing) returned 0.977 to 1.000 across the
+				// WHOLE limb -- it never switched off and lit the entire planet.
 				//
-				// bearing is already the angle from the terminator, so a window in
-				// it is a window in degrees of limb and nothing else:
+				// ndl = dot(n, l) is the only signed quantity in this block, because
+				// ndl = sunLen * cos(theta) with theta signed. Any window that has to
+				// reach past the terminator has to be expressed in it.
 				//
-				//   reach 0.35 -> 20 deg past    0.65 -> 41 deg
-				//   reach 0.50 -> 30 deg past    0.80 -> 53 deg
-				//
-				// Limb lit above 0.5 is now 207 degrees at every sun position tested,
-				// against 201 to 227 before, and the tail is gone: at dot(l,v) =
-				// -0.90 the profile is 0.98 at the terminator and 0.00 by 120 deg.
-				float dayAir = smoothstep(-_TwilightReach, 0.05, bearing);
+				// _TwilightReach is how far past the terminator, as a sine of the
+				// sun's altitude. 0.45 is about 26.7 degrees.
+				float dayAir = smoothstep(-_TwilightReach, 0.05, ndl);
 				// BRIGHTNESS follows the sun's screen bearing -- 1 where this limb
 				// point faces the sun most directly.
 				//
