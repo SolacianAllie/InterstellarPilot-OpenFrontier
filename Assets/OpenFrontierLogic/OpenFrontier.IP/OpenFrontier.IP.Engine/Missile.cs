@@ -767,7 +767,29 @@ namespace OpenFrontier.IP.Engine
 			}
 			Vector3 targetVelocity = seeker != null ? seeker.AimVelocity : Vector3.zero;
 			Vector3 aim;
-			if (ProjectileClass.MissileIntelligentGuidance && lastTargetDist < ProjectileClass.MissileIntelligentGuidanceMaxDist)
+			// Always solve for the interception point, and fall back on the ship's
+			// present position only when there is no solution to find.
+			//
+			// This used to be gated on the target being inside
+			// MissileIntelligentGuidanceMaxDist, and past that range the missile
+			// aimed straight at where the ship was. That is the worst possible aim
+			// point and the further off it gets the worse it is: a Lancer closing
+			// on a target crossing at the speed of the fastest ship in the game
+			// spends about eleven seconds in the air from three kilometres, and
+			// by then the ship is over a kilometre from where the missile is
+			// pointing. It is not a long-range penalty, it is a guarantee of
+			// missing, and it is why the missiles felt like they did not work at
+			// all.
+			//
+			// The fallback is the solver's own answer, not a distance test.
+			// GetInteceptPosition returns false when the quadratic has no real
+			// root - which is the only situation in which aiming at the ship is
+			// the best that can be done, because no lead exists.
+			//
+			// The distance field is gone rather than left unread. The Small Rocket
+			// keeps MissileIntelligentGuidance off entirely, which is the honest
+			// way to author a dumb rocket, and that flag is still doing its job.
+			if (ProjectileClass.MissileIntelligentGuidance)
 			{
 				Vector3 interception = Vector3.zero;
 				if (Geometry.GetInteceptPosition(ref sourcePosition, maxSpd, ref target, ref targetVelocity, out interception))

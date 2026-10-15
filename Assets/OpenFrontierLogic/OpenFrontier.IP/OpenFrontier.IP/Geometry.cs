@@ -85,18 +85,30 @@ namespace OpenFrontier.IP
 			float num2 = 2f * (targetVelocity.x * (target.x - sourcePosition.x) + targetVelocity.y * (target.y - sourcePosition.y) + targetVelocity.z * (target.z - sourcePosition.z));
 			float num3 = Maths.Sqr(target.x - sourcePosition.x) + Maths.Sqr(target.y - sourcePosition.y) + Maths.Sqr(target.z - sourcePosition.z);
 			float num4 = Mathf.Pow(num2, 2f) - 4f * num * num3;
-			if (num4 == 0f)
+			if (num4 <= 0f)
 			{
-				return true;
-			}
-			if (num4 < 0f)
-			{
+				// No real root, or a repeated one. Returning true here used to hand
+				// back interception = sourcePosition, which is the position the
+				// missile was fired from - so the caller was told to fly at a point
+				// behind itself, and the steering cone dutifully pointed it home.
+				// A repeated root is not a solution worth having either.
 				return false;
 			}
 			float num5 = Mathf.Sqrt(num4);
 			float num6 = 2f * num;
+			if (num6 == 0f)
+			{
+				// Target speed exactly equals missile speed and the target is not
+				// closing, so there is no time at which they meet.
+				return false;
+			}
 			float num7 = (0f - num2 + num5) / num6;
 			float num8 = (0f - num2 - num5) / num6;
+			// The larger root, which is the later of the two meetings. That is the
+			// right one to take whenever the missile is the faster of the pair,
+			// which is every combination in this game - the quadratic's two roots
+			// swap order when the coefficient goes negative, so taking the larger
+			// is what picks the positive time rather than the negative one.
 			float num9 = ((num7 < num8) ? num8 : num7);
 			if (num9 > 0f)
 			{

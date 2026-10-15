@@ -93,7 +93,6 @@ MonoBehaviour:
   InheritParentVelocity: 0
   InheritParentVelocityMultiplier: 1
   InaccuracyMultiplier: 0.8
-  MissileIntelligentGuidanceMaxDist: 200
   MissileIntelligentGuidance: 0
   MinTimeBeforeGuidanceActivation: 0
   MaxTimeBeforeGuidanceActivation: 0

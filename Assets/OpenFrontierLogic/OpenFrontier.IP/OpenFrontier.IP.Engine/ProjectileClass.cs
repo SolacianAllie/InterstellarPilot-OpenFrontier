@@ -420,8 +420,25 @@ namespace OpenFrontier.IP.Engine
 
 		public float InaccuracyMultiplier = 1f;
 
-		public float MissileIntelligentGuidanceMaxDist = 200f;
-
+		/// <summary>
+		/// Whether this missile solves for an interception point rather than
+		/// flying at where its target is.
+		/// </summary>
+		/// <remarks>
+		/// This is the honest way to author a dumb rocket, and it is the only
+		/// flag involved: a missile with it off aims at the ship's present
+		/// position and misses by however far the ship travels in the missile's
+		/// time of flight, which is why the Small Rocket is the worst weapon in
+		/// the game and is still worth carrying for a stationary target.
+		///
+		/// There used to be a companion range field limiting how far out the
+		/// solution was used, with the missile falling back on the ship's
+		/// position beyond it. That is gone. A range limit on a lead solution
+		/// does not make long shots harder, it makes them impossible - past the
+		/// limit the missile was aiming at empty space where the ship had been,
+		/// and the further the range the more room the ship had to be somewhere
+		/// else. See Missile.SeekDirection.
+		/// </remarks>
 		public bool MissileIntelligentGuidance = true;
 
 		public float MinTimeBeforeGuidanceActivation = 1f;
