@@ -122,6 +122,33 @@ namespace OpenFrontier.IP.Engine
 		public bool HasLock => hasLock;
 
 		/// <summary>
+		/// How much of its target's signature this seeker is currently getting,
+		/// as a fraction, because of the angle it is viewing the target from.
+		/// </summary>
+		/// <remarks		>
+		/// This is the measure of a notched target, and it exists so that
+		/// notching and jamming can be made to work together rather than being
+		/// two independent rolls that either both land or both miss.
+		///
+		/// Without it, notching could only ever break a lock by dropping a hull
+		/// below the seeker's threshold - and since hull sizes span a wider
+		/// range than aspects do, no single threshold can separate "notched" from
+		/// "astern" across the whole ladder. A small hull notches so slightly
+		/// that its signature barely moves, and it is already too dim to break
+		/// anyway; a large hull notches hard but starts so far above the
+		/// threshold that it never reaches it.
+		///
+		/// So the ECM reads this instead. A degraded lock is a lock worth
+		/// attacking: the countermeasure's odds scale with how badly the target
+		/// has been notched, which is what makes the combination break a lock
+		/// that neither a notch nor the ECM would have managed alone.
+		///
+		/// One while locked on a target running away, falling towards the
+		/// seeker's front factor as the target turns to meet it.
+		/// </remarks>
+		public float LockQuality { get; private set; } = 1f;
+
+		/// <summary>
 		/// Whether this seeker has ever held the target at all. The warning
 		/// needs it to tell the difference between a missile that was shaken off
 		/// - no longer worth an alarm - and one that never had a lock and is
@@ -311,6 +338,29 @@ namespace OpenFrontier.IP.Engine
 			lastKnownVelocity = targetBody != null ? targetBody.linearVelocity : Vector3.zero;
 			AimPoint = lastKnownPosition;
 			AimVelocity = lastKnownVelocity;
+			RecordLockQuality(target);
+		}
+
+		/// <summary>
+		/// Notes how much of its target's signature the seeker is getting, so a
+		/// countermeasure attacking this missile knows how weak the lock is.
+		/// </summary>
+		/// <remarks>
+		/// Recomputed on every acquisition rather than every frame. The aspect
+		/// changes as the target turns, but a countermeasure only rolls four
+		/// times a second and only reads this then, so a per-evaluation refresh
+		/// is plenty and keeps it off the per-frame path.
+		/// </remarks>
+		private void RecordLockQuality(Unit target)
+		{
+			float signature = RadiatedHeat(target);
+			if (signature <= 0f)
+			{
+				LockQuality = 1f;
+				return;
+			}
+			float seen = SignatureFrom(target, missile.transform.position, missile.ProjectileClass);
+			LockQuality = seen >= signature ? 1f : Mathf.Clamp01(seen / signature);
 		}
 
 		/// <summary>
@@ -514,32 +564,78 @@ namespace OpenFrontier.IP.Engine
 		private static float SignatureFrom(Unit target, Vector3 seekerPosition, ProjectileClass cls)
 		{
 			float signature = RadiatedHeat(target);
-			float frontFactor = cls.SignatureFrontFactor;
+			float frontFactor = FrontFactorFor(signature, cls);
 			if (signature <= 0f || frontFactor >= 1f)
 			{
 				return signature;
 			}
+			return signature * Mathf.Lerp(frontFactor, 1f, SternFirstAspect(target, seekerPosition));
+		}
+
+		/// <summary>
+		/// How much of a signature survives being viewed bow-on, for a hull of
+		/// this size.
+		/// </summary>
+		/// <remarks>
+		/// The falloff scales with hull size, and that is the difference between
+		/// notching being a counter and notching being a rounding error.
+		///
+		/// A fighter is a plume and a nose: there is very little of it that
+		/// stops being visible when it turns, because most of what it gives off
+		/// is the exhaust and you can see exhaust from most angles. A battleship
+		/// is a wall of machinery with its engines at the back of it, and turning
+		/// that broadside puts a great deal between the seeker and the heat.
+		///
+		/// So the small end of the ladder barely changes with aspect and the
+		/// large end changes enormously - the Creon reads 13.76 astern and 3.44
+		/// bow-on, while a Small hull reads 1.72 and 1.64. That is what makes a
+		/// large ship genuinely better seen from behind rather than merely
+		/// proportionally better, which is all a flat multiplier ever gave.
+		///
+		/// The brackets are the two ends of the real thruster ladder: nothing at
+		/// or below a single small thruster is treated as omnidirectional, and
+		/// anything at or above the largest hull gets the seeker's full falloff.
+		/// </remarks>
+		private static float FrontFactorFor(float signature, ProjectileClass cls)
+		{
+			if (cls.SignatureFrontFactor >= 1f)
+			{
+				return 1f;
+			}
+			float sizeT = Mathf.InverseLerp(OmnidirectionalBelow, FullyDirectionalAbove, signature);
+			return Mathf.Lerp(1f, cls.SignatureFrontFactor, sizeT);
+		}
+
+		/// <summary>
+		/// Zero when the target is flying straight at the seeker, one when it is
+		/// running away and the seeker is looking into its engines.
+		/// </summary>
+		private static float SternFirstAspect(Unit target, Vector3 seekerPosition)
+		{
 			Vector3 toSeeker = seekerPosition - target.transform.position;
 			toSeeker.y = 0f;
 			if (toSeeker.sqrMagnitude <= 0.000001f)
 			{
-				return signature;
+				return 1f;
 			}
 			Vector3 facing = target.transform.forward;
 			facing.y = 0f;
 			if (facing.sqrMagnitude <= 0.000001f)
 			{
-				return signature;
+				return 1f;
 			}
 			facing.Normalize();
 			toSeeker.Normalize();
-			// +1 when the ship is flying straight at the seeker, so the seeker
-			// is looking at its nose; -1 when the ship is running away and the
-			// seeker is looking into its engines.
-			float aspect = Vector3.Dot(facing, toSeeker);
-			float sternFirst = (1f - aspect) * 0.5f;
-			return signature * Mathf.Lerp(frontFactor, 1f, sternFirst);
+			// +1 when the ship is flying straight at the seeker, so the seeker is
+			// looking at its nose; -1 when it is running away.
+			return (1f - Vector3.Dot(facing, toSeeker)) * 0.5f;
 		}
+
+		/// <summary>Signature at or below which a hull barely changes with aspect.</summary>
+		public const float OmnidirectionalBelow = 1f;
+
+		/// <summary>Signature at or above which a hull gets the seeker's full falloff.</summary>
+		public const float FullyDirectionalAbove = 12f;
 
 		/// <summary>
 		/// Points the missile at something hotter, if there is anything hotter

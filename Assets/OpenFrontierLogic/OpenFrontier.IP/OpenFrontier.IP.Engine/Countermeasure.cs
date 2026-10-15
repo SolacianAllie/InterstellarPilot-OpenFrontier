@@ -26,6 +26,32 @@ namespace OpenFrontier.IP.Engine
 		/// </remarks>
 		private const int MaxMissilesDisrupted = 5;
 
+		/// <summary>
+		/// How much easier a fully notched missile is to jam than one whose
+		/// target is running away from it.
+		/// </summary>
+		/// <remarks>
+		/// This is the hinge between notching and jamming. A missile whose seeker
+		/// is tracking a target beam-on is holding a much weaker signal, and a
+		/// weaker signal is a signal worth breaking - so the countermeasure's
+		/// odds scale with the notch.
+		///
+		/// It has to be a multiplier rather than a flat bonus because the roll is
+		/// already a probability against effectiveness. Scaling it means a
+		/// notched ship converts an ECM I that would have failed into one that
+		/// lands, without making an ECM I that was already certain into
+		/// something stronger.
+		///
+		/// 1.4 is chosen against the numbers rather than picked. The roll is
+		/// effectiveness 0.8 times facing times this, and anything much above
+		/// 1.25 pushes the product past one and turns ECM I into a guaranteed
+		/// hit - which is ECM II's job. At 1.4 an ECM I is 80 percent against an
+		/// unnotched target, 88 percent against a battleship held beam-on, and 96
+		/// percent bow-on: one puff usually is not enough, and two very nearly
+		/// always are, which is the shape the combination is supposed to have.
+		/// </remarks>
+		private const float NotchedJamBonus = 1.4f;
+
 		public CountermeasureClass CountermeasureClass;
 
 		/// <summary>
@@ -145,10 +171,20 @@ namespace OpenFrontier.IP.Engine
 				// is right for the cheap countermeasure, which should have to be
 				// pointed at the threat. The expensive one drops the facing term
 				// and leaves only the budget, so anything in range is disrupted.
+				//
+				// The notch term is what makes notching and jamming one decision
+				// rather than two. A seeker that is only getting a sliver of its
+				// target's signature is a seeker worth attacking, so a ship
+				// presenting its beam is far easier to jam than one running
+				// flat out. Neither a notch nor an ECM breaks a large hull's lock
+				// on its own - hull sizes span a wider range than aspects do, so
+				// no single signature threshold can tell 'notched' from 'astern'
+				// across the whole ladder - but doing both is what loses it.
 				if (!CountermeasureClass.AffectsAllInRange)
 				{
 					float facing = Vector3.Dot(Vector3.Normalize(transform.position - component.transform.position), component.transform.forward);
-					if (!(Random.value < effectiveness * facing))
+					float notch = Mathf.Lerp(1f, NotchedJamBonus, component.NotchQuality);
+					if (!(Random.value < effectiveness * facing * notch))
 					{
 						continue;
 					}
