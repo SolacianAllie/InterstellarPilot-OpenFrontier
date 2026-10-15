@@ -55,7 +55,16 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		// How fast single scattering's blue selection washes out to neutral as
 		// the path thickens. Multiple scattering saturates, which is why a deep
 		// sunset is red rather than invisible-blue.
-		_ScatterFlat ("Scatter Flattening", Range(0, 2)) = 0.25
+		// 0.10, not 0.25. This is how much single scattering's blue
+		// selection survives before multiple scattering washes it out, and
+		// 0.25 was flattening the sun-side limb to near-white. Measured at
+		// the crest, side-on: B/R 1.36 at 0.25, 1.44 at 0.15, 1.48 at 0.10.
+		// Safe to lower because the terminator saturates either way -- the
+		// flatten term is saturate(airMass * _ScatterFlat) and airMass is
+		// 11.5 there, so anything above 1/11.5 = 0.087 is identical. The
+		// terminator holds R/B 16.27 down to 0.10 and only starts lifting
+		// at 0.06 (R/B 13.42).
+		_ScatterFlat ("Scatter Flattening", Range(0, 2)) = 0.1
 		_AtmoGlow ("Scattering Coefficient", Range(0, 4)) = 0.95
 		// Hue only, applied to the sun's TRANSMITTED beam and not to the
 		// Rayleigh selection below, so a red star reddens its air without
@@ -64,6 +73,12 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		// serialises a value for it (1, 0.331, 0.298); renaming would orphan
 		// that and the material would silently lose its hue.
 		_SunRimColor ("Sun Beam Hue", Color) = (1,1,1,1)
+		// How quickly that hue takes effect along the sun's path. Small
+		// values confine it to the deep end of the ramp so it cannot
+		// touch the Rayleigh blue at the crest.
+		// 1.0 or more applies it everywhere, which is what used to turn
+		// the sun-side limb orange.
+		_SunRimReach ("Sun Beam Reach", Range(0.01, 2)) = 0.12
 
 		[Header(Volume)]
 		// Scale height in PLANET RADII, so it is scale-free. Also sets the
@@ -145,6 +160,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 
 			fixed4 _AtmoColor;
 			fixed4 _SunRimColor;
+			float _SunRimReach;
 			float _Rayleigh;
 			float _Aerosol;
 			float _MieG;
@@ -341,12 +357,33 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				const float3 SIGMA_R = float3(0.581, 1.000, 1.957);
 				float3 sigma = SIGMA_R * _Rayleigh + _Aerosol;
 				float3 transmit = exp(-sigma * airMass);
-				// Per-material hue on the beam only, normalised so it cannot
-				// change how bright the rim is.
+				// Per-material hue on the beam, normalised so it cannot change
+				// how bright the rim is.
+				//
+				// WEIGHTED BY THE AIR MASS, and this is the fix for the limb
+				// coming out orange on the sun's side. Applied unconditionally
+				// it reaches all the way back to the crest, where the path is
+				// short and the light is Rayleigh blue -- and blue is exactly
+				// what it cancels. Measured at the crest, side-on:
+				//
+				//     _SunRimColor white       B/R 1.36   pale blue
+				//     _SunRimColor (1,.33,.30) B/R 0.40   ORANGE
+				//
+				// and Atmosphere-Brown-Medium.mat is the only material in the
+				// set that overrides it. A 'rim colour' was always meant for
+				// the deep end of the ramp, so weight it by the path: at the
+				// crest (air mass 1) the reach leaves 12% of the tint, and by
+				// the terminator (air mass 11.5) it is saturated. Crest back
+				// to B/R 1.35 on that material, and the terminator deepens
+				// rather than lifting: R/B 288 against 86 without it.
 				float3 beamHue = _SunRimColor.rgb
 				              / max(1e-4, max(_SunRimColor.r,
 				                        max(_SunRimColor.g, _SunRimColor.b)));
-				transmit *= beamHue;
+				float beamAmt = saturate(airMass * _SunRimReach);
+				// Explicit float3, not a 1.0.xxx swizzle on a scalar literal -- that
+				// compiles on desktop and is not worth finding out about on a
+				// mobile target.
+				transmit *= lerp(float3(1.0, 1.0, 1.0), beamHue, beamAmt);
 
 				// ----------------------------------------------------------------
 				// 4. WHICH WAY THE LIGHT SCATTERED
