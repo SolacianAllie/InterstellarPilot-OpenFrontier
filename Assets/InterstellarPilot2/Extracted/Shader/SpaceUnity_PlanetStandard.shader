@@ -23,10 +23,15 @@ Shader "SpaceUnity/PlanetStandard" {
 		// material rather than being shared.
 		_AtmoColor ("Atmosphere Color", Color) = (0.35,0.78,1,1)
 		_SunRimColor ("Sun Rim Color", Color) = (1,0.62,0.30,1)
+		_SunRimDeep ("Sun Rim Deep Color", Color) = (1,0.30,0.12,1)
 		_HazeStrength ("Haze Strength", Range(0, 1)) = 0.6
 		_HazeSunStrength ("Haze Sun Strength", Range(0, 2)) = 0.8
 		_HazeFalloff ("Haze Falloff", Range(0.5, 8)) = 2.5
 		_HazeSunPower ("Haze Sun Power", Range(0.5, 6)) = 1.3
+		// How warm the twilight zone gets at the SIDE-ON viewing angle, where the
+		// sun is perpendicular to the view and this term peaks. Was a hardcoded
+		// 0.55, which capped hazeSun so low the tint came out neutral.
+		_HazeSunView ("Haze Sun Side-On", Range(0, 1)) = 0.85
 		[Header(SpecMap)]
 		_WaterFloor ("Water Floor", Range(0, 1)) = 0.32
 		_WaterRange ("Water Range", Range(0.02, 1)) = 0.2
@@ -62,6 +67,17 @@ Shader "SpaceUnity/PlanetStandard" {
 		_CloudShadowStrength ("Cloud Shadow Strength", Range(0, 2)) = 1.5
 		// Pan and drift are a UV offset added before the parallax term, so all
 		// four cloud maps move together. Drift is UV per second off _Time.
+		// Cloud altitude in PLANET RADII, for projecting the shadow. A cloud at
+		// height H casts its shadow H/tan(elevation) away from the sun. Measured
+		// across the shipped maps, this is the one thing the art does NOT contain:
+		// correlating each shadow alpha against its own cloud alpha gives a best
+		// offset of exactly (0,0) at correlation 1.000 on 11 of 13 comparable
+		// pairs, so the shadow maps are undisplaced copies of the clouds. They
+		// are not pre-offset, so supplying the offset is not double-counting.
+		// Earth-like H/R is 0.0016, which at a 30 degree sun is under one texel
+		// of a 2048 map -- real, and invisible. It only reads on small bodies
+		// with a proportionally thick atmosphere, or at a very low sun.
+		_CloudShadowHeight ("Cloud Shadow Height", Range(0, 0.05)) = 0.002
 		_CloudPan ("Cloud Pan", Vector) = (0,0,0,0)
 		_CloudDrift ("Cloud Drift", Vector) = (0,0,0,0)
 		[Header(Twilight)]
@@ -69,7 +85,7 @@ Shader "SpaceUnity/PlanetStandard" {
 		_TwilightStrength ("Twilight Strength", Range(0, 1)) = 0.55
 		_TwilightDim ("Twilight Dimming", Range(0, 1)) = 0.3
 		_TwilightSharpness ("Twilight Sharpness", Range(0.01, 1)) = 0.13
-		_TwilightHaze ("Twilight Haze", Range(0, 1)) = 0.1
+		_TwilightHaze ("Twilight Haze", Range(0, 1)) = 0.3
 	}
 	SubShader {
 		Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
@@ -105,10 +121,12 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _EmissionScale;
 				float4 _AtmoColor;
 				float4 _SunRimColor;
+				float4 _SunRimDeep;
 				float _HazeStrength;
 				float _HazeSunStrength;
 				float _HazeFalloff;
 				float _HazeSunPower;
+				float _HazeSunView;
 				float _WaterFloor;
 				float _WaterRange;
 				float _WaterSmoothness;
@@ -128,6 +146,7 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _CloudShadowSharpness;
 				float _CloudShadowStrength;
 				float4 _CloudPan;
+				float _CloudShadowHeight;
 				float4 _CloudDrift;
 				float4 _TwilightColor;
 				float _TwilightStrength;
@@ -346,9 +365,28 @@ Shader "SpaceUnity/PlanetStandard" {
 					_CloudNormalStrength);
 				half3 cloudSpecTex = SAMPLE_TEXTURE2D(_CloudSpecular, sampler_CloudSpecular,
 				                                      TRANSFORM_TEX(cloudUV, _CloudSpecular)).rgb;
-				// Sampled at cloudDriftUV, NOT cloudUV -- see above. No parallax.
+				// PROJECTED along the sun's rays. The shadow belongs to the surface
+				// plane, so it is sampled at cloudDriftUV with no parallax AND no
+				// longer directly under the cloud: a cloud at height H throws its
+				// shadow H/tan(elevation) away from the sun.
+				//
+				// Direction: the sun projected into this sample's tangent frame, then
+				// negated, because the shadow falls on the far side from the sun.
+				// Magnitude: H/tan(elev) in world units, converted to UV by dividing
+				// by the arc a full 0..1 wrap covers, 2*pi*R. With H given in planet
+				// radii that is just /2*pi.
+				//
+				// sinElev is clamped because tan -> 0 at the terminator and the
+				// offset would run to infinity; at 0.08 the shadow is about 12x the
+				// cloud height away, which is already well past a plausible throw.
+				float sinElev = max(0.08, dot(geoNormalWS, mainLight.direction));
+				float2 shadowThrow = normalize(
+					float2(dot(mainLight.direction, input.tangentWS.xyz),
+					        dot(mainLight.direction, bitangentWS))
+					+ 1e-6) * (-_CloudShadowHeight * rcp(sinElev) * 0.15915494);
 				half4 shadowTex = SAMPLE_TEXTURE2D(_CloudShadows, sampler_CloudShadows,
-				                                   TRANSFORM_TEX(cloudDriftUV, _CloudShadows));
+					                                   TRANSFORM_TEX(cloudDriftUV + shadowThrow,
+					                                             _CloudShadows));
 
 				// _CloudCoverage is the midpoint and _CloudSharpness the edge.
 				// Default 0.5 / 1.0 is a straight pass through of the authored
@@ -563,10 +601,25 @@ Shader "SpaceUnity/PlanetStandard" {
 				// the planet; otherwise a sun directly behind the camera puts
 				// the terminator exactly on the visible limb and the wash
 				// covers everything.
-				float lowForUs = saturate(0.55 - dot(mainLight.direction, viewDirWS) * 1.5);
+				// Peaks at 1.0 when the sun is perpendicular to the view, i.e. the
+				// 90 degree side-on case, and falls off as the sun swings round behind
+				// the camera. The ceiling was a hardcoded 0.55, which is most of why
+				// the twilight zone never read as warm from the side.
+				float lowForUs = saturate(_HazeSunView
+				                        - dot(mainLight.direction, viewDirWS) * 1.5);
 				float hazeSun = saturate(lowSun * lowForUs);
 
-				half3 hazeTint = lerp(_AtmoColor.rgb, _SunRimColor.rgb, saturate(hazeSun));
+				// TWO stages, not one. A single lerp from the air's cyan to the rim's
+				// orange passes straight through grey, and at the side-on ceiling that
+				// produced (0.71, 0.69, 0.62) -- R minus B of +0.09, which is neutral.
+				// The twilight zone could then never look orange no matter how far
+				// _TwilightHaze was pushed, because it was lerping toward a colour with
+				// no chroma left in it. Routing through the deep sunset colour keeps the
+				// chroma up at every step: at that same 0.55 it is (0.80, 0.57, 0.47),
+				// R minus B of +0.33. Squared on the second stage, because the deep
+				// end is only reached right at the terminator.
+				half3 hazeTint = lerp(lerp(_AtmoColor.rgb, _SunRimColor.rgb, saturate(hazeSun)),
+					                  _SunRimDeep.rgb, saturate(hazeSun * hazeSun));
 				// The band term as well as the limb term. hazeTint is already
 				// the sunset colour wherever the sun is low, so letting a slice
 				// of it in across the terminator is what makes the blue visibly
