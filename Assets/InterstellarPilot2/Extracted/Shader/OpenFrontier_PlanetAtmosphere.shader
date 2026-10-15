@@ -64,7 +64,29 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		// 11.5 there, so anything above 1/11.5 = 0.087 is identical. The
 		// terminator holds R/B 16.27 down to 0.10 and only starts lifting
 		// at 0.06 (R/B 13.42).
-		_ScatterFlat ("Scatter Flattening", Range(0, 2)) = 0.1
+		// 0.20, not 0.10. This is how much single scattering's blue
+		// selection survives before multiple scattering washes it out -- and
+		// at 0.10 it was cancelling the reddening instead of surviving it.
+		//
+		// The selection is BLUE and it multiplies an already-reddened
+		// transmit, so wherever the two overlap they cancel. At 0.10 and a
+		// sun 12 degrees off axis, the crest's air mass is 4.8 and the
+		// flatten term is only 48%, so the blue survived on top of the red
+		// and the limb came out cream -- R/B 1.01. At 0.20 the term is
+		// saturated by an air mass of 5 and the crest is the pure
+		// transmitted colour.
+		//
+		// Measured crest, by sun angle, at depth 0.22:
+		//
+		//   _ScatterFlat    90d    31d    20d    12d     6d
+		//       0.10      B/R 2.61 B/R 2.05 B/R 1.61 R/B 1.01  R/B 3.51
+		//       0.20      B/R 2.32 B/R 1.64 R/B 0.88 R/B 1.84  R/B 3.73
+		//       0.35      B/R 1.95 B/R 1.16 R/B 1.50 R/B 1.94  R/B 3.73
+		//
+		// Blue on the day side, neutral near 20 degrees, orange at 12, red
+		// at 6 -- one air mass, no colour ramps. Below 0.15 the terminator
+		// stops going red; above 0.35 the day limb goes warm again.
+		_ScatterFlat ("Scatter Flattening", Range(0, 2)) = 0.2
 		_AtmoGlow ("Scattering Coefficient", Range(0, 4)) = 0.95
 		// Hue only, applied to the sun's TRANSMITTED beam and not to the
 		// Rayleigh selection below, so a red star reddens its air without
@@ -122,7 +144,23 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		// NOT physics. The previous shader's unbounded eclipse extinction,
 		// restored so the rim fades out at alignment as it used to. See
 		// the note in the fragment stage. 0 is pure physics.
-		_EclipseDepth ("Eclipse Depth", Range(0, 1)) = 0.22
+		// 0.12, not 0.22. The 0.22 was restored to match the previous
+		// shader, whose deep fade existed to hide the degenerate lobe
+		// basis -- that basis is now cosZ, which does not degenerate, so
+		// the fade no longer has that job and can be read for what it is
+		// worth: how far the rim survives toward alignment.
+		//
+		// Crest transmit_red:
+		//
+		//   depth   20d     12d      8d      6d      4d      2d      1d
+		//   0.22  0.433   0.293   0.146   0.072   0.017  0.0002  0.0000
+		//   0.12  0.525   0.428   0.272   0.170   0.066  0.0039  0.0002
+		//   0.00  0.661   0.676   0.571   0.474   0.326   0.107   0.080
+		//
+		// 0.22 lost the rim by about 6 degrees off axis; 0.12 carries it to
+		// 4 with something to see, and still reaches black by 1. 0 is
+		// pure physics, which leaves a visible ring at exact alignment.
+		_EclipseDepth ("Eclipse Depth", Range(0, 1)) = 0.12
 		// A small additive core, for the hot line right where the sun is
 		// coming up.
 		// 0.5, not 1.0. At 1.0 this term was as large again as the air
