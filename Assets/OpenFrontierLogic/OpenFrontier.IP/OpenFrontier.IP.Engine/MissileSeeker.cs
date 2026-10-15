@@ -377,9 +377,23 @@ namespace OpenFrontier.IP.Engine
 		/// changes as the target turns, but a countermeasure only rolls four
 		/// times a second and only reads this then, so a per-evaluation refresh
 		/// is plenty and keeps it off the per-frame path.
+		///
+		/// Measured against whichever quantity this seeker actually sees. A
+		/// radar seeker is reading a cross section, not a plume, and the two do
+		/// not share a scale - so measuring a radar lock's quality off heat
+		/// would hand a countermeasure the wrong number on anything that is not
+		/// running its engines, and would report a station as un-notchable when
+		/// a stationary station is precisely that for the right reason.
 		/// </remarks>
 		private void RecordLockQuality(Unit target)
 		{
+			MissileGuidanceType type = missile.ProjectileClass.GuidanceType;
+			if (type == MissileGuidanceType.SARH || type == MissileGuidanceType.ARH)
+			{
+				LockQuality = RadarAspectFactor(target);
+				Notch = BeamOnliness(target) * (1f - LockQuality);
+				return;
+			}
 			float signature = RadiatedHeat(target);
 			if (signature <= 0f)
 			{
@@ -613,11 +627,75 @@ namespace OpenFrontier.IP.Engine
 		private bool HasRadarContact(Unit target)
 		{
 			float threshold = missile.ProjectileClass.RadarSignatureThreshold;
-			if (threshold <= 0f)
+			float maxRange = missile.ProjectileClass.RadarMaxRange;
+			if (threshold <= 0f || maxRange <= 0f)
+			{
+				// Nothing has asked for radar to matter, so every contact holds.
+				return true;
+			}
+			if (target.RadarCrossSection <= 0f)
+			{
+				// An asteroid, a piece of debris, anything with no radar
+				// signature at all.
+				return false;
+			}
+			Vector3 offset = target.transform.position - missile.transform.position;
+			float distance = offset.magnitude;
+			if (distance <= 0.0001f)
 			{
 				return true;
 			}
-			return SignatureFrom(target, missile.transform.position, missile.ProjectileClass) >= threshold;
+			// The reference's law, whole: a return weakens with distance as
+			// maxRange over range, and the target's contribution is its cross
+			// section raised to a quarter power.
+			//
+			// The quarter power is the compression that makes radar read
+			// differently from heat. The cross sections span 28 to 12288 square
+			// metres, a factor of 444, and the quarter power turns that into 2.3
+			// to 10.5 - a factor of 4.6. A battleship is a few times a fighter on
+			// radar rather than a hundred times, which is the whole reason a
+			// radar seeker is not simply a heat seeker with a different name.
+			//
+			// Notching multiplies the signal, so it removes RANGE rather than
+			// failing to cross a line. That is a far better mechanic than the
+			// one it replaced, where the entire hull ladder sat far above the
+			// threshold and turning achieved nothing on its own - a Creon was
+			// seen from 4774 metres astern and 2387 bow-on under the Interceptor,
+			// where before it was seen from every distance or none at all.
+			float signal = (maxRange / distance) * Mathf.Pow(target.RadarCrossSection, 0.25f);
+			signal *= RadarAspectFactor(target);
+			return signal >= threshold;
+		}
+
+		/// <summary>
+		/// How much of a hull's radar return survives being viewed bow-on rather
+		/// than astern.
+		/// </summary>
+		/// <remarks>
+		/// The same shape as notching a plume, on the radar ladder. A ship
+		/// presenting its beam is a poorer return than one running away from
+		/// you, and it is worth more to a big hull than a small one, because a
+		/// fighter has so little frontal area that turning it hides very little.
+		///
+		/// The cross section is the size measure rather than heat, which is what
+		/// makes this work on a ship whose engines are shut - still a perfectly
+		/// good radar target - and on a station, which has no heat at all and is
+		/// the largest thing on any radar in the game.
+		/// </remarks>
+		private float RadarAspectFactor(Unit target)
+		{
+			ProjectileClass cls = missile.ProjectileClass;
+			if (cls.SignatureFrontFactor >= 1f)
+			{
+				return 1f;
+			}
+			float front = FrontFactorFor(target.RadarCrossSection,
+				RcsOmnidirectionalBelow, RcsFullyDirectionalAbove, cls);
+			if (front >= 1f)
+			{
+				return 1f;
+			}
+			return Mathf.Lerp(front, 1f, SternFirstAspect(target, missile.transform.position));
 		}
 
 		/// <summary>
@@ -727,14 +805,20 @@ namespace OpenFrontier.IP.Engine
 		/// or below a single small thruster is treated as omnidirectional, and
 		/// anything at or above the largest hull gets the seeker's full falloff.
 		/// </remarks>
-		private static float FrontFactorFor(float signature, ProjectileClass cls)
+		private static float FrontFactorFor(float size, float omnidirectionalBelow,
+			float fullyDirectionalAbove, ProjectileClass cls)
 		{
 			if (cls.SignatureFrontFactor >= 1f)
 			{
 				return 1f;
 			}
-			float sizeT = Mathf.InverseLerp(OmnidirectionalBelow, FullyDirectionalAbove, signature);
+			float sizeT = Mathf.InverseLerp(omnidirectionalBelow, fullyDirectionalAbove, size);
 			return Mathf.Lerp(1f, cls.SignatureFrontFactor, sizeT);
+		}
+
+		private static float FrontFactorFor(float signature, ProjectileClass cls)
+		{
+			return FrontFactorFor(signature, OmnidirectionalBelow, FullyDirectionalAbove, cls);
 		}
 
 		/// <summary>
@@ -767,6 +851,32 @@ namespace OpenFrontier.IP.Engine
 
 		/// <summary>Signature at or above which a hull gets the seeker's full falloff.</summary>
 		public const float FullyDirectionalAbove = 12f;
+
+		/// <summary>
+		/// Cross section at or below which a hull barely changes with aspect on
+		/// radar.
+		/// </summary>
+		/// <remarks>
+		/// A fighter is a handful of square metres of frontal area and there is
+		/// very little of it to hide by turning; a battleship is a wall. Same
+		/// argument as the heat brackets above, on the radar ladder instead.
+		///
+		/// These cannot be the same numbers as the heat brackets because the two
+		/// quantities do not share a scale. A Hornet is 28 square metres and
+		/// radiates 1.72; a trade station is 12288 square metres and radiates
+		/// nothing at all.
+		///
+		/// The cross sections are the areas of the hulls' own collision spheres,
+		/// which run from about 28 for the smallest fighter to over 12000 for a
+		/// trade station.
+		/// </remarks>
+		public const float RcsOmnidirectionalBelow = 100f;
+
+		/// <summary>
+		/// Cross section at or above which a hull gets the seeker's full
+		/// aspect falloff on radar. The Magnus is 2564 and the Ares 634.
+		/// </summary>
+		public const float RcsFullyDirectionalAbove = 2500f;
 
 		/// <summary>
 		/// Points the missile at something hotter, if there is anything hotter

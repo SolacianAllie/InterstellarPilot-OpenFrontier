@@ -202,26 +202,56 @@ namespace OpenFrontier.IP.Engine
 		public float SignatureFrontFactor = 1f;
 
 		/// <summary>
-		/// How much signature a radar seeker needs off a target to hold it.
+		/// How strong a radar return has to be for this seeker to hold it.
 		/// Zero means any contact at all will do.
 		/// </summary>
 		/// <remarks>
-		/// This is what makes notching bite. A ship running away is seen from
-		/// astern at full signature; one turning to meet the missile is seen
-		/// bow-on at <see cref="SignatureFrontFactor"/> of that, and one holding
-		/// beam-on halfway between. Set the threshold above a hull's notched
-		/// signature and turning becomes a way to break a lock.
+		/// This is a signal floor rather than a signature floor, so what it
+		/// really sets is a detection RANGE: the range works out at
+		/// <see cref="RadarMaxRange"/> times the target's cross section to the
+		/// quarter power, divided by this. Raising it shortens every range
+		/// proportionally rather than carving out a band that nothing crosses.
 		///
-		/// It is a separate field from <see cref="IrEngineHeatThreshold"/>
-		/// because a radar return and a plume are different quantities with
-		/// different scales, and because a good radar seeker should be able to
-		/// hold a signature an IR seeker would find unremarkable.
+		/// That matters because notching now removes range instead of
+		/// failing to cross a threshold - which is a far better mechanic than
+		/// the one it replaced, where the whole ladder sat far above the line
+		/// and turning achieved nothing on its own.
+		///
+		/// The cross section comes from <see cref="Unit.RadarCrossSection"/>
+		/// and not from heat, which is the whole reason a radar seeker works at
+		/// all. It is a separate field from <see cref="IrEngineHeatThreshold"/>
+		/// because a radar return and a plume are different quantities on
+		/// different scales, and because a good radar seeker should hold a
+		/// return an IR seeker would find unremarkable.
 		///
 		/// Zero is the default, because that is what every prefab written before
 		/// this field existed reads, and because it keeps radar seekers working
 		/// exactly as they did until someone sets a number.
 		/// </remarks>
 		public float RadarSignatureThreshold;
+
+		/// <summary>
+		/// The range at which this seeker gets a full-strength return, in the
+		/// same units as every other distance in the game. Zero disables the
+		/// radar test entirely.
+		/// </summary>
+		/// <remarks>
+		/// This is the range term, and it is what radar has that infrared does
+		/// not. A heat seeker either sees a plume or does not, and distance
+		/// changes nothing about the answer. A radar return weakens with
+		/// distance as this over the range, so the same hull is a certain
+		/// contact at two kilometres and no contact at all at ten.
+		///
+		/// Without it every signature in the game was heat, and a radar seeker
+		/// could not tell a trade station from a fighter - because a trade
+		/// station has no engines to be hot. That is what made radar feel
+		/// broken rather than merely weak.
+		///
+		/// The return is compressed by a quarter power of the cross section,
+		/// which is also the reference's shape, and is why a battleship reads as
+		/// a few times a fighter on radar rather than a hundred times.
+		/// </remarks>
+		public float RadarMaxRange;
 
 		public bool IsMine;
 

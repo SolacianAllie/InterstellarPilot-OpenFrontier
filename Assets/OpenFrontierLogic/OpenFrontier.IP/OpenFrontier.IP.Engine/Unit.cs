@@ -28,6 +28,34 @@ namespace OpenFrontier.IP.Engine
 		public float Mass = 1f;
 
 		/// <summary>
+		/// How much of this thing a radar sees, in square metres of frontal
+		/// area. Entirely separate from how hot it is.
+		/// </summary>
+		/// <remarks>
+		/// This is the quantity the reference calls RCS, and the reason it has to
+		/// be its own number is that radar and infrared are not the same
+		/// measurement of the same ship. A radar returns what is physically
+		/// there; an infrared seeker returns what is running its engines. A shut
+		/// engine changes one and not the other, and a trade station has no
+		/// engines at all and is the largest target in the game.
+		///
+		/// It has to be authored rather than derived. Mass is useless as a
+		/// proxy - every station in the game has a mass of 1, identical to a
+		/// Hauler, because mass is there for acceleration and has nothing to do
+		/// with size.
+		///
+		/// The values on the existing prefabs are the area of the unit's own
+		/// collision sphere, pi times Radius squared, which is a real
+		/// measurement of each hull rather than an invention. They run from
+		/// about thirteen square metres for a Ranger to over twelve thousand for
+		/// a trade station.
+		///
+		/// Zero means this unit has no radar signature at all, which is what an
+		/// asteroid or a piece of debris should read as.
+		/// </remarks>
+		public float RadarCrossSection;
+
+		/// <summary>
 		/// This unit's mass before any component mass is added. Only meaningful
 		/// once hasBareMass is set; until then Mass is still the bare value.
 		/// </summary>

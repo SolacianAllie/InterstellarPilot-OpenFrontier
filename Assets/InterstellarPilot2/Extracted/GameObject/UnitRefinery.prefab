@@ -617,6 +617,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   ClassName: Refinery
   Mass: 1
+  RadarCrossSection: 8494.9
   Seed: -1
   CollisionCollider: {fileID: 135017697238300914}
   Radius: 52

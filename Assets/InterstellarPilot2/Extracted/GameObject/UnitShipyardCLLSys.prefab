@@ -614,6 +614,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   ClassName: Adv. Shipyard
   Mass: 1
+  RadarCrossSection: 3739.3
   Seed: -1
   CollisionCollider: {fileID: 135017697238300914}
   Radius: 34.5

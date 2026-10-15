@@ -651,6 +651,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   ClassName: Trade Station
   Mass: 1
+  RadarCrossSection: 12287.6
   Seed: -1
   CollisionCollider: {fileID: 135217368724061974}
   Radius: 62.54
