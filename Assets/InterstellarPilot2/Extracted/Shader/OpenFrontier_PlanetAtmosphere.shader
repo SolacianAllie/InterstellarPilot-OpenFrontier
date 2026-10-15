@@ -4,6 +4,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_SunRimColor ("Sun Rim Color", Color) = (1,0.62,0.30,1)
 		_SunRimDeep ("Sun Rim Deep Color", Color) = (1,0.30,0.12,1)
 		_SunExtinction ("Sun Extinction", Range(0, 1.5)) = 0.25
+		_SunReddening ("Sun Reddening", Range(0.1, 2)) = 0.4
 		_Size ("Size", Float) = 0.75
 		_Falloff ("Falloff", Float) = 2
 		_Transparency ("Transparency", Float) = 3
@@ -38,6 +39,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			fixed4 _SunRimColor;
 			fixed4 _SunRimDeep;
 			float _SunExtinction;
+			float _SunReddening;
 			float _Size;
 			float _Falloff;
 			float _Transparency;
@@ -281,7 +283,22 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// saturates, which is why the references read as a short bright
 				// orange crest bleeding into a long deep red tail rather than a
 				// slow even gradient.
-				float airMass = saturate(rcp(max(0.05, bearing)) - 1.0);
+				// Air mass along the sun's path, normalised to the crest: 0 where
+				// the sun is highest, 1 at the terminator.
+				//
+				// _SunReddening divides it, and that one factor is the difference
+				// between a rim that reddens like a sunset and one that goes red
+				// halfway round. At 1.0 the ramp saturates at EXACTLY 60 degrees
+				// from the sun's bearing -- bearing 0.5 gives 1/0.5 - 1 = 1 -- so
+				// the rim was already fully deep red two thirds of the way to the
+				// terminator, with the rest of the sweep to repeat it.
+				//
+				// The secant form is kept because its SHAPE is right (the reddening
+				// accelerates towards the horizon); only where it saturates was
+				// wrong. At 0.4 saturation moves out to ~72 degrees, so the deep
+				// red arrives only at the terminator itself. Lower = later and
+				// fainter; 1.0 is the old behaviour.
+				float airMass = saturate((rcp(max(0.05, bearing)) - 1.0) * _SunReddening);
 
 				// EXTINCTION, which is the piece that was missing entirely and the
 				// reason a white core survived all the way into eclipse.
