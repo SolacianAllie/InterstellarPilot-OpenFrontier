@@ -637,11 +637,19 @@ namespace OpenFrontier.IP.Engine
 					// fires sweeps its own missile sideways, and one that has
 					// cleared the radius is still inside the ship in every way
 					// that matters.
+					//
+					// toLauncher points FROM the missile TO the launcher, so a
+					// missile flying away from it has a velocity opposing that
+					// vector and the dot product is negative. Negative therefore
+					// means separated, and is the case that passes. This had it
+					// the other way round, which meant a missile could only ever
+					// become solid while it was still flying towards the ship
+					// that fired it - so nothing it was chasing was ever hit.
 					if (launcher != null)
 					{
 						Vector3 toLauncher = launcher.transform.position - transform.position;
 						Vector3 travel = RBody.linearVelocity;
-						if (travel.sqrMagnitude > 0.0001f && Vector3.Dot(toLauncher, travel) < 0f)
+						if (travel.sqrMagnitude > 0.0001f && Vector3.Dot(toLauncher, travel) > 0f)
 						{
 							return false;
 						}
