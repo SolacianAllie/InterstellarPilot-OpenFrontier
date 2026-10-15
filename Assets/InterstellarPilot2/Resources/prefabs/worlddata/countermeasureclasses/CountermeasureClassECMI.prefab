@@ -49,3 +49,5 @@ MonoBehaviour:
   MaxDisruptionRange: 500
   MinTimeBeforeDisruption: 0.1
   Drag: 0.5
+  IrSignature: 6
+  AffectsAllInRange: 0

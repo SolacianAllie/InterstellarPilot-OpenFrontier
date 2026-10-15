@@ -305,6 +305,34 @@ namespace OpenFrontier.IP.Engine
 		}
 
 		/// <summary>
+		/// How far off its own nose a missile may be told to point, in degrees.
+		/// </summary>
+		/// <remarks>
+		/// The single most important difference between this and the reference
+		/// game, and it is one line.
+		///
+		/// A missile cannot be commanded to face more than forty five degrees
+		/// away from where it is already flying. It can still turn at whatever
+		/// rate TurnRate allows - that is unchanged - but the command itself is
+		/// capped, so turning hard enough puts the aim point outside the cone
+		/// and the missile flies an arc toward it instead of snapping onto it.
+		///
+		/// That is the whole reason a missile is a counter to manoeuvring rather
+		/// than a counter to everything. A target that turns inside the arc
+		/// goes somewhere the missile cannot point at yet, the cone test fails
+		/// while it is swinging, and by the time the missile has come round the
+		/// target has turned again. Without the cap a missile puts its nose on
+		/// a target directly astern in a single frame and manoeuvring is worth
+		/// nothing at all.
+		///
+		/// It also quietly makes a whole set of existing limits matter again -
+		/// the cone, the persistence timer, the seeker's blind tolerance - which
+		/// were all built assuming a missile could snap around and were
+		/// therefore doing very little.
+		/// </remarks>
+		public const float SteeringConeHalfAngle = 45f;
+
+		/// <summary>
 		/// Turns towards whatever the seeker decided to aim at, which is the
 		/// target itself while the seeker has it and a dead-reckoned guess
 		/// while it does not.
@@ -328,18 +356,55 @@ namespace OpenFrontier.IP.Engine
 				target = seeker != null ? seeker.AimPoint : sourcePosition + transform.forward * 100f;
 			}
 			Vector3 targetVelocity = seeker != null ? seeker.AimVelocity : Vector3.zero;
+			Vector3 aim;
 			if (ProjectileClass.MissileIntelligentGuidance && lastTargetDist < ProjectileClass.MissileIntelligentGuidanceMaxDist)
 			{
 				Vector3 interception = Vector3.zero;
 				if (Geometry.GetInteceptPosition(ref sourcePosition, maxSpd, ref target, ref targetVelocity, out interception))
 				{
-					transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(interception - sourcePosition), ProjectileClass.TurnRate * Time.deltaTime);
+					aim = interception - sourcePosition;
+				}
+				else
+				{
+					aim = target - sourcePosition;
 				}
 			}
 			else
 			{
-				transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(target - sourcePosition), ProjectileClass.TurnRate * Time.deltaTime);
+				aim = target - sourcePosition;
 			}
+			transform.rotation = Quaternion.RotateTowards(
+				transform.rotation,
+				Quaternion.LookRotation(CapToSteeringCone(aim), Vector3.up),
+				ProjectileClass.TurnRate * Time.deltaTime);
+		}
+
+		/// <summary>
+		/// Pulls a commanded direction back inside <see cref="SteeringConeHalfAngle"/>
+		/// of the missile's nose.
+		/// </summary>
+		/// <remarks>
+		/// RotateTowards moves <c>from</c> toward <c>to</c> by at most the given
+		/// angle, which is exactly the clamp wanted: a direction already inside
+		/// the cone is untouched, and one outside it comes back to the cone edge.
+		/// A degenerate direction - straight aft, where there is no bearing at
+		/// all - would make LookRotation produce nothing usable, so it falls back
+		/// to the cone edge rather than to the nose.
+		/// </remarks>
+		private Vector3 CapToSteeringCone(Vector3 commanded)
+		{
+			if (commanded.sqrMagnitude <= 0.000001f)
+			{
+				return transform.forward;
+			}
+			// The four argument form is the only one Unity 6 has, and the deltaTime
+			// of one is what makes it a pure angle clamp rather than a step -
+			// which is the same call the reference makes for the same reason.
+			return Vector3.RotateTowards(
+				transform.forward,
+				commanded.normalized,
+				SteeringConeHalfAngle * Mathf.Deg2Rad,
+				1f);
 		}
 
 		private void UpdateTargetDistAndBearing()

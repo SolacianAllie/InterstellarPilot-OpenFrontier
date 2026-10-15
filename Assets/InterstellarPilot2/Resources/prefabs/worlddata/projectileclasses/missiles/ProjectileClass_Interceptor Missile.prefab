@@ -72,6 +72,8 @@ MonoBehaviour:
   SeekerLockPersistence: 4
   SeekerBlindDrift: 3
   SeekerCheckInterval: 0.1
+  SignatureFrontFactor: 0.5
+  RadarSignatureThreshold: 1.4
   MaxMoveRange: 40000
   MiningDamageMultiplier: 0.1
   MoveSpeed: 0

@@ -413,7 +413,30 @@ namespace OpenFrontier.IP.Engine
 				// Nothing has asked for heat to matter, so every ship counts.
 				return true;
 			}
-			return RadiatedHeat(target) >= threshold;
+			return SignatureFrom(target, missile.transform.position, missile.ProjectileClass) >= threshold;
+		}
+
+		/// <summary>
+		/// Whether a radar seeker can still hold a contact, which is where
+		/// notching bites hardest.
+		/// </summary>
+		/// <remarks>
+		/// A radar return is aspect-dependent in the same way a plume is, so a
+		/// ship turning beam-on weakens the lock. It is deliberately a separate
+		/// test from the disruption one rather than a multiplier on it, because
+		/// the two failing together is the interesting case: notching on its own
+		/// may leave a signature just above the seeker's threshold, and an ECM
+		/// on its own may disrupt that particular missile, but a ship doing both
+		/// is what actually breaks a lock that neither would have.
+		/// </remarks>
+		private bool HasRadarContact(Unit target)
+		{
+			float threshold = missile.ProjectileClass.RadarSignatureThreshold;
+			if (threshold <= 0f)
+			{
+				return true;
+			}
+			return SignatureFrom(target, missile.transform.position, missile.ProjectileClass) >= threshold;
 		}
 
 		/// <summary>
@@ -465,6 +488,57 @@ namespace OpenFrontier.IP.Engine
 			// game has a vent bay to fit one in - every hull radiated identically
 			// and the seeker could not tell a scout from a battleship.
 			return unit.ThrusterHeat * engine.EngineThrottle;
+		}
+
+		/// <summary>
+		/// What a seeker actually gets from a ship, once aspect is taken into
+		/// account.
+		/// </summary>
+		/// <remarks>
+		/// This is notching, and it is the reason a target that turns is harder
+		/// to hold. The signature a ship radiates is what is coming out of its
+		/// engines; what a seeker can see is how much of that is facing it.
+		/// Astern you are looking into the thrusters and see all of it. Dead
+		/// ahead you are looking at the cold nose and see
+		/// <see cref="ProjectileClass.SignatureFrontFactor"/> of it. Beam-on,
+		/// which is where a pilot notching an incoming missile puts themselves,
+		/// is halfway between.
+		///
+		/// The factor is read off the seeker's own class rather than the
+		/// target's, because it is a property of the seeker: how good it is at
+		/// resolving a weak return. A laser seeker holding a designation cares
+		/// very little what aspect the ship is at - somebody already told it
+		/// where the ship is - while a heat seeker looking for a plume has to
+		/// actually see one.
+		/// </remarks>
+		private static float SignatureFrom(Unit target, Vector3 seekerPosition, ProjectileClass cls)
+		{
+			float signature = RadiatedHeat(target);
+			float frontFactor = cls.SignatureFrontFactor;
+			if (signature <= 0f || frontFactor >= 1f)
+			{
+				return signature;
+			}
+			Vector3 toSeeker = seekerPosition - target.transform.position;
+			toSeeker.y = 0f;
+			if (toSeeker.sqrMagnitude <= 0.000001f)
+			{
+				return signature;
+			}
+			Vector3 facing = target.transform.forward;
+			facing.y = 0f;
+			if (facing.sqrMagnitude <= 0.000001f)
+			{
+				return signature;
+			}
+			facing.Normalize();
+			toSeeker.Normalize();
+			// +1 when the ship is flying straight at the seeker, so the seeker
+			// is looking at its nose; -1 when the ship is running away and the
+			// seeker is looking into its engines.
+			float aspect = Vector3.Dot(facing, toSeeker);
+			float sternFirst = (1f - aspect) * 0.5f;
+			return signature * Mathf.Lerp(frontFactor, 1f, sternFirst);
 		}
 
 		/// <summary>
@@ -524,24 +598,25 @@ namespace OpenFrontier.IP.Engine
 		private Unit FindHottestContact()
 		{
 			Unit best = null;
-			float bestHeat = RadiatedHeat(missile.Target);
+			Vector3 nose = missile.transform.forward;
+			Vector3 self = missile.transform.position;
+			float bestHeat = SignatureOf(missile.Target, self);
 			Unit firingShip = missile.Projectile.Unit;
 			Sector sector = firingShip != null ? firingShip.Sector : null;
 			if (sector == null)
 			{
 				return null;
 			}
-			Vector3 nose = missile.transform.forward;
-			Vector3 self = missile.transform.position;
 			float threshold = missile.ProjectileClass.IrEngineHeatThreshold;
 			// -1 means the cone is unlimited, in which case the test below is
 			// skipped entirely rather than compared against a cosine of -1 that
 			// would only ever be true by accident.
 			float coneDot = reacquireDot;
 			bool coneLimited = coneDot > -1f;
-			for (int type = 0; type < 2; type++)
+			for (int type = 0; type < 3; type++)
 			{
-				List<Unit> units = sector.GetUnitsByType(type == 0 ? UnitType.Ship : UnitType.Station);
+				List<Unit> units = sector.GetUnitsByType(type == 0 ? UnitType.Ship
+					: type == 1 ? UnitType.Station : UnitType.Projectile);
 				if (units == null)
 				{
 					continue;
@@ -557,10 +632,22 @@ namespace OpenFrontier.IP.Engine
 					{
 						continue;
 					}
-					// A cloaked or docked ship radiates nothing an infrared
-					// seeker can use, and is not worth a lock for any seeker.
-					if (candidate.IsFullyCloaked || candidate.IsDocked)
+					// A countermeasure puff is a Unit of type Other and it has no
+					// engines, so without this the hunt would score it at zero and
+					// sail past the very thing it is meant to be attracted to.
+					Countermeasure cloud = candidate.CountermeasureCloud;
+					if (cloud == null)
 					{
+						// The Projectile list is walked only for puffs; anything
+						// else in it is a shot already in the air.
+						if (type == 2 || candidate.IsFullyCloaked || candidate.IsDocked)
+						{
+							continue;
+						}
+					}
+					else if (cloud.IrSignature <= 0f)
+					{
+						// An expended or spent puff is just a fading gas cloud.
 						continue;
 					}
 					Vector3 offset = candidate.transform.position - self;
@@ -580,7 +667,7 @@ namespace OpenFrontier.IP.Engine
 					{
 						continue;
 					}
-					float heat = RadiatedHeat(candidate);
+					float heat = SignatureOf(candidate, self);
 					if (heat <= threshold || heat <= bestHeat)
 					{
 						continue;
@@ -590,6 +677,28 @@ namespace OpenFrontier.IP.Engine
 				}
 			}
 			return best;
+		}
+
+		/// <summary>
+		/// What a candidate is worth to this seeker: its own signature if it is
+		/// a countermeasure puff, otherwise its aspect-adjusted ship signature.
+		/// </summary>
+		/// <remarks>
+		/// A gas cloud radiates the same in every direction, because it is a
+		/// cloud and not a ship with a nose. Running it through the aspect
+		/// calculation would make an ECM deployed behind you harder for an IR
+		/// seeker to notice than one deployed in front, which is precisely
+		/// backwards - the whole point of throwing one is to put it between you
+		/// and the missile.
+		/// </remarks>
+		private float SignatureOf(Unit candidate, Vector3 seekerPosition)
+		{
+			Countermeasure cloud = candidate != null ? candidate.CountermeasureCloud : null;
+			if (cloud != null)
+			{
+				return cloud.IrSignature;
+			}
+			return SignatureFrom(candidate, seekerPosition, missile.ProjectileClass);
 		}
 
 		private bool SeesTarget(Unit target, float distance)
@@ -624,9 +733,11 @@ namespace OpenFrontier.IP.Engine
 				case MissileGuidanceType.SARH:
 					// Semi-active: it is riding the launching ship's radar
 					// picture, so the ECM beats it by breaking that picture up,
-					// and cloak beats it by taking the ship out of the
-					// launcher's nose. It is the only seeker with two answers.
-					return !missile.IsDisrupted && CanHoldCloaked(target, needsLauncherArc: true);
+					// cloak beats it by taking the ship out of the launcher's
+					// nose, and notching beats it by turning the ship edge-on to
+					// the radar. Three answers, which makes it the most fragile
+					// radar lock in the game despite the middling cone.
+					return !missile.IsDisrupted && HasRadarContact(target) && CanHoldCloaked(target, needsLauncherArc: true);
 
 				case MissileGuidanceType.ARH:
 				default:
@@ -635,12 +746,12 @@ namespace OpenFrontier.IP.Engine
 					// and a jammer does not care whose radar it is. So an ECM
 					// beats this one too.
 					//
-					// Cloak does not, and neither does the launcher wandering
-					// off - the missile's own cone is the whole story here, and
-					// it is the widest cone in the game. That is what makes ARH
-					// the hardest lock to shake: jammed is the only thing that
-					// beats it.
-					return !missile.IsDisrupted && CanHoldCloaked(target, needsLauncherArc: false);
+					// It is notched as well, though - an active radar still has to
+					// resolve a return, and a ship beam-on is a poor one. What ARH
+					// does not suffer from is the launcher's picture: the missile
+					// can hold a cloaked contact and does not care what the firing
+					// ship is doing.
+					return !missile.IsDisrupted && HasRadarContact(target) && CanHoldCloaked(target, needsLauncherArc: false);
 			}
 		}
 

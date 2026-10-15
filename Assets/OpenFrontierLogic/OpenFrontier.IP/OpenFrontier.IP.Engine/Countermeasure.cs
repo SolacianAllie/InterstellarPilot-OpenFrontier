@@ -141,11 +141,17 @@ namespace OpenFrontier.IP.Engine
 					continue;
 				}
 				// Behind the missile the dot product goes negative and the roll is
-				// impossible, which is the behaviour that was already there.
-				float facing = Vector3.Dot(Vector3.Normalize(transform.position - component.transform.position), component.transform.forward);
-				if (!(Random.value < effectiveness * facing))
+				// impossible, which is the behaviour that was already there - and
+				// is right for the cheap countermeasure, which should have to be
+				// pointed at the threat. The expensive one drops the facing term
+				// and leaves only the budget, so anything in range is disrupted.
+				if (!CountermeasureClass.AffectsAllInRange)
 				{
-					continue;
+					float facing = Vector3.Dot(Vector3.Normalize(transform.position - component.transform.position), component.transform.forward);
+					if (!(Random.value < effectiveness * facing))
+					{
+						continue;
+					}
 				}
 				if (!GameController.Instance.GameSettings.DebugSettings.CountermeasureDisruptionEnabled)
 				{
@@ -161,7 +167,31 @@ namespace OpenFrontier.IP.Engine
 		private void Awake()
 		{
 			projectile = GetComponent<Projectile>();
+			// Publish this puff on its Unit so a seeker can find it without a
+			// component lookup per candidate. It is a Unit of type Other, so
+			// without this it is scored as a ship with no engines and sails
+			// straight past the thing it exists to be.
+			if (projectile != null && projectile.Unit != null)
+			{
+				projectile.Unit.CountermeasureCloud = this;
+			}
 		}
+
+		/// <summary>
+		/// What this cloud is worth to a heat seeker, or zero once it has been
+		/// expended.
+		/// </summary>
+		/// <remarks>
+		/// A spent puff is still a cloud of gas but it is no longer burning, so
+		/// it stops being interesting. Spending one to break a radar lock should
+		/// not also leave a decoy sitting there for the next heat seeker to
+		/// walk onto.
+		///
+		/// An ECM carries this as well as a flare does, which is the whole
+		/// point of it: one puff answers a radar missile by jamming it and a
+		/// heat missile by being more interesting than the ship.
+		/// </remarks>
+		public float IrSignature => expended ? 0f : CountermeasureClass.IrSignature;
 
 		/// <summary>
 		/// Blinds the infrared seekers chasing the ship that fired this, harder

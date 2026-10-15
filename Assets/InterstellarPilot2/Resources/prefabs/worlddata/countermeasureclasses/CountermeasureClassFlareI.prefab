@@ -49,6 +49,8 @@ MonoBehaviour:
   MaxDisruptionRange: 500
   MinTimeBeforeDisruption: 0.1
   Drag: 0.5
+  IrSignature: 5
+  AffectsAllInRange: 0
   DazzleStrength: 1.2
   AspectWeighting: 0.6
   BurnTime: 6

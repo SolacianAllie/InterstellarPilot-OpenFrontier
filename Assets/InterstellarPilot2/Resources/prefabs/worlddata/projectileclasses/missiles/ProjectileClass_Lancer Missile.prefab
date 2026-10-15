@@ -72,6 +72,7 @@ MonoBehaviour:
   SeekerLockPersistence: 3
   SeekerBlindDrift: 4
   IrEngineHeatThreshold: 0.9
+  SignatureFrontFactor: 0.25
   SeekerCheckInterval: 0.1
   MaxMoveRange: 12000
   MiningDamageMultiplier: 0.1

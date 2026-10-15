@@ -163,6 +163,53 @@ namespace OpenFrontier.IP.Engine
 		/// </remarks>
 		public float IrEngineHeatThreshold;
 
+		/// <summary>
+		/// How much of a signature is still visible when the target is flying
+		/// straight at the seeker. 1 means aspect does not matter at all, which
+		/// is what every prefab written before this field existed reads.
+		/// </summary>
+		/// <remarks>
+		/// Notching, and it is the same mechanic for every seeker. What a
+		/// sensor sees depends on which way the target is pointing: from astern
+		/// you see the engines, from dead ahead you see the cold nose, and
+		/// beam-on is somewhere between. Flying beam-on to an incoming missile
+		/// is called notching, and it is the cheapest counter there is because
+		/// it costs nothing - you are already turning.
+		///
+		/// It works on radar and on heat at once, for the same reason it works
+		/// on both in reality: it is a property of the target's shape and where
+		/// its heat is, not of the sensor. And it is a continuum, which is what
+		/// makes it interesting - a seeker whose threshold sits near a hull's
+		/// notched signature will hold sometimes and lose sometimes, so turning
+		/// is a real answer rather than a guaranteed one.
+		///
+		/// Half is the figure worth starting from, which is what the reference
+		/// this was modelled on uses for radar.
+		/// </remarks>
+		public float SignatureFrontFactor = 1f;
+
+		/// <summary>
+		/// How much signature a radar seeker needs off a target to hold it.
+		/// Zero means any contact at all will do.
+		/// </summary>
+		/// <remarks>
+		/// This is what makes notching bite. A ship running away is seen from
+		/// astern at full signature; one turning to meet the missile is seen
+		/// bow-on at <see cref="SignatureFrontFactor"/> of that, and one holding
+		/// beam-on halfway between. Set the threshold above a hull's notched
+		/// signature and turning becomes a way to break a lock.
+		///
+		/// It is a separate field from <see cref="IrEngineHeatThreshold"/>
+		/// because a radar return and a plume are different quantities with
+		/// different scales, and because a good radar seeker should be able to
+		/// hold a signature an IR seeker would find unremarkable.
+		///
+		/// Zero is the default, because that is what every prefab written before
+		/// this field existed reads, and because it keeps radar seekers working
+		/// exactly as they did until someone sets a number.
+		/// </remarks>
+		public float RadarSignatureThreshold;
+
 		public bool IsMine;
 
 		/// <summary>

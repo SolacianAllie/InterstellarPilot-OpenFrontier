@@ -412,6 +412,18 @@ namespace OpenFrontier.IP.Engine
 		/// </summary>
 		public const float AverageThrusterHeat = 1.72f;
 
+		/// <summary>
+		/// The countermeasure puff this unit is, if it is one, so a heat seeker
+		/// can find it without a component lookup per candidate.
+		/// </summary>
+		/// <remarks>
+		/// A countermeasure projectile is a Unit of type Other, which means the
+		/// infrared hunt walks straight past it - it has no engine, so it scores
+		/// as a dark ship. This is what makes an ECM's gas cloud worth locking
+		/// instead.
+		/// </remarks>
+		public Countermeasure CountermeasureCloud;
+
 		private float thrusterHeat;
 
 		private bool thrusterHeatCached;
