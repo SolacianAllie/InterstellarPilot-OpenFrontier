@@ -7,12 +7,12 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_Transparency ("Transparency", Float) = 3
 		_NightGlow ("Night Glow", Range(0, 0.3)) = 0.03
 		[Header(Volume)]
-		_ScaleHeight ("Scale Height", Range(0.004, 0.1)) = 0.012
+		_ScaleHeight ("Scale Height", Range(0.002, 0.1)) = 0.006
 		_Density ("Density", Range(0.3, 12)) = 3
 		[Header(SunBleed)]
 		_SunBleed ("Sun Bleed", Range(0, 1)) = 1
-		_SunBleedPower ("Sun Bleed Power", Range(0.5, 6)) = 1.3
-		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 0.5
+		_SunBleedPower ("Sun Bleed Power", Range(0.5, 6)) = 2
+		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
 	}
 	SubShader {
 		Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" }

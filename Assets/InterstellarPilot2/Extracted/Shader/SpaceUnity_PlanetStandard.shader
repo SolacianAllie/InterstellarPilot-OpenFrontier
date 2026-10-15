@@ -173,23 +173,40 @@ half3 emission = lightsTex * _LightScale * nightMask
 				// one was emissive and drew a glowing edge, which is why it moved
 				// onto the shell. This is in-scattering over the terrain: a lerp
 				// toward a tint, so the surface stays visible underneath.
-				float mu = saturate(dot(normalWS, viewDirWS));        // 1 face-on, 0 at the limb
+				//
+				// EVERYTHING below keys off the GEOMETRIC normal, not the
+				// normal-mapped one. input.normalWS is the interpolated vertex
+				// normal of the sphere; normalWS has the _Normals map folded
+				// into it. That distinction is the whole point of this block:
+				//
+				//  - the terminator is a property of the SPHERE. With the
+				//    normal-mapped ndl, any bump on the night side whose
+				//    perturbed normal tilts toward the sun reads as lit, so
+				//    haze appeared on the dark side of the planet.
+				//  - airmass is a property of the VIEW, not of the terrain.
+				//    Feeding the normal map into mu made the wash follow
+				//    every ridge and crater, so the limb read as a blotchy
+				//    band instead of the clean arc in the reference.
+				float3 geoNormalWS = normalize(input.normalWS);
+				float geoNdL = dot(geoNormalWS, mainLight.direction);
+
+				float mu = saturate(dot(geoNormalWS, viewDirWS));  // 1 face-on, 0 at the limb
 				float grazing = pow(saturate(1.0 - mu), _HazeFalloff);
 
-				// Lit by the same ndl the surface already uses, so the haze can
-				// never disagree with the terminator.
-				float hazeLit = smoothstep(-0.15, 0.25, ndl);
+				// Lit or not, judged on the sphere's own terminator so the
+				// haze cannot leak onto the night side.
+				float hazeLit = smoothstep(-0.15, 0.25, geoNdL);
 
 				// The sunrise arc washes the surface too, not just the shell, and it
 				// has to be driven the SAME way the shell drives it or the two
 				// halves will disagree about where the sunset is.
 				//
-				// Keyed on ndl: the sun being low at this point is what makes
-				// its light arrive reddened. The global dot(V, -L) that used to
-				// drive this is nearly constant around the visible limb, so it
-				// could not produce a gradient along the rim at all -- it could
-				// only switch the whole limb warm or not.
-				float lowSun = pow(saturate(1.0 - ndl), _HazeSunPower);
+				// Keyed on the geometric ndl: the sun being low at this point
+				// is what makes its light arrive reddened. The global dot(V, -L)
+				// that used to drive this is nearly constant around the visible
+				// limb, so it could not produce a gradient along the rim at all
+				// -- it could only switch the whole limb warm or not.
+				float lowSun = pow(saturate(1.0 - geoNdL), _HazeSunPower);
 				// and only when the sun is low for US, not just somewhere on
 				// the planet; otherwise a sun directly behind the camera puts
 				// the terminator exactly on the visible limb and the wash
