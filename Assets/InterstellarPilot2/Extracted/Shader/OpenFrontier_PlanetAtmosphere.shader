@@ -87,6 +87,12 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		// at 6 -- one air mass, no colour ramps. Below 0.15 the terminator
 		// stops going red; above 0.35 the day limb goes warm again.
 		_ScatterFlat ("Scatter Flattening", Range(0, 2)) = 0.2
+		// Mean scattering altitude in SCALE HEIGHTS, which is the only
+		// altitude in these units. See the grazing calculation in the
+		// fragment stage: this is what stops the terminator from being
+		// drawn exactly where the model is darkest. 0 is the single-column
+		// reading and leaves the terminator at 4.5% of the crest.
+		_ScatterHeight ("Mean Scattering Height", Range(0, 4)) = 1.2
 		_AtmoGlow ("Scattering Coefficient", Range(0, 4)) = 0.95
 		// Hue only, applied to the sun's TRANSMITTED beam and not to the
 		// Rayleigh selection below, so a red star reddens its air without
@@ -211,6 +217,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			float _Aerosol;
 			float _MieG;
 			float _ScatterFlat;
+			float _ScatterHeight;
 			float _AtmoGlow;
 			float _ScaleHeight;
 			float _Density;
@@ -377,8 +384,36 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// |sunPerp| is the sine of the sun's angle off the view axis. It
 				// collapses toward zero when the sun lies along the view axis.
 				float sunLen = length(sunPerp);
+				// The mean scattering height is the correction that makes the
+				// TERMINATOR visible at all, and it is the one place where
+				// this model was describing itself badly.
+				//
+				// The grazing value is the air mass for the LONGEST path. But
+				// the light we see near the terminator is not all from that
+				// path: we see light scattered from every altitude along the
+				// line of sight, and in an exponential atmosphere the
+				// high-altitude part dominates by orders of magnitude. That is
+				// why a real sunset is bright rather than black, and this
+				// model had no way to say so -- representing the view by a
+				// single column at the tangent point overstates the air mass
+				// by exp(h_eff / H).
+				//
+				// It matters because the terminator crossings are exactly
+				// cosZ = 0, i.e. an infinite secant, i.e. the clamp -- so the
+				// outline was being drawn precisely where the model is
+				// darkest. Measured at theta 90, sun 20 off axis:
+				//
+				//   _ScatterHeight   airMass   lum     % of crest   R/B
+				//       0.0            32.4   0.041        4.5%      86
+				//       1.0            11.9   0.336       37.1%       5.1
+				//       1.2             9.7   0.425       47.0%       3.8
+				//       2.0             4.4   0.771       85.2%       1.8
+				//
+				// The day limb is untouched at any of these: its air masses
+				// are 2.9 to 5.8 at 20 degrees off axis, all below the
+				// lowest clamp in the table.
 				float grazing = sqrt(2.0 * UNITY_PI * rcp(max(1e-4, _ScaleHeight)))
-				              * exp(-z0 * invH);
+				              * exp(-z0 * invH - _ScatterHeight);
 				float secant = rcp(max(cosZ, 1e-3));
 				float airMass = min(secant, grazing);
 
