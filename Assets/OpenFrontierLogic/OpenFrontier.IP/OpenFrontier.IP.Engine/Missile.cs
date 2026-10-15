@@ -120,26 +120,6 @@ namespace OpenFrontier.IP.Engine
 		public Rigidbody RBody => projectile?.RBody;
 
 		/// <summary>
-		/// The speed this missile flies at under its own power, and what it is
-		/// given as its own launch speed.
-		/// </summary>
-		/// <remarks>
-		/// ThrustPower over linear damping over mass - the terminal speed the
-		/// missile is already accelerating towards when it leaves the tube, so
-		/// handing it that speed at the instant of firing is not a bonus. It is
-		/// simply not making the missile start slower than it will end up.
-		///
-		/// On every missile prefab in the game the damping is 2 and the mass is
-		/// 0.5, which makes this exactly ThrustPower: 200 for the Small Rocket,
-		/// 260 for the Lancer, 320 for the Achilles, 450 for the Interceptor.
-		///
-		/// The alternative was MoveSpeed, which is zero on all four guided
-		/// missiles because they are thrust-driven and the non-homing movement
-		/// path never reads it. It is dead data on a homing round.
-		/// </remarks>
-		public float LaunchSpeed => maxSpd;
-
-		/// <summary>
 		/// Whether there is still a ship here worth chasing.
 		/// </summary>
 		/// <remarks>
