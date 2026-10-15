@@ -64,20 +64,28 @@ namespace OpenFrontier.IP.Engine
 		public TextAsset EpithetsFile;
 
 		/// <summary>
-		/// Fraction of pilots given an epithet instead of a surname.
+		/// Fraction of pilots given an epithet at all.
 		/// </summary>
 		/// <remarks>
-		/// Deliberately low. An epithet-bearing pilot reads "Jeff the Bagel
-		/// Thief" - no surname, because a nickname replaces one - so these land
-		/// as the memorable exception rather than the rule.
+		/// 0.14, down from 0.28. At a quarter of all pilots, "The" + noun was
+		/// the default reading for anyone who looked at more than a name or
+		/// two, which made the distinctive case the ordinary one. Half as many
+		/// puts it back where it belongs - memorable, and rare enough that
+		/// seeing one means something.
 		///
-		/// 0.28 also keeps total name variety level. A plain pilot draws
-		/// given x surname; an epithet-bearing one draws given x epithet
-		/// instead, because the surname is dropped. With 577 given and 350
-		/// surnames, the epithet pool has to hold around 365 rows to break
-		/// even - below that the pool gets smaller, not bigger.
+		/// So of all pilots: about 86% an ordinary name, 7.7% inline with the
+		/// surname kept, 6.3% surname-free.
+		///
+		/// The variety note that used to live here is stale and is worth
+		/// keeping in mind as a trap. It said the epithet pool must hold ~365
+		/// rows to break even, because an epithet-bearing pilot dropped the
+		/// surname and so drew given x epithet instead of given x surname.
+		/// That only held while EVERY epithet-bearing pilot dropped it. Now
+		/// only the GivenOnly layout does, so most keep the surname and the
+		/// constraint has gone with it. At 50,954 rows the pool is far past
+		/// break-even either way, so rarity here costs nothing in variety.
 		/// </remarks>
-		private const float EpithetChance = 0.28f;
+		private const float EpithetChance = 0.14f;
 
 		/// <summary>
 		/// Of the pilots who do get an epithet, how many read as a callsign
