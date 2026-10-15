@@ -38,6 +38,42 @@ namespace OpenFrontier.IP.Engine
 
 		private float timeWhenGuidanceActivates;
 
+		/// <summary>
+		/// Seconds of "close enough to where I am going" still owed before
+		/// this missile stops steering. See
+		/// <see cref="ProjectileClass.SteeringCommitTime"/>.
+		/// </summary>
+		private float commitRemaining;
+
+		/// <summary>
+		/// Whether the missile has given up steering and is simply coasting on
+		/// the velocity it has.
+		/// </summary>
+		private bool committed;
+
+		/// <summary>
+		/// Whether this missile is allowed to hit anything yet. False from the
+		/// moment it is fired until it has both waited out
+		/// <see cref="ProjectileClass.TangibleDelay"/> and left the launcher
+		/// behind by <see cref="ProjectileClass.TangibleRangeFromLauncher"/>.
+		/// </summary>
+		private bool tangible;
+
+		/// <summary>
+		/// <see cref="Time.time"/> at the moment this missile was initialised,
+		/// which is what the spawn protection measures its delay from.
+		/// </summary>
+		/// <remarks>
+		/// Time.time rather than the projectile's own FireTime, which is on the
+		/// scenario clock. The spawn protection is about the missile being inside
+		/// its launcher for the first moments of its life, and the scenario clock
+		/// keeps running through pause and menus while Time.time does not - so
+		/// returning from a menu into a missile that is still waiting out its
+		/// spawn protection is the correct outcome, and the other way round would
+		/// hand out the protection for free while the game was closed.
+		/// </remarks>
+		private float launchedAt;
+
 		public float Thrust
 		{
 			get
@@ -104,6 +140,20 @@ namespace OpenFrontier.IP.Engine
 		public bool IsDazzled => dazzle > 0f;
 
 		/// <summary>
+		/// How badly a flare is blinding this seeker, as a number rather than a
+		/// yes or no.
+		/// </summary>
+		/// <remarks>
+		/// The seeker scales its aim error by this, so a flare does not so much
+		/// switch the seeker off as drag the aim point around wherever the flare
+		/// happens to be sitting. That is what makes a flare something you deploy
+		/// into a salvo rather than something that ends one, and it is why a
+		/// flare dropped on the target's own bearing is the good one - that is
+		/// the direction the error is pushed towards.
+		/// </remarks>
+		public float Dazzle => dazzle;
+
+		/// <summary>
 		/// Blinds this seeker for a while. Called by a flare, not by the
 		/// seeker - the flare finds the missiles, the same way an ECM does.
 		/// </summary>
@@ -156,6 +206,10 @@ namespace OpenFrontier.IP.Engine
 			lastTargetDist = 0f;
 			oldTarget = null;
 			isGuidanceActive = false;
+			committed = false;
+			commitRemaining = 0f;
+			tangible = false;
+			launchedAt = Time.time;
 			thrust = MinThrust;
 			projectile.Unit.SetRBody();
 			maxSpd = UnitEngineClass.CalculateMaxSpeed(ProjectileClass.ThrustPower, RBody.linearDamping, RBody.mass);
@@ -258,12 +312,182 @@ namespace OpenFrontier.IP.Engine
 			}
 			if (ProjectileClass != null)
 			{
-				RBody.AddRelativeForce(Vector3.forward * thrust * ProjectileClass.ThrustPower * Time.deltaTime, ForceMode.Impulse);
+				Fly();
+				CheckSelfDestruct();
 			}
 			UpdateCollision();
 			if (ProjectileClass.TimedDestruction)
 			{
 				UpdateFuel();
+			}
+		}
+
+		/// <summary>
+		/// Where the missile is actually going, or zero while it is too slow to
+		/// have a direction at all.
+		/// </summary>
+		private Vector3 CurrentVelocityDirection()
+		{
+			Vector3 velocity = RBody.linearVelocity;
+			return velocity.sqrMagnitude > 0.0004f ? velocity.normalized : Vector3.zero;
+		}
+
+		/// <summary>
+		/// One frame of flight: the main thruster along the nose, the sideways
+		/// thrusters against the difference between where the missile is going
+		/// and where it has been told to go, and the nose following the
+		/// velocity afterwards.
+		/// </summary>
+		/// <remarks>
+		/// The order of those three is the whole model, and it is the opposite
+		/// of the one this replaced.
+		///
+		/// It used to rotate the nose towards the aim point and then push along
+		/// the nose, so the nose decided where the missile went and the velocity
+		/// followed it within a frame. A launcher that handed its missile some
+		/// sideways momentum was therefore corrected almost immediately, and the
+		/// steering cone only ever described what the nose could be told to do.
+		///
+		/// Now the velocity is the state and the nose is told about it. The
+		/// sideways thrusters push along the difference between the direction the
+		/// missile is travelling and the direction it has been commanded to
+		/// travel, which rotates the velocity over time rather than instantly,
+		/// and the nose is then dragged round to match. Everything expensive
+		/// about turning is now paid in flight distance, which is the only place
+		/// it can honestly be paid.
+		///
+		/// It also means a missile fired from the side of a moving ship has to
+		/// spend real time nulling the sideways velocity it was launched with.
+		/// That is the launcher's momentum being spent as flight time, and it is
+		/// the cost of firing from a ship that is moving.
+		/// </remarks>
+		private void Fly()
+		{
+			Rigidbody body = RBody;
+			if (body == null)
+			{
+				return;
+			}
+			float step = Time.deltaTime;
+			body.AddRelativeForce(Vector3.forward * thrust * ProjectileClass.ThrustPower * step, ForceMode.Impulse);
+			if (!ProjectileClass.IsHoming)
+			{
+				return;
+			}
+			Vector3 travelling = CurrentVelocityDirection();
+			if (travelling == Vector3.zero)
+			{
+				// Standing still, so there is no momentum for the sideways jets to
+				// push against and no direction of travel to correct. Attitude
+				// does not need momentum, though - there is no air to resist a
+				// nose swinging round - so the missile still points itself at the
+				// target and lets the main thruster get it going. Without this a
+				// missile launched with no inherited velocity would be frozen on
+				// whatever heading it left the tube on.
+				Vector3 wanted = SeekDirection();
+				if (wanted.sqrMagnitude > 0.000001f)
+				{
+					transform.rotation = Quaternion.RotateTowards(
+						transform.rotation,
+						Quaternion.LookRotation(wanted.normalized, Vector3.up),
+						ProjectileClass.TurnRate * step);
+				}
+				return;
+			}
+			Vector3 commanded = CommandedDirection(travelling);
+			Vector3 correction = commanded - travelling;
+			if (correction.sqrMagnitude > 0.000001f)
+			{
+				Vector3 push = correction.normalized * (ProjectileClass.LateralThrustPower * step);
+				// A thruster cannot cancel more momentum than the vehicle has.
+				// Without this a missile moving at a couple of metres a second
+				// has its velocity reversed outright in a single frame by an
+				// impulse sized for its top speed, and it weaves instead of
+				// turning.
+				float momentum = body.mass * body.linearVelocity.magnitude;
+				if (push.magnitude > momentum)
+				{
+					push = push.normalized * momentum;
+				}
+				body.AddForce(push, ForceMode.Impulse);
+			}
+			// Last, and only now, the nose catches up with where the missile is
+			// really going. TurnRate still governs how fast, so a heavy missile
+			// can be one that both accelerates hard and slews slowly.
+			transform.rotation = Quaternion.RotateTowards(
+				transform.rotation,
+				Quaternion.LookRotation(travelling, Vector3.up),
+				ProjectileClass.TurnRate * step);
+		}
+
+		/// <summary>
+		/// The direction the sideways thrusters should be trying to turn the
+		/// missile towards, already capped to the steering cone.
+		/// </summary>
+		/// <remarks>
+		/// Returns <paramref name="travelling"/> once the missile has committed,
+		/// which makes the correction zero and the thrusters stop firing
+		/// altogether. Committing matters here in a way it would not with a
+		/// nose-led missile: with thrusters the missile is always firing
+		/// something, and a missile that never stops correcting spends its own
+		/// speed sideways down the length of its flight and arrives slower than
+		/// one that pointed and went.
+		/// </remarks>
+		private Vector3 CommandedDirection(Vector3 travelling)
+		{
+			if (committed)
+			{
+				return travelling;
+			}
+			Vector3 wanted = SeekDirection();
+			if (Vector3.Angle(wanted, travelling) <= ProjectileClass.SteeringCommitAngle)
+			{
+				if (commitRemaining <= 0f)
+				{
+					commitRemaining = ProjectileClass.SteeringCommitTime;
+				}
+				commitRemaining -= Time.deltaTime;
+				if (commitRemaining <= 0f)
+				{
+					committed = true;
+					return travelling;
+				}
+			}
+			else
+			{
+				// Back outside the commit angle, so the hold starts again. A
+				// target that crosses the nose briefly must not be able to make
+				// the missile give up the approach.
+				commitRemaining = ProjectileClass.SteeringCommitTime;
+			}
+			return CapToSteeringCone(wanted);
+		}
+
+		/// <summary>
+		/// A missile whose engine is spent and which is no longer closing
+		/// detonates where it is.
+		/// </summary>
+		/// <remarks>
+		/// Without this a missile that ran out of pursuit drifts on through the
+		/// engagement for as long as the sector lasts, still colliding with
+		/// things, and reads as a bug rather than as a dud. It is the reference's
+		/// rule and it is a good one.
+		/// </remarks>
+		private void CheckSelfDestruct()
+		{
+			float floor = ProjectileClass.SelfDestructAtSpeed;
+			if (floor <= 0f)
+			{
+				return;
+			}
+			Rigidbody body = RBody;
+			if (body == null)
+			{
+				return;
+			}
+			if (body.linearVelocity.magnitude < floor)
+			{
+				projectile.FinalizeProjectile(createExplosion: true, null, Target, transform.position);
 			}
 		}
 
@@ -287,7 +511,7 @@ namespace OpenFrontier.IP.Engine
 
 		private void UpdateCollision()
 		{
-			if (ProjectileClass != null && ProjectileClass.CollisionEnabled && Target != null && projectile.CollisionDelayExpired())
+			if (IsTangible && ProjectileClass != null && ProjectileClass.CollisionEnabled && Target != null && projectile.CollisionDelayExpired())
 			{
 				float num = RBody.linearVelocity.magnitude / 10f;
 				Vector3 direction = transform.forward;
@@ -296,6 +520,66 @@ namespace OpenFrontier.IP.Engine
 				{
 					CheckMissileCollision(ref currentPosition, ref direction, num);
 				}
+			}
+		}
+
+		/// <summary>
+		/// Whether this missile is allowed to hit anything, which it is not
+		/// until it has both waited out
+		/// <see cref="ProjectileClass.TangibleDelay"/> and left the ship that
+		/// fired it well behind.
+		/// </summary>
+		/// <remarks>
+		/// This is the direct answer to a missile killing its own launcher, and
+		/// it is the reference's rule: a missile starts intangible and is only
+		/// made solid once it is clear of the owner.
+		///
+		/// Both conditions are needed. Time alone is not enough, because a
+		/// missile fired from a very fast ship covers a great deal of ground in
+		/// half a second and would be solid again while still alongside its own
+		/// launcher; distance alone is not enough either, because the launcher may
+		/// be sitting still with the missile drifting out of it at walking pace
+		/// and technically outside the radius for a frame while still inside the
+		/// hull.
+		///
+		/// It also has to require the missile to be moving away. A ship turning
+		/// hard while it fires sweeps its own missile sideways, and a missile
+		/// that has cleared the radius but is still being carried along with the
+		/// hull is inside it in every way that matters.
+		/// </remarks>
+		public bool IsTangible
+		{
+			get
+			{
+				if (tangible)
+				{
+					return true;
+				}
+				if (Time.time < launchedAt + ProjectileClass.TangibleDelay)
+				{
+					return false;
+				}
+				Unit launcher = projectile.SourceUnit;
+				float range = ProjectileClass.TangibleRangeFromLauncher;
+				if (launcher != null && range > 0f)
+				{
+					Vector3 toLauncher = launcher.transform.position - transform.position;
+					if (toLauncher.sqrMagnitude < range * range)
+					{
+						return false;
+					}
+					// Still being carried along with the hull rather than away
+					// from it. A ship turning hard as it fires sweeps its own
+					// missile sideways, and one that has cleared the radius is
+					// still inside it in every way that matters.
+					Vector3 travel = RBody.linearVelocity;
+					if (travel.sqrMagnitude > 0.0001f && Vector3.Dot(toLauncher, travel) < 0f)
+					{
+						return false;
+					}
+				}
+				tangible = true;
+				return true;
 			}
 		}
 
@@ -349,7 +633,6 @@ namespace OpenFrontier.IP.Engine
 			}
 			lastDotToTarget = lastTargetDist > 0.0001f ? Vector3.Dot(lastTargetVector / lastTargetDist, transform.forward) : 1f;
 			ControlThrust();
-			RotateTowardsPoint();
 		}
 
 		/// <summary>
@@ -377,7 +660,6 @@ namespace OpenFrontier.IP.Engine
 		/// the cone, the persistence timer, the seeker's blind tolerance - which
 		/// were all built assuming a missile could snap around and were
 		/// therefore doing very little.
-		/// </remarks>
 		public const float SteeringConeHalfAngle = 45f;
 
 		/// <summary>
@@ -385,7 +667,18 @@ namespace OpenFrontier.IP.Engine
 		/// target itself while the seeker has it and a dead-reckoned guess
 		/// while it does not.
 		/// </summary>
-		private void RotateTowardsPoint()
+		/// <summary>
+		/// Where the seeker's picture says this missile should be going, before
+		/// the steering cone is applied to it.
+		/// </summary>
+		/// <remarks>
+		/// Purely a question about direction now. It used to end by rotating the
+		/// transform as well, which is what made the nose the thing that decided
+		/// where the missile went; the rotation now happens once per frame in
+		/// <see cref="Fly"/>, after the sideways thrusters have had their say, so
+		/// the nose follows the velocity rather than leading it.
+		/// </remarks>
+		private Vector3 SeekDirection()
 		{
 			Vector3 sourcePosition = transform.position;
 			bool locked = seeker != null && seeker.HasLock;
@@ -421,35 +714,45 @@ namespace OpenFrontier.IP.Engine
 			{
 				aim = target - sourcePosition;
 			}
-			transform.rotation = Quaternion.RotateTowards(
-				transform.rotation,
-				Quaternion.LookRotation(CapToSteeringCone(aim), Vector3.up),
-				ProjectileClass.TurnRate * Time.deltaTime);
+			return aim;
 		}
 
 		/// <summary>
 		/// Pulls a commanded direction back inside <see cref="SteeringConeHalfAngle"/>
-		/// of the missile's nose.
+		/// of where the missile is actually travelling.
 		/// </summary>
 		/// <remarks>
 		/// RotateTowards moves <c>from</c> toward <c>to</c> by at most the given
 		/// angle, which is exactly the clamp wanted: a direction already inside
 		/// the cone is untouched, and one outside it comes back to the cone edge.
-		/// A degenerate direction - straight aft, where there is no bearing at
-		/// all - would make LookRotation produce nothing usable, so it falls back
-		/// to the cone edge rather than to the nose.
+		///
+		/// The reference it is clamped against is the velocity, not the nose.
+		/// That is the difference that makes the cone mean anything in this
+		/// model. Clamped against the nose it only ever described what the missile
+		/// could be told to point at; clamped against the velocity it describes
+		/// how far the missile may be asked to turn in one go, which is what a
+		/// pilot jinking to stay outside it is actually doing.
+		///
+		/// A degenerate direction - no velocity yet, or a zero-length aim - has
+		/// no bearing to be outside of, so it falls back to the nose rather than
+		/// to nothing.
 		/// </remarks>
 		private Vector3 CapToSteeringCone(Vector3 commanded)
 		{
+			Vector3 travelling = CurrentVelocityDirection();
 			if (commanded.sqrMagnitude <= 0.000001f)
 			{
-				return transform.forward;
+				return travelling == Vector3.zero ? transform.forward : travelling;
+			}
+			if (travelling == Vector3.zero)
+			{
+				return commanded.normalized;
 			}
 			// The four argument form is the only one Unity 6 has, and the deltaTime
 			// of one is what makes it a pure angle clamp rather than a step -
 			// which is the same call the reference makes for the same reason.
 			return Vector3.RotateTowards(
-				transform.forward,
+				travelling,
 				commanded.normalized,
 				SteeringConeHalfAngle * Mathf.Deg2Rad,
 				1f);

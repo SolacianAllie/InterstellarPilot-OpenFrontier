@@ -262,6 +262,98 @@ namespace OpenFrontier.IP.Engine
 
 		public float TurnRate = 90f;
 
+		/// <summary>
+		/// How hard the sideways thrusters push, in the same units as
+		/// <see cref="ThrustPower"/>. This is what turns the missile.
+		/// </summary>
+		/// <remarks>
+		/// There is no air in a sector, so a missile cannot bank into a lift
+		/// vector and have its nose dragged round behind it. It has small jets,
+		/// and turning means firing them sideways and letting the velocity vector
+		/// rotate over time while the nose follows it afterwards.
+		///
+		/// That ordering is the entire point. While the nose led and the thrust
+		/// pushed along it, the missile's path was whatever its nose said and a
+		/// launcher's inherited velocity was gone in a sixth of a second - there
+		/// was nothing left to correct and the missile flew on rails. With the
+		/// velocity leading, a missile fired off the side of a fast ship spends
+		/// real flight time killing the sideways momentum it was handed, and a
+		/// target that turns hard enough to stay outside the steering cone buys
+		/// itself distance rather than a re-aim.
+		///
+		/// Compared with the main thruster it should be the weaker of the two.
+		/// A missile that accelerates faster than it can turn is a missile that
+		/// commits, which is what makes a turn-and-run target work.
+		/// </remarks>
+		public float LateralThrustPower = 1f;
+
+		/// <summary>
+		/// Below this speed a missile that has no engine left detonates rather
+		/// than coasting. Zero disables it.
+		/// </summary>
+		/// <remarks>
+		/// A spent missile drifting on through the engagement is not a threat
+		/// and is not interesting, but it does go on hitting things for as long
+		/// as the sector lasts. This is the reference's rule and it is a good
+		/// one: a missile whose engine is off and which is no longer closing
+		/// detonates where it is.
+		/// </remarks>
+		public float SelfDestructAtSpeed;
+
+		/// <summary>
+		/// Seconds after firing before this missile can hit anything at all.
+		/// </summary>
+		/// <remarks>
+		/// Spawn protection, and the reason a missile does not kill the ship that
+		/// fired it. It is not a damage immunity so much as a recognition that a
+		/// missile is spawned inside the launcher and has not cleared it yet.
+		///
+		/// The reference pairs this with a distance test, and so does this: see
+		/// <see cref="TangibleRangeFromLauncher"/>. Time alone is not enough,
+		/// because a missile fired from a very fast ship covers a great deal of
+		/// ground in half a second and would be solid again while still inside
+		/// its own launcher.
+		/// </remarks>
+		public float TangibleDelay;
+
+		/// <summary>
+		/// How far from the launching ship this missile must be before it can
+		/// hit anything. Zero means distance is not tested.
+		/// </summary>
+		/// <remarks>
+		/// Both this and <see cref="TangibleDelay"/> have to be satisfied, so the
+		/// longer of the two governs. Fifty metres is the reference's figure for
+		/// the infrared types and it is a sensible one for a game where a fighter
+		/// is about a hundred metres long.
+		/// </remarks>
+		public float TangibleRangeFromLauncher = 50f;
+
+		/// <summary>
+		/// How close the commanded direction has to be to where the missile is
+		/// actually going, in degrees, before it stops steering entirely.
+		/// </summary>
+		/// <remarks>
+		/// Once a missile is genuinely on its target there is nothing left for
+		/// the thrusters to do, and continuing to correct costs it speed. This is
+		/// the reference's reachedOnTarget, and it matters more here than it does
+		/// there: with lateral thrusters the missile is always firing something,
+		/// and a missile that never stops correcting weaves down its own flight
+		/// path and arrives slower than one that commits.
+		/// </remarks>
+		public float SteeringCommitAngle = 10f;
+
+		/// <summary>
+		/// How long the commanded direction has to stay inside
+		/// <see cref="SteeringCommitAngle"/> before the missile commits.
+		/// </summary>
+		/// <remarks>
+		/// The hold is what stops a missile committing the instant it clips
+		/// inside the angle while it is still swinging past the target on a wide
+		/// turn. Two seconds is long enough that a target which crosses the
+		/// missile's nose briefly does not get it to give up the approach.
+		/// </remarks>
+		public float SteeringCommitTime = 2f;
+
 		public bool InheritParentVelocity;
 
 		public float InheritParentVelocityMultiplier = 1f;

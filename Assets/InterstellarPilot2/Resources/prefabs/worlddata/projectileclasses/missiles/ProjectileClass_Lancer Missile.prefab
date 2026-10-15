@@ -83,6 +83,10 @@ MonoBehaviour:
   SetDamageUsingEnergyCost: 0
   ShieldDamageType: 0
   ThrustPower: 260
+  LateralThrustPower: 160
+  SelfDestructAtSpeed: 78
+  TangibleDelay: 0.5
+  TangibleRangeFromLauncher: 80
   MinThrust: 0.2
   TimedDestruction: 0
   TimedExplosionInaccuracy: 8

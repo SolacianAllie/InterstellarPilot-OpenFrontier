@@ -241,6 +241,26 @@ namespace OpenFrontier.IP.Engine
 				// is left at zero rather than pretending to be uncertain in 3D.
 				errorOffset += new Vector3(Random.Range(-1f, 1f), 0f, Random.Range(-1f, 1f)) * drift;
 				AimPoint = lastKnownPosition + errorOffset;
+				return;
+			}
+			// Still tracking, but a flare is dragging the aim point off the
+			// target. This is the reference's behaviour and it is better than the
+			// boolean it replaced: a flare does not switch the seeker off, it
+			// pushes the aim point sideways by an amount proportional to how
+			// bright the flare is, and the seeker keeps trying to hold the target
+			// while it is being dragged.
+			//
+			// So a flare is something you deploy into a salvo and the missiles
+			// have to fly around it, rather than a thing that switches them off
+			// for a fixed interval. It also means a missile can be *nearly* on
+			// the target and still miss, which is what stops one flare from
+			// answering a whole salvo at once - the first few are dragged far
+			// enough to miss and the flare has burnt down by the time the rest
+			// arrive.
+			float dazzle = missile.Dazzle;
+			if (dazzle > 0f)
+			{
+				AimPoint = lastKnownPosition + errorOffset * dazzle;
 			}
 		}
 
