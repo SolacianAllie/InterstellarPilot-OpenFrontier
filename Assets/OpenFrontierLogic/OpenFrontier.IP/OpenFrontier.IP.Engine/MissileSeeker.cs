@@ -445,11 +445,11 @@ namespace OpenFrontier.IP.Engine
 		/// </remarks>
 		public static float RadiatedHeat(Unit unit)
 		{
-			if (unit == null || unit.Components == null)
+			if (unit == null)
 			{
 				return 0f;
 			}
-			UnitEngineComponent engine = unit.Components.EngineComponent;
+			UnitEngineComponent engine = unit.Components != null ? unit.Components.EngineComponent : null;
 			if (engine == null)
 			{
 				return 0f;
@@ -460,8 +460,11 @@ namespace OpenFrontier.IP.Engine
 			{
 				return 0f;
 			}
-			float produced = engine.EngineClass.ThermalLoad * engine.BoostMultiplier;
-			return Mathf.Min(produced, unit.Components.EffectiveVentRate);
+			// Thruster size, scaled by how hard the engines are being pushed.
+			// Nothing here depends on the thermal vents, because no ship in the
+			// game has a vent bay to fit one in - every hull radiated identically
+			// and the seeker could not tell a scout from a battleship.
+			return unit.ThrusterHeat * engine.EngineThrottle;
 		}
 
 		/// <summary>

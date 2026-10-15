@@ -346,8 +346,62 @@ namespace OpenFrontier.IP.Engine
 			set
 			{
 				activeUnit = value;
+				thrusterHeatCached = false;
 			}
 		}
+
+		/// <summary>
+		/// How hot this ship's thrusters make it look to an infrared seeker, at
+		/// full thrust.
+		/// </summary>
+		/// <remarks>
+		/// The sum of the particle sizes of its thrusters, which is the whole
+		/// measure of hull size the seeker has.
+		///
+		/// Cached, because it costs a GetComponent and the infrared seeker asks
+		/// every ship in the sector on every evaluation - which is one component
+		/// lookup per candidate per missile, ten times a second. The thruster
+		/// cannot change while the unit exists, so it is resolved once and only
+		/// again if the ActiveUnit is replaced.
+		///
+		/// Falls back to the average rather than to zero when there is no
+		/// ActiveUnit to read. A unit only gets one if it has a visual resource,
+		/// and a hull that happened to be missing its artwork must not thereby be
+		/// invisible to a heat seeker - that would be a bug that only shows up on
+		/// the ships nobody has looked at.
+		/// </remarks>
+		public float ThrusterHeat
+		{
+			get
+			{
+				if (!thrusterHeatCached)
+				{
+					float resolved = 0f;
+					if (activeUnit != null && activeUnit.TryGetComponent(out UnitThruster thruster) && thruster != null && thruster.UnitThrusterClass != null)
+					{
+						resolved = thruster.UnitThrusterClass.TotalHeatSize;
+					}
+					else
+					{
+						resolved = AverageThrusterHeat;
+					}
+					thrusterHeat = resolved > 0f ? resolved : AverageThrusterHeat;
+					thrusterHeatCached = true;
+				}
+				return thrusterHeat;
+			}
+		}
+
+		/// <summary>
+		/// A middling thruster, used when a unit has no thruster to read. Sits
+		/// between the small and large particle sizes so a ship in that state is
+		/// neither the dimmest nor the brightest thing around.
+		/// </summary>
+		public const float AverageThrusterHeat = 1.72f;
+
+		private float thrusterHeat;
+
+		private bool thrusterHeatCached;
 
 		public UnitComponentHolder Components
 		{

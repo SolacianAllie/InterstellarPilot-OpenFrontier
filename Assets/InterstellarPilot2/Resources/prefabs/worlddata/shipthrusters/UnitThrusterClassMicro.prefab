@@ -48,3 +48,4 @@ MonoBehaviour:
   - MinEmissionRate: 0.75
     ParticleSystemPrefab: {fileID: 198724804207875695, guid: 32b29ee744a3400439522a4e97e98780, type: 2}
     DrawDistanceMultiplier: 0.75
+  - HeatSize: 0.5
