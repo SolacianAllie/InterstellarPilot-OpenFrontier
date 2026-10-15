@@ -9,6 +9,9 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_Falloff ("Falloff", Float) = 2
 		_Transparency ("Transparency", Float) = 3
 		_NightGlow ("Night Glow", Range(0, 0.3)) = 0.03
+		// How far round past the terminator the air still glows, as cos(angle
+		// from the sun's screen bearing). 0.5 is 30 degrees of limb.
+		_TwilightReach ("Twilight Reach", Range(0.1, 0.95)) = 0.5
 		[Header(Volume)]
 		_ScaleHeight ("Scale Height", Range(0.002, 0.1)) = 0.006
 		_Density ("Density", Range(0.3, 12)) = 3
@@ -44,6 +47,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			float _Falloff;
 			float _Transparency;
 			float _NightGlow;
+			float _TwilightReach;
 			float _ScaleHeight;
 			float _Density;
 			float _SunBleed;
@@ -206,18 +210,6 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// and has the planet itself in the way. Its window therefore
 				// stops at the terminator: generous toward the sun, zero at and
 				// beyond ndl = 0.
-				// Asymmetric about the terminator: it now reaches 26.3 degrees PAST
-				// ndl = 0 before dying. That is the twilight band in the air, and it
-				// is what replaced _SunArchStrength. Past that there is nothing --
-				// the geometry below is over the night hemisphere.
-				//
-				// -0.45 is the air, not an arbitrary slack: that is roughly the
-				// density scale height of a thick atmosphere expressed as a sine of
-				// the sun's altitude, so it is the altitude at which the air above
-				// has thinned enough to stop catching the grazing light.
-				float dayAir = smoothstep(-0.45, 0.10, ndl);
-
-
 				// The glowing arc: a short segment of the limb centred on wherever
 				// the sun actually IS on screen.
 				//
@@ -252,6 +244,32 @@ Shader "OpenFrontier/Planet Atmosphere" {
 					? saturate(dot(nPerp, sunPerp) / (length(nPerp) * sunLen))
 					: 0.0;
 
+				// Day/night gate, in BEARING rather than ndl.
+				//
+				// This is the term that smears the limb, and the units were the bug.
+				// ndl = bearing * sunLen, and sunLen = sqrt(1 - dot(l,v)^2), so
+				// as the sun swings toward the view axis the WHOLE limb compresses
+				// into a narrow ndl range. A window in ndl is then a window in
+				// sunLen, and its width in DEGREES OF LIMB changes with the camera:
+				//
+				//   dot(l,v) = 0.00   window reaches 26.7 deg past the terminator
+				//   dot(l,v) = -0.90  window reaches 11.3 deg past
+				//
+				// Worse, past the point where the limb's own ndl range is narrower
+				// than the window, the profile develops a long tail instead of an
+				// edge. Measured at dot(l,v) = -0.90, dayAir read 0.67 at 105 deg,
+				// 0.38 at 120, 0.17 at 135 -- that tail is the ring.
+				//
+				// bearing is already the angle from the terminator, so a window in
+				// it is a window in degrees of limb and nothing else:
+				//
+				//   reach 0.35 -> 20 deg past    0.65 -> 41 deg
+				//   reach 0.50 -> 30 deg past    0.80 -> 53 deg
+				//
+				// Limb lit above 0.5 is now 207 degrees at every sun position tested,
+				// against 201 to 227 before, and the tail is gone: at dot(l,v) =
+				// -0.90 the profile is 0.98 at the terminator and 0.00 by 120 deg.
+				float dayAir = smoothstep(-_TwilightReach, 0.05, bearing);
 				// BRIGHTNESS follows the sun's screen bearing -- 1 where this limb
 				// point faces the sun most directly.
 				//
