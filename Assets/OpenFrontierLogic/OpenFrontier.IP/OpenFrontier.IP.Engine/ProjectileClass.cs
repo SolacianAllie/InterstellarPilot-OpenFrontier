@@ -133,28 +133,27 @@ namespace OpenFrontier.IP.Engine
 		public float SeekerCloakedHoldArc;
 
 		/// <summary>
-		/// How much engine heat a ship must be putting out before an infrared
-		/// seeker can hold it, as a throttle level. Zero means every ship
-		/// radiates enough.
+		/// How much radiated heat a ship must be putting out before an infrared
+		/// seeker can hold it. Zero means every ship counts.
 		/// </summary>
 		/// <remarks>
-		/// An IR seeker does not look at a ship, it looks at the engines -
-		/// they are the hot part and everything else is roughly the
-		/// temperature of space. So the signature is throttle, not speed: a
-		/// ship coasting at full speed with its engines shut has gone cold,
-		/// and a ship holding station under a burn is still lit up.
+		/// Measured as flux - the ship's stored heat multiplied by the rate it
+		/// can shed that heat - rather than as the store alone. The game already
+		/// keeps both numbers, so reading them costs nothing.
 		///
-		/// That asymmetry is deliberate. Keying the check on speed instead
-		/// would mean a ship could sit still with its engines running and be
-		/// invisible to a heat seeker, which is not a thing a heat seeker can
-		/// be fooled by. The counterplay to IR is to cut throttle, and that is
-		/// a decision with a cost rather than a free one.
+		/// Flux rather than store is the whole point. A ship running Silent
+		/// Running has the most stored heat in the sector, because with the
+		/// vents shut nothing leaves and it climbs to the top of its range,
+		/// while being thermally invisible. Reading the store would make that
+		/// trade-off exactly backwards.
 		///
-		/// It lives on the projectile class rather than on the seeker so a
-		/// missile can be tuned to how good its seeker actually is. Zero is
-		/// the default because that is what every prefab written before this
-		/// field existed reads, and zero is what IR did before engines were
-		/// part of the question.
+		/// Because every thruster's ThermalLoad is its own EnginePower times one
+		/// constant, hull size is the heat profile: a scout barely registers
+		/// and a battleship lights up the sector.
+		///
+		/// It lives on the projectile class so a missile can be tuned to how good
+		/// its seeker actually be. Zero is the default because that is what every
+		/// prefab written before this field existed reads.
 		/// </remarks>
 		public float IrEngineHeatThreshold;
 

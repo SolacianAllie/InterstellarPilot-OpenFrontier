@@ -221,6 +221,10 @@ namespace OpenFrontier.IP.Engine
 		/// <param name="elapsed">Real seconds since the previous evaluation.</param>
 		private void Evaluate(float elapsed)
 		{
+			if (missile.ProjectileClass.GuidanceType == MissileGuidanceType.IR)
+			{
+				HuntForHotterContact();
+			}
 			Unit target = missile.Target;
 			if (target == null)
 			{
@@ -332,43 +336,191 @@ namespace OpenFrontier.IP.Engine
 		}
 
 		/// <summary>
-		/// Whether a ship is radiating enough for a heat seeker to hold it.
+		/// Whether a ship is putting out enough radiated heat for a seeker to
+		/// hold it.
 		/// </summary>
 		/// <remarks>
-		/// The engines are the hot part; the rest of the hull is roughly the
-		/// temperature of space. So this reads throttle rather than speed, and
-		/// the two disagree at exactly the two edges that matter:
+		/// The signature is the heat actually leaving the ship, which is its
+		/// stored heat multiplied by how fast it can dump it - and the game
+		/// already keeps both numbers. <see cref="Unit.Heat"/> is the stored
+		/// figure, fed by the engine's ThermalLoad and shed every frame by
+		/// <see cref="UnitComponentHolder.EffectiveVentRate"/>. Multiplying them
+		/// is the flux: what an infrared seeker could actually see.
 		///
-		/// A ship coasting at full speed with its engines shut has gone cold,
-		/// and cannot be held. A ship holding station under a burn is still lit
-		/// up and can be. Keying this on speed instead would make the second
-		/// case invisible, and a heat seeker cannot be fooled by a parked ship
-		/// - so the counterplay to IR is to shut the throttle, which costs you
-		/// the ability to run.
+		/// Using stored heat alone would have been the obvious mistake. It is
+		/// what a ship running Silent Running has most of: with the vents shut
+		/// nothing leaves, so heat climbs to the top of its range while the ship
+		/// is, thermally speaking, invisible. Measuring the flux rather than
+		/// the store is what makes that trade-off work - Silent Running gives
+		/// up the ability to shed heat, and with it the ability to hide from a
+		/// heat seeker, and pays for it by cooking.
 		///
-		/// A hull with no engine fitted has none at all, and so radiates
-		/// nothing. Stations and stripped ships fall out of that for free,
-		/// without a rule of their own.
+		/// Because every thruster's ThermalLoad is its own EnginePower times the
+		/// same constant, hull size is the profile: a scout barely registers and
+		/// a battleship lights up the sector.
 		///
-		/// This is also the one place Silent Running belongs. A toggle that
-		/// shuts the thermal vents and cuts what the ship radiates should
-		/// subtract from the signature here, rather than becoming a second
-		/// parallel check that the other three seekers never hear about.
+		/// This is also the one place Silent Running belongs when it is built. A
+		/// toggle that shuts the vents should zero the radiated figure here,
+		/// rather than becoming a second parallel check the other three seekers
+		/// never hear about.
 		/// </remarks>
 		private bool HasIrSignature(Unit target)
 		{
 			float threshold = missile.ProjectileClass.IrEngineHeatThreshold;
 			if (threshold <= 0f)
 			{
-				// Nothing has asked for engines to matter, so every ship counts.
+				// Nothing has asked for heat to matter, so every ship counts.
 				return true;
 			}
-			UnitEngineComponent engine = target.Components != null ? target.Components.EngineComponent : null;
-			if (engine == null)
+			return RadiatedHeat(target) >= threshold;
+		}
+
+		/// <summary>
+		/// How much heat a ship is currently dumping into space.
+		/// </summary>
+		/// <remarks>
+		/// Deliberately the same figure <see cref="Unit.TickHeat"/> sheds by,
+		/// including its BaseVenting fallback for a hull with no vents at all.
+		/// A ship with no vents still radiates, just slowly, and reading
+		/// EffectiveVentRate alone would report it as radiating nothing.
+		/// </remarks>
+		public static float RadiatedHeat(Unit unit)
+		{
+			if (unit == null || unit.Components == null)
 			{
-				return false;
+				return 0f;
 			}
-			return engine.EngineThrottle >= threshold;
+			float ventRate = unit.Components.EffectiveVentRate;
+			if (ventRate <= 0f)
+			{
+				ventRate = Unit.BaseVenting;
+			}
+			return unit.Heat * ventRate;
+		}
+
+		/// <summary>
+		/// Points the missile at something hotter, if there is anything hotter
+		/// inside the cone.
+		/// </summary>
+		/// <remarks>
+		/// Deliberately not gated on having lost the target. An infrared seeker
+		/// that only started hunting once it had been shaken would be a seeker
+		/// you could stop by breaking a lock rather than one you have to outrun,
+		/// and the whole point of locking onto the hottest thing available is
+		/// that it is a continuous comparison rather than a recovery path.
+		///
+		/// The switch goes through the projectile's own Target setter, which
+		/// rebuilds the target collider and rigidbody, so the missile keeps
+		/// hitting what it is now aimed at. That also means the warning system
+		/// follows: a missile that has gone over to your escort is reported as
+		/// locking onto your escort.
+		/// </remarks>
+		private void HuntForHotterContact()
+		{
+			Unit hotter = FindHottestContact();
+			if (hotter != null)
+			{
+				SetTarget(hotter);
+			}
+		}
+
+		/// <summary>
+		/// Finds the hottest thing this seeker can see, and returns null when
+		/// nothing beats the target it already has.
+		/// </summary>
+		/// <remarks>
+		/// A heat seeker cannot tell a hostile from a friendly, and pretending
+		/// otherwise would be the one thing a seeker genuinely cannot do. So this
+		/// looks at every ship and station in the sector, with no faction test
+		/// anywhere in it, and takes the strongest signature it finds.
+		///
+		/// It is cone-limited, which is what keeps the ninety degree ceiling
+		/// meaning something: turn away from the hot ship and there is nothing
+		/// to lock. It runs on the seeker's own evaluation rather than only on
+		/// losing the target, so a seeker that was locked onto something modest
+		/// will notice a battleship lighting up in front of it and change its
+		/// mind - several times, if the ranking changes.
+		///
+		/// Choosing the outright maximum each pass rather than the first thing
+		/// better than the current target is what keeps that from flapping: the
+		/// answer is always the same argmax, so the only way to oscillate is for
+		/// two ships' heat to genuinely cross over, and stored heat moves
+		/// smoothly enough that that is rare.
+		///
+		/// The scan is two lists off the sector - ships and stations - and each
+		/// unit is rejected on squared distance before anything else is asked of
+		/// it, so the common case is a handful of comparisons. Only infrared
+		/// missiles ever do this, and only over the cone.
+		/// </remarks>
+		private Unit FindHottestContact()
+		{
+			Unit best = null;
+			float bestHeat = RadiatedHeat(missile.Target);
+			Unit firingShip = missile.Projectile.Unit;
+			Sector sector = firingShip != null ? firingShip.Sector : null;
+			if (sector == null)
+			{
+				return null;
+			}
+			Vector3 nose = missile.transform.forward;
+			Vector3 self = missile.transform.position;
+			float threshold = missile.ProjectileClass.IrEngineHeatThreshold;
+			// -1 means the cone is unlimited, in which case the test below is
+			// skipped entirely rather than compared against a cosine of -1 that
+			// would only ever be true by accident.
+			float coneDot = reacquireDot;
+			bool coneLimited = coneDot > -1f;
+			for (int type = 0; type < 2; type++)
+			{
+				List<Unit> units = sector.GetUnitsByType(type == 0 ? UnitType.Ship : UnitType.Station);
+				if (units == null)
+				{
+					continue;
+				}
+				// Re-read the count every pass. A unit can be destroyed while
+				// this runs - an explosion does not wait for a seeker - and the
+				// list is not a snapshot, so caching the count would read past
+				// the end rather than merely miss somebody.
+				for (int i = 0; i < units.Count; i++)
+				{
+					Unit candidate = units[i];
+					if (candidate == null || candidate == firingShip || candidate == best)
+					{
+						continue;
+					}
+					// A cloaked or docked ship radiates nothing an infrared
+					// seeker can use, and is not worth a lock for any seeker.
+					if (candidate.IsFullyCloaked || candidate.IsDocked)
+					{
+						continue;
+					}
+					Vector3 offset = candidate.transform.position - self;
+					float distanceSq = offset.sqrMagnitude;
+					if (distanceSq <= 0.0001f)
+					{
+						continue;
+					}
+					if (Vector3.Dot(offset, nose) <= 0f)
+					{
+						// Behind the missile. Cheap reject first: with a
+						// ninety degree ceiling this is more than half of a
+						// sector's worth of candidates.
+						continue;
+					}
+					if (coneLimited && Vector3.Dot(offset / Mathf.Sqrt(distanceSq), nose) < coneDot)
+					{
+						continue;
+					}
+					float heat = RadiatedHeat(candidate);
+					if (heat <= threshold || heat <= bestHeat)
+					{
+						continue;
+					}
+					bestHeat = heat;
+					best = candidate;
+				}
+			}
+			return best;
 		}
 
 		private bool SeesTarget(Unit target, float distance)
@@ -431,6 +583,32 @@ namespace OpenFrontier.IP.Engine
 		public void LoseLock()
 		{
 			hasLock = false;
+		}
+
+		/// <summary>
+		/// Re-aims this missile at a different ship, keeping the picture it
+		/// already had if it can.
+		/// </summary>
+		/// <remarks>
+		/// The last known position is carried over when the new contact is
+		/// somewhere the seeker has never been, so that a missile switching to a
+		/// target it cannot yet see still has a direction to fly rather than
+		/// dropping back to the un-seeded aim point - which is the position it
+		/// was fired from.
+		/// </remarks>
+		public void SetTarget(Unit newTarget)
+		{
+			if (newTarget == null || newTarget == missile.Target)
+			{
+				return;
+			}
+			missile.Projectile.Target = newTarget;
+			lastKnownPosition = newTarget.transform.position;
+			Rigidbody newBody = newTarget.RBody;
+			lastKnownVelocity = newBody != null ? newBody.linearVelocity : Vector3.zero;
+			AimPoint = lastKnownPosition;
+			AimVelocity = lastKnownVelocity;
+			errorOffset = Vector3.zero;
 		}
 
 		/// <summary>
