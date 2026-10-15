@@ -274,8 +274,8 @@ namespace OpenFrontier.IP.Engine
 			{
 				// Nothing to hunt for. This has to be checked before the hunt
 				// rather than after it, because a missile that has given up has a
-				// null target and the hunt would read that as "the current target
-				// radiates nothing" and latch onto the first ship it walked past,
+				// null target and the decoy scan would read that as "the current
+				// target radiates nothing" and take the first puff it walked past,
 				// resurrecting a missile that had already finished.
 				hasLock = false;
 				return;
@@ -283,7 +283,10 @@ namespace OpenFrontier.IP.Engine
 			if (missile.ProjectileClass.GuidanceType == MissileGuidanceType.IR
 				&& blindTime < missile.ProjectileClass.SeekerLockPersistence)
 			{
-				HuntForHotterContact();
+				// Only a countermeasure puff can move an infrared seeker off the
+				// ship it was sent after. It never changes its mind about the ship
+				// itself - see CaptureByHotterDecoy.
+				CaptureByHotterDecoy();
 				target = missile.Target;
 				if (target == null)
 				{
@@ -526,7 +529,18 @@ namespace OpenFrontier.IP.Engine
 				// Nothing has asked for heat to matter, so every ship counts.
 				return true;
 			}
-			return SignatureFrom(target, missile.transform.position, missile.ProjectileClass) >= threshold;
+			// SignatureOf rather than SignatureFrom, and the difference is the
+			// whole of the countermeasure-as-decoy. SignatureFrom scores a ship
+			// by its engines, and a countermeasure puff has none - so it scores
+			// zero, and a seeker that had just been captured by one dropped it
+			// again on the very next evaluation for failing to be hot enough.
+			//
+			// The puff that captures the seeker is the thing the seeker is now
+			// chasing, and it has to be a legitimate heat source to be chased at
+			// all. SignatureOf scores a puff by its own IrSignature and anything
+			// else by its aspect-adjusted ship signature, which is the right
+			// answer in both cases.
+			return SignatureOf(target, missile.transform.position) >= threshold;
 		}
 
 		/// <summary>
@@ -705,72 +719,73 @@ namespace OpenFrontier.IP.Engine
 		/// inside the cone.
 		/// </summary>
 		/// <remarks>
-		/// Deliberately not gated on having lost the target. An infrared seeker
-		/// that only started hunting once it had been shaken would be a seeker
-		/// you could stop by breaking a lock rather than one you have to outrun,
-		/// and the whole point of locking onto the hottest thing available is
-		/// that it is a continuous comparison rather than a recovery path.
+		/// <summary>
+		/// Points this missile at a countermeasure puff that is a hotter heat
+		/// source than the ship it was sent after, if one is in the cone.
+		/// </summary>
+		/// <remarks>
+		/// Only a puff can do this, and that is the whole of what this seeker is
+		/// allowed to change its mind about. It used to walk every ship and
+		/// station in the sector, take the maximum signature it could find, and
+		/// switch to it - which is why the infrared missiles ignored the ship
+		/// they had been fired at and went after whatever else happened to be
+		/// running its engines nearby.
+		///
+		/// The reasoning at the time was that a heat seeker cannot tell a hostile
+		/// from a friendly, so it should not pretend to and should simply go for
+		/// the brightest thing. The first half is true. The conclusion is not: a
+		/// seeker that cannot tell friend from foe has no business preferring a
+		/// ship it was not aimed at, and not filtering by faction is a different
+		/// thing from being free to substitute a different target.
+		///
+		/// The reference makes it plain. Its IRSeeker has no scan in it at all -
+		/// the only thing that ever changes its IRTarget is a flare capturing it.
+		/// At launch it calls targetUnit.GetIRSource(), which picks one of the
+		/// target's engine nozzles at random from those still attached, and from
+		/// then on it flies at that nozzle's transform. No re-acquisition, no
+		/// maximum, no third parties.
+		///
+		/// So the puff is the only thing that can take the lock, which is exactly
+		/// their flare, and it has to be hotter than the ship to do it. That makes
+		/// the countermeasure a decoy rather than a distraction, and it leaves the
+		/// missile going where it was sent.
+		///
+		/// It still runs on every evaluation rather than only on losing the
+		/// target, because a puff deployed into an ongoing pursuit should be able
+		/// to capture a missile that is happily locked on, and that is the whole
+		/// of what a countermeasure is for.
 		///
 		/// The switch goes through the projectile's own Target setter, which
-		/// rebuilds the target collider and rigidbody, so the missile keeps
-		/// hitting what it is now aimed at. That also means the warning system
-		/// follows: a missile that has gone over to your escort is reported as
-		/// locking onto your escort.
+		/// rebuilds the target collider, so the missile keeps hitting what it is
+		/// now aimed at.
 		/// </remarks>
-		private void HuntForHotterContact()
+		private void CaptureByHotterDecoy()
 		{
-			Unit hotter = FindHottestContact();
-			if (hotter != null)
+			Unit decoy = FindHotterDecoy();
+			if (decoy != null)
 			{
-				SetTarget(hotter);
+				SetTarget(decoy);
 			}
 		}
 
 		/// <summary>
-		/// Finds the hottest thing this seeker can see, and returns null when
-		/// nothing beats the target it already has.
+		/// The first thing in the cone that is a hotter heat source than the ship
+		/// this seeker was sent after, or null when there is nothing.
 		/// </summary>
 		/// <remarks>
-		/// A heat seeker cannot tell a hostile from a friendly, and pretending
-		/// otherwise would be the one thing a seeker genuinely cannot do. So this
-		/// looks at every ship and station in the sector, with no faction test
-		/// anywhere in it, and takes the strongest signature it finds.
+		/// Ships and stations are not walked at all. Only puffs, and only on the
+		/// projectile list, which is cheaper than the three lists it used to read
+		/// as well as being correct.
 		///
-		/// The one thing it will not consider is the ship that fired it. That
-		/// exclusion used to be written against Projectile.Unit, which is the
-		/// missile's OWN unit rather than the launcher's, so it excluded the
-		/// missile - which is not in any of these lists anyway - and let the
-		/// launcher straight through. The rule that stops a heat seeker locking
-		/// its own ship has therefore never once run.
+		/// The exclusion of the ship that fired it is kept, and that one was
+		/// written against Projectile.Unit - the missile's own unit - and so had
+		/// never once excluded the launcher. See CaptureByHotterDecoy.
 		///
-		/// Which is why fast fighters shot themselves with the Lancer. Nothing
-		/// about launch velocity is involved. A signature is thruster heat times
-		/// throttle, so the harder a ship is accelerating the hotter it looks,
-		/// and a fighter running flat out is the brightest thing in its own
-		/// neighbourhood. The missile has just left that fighter's nose, so it is
-		/// inside the cone, at point blank range, looking straight at the single
-		/// hottest object in the sector - and it locks on. The faster the fighter,
-		/// the brighter it is and the more certain the lock.
-		///
-		/// The cone and the ranking are unchanged by this. It is cone-limited,
-		/// meaning something: turn away from the hot ship and there is nothing
-		/// to lock. It runs on the seeker's own evaluation rather than only on
-		/// losing the target, so a seeker that was locked onto something modest
-		/// will notice a battleship lighting up in front of it and change its
-		/// mind - several times, if the ranking changes.
-		///
-		/// Choosing the outright maximum each pass rather than the first thing
-		/// better than the current target is what keeps that from flapping: the
-		/// answer is always the same argmax, so the only way to oscillate is for
-		/// two ships' heat to genuinely cross over, and stored heat moves
-		/// smoothly enough that that is rare.
-		///
-		/// The scan is two lists off the sector - ships and stations - and each
-		/// unit is rejected on squared distance before anything else is asked of
-		/// it, so the common case is a handful of comparisons. Only infrared
-		/// missiles ever do this, and only over the cone.
+		/// The scan is cone-limited, which is what keeps the ninety degree
+		/// ceiling meaning something: a puff off to one side is not a decoy the
+		/// missile is going to walk onto.
 		/// </remarks>
-		private Unit FindHottestContact()
+		private Unit FindHotterDecoy()
 		{
 			Unit best = null;
 			Vector3 nose = missile.transform.forward;
@@ -788,68 +803,57 @@ namespace OpenFrontier.IP.Engine
 			// would only ever be true by accident.
 			float coneDot = reacquireDot;
 			bool coneLimited = coneDot > -1f;
-			for (int type = 0; type < 3; type++)
+			// Only the projectile list, and only puffs. See the remarks on this
+			// method for why ships and stations are not walked at all.
+			List<Unit> units = sector.GetUnitsByType(UnitType.Projectile);
+			if (units == null)
 			{
-				List<Unit> units = sector.GetUnitsByType(type == 0 ? UnitType.Ship
-					: type == 1 ? UnitType.Station : UnitType.Projectile);
-				if (units == null)
+				return null;
+			}
+			// Re-read the count every pass. A unit can be destroyed while this
+			// runs - an explosion does not wait for a seeker - and the list is not
+			// a snapshot, so caching the count would read past the end rather
+			// than merely miss somebody.
+			for (int i = 0; i < units.Count; i++)
+			{
+				Unit candidate = units[i];
+				if (candidate == null || candidate == missile.Projectile.Unit || candidate == launcher || candidate == best)
 				{
 					continue;
 				}
-				// Re-read the count every pass. A unit can be destroyed while
-				// this runs - an explosion does not wait for a seeker - and the
-				// list is not a snapshot, so caching the count would read past
-				// the end rather than merely miss somebody.
-				for (int i = 0; i < units.Count; i++)
+				// A countermeasure puff is a Unit of type Other and it has no
+				// engines, so without this it would be scored at zero and the
+				// seeker would sail past the very thing it is meant to be
+				// attracted to. Anything else in the projectile list is a shot
+				// already in the air, and a missile is not a decoy.
+				Countermeasure cloud = candidate.CountermeasureCloud;
+				if (cloud == null || cloud.IrSignature <= 0f)
 				{
-					Unit candidate = units[i];
-					if (candidate == null || candidate == missile.Projectile.Unit || candidate == launcher || candidate == best)
-					{
-						continue;
-					}
-					// A countermeasure puff is a Unit of type Other and it has no
-					// engines, so without this the hunt would score it at zero and
-					// sail past the very thing it is meant to be attracted to.
-					Countermeasure cloud = candidate.CountermeasureCloud;
-					if (cloud == null)
-					{
-						// The Projectile list is walked only for puffs; anything
-						// else in it is a shot already in the air.
-						if (type == 2 || candidate.IsFullyCloaked || candidate.IsDocked)
-						{
-							continue;
-						}
-					}
-					else if (cloud.IrSignature <= 0f)
-					{
-						// An expended or spent puff is just a fading gas cloud.
-						continue;
-					}
-					Vector3 offset = candidate.transform.position - self;
-					float distanceSq = offset.sqrMagnitude;
-					if (distanceSq <= 0.0001f)
-					{
-						continue;
-					}
-					if (Vector3.Dot(offset, nose) <= 0f)
-					{
-						// Behind the missile. Cheap reject first: with a
-						// ninety degree ceiling this is more than half of a
-						// sector's worth of candidates.
-						continue;
-					}
-					if (coneLimited && Vector3.Dot(offset / Mathf.Sqrt(distanceSq), nose) < coneDot)
-					{
-						continue;
-					}
-					float heat = SignatureOf(candidate, self);
-					if (heat <= threshold || heat <= bestHeat)
-					{
-						continue;
-					}
-					bestHeat = heat;
-					best = candidate;
+					continue;
 				}
+				Vector3 offset = candidate.transform.position - self;
+				float distanceSq = offset.sqrMagnitude;
+				if (distanceSq <= 0.0001f)
+				{
+					continue;
+				}
+				if (Vector3.Dot(offset, nose) <= 0f)
+				{
+					// Behind the missile. Cheap reject first: with a ninety degree
+					// ceiling this is most of a sector's worth of candidates.
+					continue;
+				}
+				if (coneLimited && Vector3.Dot(offset / Mathf.Sqrt(distanceSq), nose) < coneDot)
+				{
+					continue;
+				}
+				float heat = cloud.IrSignature;
+				if (heat <= threshold || heat <= bestHeat)
+				{
+					continue;
+				}
+				bestHeat = heat;
+				best = candidate;
 			}
 			return best;
 		}
