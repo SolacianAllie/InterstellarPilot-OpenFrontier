@@ -11,8 +11,8 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_NightGlow ("Night Glow", Range(0, 0.3)) = 0.03
 		// How far round past the terminator the air still glows, as cos(angle
 		// from the sun's screen bearing). 0.5 is 30 degrees of limb.
-		// How far past the terminator the air still glows, as a sine of the
-		// sun's altitude. 0.45 is about 26.7 degrees; 0.2 is 11.5.
+		// How far past the terminator the air still glows, as cos(angle from
+		// the sun's screen bearing). 0.3 is about 17 degrees of limb.
 		_TwilightReach ("Twilight Reach", Range(0, 0.9)) = 0.3
 		[Header(Volume)]
 		_ScaleHeight ("Scale Height", Range(0.002, 0.1)) = 0.006
@@ -261,13 +261,36 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// smoothstep(-0.5, 0.05, bearing) returned 0.977 to 1.000 across the
 				// WHOLE limb -- it never switched off and lit the entire planet.
 				//
-				// ndl = dot(n, l) is the only signed quantity in this block, because
-				// ndl = sunLen * cos(theta) with theta signed. Any window that has to
-				// reach past the terminator has to be expressed in it.
+				// cosSun is ndl divided by sunLen, which strips the sunLen scaling
+				// out of it and leaves the SIGNED cosine of the angle between this
+				// limb sample and the sun's screen bearing. At the silhouette n is
+				// perpendicular to the view axis, so ndl = dot(n, sunPerp) and
+				// |ndl| <= sunLen by construction -- measured max ratio 1.000000 at
+				// every sunLen, so cosSun is bounded in [-1, 1] and safe to window.
 				//
-				// _TwilightReach is how far past the terminator, as a sine of the
-				// sun's altitude. 0.45 is about 26.7 degrees.
-				float dayAir = smoothstep(-_TwilightReach, 0.05, ndl);
+				// This is the same quantity as bearing, MINUS the saturate. That
+				// distinction is the whole point and it has already been got wrong
+				// once here:
+				//
+				//     float bearing = saturate(dot(nPerp, sunPerp) / (|nPerp| * sunLen));
+				//
+				// is |cos|, unsigned, and cannot express a window with a negative
+				// bound at all -- any such bound is unreachable and dayAir never
+				// switches off.
+				//
+				// Windowing on raw ndl instead is signed but carries sunLen with
+				// it, so the band changes width as the camera moves. It reached
+				// zero at cos(theta) = -reach/sunLen, and as the sun swings toward
+				// the view axis that threshold passes -1 and becomes unreachable:
+				//
+				//   sun 60 deg off axis   half-width 110 deg
+				//   sun 30 deg off axis   half-width 127 deg
+				//   sun 15 deg off axis   whole limb, unreachable
+				//
+				// which is the band widening toward eclipse. cosSun holds it at
+				// 107.5 deg at every sun position.
+				float cosSun = ndl * rcp(max(0.02, sunLen));
+				float dayAir = smoothstep(-_TwilightReach, 0.05, cosSun);
 				// BRIGHTNESS follows the sun's screen bearing -- 1 where this limb
 				// point faces the sun most directly.
 				//
