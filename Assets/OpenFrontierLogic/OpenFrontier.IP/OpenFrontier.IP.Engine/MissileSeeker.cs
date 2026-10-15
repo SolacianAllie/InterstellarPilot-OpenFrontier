@@ -285,6 +285,46 @@ namespace OpenFrontier.IP.Engine
 			return Geometry.IsWithinBearing(launcher.transform, target.transform.position, missile.ProjectileClass.SeekerCloakedHoldArc);
 		}
 
+		/// <summary>
+		/// Whether a ship is radiating enough for a heat seeker to hold it.
+		/// </summary>
+		/// <remarks>
+		/// The engines are the hot part; the rest of the hull is roughly the
+		/// temperature of space. So this reads throttle rather than speed, and
+		/// the two disagree at exactly the two edges that matter:
+		///
+		/// A ship coasting at full speed with its engines shut has gone cold,
+		/// and cannot be held. A ship holding station under a burn is still lit
+		/// up and can be. Keying this on speed instead would make the second
+		/// case invisible, and a heat seeker cannot be fooled by a parked ship
+		/// - so the counterplay to IR is to shut the throttle, which costs you
+		/// the ability to run.
+		///
+		/// A hull with no engine fitted has none at all, and so radiates
+		/// nothing. Stations and stripped ships fall out of that for free,
+		/// without a rule of their own.
+		///
+		/// This is also the one place Silent Running belongs. A toggle that
+		/// shuts the thermal vents and cuts what the ship radiates should
+		/// subtract from the signature here, rather than becoming a second
+		/// parallel check that the other three seekers never hear about.
+		/// </remarks>
+		private bool HasIrSignature(Unit target)
+		{
+			float threshold = missile.ProjectileClass.IrEngineHeatThreshold;
+			if (threshold <= 0f)
+			{
+				// Nothing has asked for engines to matter, so every ship counts.
+				return true;
+			}
+			UnitEngineComponent engine = target.Components != null ? target.Components.EngineComponent : null;
+			if (engine == null)
+			{
+				return false;
+			}
+			return engine.EngineThrottle >= threshold;
+		}
+
 		private bool SeesTarget(Unit target, float distance)
 		{
 			switch (missile.ProjectileClass.GuidanceType)
@@ -306,14 +346,13 @@ namespace OpenFrontier.IP.Engine
 					return !target.IsFullyCloaked && IsDesignated(target);
 
 				case MissileGuidanceType.IR:
-					// Follows the target's own heat, so a cloaked ship has no
-					// signature to follow at all - there is nothing left to hold,
-					// and no amount of having seen it beforehand brings the heat
-					// back. A flare in the same part of the sky is
-					// indistinguishable from the ship itself. An ECM puff does
+					// Follows the engines, so a cloaked ship has no signature
+					// left to follow and a cold one has nothing hot enough to
+					// follow either. A flare in the same part of the sky is
+					// indistinguishable from the exhaust. An ECM puff does
 					// nothing for it, which is exactly why carrying one is a
 					// choice rather than an answer.
-					return !target.IsFullyCloaked && !missile.IsDazzled;
+					return !target.IsFullyCloaked && !missile.IsDazzled && HasIrSignature(target);
 
 				case MissileGuidanceType.SARH:
 					// Semi-active: it is riding the launching ship's radar

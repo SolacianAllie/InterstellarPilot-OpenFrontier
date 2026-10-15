@@ -121,6 +121,32 @@ namespace OpenFrontier.IP.Engine
 		/// </remarks>
 		public float SeekerCloakedHoldArc;
 
+		/// <summary>
+		/// How much engine heat a ship must be putting out before an infrared
+		/// seeker can hold it, as a throttle level. Zero means every ship
+		/// radiates enough.
+		/// </summary>
+		/// <remarks>
+		/// An IR seeker does not look at a ship, it looks at the engines -
+		/// they are the hot part and everything else is roughly the
+		/// temperature of space. So the signature is throttle, not speed: a
+		/// ship coasting at full speed with its engines shut has gone cold,
+		/// and a ship holding station under a burn is still lit up.
+		///
+		/// That asymmetry is deliberate. Keying the check on speed instead
+		/// would mean a ship could sit still with its engines running and be
+		/// invisible to a heat seeker, which is not a thing a heat seeker can
+		/// be fooled by. The counterplay to IR is to cut throttle, and that is
+		/// a decision with a cost rather than a free one.
+		///
+		/// It lives on the projectile class rather than on the seeker so a
+		/// missile can be tuned to how good its seeker actually is. Zero is
+		/// the default because that is what every prefab written before this
+		/// field existed reads, and zero is what IR did before engines were
+		/// part of the question.
+		/// </remarks>
+		public float IrEngineHeatThreshold;
+
 		public bool IsMine;
 
 		/// <summary>
