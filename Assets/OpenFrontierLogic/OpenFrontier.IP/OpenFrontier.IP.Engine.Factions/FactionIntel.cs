@@ -859,18 +859,19 @@ namespace OpenFrontier.IP.Engine.Factions
 		/// is that big in skirmish. Worth watching on a phone: this is the one
 		/// place where fixing radar makes a physics query physically larger.
 		/// </remarks>
-		private static float BroadPhaseRadius(float scannerRange)
+		private static float BroadPhaseRadius(Unit scanner)
 		{
+			float scannerReach = scanner != null ? scanner.SensorReach : 0f;
 			return Mathf.Max(
-				GameController.Instance.GameSettings.IntelSettings.MaxScanRange + scannerRange,
-				Unit.WidestVisibleRangeFrom(scannerRange));
+				GameController.Instance.GameSettings.IntelSettings.MaxScanRange + scannerReach,
+				Unit.WidestVisibleRangeFrom(scannerReach));
 		}
 
 		public void PerformScan(Sector sector, Vector3 sectorPosition, float range, Unit scanner)
 		{
 			if (GameController.Instance.GameSettings.DebugSettings.ScanningEnabled)
 			{
-				int num = Physics.OverlapSphereNonAlloc(sector.ToWorldPosition(sectorPosition), BroadPhaseRadius(range), EngineASX.ColliderCache, GameController.Instance.AIScanMask, QueryTriggerInteraction.Collide);
+				int num = Physics.OverlapSphereNonAlloc(sector.ToWorldPosition(sectorPosition), BroadPhaseRadius(scanner), EngineASX.ColliderCache, GameController.Instance.AIScanMask, QueryTriggerInteraction.Collide);
 				for (int i = 0; i < num; i++)
 				{
 					Unit component = EngineASX.ColliderCache[i].GetComponent<Unit>();
@@ -883,7 +884,7 @@ namespace OpenFrontier.IP.Engine.Factions
 		{
 			if (GameController.Instance.GameSettings.DebugSettings.ScanningEnabled)
 			{
-				int num = Physics.OverlapSphereNonAlloc(sector.ToWorldPosition(sectorPosition), BroadPhaseRadius(range), EngineASX.ColliderCache, GameController.Instance.AIScanMask, QueryTriggerInteraction.Collide);
+				int num = Physics.OverlapSphereNonAlloc(sector.ToWorldPosition(sectorPosition), BroadPhaseRadius(scanner), EngineASX.ColliderCache, GameController.Instance.AIScanMask, QueryTriggerInteraction.Collide);
 				for (int i = 0; i < num; i++)
 				{
 					Unit component = EngineASX.ColliderCache[i].GetComponent<Unit>();

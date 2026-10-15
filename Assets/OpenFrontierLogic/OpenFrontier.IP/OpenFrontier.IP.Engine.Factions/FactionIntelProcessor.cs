@@ -81,7 +81,7 @@ namespace OpenFrontier.IP.Engine.Factions
 			// same extra range on a fighter as on a trade station and so had no
 			// particular reason to be a good sensor. See
 			// Unit.SensorReferenceRange.
-			float num = unit.VisibleRangeTo(scanner.Components.ScanRange)
+			float num = unit.VisibleRangeTo(scanner)
 				+ unit.Radius + scanner.Radius;
 			if (dist > num)
 			{

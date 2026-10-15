@@ -2066,12 +2066,31 @@ namespace OpenFrontier.IP.Engine
 		public const float SensorReferenceRange = 1500f;
 
 		/// <summary>
-		/// How far away a scanner with this reach can see this hull, before
+		/// How far this unit's sensors reach, before they look at how big
+		/// anything is.
+		/// </summary>
+		/// <remarks>
+		/// A base every scanner shares plus whatever this hull adds. The base is
+		/// a gameplay constant - IntelSettings.SensorBaseRange - because the
+		/// hull's own ScanRange is 1 or 50 on almost every prefab in the game and
+		/// cannot be the thing that decides how far you can see.
+		/// </remarks>
+		public float SensorReach
+		{
+			get
+			{
+				float baseRange = GameController.Instance.GameSettings.IntelSettings.SensorBaseRange;
+				return (Components != null ? Components.ScanRange : 0f) + baseRange;
+			}
+		}
+
+		/// <summary>
+		/// How far away <paramref name="scanner"/> can see this hull, before
 		/// cloak and powered-component modifiers are applied to either side.
 		/// </summary>
 		/// <remarks>
-		/// The scanner's own reach, plus the target's own detection range
-		/// amplified by how good the scanner is relative to
+		/// The scanner's reach, plus this hull's own detection range amplified by
+		/// how good that scanner is relative to
 		/// <see cref="SensorReferenceRange"/>.
 		///
 		/// The two terms stay separate on purpose. A target's detection range is
@@ -2081,14 +2100,14 @@ namespace OpenFrontier.IP.Engine
 		/// the amplification is a function of the scanner.
 		///
 		/// The result is the trade the design is asking for. A skirmish sensor
-		/// picks out a Hornet at about thirteen kilometres, where an ordinary
-		/// sensor picks out a trade station at about four, so a good sensor
-		/// genuinely closes the gap that being small leaves you at.
+		/// picks out a Hornet far beyond where an ordinary sensor picks out a
+		/// trade station, so a good sensor genuinely closes the gap that being
+		/// small leaves you at.
 		/// </remarks>
-		public float VisibleRangeTo(float scannerRange)
+		public float VisibleRangeTo(Unit scanner)
 		{
-			return scannerRange
-				+ CalculateDetectionRange() * (scannerRange / SensorReferenceRange);
+			float reach = scanner != null ? scanner.SensorReach : SensorReach;
+			return reach + CalculateDetectionRange() * (reach / SensorReferenceRange);
 		}
 
 		/// <summary>
@@ -2102,18 +2121,17 @@ namespace OpenFrontier.IP.Engine
 		/// before the test that would have found it ever runs.
 		///
 		/// That was not a theoretical concern. The sphere was
-		/// IntelSettings.MaxScanRange plus the scanner's reach, which with the
-		/// defaults was 3500 metres, while a Magnus under an ordinary sensor is
-		/// now visible at 3421 and a trade station at 4343. Stations were being
-		/// dropped.
+		/// IntelSettings.MaxScanRange plus the caller's reach, and a Magnus under
+		/// an ordinary sensor is now visible at more than three kilometres, so
+		/// the old sphere was dropping large ships on the floor.
 		///
 		/// Worth watching on a phone: this is the one place where making radar
 		/// work makes a sphere physically bigger.
 		/// </remarks>
-		public static float WidestVisibleRangeFrom(float scannerRange)
+		public static float WidestVisibleRangeFrom(float scannerReach)
 		{
-			return scannerRange
-				+ DetectionRangeFor(LargestCrossSection) * (scannerRange / SensorReferenceRange);
+			return scannerReach
+				+ DetectionRangeFor(LargestCrossSection) * (scannerReach / SensorReferenceRange);
 		}
 
 		/// <summary>
@@ -2144,13 +2162,9 @@ namespace OpenFrontier.IP.Engine
 		{
 			get
 			{
-				if (Components == null)
-				{
-					return 0f;
-				}
-				float scanRange = Components.ScanRange;
-				return scanRange
-					+ DetectionRangeFor(ReferenceCrossSection) * (scanRange / SensorReferenceRange);
+				float reach = SensorReach;
+				return reach
+					+ DetectionRangeFor(ReferenceCrossSection) * (reach / SensorReferenceRange);
 			}
 		}
 
