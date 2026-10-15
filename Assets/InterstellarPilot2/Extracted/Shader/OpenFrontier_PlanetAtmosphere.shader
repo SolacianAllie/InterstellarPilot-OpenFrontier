@@ -10,9 +10,13 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_ScaleHeight ("Scale Height", Range(0.002, 0.1)) = 0.006
 		_Density ("Density", Range(0.3, 12)) = 3
 		[Header(SunBleed)]
+		_AtmoGlow ("Atmosphere Glow", Range(0, 1.5)) = 0.4
 		_SunBleed ("Sun Bleed", Range(0, 1)) = 1
 		_SunBleedPower ("Sun Bleed Power", Range(0.5, 6)) = 2
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
+		[Header(EclipseHalo)]
+		_EclipseFalloff ("Eclipse Falloff", Range(0.5, 8)) = 2
+		_EclipseGlow ("Eclipse Glow", Range(0, 2)) = 0.5
 	}
 	SubShader {
 		Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" }
@@ -39,6 +43,9 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			float _SunBleed;
 			float _SunBleedPower;
 			float _SunRimBoost;
+			float _AtmoGlow;
+			float _EclipseFalloff;
+			float _EclipseGlow;
 			// URP publishes these every frame, for every camera. For a
 			// directional light _MainLightPosition.xyz is the direction TOWARDS
 			// the light -- the exact vector GetMainLight().direction hands to
@@ -155,7 +162,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// blue lerped toward orange passes through grey, it desaturated
 				// that core to beige. Warmth belongs to the sun's geometry
 				// alone, which is what the next block keys off.
-				fixed3 air = _AtmoColor.rgb;
+				fixed3 airColor = _AtmoColor.rgb;
 
 				// day/night: the shell is concentric with the planet, so the
 				// shell normal IS the planet's normal at this limb point.
@@ -163,42 +170,66 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				float ndl = dot(n, l);
 				float day = smoothstep(-0.2, 0.3, ndl);
 
-				// How far the sun's colour has bled into the air here.
+				// How far the sun's colour has reached the air here. There are
+				// TWO different things and they used to be conflated into
+				// one warm term, which is why the glow ringed the whole
+				// planet instead of appearing where it should.
 				//
-				// The sun is LOW at the terminator, and that is the one place
-				// light has crossed the most atmosphere sideways before
-				// reaching us, so it arrives reddened. As the sun climbs the
-				// path shortens and the air goes back to its own colour. That
-				// is the gradient along the limb in the sunset reference: warm
-				// around the sun's bearing, the atmosphere's own colour around
-				// the rest of the lit side.
+				// (a) The sunrise arc. The sun is LOW at the terminator, and
+				//     that is where its light has crossed the most air
+				//     sideways before reaching us. ndl varies along the limb,
+				//     so this concentrates in a short arc around the sun's
+				//     bearing -- which is what the reference shows.
 				//
-				// ndl and NOT abs(ndl): only the sun-ABOVE-the-horizon side
-				// reddens. The night side is already killed by `day`, and the
-				// absolute value would redden the anti-solar limb as well.
+				//     ndl and NOT abs(ndl): only the sun-ABOVE-the-horizon
+				//     side reddens. The night side is already killed by `day`,
+				//     and the absolute value would redden the anti-solar limb
+				//     too.
+				//
+				//     And only when the sun is low FOR US. With the sun
+				//     directly behind the camera the terminator coincides
+				//     with the visible limb, so every limb point reads as
+				//     "sun at the horizon" and the entire rim would go warm
+				//     on a fully lit day side.
 				float lowSun = pow(saturate(1.0 - ndl), _SunBleedPower);
-
-				// Keep this to the case where the sun is low FOR US, not merely
-				// low somewhere on the planet. With the sun directly behind
-				// the camera the terminator coincides with the visible limb,
-				// so every limb point reads as "sun at the horizon" and the
-				// whole rim would redden on a fully lit day side. dot(l, v) is
-				// positive when the sun is on our side of the planet; this
-				// fades the bleed out as that grows.
 				float lowForUs = saturate(0.55 - dot(l, v) * 1.5);
-				float sunBleed = saturate(lowSun * lowForUs * _SunBleed);
+				float arc = lowSun * day * lowForUs * _SunBleed;
+
+				// (b) The eclipse halo. Eclipsed means the sun is directly
+				//     BEHIND the planet from where we are, so every limb
+				//     point is looking through the planet at the sun and the
+				//     whole silhouette lights up. This is the only case where
+				//     an all-round ring is correct, and it is a global on/off:
+				//     the camera is far enough away that dot(l, v) barely
+				//     changes around the visible limb.
+				float eclipsed = saturate(-dot(l, v) * _EclipseFalloff) * _EclipseGlow;
+
+				// The general air along the lit limb, kept deliberately
+				// modest so the warm arc reads as the sun rather than as the
+				// atmosphere's own colour. At 1.0 this rings the whole lit
+				// limb evenly, which is the "glow all the way round" look.
+				float airGlow = day * _AtmoGlow + _NightGlow;
 
 				// Two colours, and the sun REPLACES rather than adds. Additive
 				// warm on top of full-strength air washes the two together
 				// into cream, which is why they used to collapse into one
 				// colour instead of reading as a bleed.
-				fixed3 tint = lerp(air, _SunRimColor.rgb, sunBleed)
-				            * density * (day + _NightGlow) * lightCol;
+				fixed3 tint = lerp(airColor, _SunRimColor.rgb, saturate(arc))
+				            * density * airGlow * lightCol;
 
 				// A small additive core on top, for the hot line right where
 				// the sun is coming up.
 				tint += _SunRimColor.rgb
-				      * (density * lowSun * lowForUs * _SunRimBoost * lightCol);
+				      * (density * saturate(arc) * _SunRimBoost * lightCol);
+
+				// The eclipse halo, added on its own and deliberately NOT
+				// gated by `day`. This is the exception, and it is the whole
+				// reason it is separate: when the sun is behind the planet it
+				// is still shining on the ring of air around it, so the halo
+				// traces the entire silhouette even where the surface below
+				// is in darkness. Gating it by day would hide it exactly when
+				// it is the only thing you can see.
+				tint += _SunRimColor.rgb * (density * eclipsed * lightCol);
 
 				// _Transparency is the master gain. The 0.4 scale is not arbitrary:
 				// it puts the core of the band at roughly (0.5, 0.85, 1.0)
