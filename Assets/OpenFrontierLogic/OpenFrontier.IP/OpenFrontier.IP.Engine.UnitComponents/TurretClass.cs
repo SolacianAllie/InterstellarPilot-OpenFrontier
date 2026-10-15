@@ -68,6 +68,27 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 		[Tooltip("How far this weapon can reach at all.")]
 		public float MaxFiringRange = 100f;
 
+		/// <summary>
+		/// How far off the ship's own nose the target must be before this
+		/// launcher will launch at it, in degrees. Zero means no requirement.
+		/// </summary>
+		/// <remarks>
+		/// This is a different question from the bay's WeaponArc, and it is the
+		/// one that was missing. The arc asks whether a bay is rotated towards
+		/// the target; this asks whether the ship is. A missile launcher is not
+		/// free to turn - nothing ever rotates an ActiveTurret, and a homing
+		/// missile launches along whatever rotation the launcher inherits,
+		/// which is the hull's - so without this a ship can put a salvo into a
+		/// target it is flying directly away from, and the seeker has to sort
+		/// it out from behind.
+		///
+		/// Zero is the default because it is what every prefab written before
+		/// this field existed reads, and zero is what every launcher in the
+		/// base game does today. Forty degrees is the figure the reference this
+		/// was modelled on uses.
+		/// </remarks>
+		public float LauncherFacingArc;
+
 		[Tooltip("Scales how far off target this weapon shoots. Higher is less accurate.")]
 		public float InaccuracyMultiplier = 1f;
 

@@ -196,6 +196,15 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 					float distance;
 					if (target != null && target.IsValidAndNotDestroyed)
 					{
+						// The bay's own arc is answered by the activeTurret check
+						// above. This is the other half of it: whether the ship
+						// is pointing at the target at all, which for a launcher
+						// is what decides whether the missile even leaves in the
+						// right direction.
+						if (!ignoreFiringArc && !IsShipFacingTarget(target))
+						{
+							return false;
+						}
 						return IsTargetInFiringRange(target, out distance);
 					}
 					return false;
@@ -203,6 +212,35 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 				return true;
 			}
 			return false;
+		}
+
+		/// <summary>
+		/// Whether the ship's nose is close enough to the target's bearing for
+		/// this launcher to fire, per <see cref="TurretClass.LauncherFacingArc"/>.
+		/// </summary>
+		/// <remarks>
+		/// Same bearing arithmetic as <see cref="IsLocalDirectionInFiringArc"/>,
+		/// measured from the hull rather than from a bay, and flattened onto
+		/// the combat plane because units are Y-frozen and "below the ship" is
+		/// not a direction anything can be in.
+		/// </remarks>
+		private bool IsShipFacingTarget(Unit target)
+		{
+			float halfAngle = TurretClass.LauncherFacingArc;
+			if (halfAngle <= 0f)
+			{
+				return true;
+			}
+			Vector3 local = Unit.transform.InverseTransformPoint(target.transform.position);
+			Vector3 flat = new Vector3(local.x, 0f, local.z);
+			if (flat.sqrMagnitude <= 0.000001f)
+			{
+				// Target is on top of us. There is no bearing to be outside of,
+				// and MinFiringRange is what decides this case.
+				return true;
+			}
+			float bearing = Geometry.WrapDegreesForBearing(Quaternion.LookRotation(flat, Vector3.up).eulerAngles.y);
+			return Mathf.Abs(bearing) <= halfAngle;
 		}
 
 		public bool IsUnitReadyToFire()
