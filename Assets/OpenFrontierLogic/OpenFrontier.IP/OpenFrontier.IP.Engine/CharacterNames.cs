@@ -79,6 +79,38 @@ namespace OpenFrontier.IP.Engine
 		/// </remarks>
 		private const float EpithetChance = 0.28f;
 
+		/// <summary>
+		/// Of the pilots who do get an epithet, how many carry it as a trailing
+		/// title instead of inside the name.
+		/// </summary>
+		/// <remarks>
+		/// The inline form, Todd "The Blaster" McQuinn, splits the name in two
+		/// and is the more distinctive of the two - but read a list of them and
+		/// every entry has the same shape, which is its own kind of monotonous.
+		/// Heinz Metz, The Quiet Princess keeps the name whole and reads as a
+		/// byline. Both are good; having only one makes them a tic.
+		///
+		/// 0.45 of 0.28 is about 12.6% of all pilots trailing and 15.4% inline,
+		/// leaving 72% with an ordinary name.
+		/// </remarks>
+		private const float TrailingEpithetChance = 0.45f;
+
+		/// <summary>
+		/// Between the surname and a trailing epithet. A comma rather than a
+		/// bare space, because "Heinz Metz The Quiet Princess" reads as three
+		/// surnames until you notice the capital.
+		/// </summary>
+		private const string TrailingEpithetSeparator = ", ";
+
+		private enum EpithetLayout
+		{
+			/// Todd "The Blaster" McQuinn
+			Inline,
+
+			/// Heinz Metz, The Quiet Princess
+			Trailing
+		}
+
 		private List<CharacterEpithet> epithets = new List<CharacterEpithet>(400);
 
 		private List<CountryOfOriginWeighting> countryOrigins = new List<CountryOfOriginWeighting>();
@@ -230,17 +262,36 @@ namespace OpenFrontier.IP.Engine
 		/// state, and the answer has to be the same every time the same pair is
 		/// asked about, from any call site, in any order.
 		/// </remarks>
-		private static float StableHash01(int firstNameIndex, int lastNameIndex)
+		/// <param name="salt">
+		/// Distinguishes independent draws from the same pair of indices.
+		/// Zero is the identity here - "h ^= 0" leaves h untouched - so the
+		/// default call is bit-for-bit what it always was, and every pilot who
+		/// already has an epithet keeps the same one after this change.
+		/// </param>
+		private static float StableHash01(int firstNameIndex, int lastNameIndex, uint salt = 0)
 		{
 			unchecked
 			{
 				uint h = (uint)(firstNameIndex + 1) * 2654435761u;
 				h ^= (uint)(lastNameIndex + 1) * 2246822519u;
+				h ^= salt;
 				h ^= h >> 15;
 				h *= 2654435761u;
 				h ^= h >> 13;
 				return (h & 0xFFFFFFu) / 16777216f;
 			}
+		}
+
+		/// <summary>
+		/// Whether this pilot's epithet sits inside the name or after it.
+		/// </summary>
+		private EpithetLayout GetEpithetLayout(int firstNameIndex, int lastNameIndex)
+		{
+			// Salted, so the layout is uncorrelated with both the gate that
+			// decided the pilot gets an epithet and the draw that chose which
+			// one. Without the salt the two would move together.
+			float layout = StableHash01(firstNameIndex, lastNameIndex, 0x9E3779B9u);
+			return layout < TrailingEpithetChance ? EpithetLayout.Trailing : EpithetLayout.Inline;
 		}
 
 		/// <summary>
@@ -302,6 +353,16 @@ namespace OpenFrontier.IP.Engine
 					firstNames[firstNameIndex].IsMale);
 				if (epithetIndex >= 0)
 				{
+					string epithet = CapitaliseEpithet(epithets[epithetIndex].Value);
+					if (GetEpithetLayout(firstNameIndex, lastNameIndex) == EpithetLayout.Trailing)
+					{
+						// Heinz Metz, The Quiet Princess
+						//
+						// The surname is kept here too, same as inline. A trailing
+						// epithet is still an addition to the name, not a
+						// replacement for half of it.
+						return given + " " + surname + TrailingEpithetSeparator + epithet;
+					}
 					// Quoted, and the SURNAME IS KEPT:
 					//     Todd "The Blaster" McQuinn
 					// An earlier version dropped the surname, on the reasoning
@@ -312,8 +373,7 @@ namespace OpenFrontier.IP.Engine
 					// than given x epithet, which is the difference between a
 					// pool that stays level and one that grows by three orders
 					// of magnitude.
-					return given + " \"" + CapitaliseEpithet(epithets[epithetIndex].Value)
-						+ "\" " + surname;
+					return given + " \"" + epithet + "\" " + surname;
 				}
 				return given + " " + surname;
 			}
