@@ -23086,3 +23086,4918 @@ Smuggler's Token,Smuggler's,2048
 Smuggler's Venture,Smuggler's,2050
 Smuggler's Whim,Smuggler's,2048
 Smuggler's Welcome,Smuggler's,2048
+Ashcombe Fortress,Ashcombe Fortress,2112
+Ashcombe Mine,Ashcombe Mine,2049
+Ashcombe Memorial,Ashcombe Memorial,3072
+Ashcombe Lair,Ashcombe Lair,2048
+Ashcombe Prison,Ashcombe Prison,64
+Ashcombe Rose,Ashcombe Rose,2048
+Ashcombe Reef,Ashcombe Reef,2056
+Ashcombe Iceberg,Ashcombe Iceberg,2048
+Ashcombe Prison Mine,Ashcombe Prison Mine,4160
+Ashcombe Salt Shack,Ashcombe Salt Shack,2056
+Ashcombe Recharging Stn.,Ashcombe Recharging Stn.,0
+Ashcombe Deep Space Depot,Ashcombe Deep Space Depot,2048
+Ashcombe Ice Locker,Ashcombe Ice Locker,6144
+Ashcombe Rock Hopper,Ashcombe Rock Hopper,2048
+Ashcombe Glass Works,Ashcombe Glass Works,4
+Ashcombe Iron Yard,Ashcombe Iron Yard,12
+Blackwater Fortress,Blackwater Fortress,2112
+Blackwater Mine,Blackwater Mine,2049
+Blackwater Memorial,Blackwater Memorial,3072
+Blackwater Lair,Blackwater Lair,2048
+Blackwater Prison,Blackwater Prison,64
+Blackwater Rose,Blackwater Rose,2048
+Blackwater Reef,Blackwater Reef,2056
+Blackwater Iceberg,Blackwater Iceberg,2048
+Blackwater Prison Mine,Blackwater Prison Mine,4160
+Blackwater Salt Shack,Blackwater Salt Shack,2056
+Blackwater Recharging Stn.,Blackwater Recharging Stn.,0
+Blackwater Deep Space Depot,Blackwater Deep Space Depot,2048
+Blackwater Ice Locker,Blackwater Ice Locker,6144
+Blackwater Rock Hopper,Blackwater Rock Hopper,2048
+Blackwater Glass Works,Blackwater Glass Works,4
+Blackwater Iron Yard,Blackwater Iron Yard,12
+Brindlemoor Fortress,Brindlemoor Fortress,2112
+Brindlemoor Mine,Brindlemoor Mine,2049
+Brindlemoor Memorial,Brindlemoor Memorial,3072
+Brindlemoor Lair,Brindlemoor Lair,2048
+Brindlemoor Prison,Brindlemoor Prison,64
+Brindlemoor Rose,Brindlemoor Rose,2048
+Brindlemoor Reef,Brindlemoor Reef,2056
+Brindlemoor Iceberg,Brindlemoor Iceberg,2048
+Brindlemoor Prison Mine,Brindlemoor Prison Mine,4160
+Brindlemoor Salt Shack,Brindlemoor Salt Shack,2056
+Brindlemoor Recharging Stn.,Brindlemoor Recharging Stn.,0
+Brindlemoor Deep Space Depot,Brindlemoor Deep Space Depot,2048
+Brindlemoor Ice Locker,Brindlemoor Ice Locker,6144
+Brindlemoor Rock Hopper,Brindlemoor Rock Hopper,2048
+Brindlemoor Glass Works,Brindlemoor Glass Works,4
+Brindlemoor Iron Yard,Brindlemoor Iron Yard,12
+Calderwood Fortress,Calderwood Fortress,2112
+Calderwood Mine,Calderwood Mine,2049
+Calderwood Memorial,Calderwood Memorial,3072
+Calderwood Lair,Calderwood Lair,2048
+Calderwood Prison,Calderwood Prison,64
+Calderwood Rose,Calderwood Rose,2048
+Calderwood Reef,Calderwood Reef,2056
+Calderwood Iceberg,Calderwood Iceberg,2048
+Calderwood Prison Mine,Calderwood Prison Mine,4160
+Calderwood Salt Shack,Calderwood Salt Shack,2056
+Calderwood Recharging Stn.,Calderwood Recharging Stn.,0
+Calderwood Deep Space Depot,Calderwood Deep Space Depot,2048
+Calderwood Ice Locker,Calderwood Ice Locker,6144
+Calderwood Rock Hopper,Calderwood Rock Hopper,2048
+Calderwood Glass Works,Calderwood Glass Works,4
+Calderwood Iron Yard,Calderwood Iron Yard,12
+Dunmore Fortress,Dunmore Fortress,2112
+Dunmore Mine,Dunmore Mine,2049
+Dunmore Memorial,Dunmore Memorial,3072
+Dunmore Lair,Dunmore Lair,2048
+Dunmore Prison,Dunmore Prison,64
+Dunmore Rose,Dunmore Rose,2048
+Dunmore Reef,Dunmore Reef,2056
+Dunmore Iceberg,Dunmore Iceberg,2048
+Dunmore Prison Mine,Dunmore Prison Mine,4160
+Dunmore Salt Shack,Dunmore Salt Shack,2056
+Dunmore Recharging Stn.,Dunmore Recharging Stn.,0
+Dunmore Deep Space Depot,Dunmore Deep Space Depot,2048
+Dunmore Ice Locker,Dunmore Ice Locker,6144
+Dunmore Rock Hopper,Dunmore Rock Hopper,2048
+Dunmore Glass Works,Dunmore Glass Works,4
+Dunmore Iron Yard,Dunmore Iron Yard,12
+Eastgate Fortress,Eastgate Fortress,2112
+Eastgate Mine,Eastgate Mine,2049
+Eastgate Memorial,Eastgate Memorial,3072
+Eastgate Lair,Eastgate Lair,2048
+Eastgate Prison,Eastgate Prison,64
+Eastgate Rose,Eastgate Rose,2048
+Eastgate Reef,Eastgate Reef,2056
+Eastgate Iceberg,Eastgate Iceberg,2048
+Eastgate Prison Mine,Eastgate Prison Mine,4160
+Eastgate Salt Shack,Eastgate Salt Shack,2056
+Eastgate Recharging Stn.,Eastgate Recharging Stn.,0
+Eastgate Deep Space Depot,Eastgate Deep Space Depot,2048
+Eastgate Ice Locker,Eastgate Ice Locker,6144
+Eastgate Rock Hopper,Eastgate Rock Hopper,2048
+Eastgate Glass Works,Eastgate Glass Works,4
+Eastgate Iron Yard,Eastgate Iron Yard,12
+Fairholme Fortress,Fairholme Fortress,2112
+Fairholme Mine,Fairholme Mine,2049
+Fairholme Memorial,Fairholme Memorial,3072
+Fairholme Lair,Fairholme Lair,2048
+Fairholme Prison,Fairholme Prison,64
+Fairholme Rose,Fairholme Rose,2048
+Fairholme Reef,Fairholme Reef,2056
+Fairholme Iceberg,Fairholme Iceberg,2048
+Fairholme Prison Mine,Fairholme Prison Mine,4160
+Fairholme Salt Shack,Fairholme Salt Shack,2056
+Fairholme Recharging Stn.,Fairholme Recharging Stn.,0
+Fairholme Deep Space Depot,Fairholme Deep Space Depot,2048
+Fairholme Ice Locker,Fairholme Ice Locker,6144
+Fairholme Rock Hopper,Fairholme Rock Hopper,2048
+Fairholme Glass Works,Fairholme Glass Works,4
+Fairholme Iron Yard,Fairholme Iron Yard,12
+Glenmara Fortress,Glenmara Fortress,2112
+Glenmara Mine,Glenmara Mine,2049
+Glenmara Memorial,Glenmara Memorial,3072
+Glenmara Lair,Glenmara Lair,2048
+Glenmara Prison,Glenmara Prison,64
+Glenmara Rose,Glenmara Rose,2048
+Glenmara Reef,Glenmara Reef,2056
+Glenmara Iceberg,Glenmara Iceberg,2048
+Glenmara Prison Mine,Glenmara Prison Mine,4160
+Glenmara Salt Shack,Glenmara Salt Shack,2056
+Glenmara Recharging Stn.,Glenmara Recharging Stn.,0
+Glenmara Deep Space Depot,Glenmara Deep Space Depot,2048
+Glenmara Ice Locker,Glenmara Ice Locker,6144
+Glenmara Rock Hopper,Glenmara Rock Hopper,2048
+Glenmara Glass Works,Glenmara Glass Works,4
+Glenmara Iron Yard,Glenmara Iron Yard,12
+Harrowgate Fortress,Harrowgate Fortress,2112
+Harrowgate Mine,Harrowgate Mine,2049
+Harrowgate Memorial,Harrowgate Memorial,3072
+Harrowgate Lair,Harrowgate Lair,2048
+Harrowgate Prison,Harrowgate Prison,64
+Harrowgate Rose,Harrowgate Rose,2048
+Harrowgate Reef,Harrowgate Reef,2056
+Harrowgate Iceberg,Harrowgate Iceberg,2048
+Harrowgate Prison Mine,Harrowgate Prison Mine,4160
+Harrowgate Salt Shack,Harrowgate Salt Shack,2056
+Harrowgate Recharging Stn.,Harrowgate Recharging Stn.,0
+Harrowgate Deep Space Depot,Harrowgate Deep Space Depot,2048
+Harrowgate Ice Locker,Harrowgate Ice Locker,6144
+Harrowgate Rock Hopper,Harrowgate Rock Hopper,2048
+Harrowgate Glass Works,Harrowgate Glass Works,4
+Harrowgate Iron Yard,Harrowgate Iron Yard,12
+Innisfree Fortress,Innisfree Fortress,2112
+Innisfree Mine,Innisfree Mine,2049
+Innisfree Memorial,Innisfree Memorial,3072
+Innisfree Lair,Innisfree Lair,2048
+Innisfree Prison,Innisfree Prison,64
+Innisfree Rose,Innisfree Rose,2048
+Innisfree Reef,Innisfree Reef,2056
+Innisfree Iceberg,Innisfree Iceberg,2048
+Innisfree Prison Mine,Innisfree Prison Mine,4160
+Innisfree Salt Shack,Innisfree Salt Shack,2056
+Innisfree Recharging Stn.,Innisfree Recharging Stn.,0
+Innisfree Deep Space Depot,Innisfree Deep Space Depot,2048
+Innisfree Ice Locker,Innisfree Ice Locker,6144
+Innisfree Rock Hopper,Innisfree Rock Hopper,2048
+Innisfree Glass Works,Innisfree Glass Works,4
+Innisfree Iron Yard,Innisfree Iron Yard,12
+Kirkwall Fortress,Kirkwall Fortress,2112
+Kirkwall Mine,Kirkwall Mine,2049
+Kirkwall Memorial,Kirkwall Memorial,3072
+Kirkwall Lair,Kirkwall Lair,2048
+Kirkwall Prison,Kirkwall Prison,64
+Kirkwall Rose,Kirkwall Rose,2048
+Kirkwall Reef,Kirkwall Reef,2056
+Kirkwall Iceberg,Kirkwall Iceberg,2048
+Kirkwall Prison Mine,Kirkwall Prison Mine,4160
+Kirkwall Salt Shack,Kirkwall Salt Shack,2056
+Kirkwall Recharging Stn.,Kirkwall Recharging Stn.,0
+Kirkwall Deep Space Depot,Kirkwall Deep Space Depot,2048
+Kirkwall Ice Locker,Kirkwall Ice Locker,6144
+Kirkwall Rock Hopper,Kirkwall Rock Hopper,2048
+Kirkwall Glass Works,Kirkwall Glass Works,4
+Kirkwall Iron Yard,Kirkwall Iron Yard,12
+Langley Fortress,Langley Fortress,2112
+Langley Mine,Langley Mine,2049
+Langley Memorial,Langley Memorial,3072
+Langley Lair,Langley Lair,2048
+Langley Prison,Langley Prison,64
+Langley Rose,Langley Rose,2048
+Langley Reef,Langley Reef,2056
+Langley Iceberg,Langley Iceberg,2048
+Langley Prison Mine,Langley Prison Mine,4160
+Langley Salt Shack,Langley Salt Shack,2056
+Langley Recharging Stn.,Langley Recharging Stn.,0
+Langley Deep Space Depot,Langley Deep Space Depot,2048
+Langley Ice Locker,Langley Ice Locker,6144
+Langley Rock Hopper,Langley Rock Hopper,2048
+Langley Glass Works,Langley Glass Works,4
+Langley Iron Yard,Langley Iron Yard,12
+Marchmont Fortress,Marchmont Fortress,2112
+Marchmont Mine,Marchmont Mine,2049
+Marchmont Memorial,Marchmont Memorial,3072
+Marchmont Lair,Marchmont Lair,2048
+Marchmont Prison,Marchmont Prison,64
+Marchmont Rose,Marchmont Rose,2048
+Marchmont Reef,Marchmont Reef,2056
+Marchmont Iceberg,Marchmont Iceberg,2048
+Marchmont Prison Mine,Marchmont Prison Mine,4160
+Marchmont Salt Shack,Marchmont Salt Shack,2056
+Marchmont Recharging Stn.,Marchmont Recharging Stn.,0
+Marchmont Deep Space Depot,Marchmont Deep Space Depot,2048
+Marchmont Ice Locker,Marchmont Ice Locker,6144
+Marchmont Rock Hopper,Marchmont Rock Hopper,2048
+Marchmont Glass Works,Marchmont Glass Works,4
+Marchmont Iron Yard,Marchmont Iron Yard,12
+Northgate Fortress,Northgate Fortress,2112
+Northgate Mine,Northgate Mine,2049
+Northgate Memorial,Northgate Memorial,3072
+Northgate Lair,Northgate Lair,2048
+Northgate Prison,Northgate Prison,64
+Northgate Rose,Northgate Rose,2048
+Northgate Reef,Northgate Reef,2056
+Northgate Iceberg,Northgate Iceberg,2048
+Northgate Prison Mine,Northgate Prison Mine,4160
+Northgate Salt Shack,Northgate Salt Shack,2056
+Northgate Recharging Stn.,Northgate Recharging Stn.,0
+Northgate Deep Space Depot,Northgate Deep Space Depot,2048
+Northgate Ice Locker,Northgate Ice Locker,6144
+Northgate Rock Hopper,Northgate Rock Hopper,2048
+Northgate Glass Works,Northgate Glass Works,4
+Northgate Iron Yard,Northgate Iron Yard,12
+Oakhurst Fortress,Oakhurst Fortress,2112
+Oakhurst Mine,Oakhurst Mine,2049
+Oakhurst Memorial,Oakhurst Memorial,3072
+Oakhurst Lair,Oakhurst Lair,2048
+Oakhurst Prison,Oakhurst Prison,64
+Oakhurst Rose,Oakhurst Rose,2048
+Oakhurst Reef,Oakhurst Reef,2056
+Oakhurst Iceberg,Oakhurst Iceberg,2048
+Oakhurst Prison Mine,Oakhurst Prison Mine,4160
+Oakhurst Salt Shack,Oakhurst Salt Shack,2056
+Oakhurst Recharging Stn.,Oakhurst Recharging Stn.,0
+Oakhurst Deep Space Depot,Oakhurst Deep Space Depot,2048
+Oakhurst Ice Locker,Oakhurst Ice Locker,6144
+Oakhurst Rock Hopper,Oakhurst Rock Hopper,2048
+Oakhurst Glass Works,Oakhurst Glass Works,4
+Oakhurst Iron Yard,Oakhurst Iron Yard,12
+Penrose Fortress,Penrose Fortress,2112
+Penrose Mine,Penrose Mine,2049
+Penrose Memorial,Penrose Memorial,3072
+Penrose Lair,Penrose Lair,2048
+Penrose Prison,Penrose Prison,64
+Penrose Rose,Penrose Rose,2048
+Penrose Reef,Penrose Reef,2056
+Penrose Iceberg,Penrose Iceberg,2048
+Penrose Prison Mine,Penrose Prison Mine,4160
+Penrose Salt Shack,Penrose Salt Shack,2056
+Penrose Recharging Stn.,Penrose Recharging Stn.,0
+Penrose Deep Space Depot,Penrose Deep Space Depot,2048
+Penrose Ice Locker,Penrose Ice Locker,6144
+Penrose Rock Hopper,Penrose Rock Hopper,2048
+Penrose Glass Works,Penrose Glass Works,4
+Penrose Iron Yard,Penrose Iron Yard,12
+Quimby Fortress,Quimby Fortress,2112
+Quimby Mine,Quimby Mine,2049
+Quimby Memorial,Quimby Memorial,3072
+Quimby Lair,Quimby Lair,2048
+Quimby Prison,Quimby Prison,64
+Quimby Rose,Quimby Rose,2048
+Quimby Reef,Quimby Reef,2056
+Quimby Iceberg,Quimby Iceberg,2048
+Quimby Prison Mine,Quimby Prison Mine,4160
+Quimby Salt Shack,Quimby Salt Shack,2056
+Quimby Recharging Stn.,Quimby Recharging Stn.,0
+Quimby Deep Space Depot,Quimby Deep Space Depot,2048
+Quimby Ice Locker,Quimby Ice Locker,6144
+Quimby Rock Hopper,Quimby Rock Hopper,2048
+Quimby Glass Works,Quimby Glass Works,4
+Quimby Iron Yard,Quimby Iron Yard,12
+Ravensmoor Fortress,Ravensmoor Fortress,2112
+Ravensmoor Mine,Ravensmoor Mine,2049
+Ravensmoor Memorial,Ravensmoor Memorial,3072
+Ravensmoor Lair,Ravensmoor Lair,2048
+Ravensmoor Prison,Ravensmoor Prison,64
+Ravensmoor Rose,Ravensmoor Rose,2048
+Ravensmoor Reef,Ravensmoor Reef,2056
+Ravensmoor Iceberg,Ravensmoor Iceberg,2048
+Ravensmoor Prison Mine,Ravensmoor Prison Mine,4160
+Ravensmoor Salt Shack,Ravensmoor Salt Shack,2056
+Ravensmoor Recharging Stn.,Ravensmoor Recharging Stn.,0
+Ravensmoor Deep Space Depot,Ravensmoor Deep Space Depot,2048
+Ravensmoor Ice Locker,Ravensmoor Ice Locker,6144
+Ravensmoor Rock Hopper,Ravensmoor Rock Hopper,2048
+Ravensmoor Glass Works,Ravensmoor Glass Works,4
+Ravensmoor Iron Yard,Ravensmoor Iron Yard,12
+Stonebridge Fortress,Stonebridge Fortress,2112
+Stonebridge Mine,Stonebridge Mine,2049
+Stonebridge Memorial,Stonebridge Memorial,3072
+Stonebridge Lair,Stonebridge Lair,2048
+Stonebridge Prison,Stonebridge Prison,64
+Stonebridge Rose,Stonebridge Rose,2048
+Stonebridge Reef,Stonebridge Reef,2056
+Stonebridge Iceberg,Stonebridge Iceberg,2048
+Stonebridge Prison Mine,Stonebridge Prison Mine,4160
+Stonebridge Salt Shack,Stonebridge Salt Shack,2056
+Stonebridge Recharging Stn.,Stonebridge Recharging Stn.,0
+Stonebridge Deep Space Depot,Stonebridge Deep Space Depot,2048
+Stonebridge Ice Locker,Stonebridge Ice Locker,6144
+Stonebridge Rock Hopper,Stonebridge Rock Hopper,2048
+Stonebridge Glass Works,Stonebridge Glass Works,4
+Stonebridge Iron Yard,Stonebridge Iron Yard,12
+Thornbury Fortress,Thornbury Fortress,2112
+Thornbury Mine,Thornbury Mine,2049
+Thornbury Memorial,Thornbury Memorial,3072
+Thornbury Lair,Thornbury Lair,2048
+Thornbury Prison,Thornbury Prison,64
+Thornbury Rose,Thornbury Rose,2048
+Thornbury Reef,Thornbury Reef,2056
+Thornbury Iceberg,Thornbury Iceberg,2048
+Thornbury Prison Mine,Thornbury Prison Mine,4160
+Thornbury Salt Shack,Thornbury Salt Shack,2056
+Thornbury Recharging Stn.,Thornbury Recharging Stn.,0
+Thornbury Deep Space Depot,Thornbury Deep Space Depot,2048
+Thornbury Ice Locker,Thornbury Ice Locker,6144
+Thornbury Rock Hopper,Thornbury Rock Hopper,2048
+Thornbury Glass Works,Thornbury Glass Works,4
+Thornbury Iron Yard,Thornbury Iron Yard,12
+Underhill Fortress,Underhill Fortress,2112
+Underhill Mine,Underhill Mine,2049
+Underhill Memorial,Underhill Memorial,3072
+Underhill Lair,Underhill Lair,2048
+Underhill Prison,Underhill Prison,64
+Underhill Rose,Underhill Rose,2048
+Underhill Reef,Underhill Reef,2056
+Underhill Iceberg,Underhill Iceberg,2048
+Underhill Prison Mine,Underhill Prison Mine,4160
+Underhill Salt Shack,Underhill Salt Shack,2056
+Underhill Recharging Stn.,Underhill Recharging Stn.,0
+Underhill Deep Space Depot,Underhill Deep Space Depot,2048
+Underhill Ice Locker,Underhill Ice Locker,6144
+Underhill Rock Hopper,Underhill Rock Hopper,2048
+Underhill Glass Works,Underhill Glass Works,4
+Underhill Iron Yard,Underhill Iron Yard,12
+Vexley Fortress,Vexley Fortress,2112
+Vexley Mine,Vexley Mine,2049
+Vexley Memorial,Vexley Memorial,3072
+Vexley Lair,Vexley Lair,2048
+Vexley Prison,Vexley Prison,64
+Vexley Rose,Vexley Rose,2048
+Vexley Reef,Vexley Reef,2056
+Vexley Iceberg,Vexley Iceberg,2048
+Vexley Prison Mine,Vexley Prison Mine,4160
+Vexley Salt Shack,Vexley Salt Shack,2056
+Vexley Recharging Stn.,Vexley Recharging Stn.,0
+Vexley Deep Space Depot,Vexley Deep Space Depot,2048
+Vexley Ice Locker,Vexley Ice Locker,6144
+Vexley Rock Hopper,Vexley Rock Hopper,2048
+Vexley Glass Works,Vexley Glass Works,4
+Vexley Iron Yard,Vexley Iron Yard,12
+Westmere Fortress,Westmere Fortress,2112
+Westmere Mine,Westmere Mine,2049
+Westmere Memorial,Westmere Memorial,3072
+Westmere Lair,Westmere Lair,2048
+Westmere Prison,Westmere Prison,64
+Westmere Rose,Westmere Rose,2048
+Westmere Reef,Westmere Reef,2056
+Westmere Iceberg,Westmere Iceberg,2048
+Westmere Prison Mine,Westmere Prison Mine,4160
+Westmere Salt Shack,Westmere Salt Shack,2056
+Westmere Recharging Stn.,Westmere Recharging Stn.,0
+Westmere Deep Space Depot,Westmere Deep Space Depot,2048
+Westmere Ice Locker,Westmere Ice Locker,6144
+Westmere Rock Hopper,Westmere Rock Hopper,2048
+Westmere Glass Works,Westmere Glass Works,4
+Westmere Iron Yard,Westmere Iron Yard,12
+Yarrowgate Fortress,Yarrowgate Fortress,2112
+Yarrowgate Mine,Yarrowgate Mine,2049
+Yarrowgate Memorial,Yarrowgate Memorial,3072
+Yarrowgate Lair,Yarrowgate Lair,2048
+Yarrowgate Prison,Yarrowgate Prison,64
+Yarrowgate Rose,Yarrowgate Rose,2048
+Yarrowgate Reef,Yarrowgate Reef,2056
+Yarrowgate Iceberg,Yarrowgate Iceberg,2048
+Yarrowgate Prison Mine,Yarrowgate Prison Mine,4160
+Yarrowgate Salt Shack,Yarrowgate Salt Shack,2056
+Yarrowgate Recharging Stn.,Yarrowgate Recharging Stn.,0
+Yarrowgate Deep Space Depot,Yarrowgate Deep Space Depot,2048
+Yarrowgate Ice Locker,Yarrowgate Ice Locker,6144
+Yarrowgate Rock Hopper,Yarrowgate Rock Hopper,2048
+Yarrowgate Glass Works,Yarrowgate Glass Works,4
+Yarrowgate Iron Yard,Yarrowgate Iron Yard,12
+Ashcroft Fortress,Ashcroft Fortress,2112
+Ashcroft Mine,Ashcroft Mine,2049
+Ashcroft Memorial,Ashcroft Memorial,3072
+Ashcroft Lair,Ashcroft Lair,2048
+Ashcroft Prison,Ashcroft Prison,64
+Ashcroft Rose,Ashcroft Rose,2048
+Ashcroft Reef,Ashcroft Reef,2056
+Ashcroft Iceberg,Ashcroft Iceberg,2048
+Ashcroft Prison Mine,Ashcroft Prison Mine,4160
+Ashcroft Salt Shack,Ashcroft Salt Shack,2056
+Ashcroft Recharging Stn.,Ashcroft Recharging Stn.,0
+Ashcroft Deep Space Depot,Ashcroft Deep Space Depot,2048
+Ashcroft Ice Locker,Ashcroft Ice Locker,6144
+Ashcroft Rock Hopper,Ashcroft Rock Hopper,2048
+Ashcroft Glass Works,Ashcroft Glass Works,4
+Ashcroft Iron Yard,Ashcroft Iron Yard,12
+Bramfield Fortress,Bramfield Fortress,2112
+Bramfield Mine,Bramfield Mine,2049
+Bramfield Memorial,Bramfield Memorial,3072
+Bramfield Lair,Bramfield Lair,2048
+Bramfield Prison,Bramfield Prison,64
+Bramfield Rose,Bramfield Rose,2048
+Bramfield Reef,Bramfield Reef,2056
+Bramfield Iceberg,Bramfield Iceberg,2048
+Bramfield Prison Mine,Bramfield Prison Mine,4160
+Bramfield Salt Shack,Bramfield Salt Shack,2056
+Bramfield Recharging Stn.,Bramfield Recharging Stn.,0
+Bramfield Deep Space Depot,Bramfield Deep Space Depot,2048
+Bramfield Ice Locker,Bramfield Ice Locker,6144
+Bramfield Rock Hopper,Bramfield Rock Hopper,2048
+Bramfield Glass Works,Bramfield Glass Works,4
+Bramfield Iron Yard,Bramfield Iron Yard,12
+Coldstream Fortress,Coldstream Fortress,2112
+Coldstream Mine,Coldstream Mine,2049
+Coldstream Memorial,Coldstream Memorial,3072
+Coldstream Lair,Coldstream Lair,2048
+Coldstream Prison,Coldstream Prison,64
+Coldstream Rose,Coldstream Rose,2048
+Coldstream Reef,Coldstream Reef,2056
+Coldstream Iceberg,Coldstream Iceberg,2048
+Coldstream Prison Mine,Coldstream Prison Mine,4160
+Coldstream Salt Shack,Coldstream Salt Shack,2056
+Coldstream Recharging Stn.,Coldstream Recharging Stn.,0
+Coldstream Deep Space Depot,Coldstream Deep Space Depot,2048
+Coldstream Ice Locker,Coldstream Ice Locker,6144
+Coldstream Rock Hopper,Coldstream Rock Hopper,2048
+Coldstream Glass Works,Coldstream Glass Works,4
+Coldstream Iron Yard,Coldstream Iron Yard,12
+Dunhaven Fortress,Dunhaven Fortress,2112
+Dunhaven Mine,Dunhaven Mine,2049
+Dunhaven Memorial,Dunhaven Memorial,3072
+Dunhaven Lair,Dunhaven Lair,2048
+Dunhaven Prison,Dunhaven Prison,64
+Dunhaven Rose,Dunhaven Rose,2048
+Dunhaven Reef,Dunhaven Reef,2056
+Dunhaven Iceberg,Dunhaven Iceberg,2048
+Dunhaven Prison Mine,Dunhaven Prison Mine,4160
+Dunhaven Salt Shack,Dunhaven Salt Shack,2056
+Dunhaven Recharging Stn.,Dunhaven Recharging Stn.,0
+Dunhaven Deep Space Depot,Dunhaven Deep Space Depot,2048
+Dunhaven Ice Locker,Dunhaven Ice Locker,6144
+Dunhaven Rock Hopper,Dunhaven Rock Hopper,2048
+Dunhaven Glass Works,Dunhaven Glass Works,4
+Dunhaven Iron Yard,Dunhaven Iron Yard,12
+Eastwick Fortress,Eastwick Fortress,2112
+Eastwick Mine,Eastwick Mine,2049
+Eastwick Memorial,Eastwick Memorial,3072
+Eastwick Lair,Eastwick Lair,2048
+Eastwick Prison,Eastwick Prison,64
+Eastwick Rose,Eastwick Rose,2048
+Eastwick Reef,Eastwick Reef,2056
+Eastwick Iceberg,Eastwick Iceberg,2048
+Eastwick Prison Mine,Eastwick Prison Mine,4160
+Eastwick Salt Shack,Eastwick Salt Shack,2056
+Eastwick Recharging Stn.,Eastwick Recharging Stn.,0
+Eastwick Deep Space Depot,Eastwick Deep Space Depot,2048
+Eastwick Ice Locker,Eastwick Ice Locker,6144
+Eastwick Rock Hopper,Eastwick Rock Hopper,2048
+Eastwick Glass Works,Eastwick Glass Works,4
+Eastwick Iron Yard,Eastwick Iron Yard,12
+Fairweather Fortress,Fairweather Fortress,2112
+Fairweather Mine,Fairweather Mine,2049
+Fairweather Memorial,Fairweather Memorial,3072
+Fairweather Lair,Fairweather Lair,2048
+Fairweather Prison,Fairweather Prison,64
+Fairweather Rose,Fairweather Rose,2048
+Fairweather Reef,Fairweather Reef,2056
+Fairweather Iceberg,Fairweather Iceberg,2048
+Fairweather Prison Mine,Fairweather Prison Mine,4160
+Fairweather Salt Shack,Fairweather Salt Shack,2056
+Fairweather Recharging Stn.,Fairweather Recharging Stn.,0
+Fairweather Deep Space Depot,Fairweather Deep Space Depot,2048
+Fairweather Ice Locker,Fairweather Ice Locker,6144
+Fairweather Rock Hopper,Fairweather Rock Hopper,2048
+Fairweather Glass Works,Fairweather Glass Works,4
+Fairweather Iron Yard,Fairweather Iron Yard,12
+Glenhaven Fortress,Glenhaven Fortress,2112
+Glenhaven Mine,Glenhaven Mine,2049
+Glenhaven Memorial,Glenhaven Memorial,3072
+Glenhaven Lair,Glenhaven Lair,2048
+Glenhaven Prison,Glenhaven Prison,64
+Glenhaven Rose,Glenhaven Rose,2048
+Glenhaven Reef,Glenhaven Reef,2056
+Glenhaven Iceberg,Glenhaven Iceberg,2048
+Glenhaven Prison Mine,Glenhaven Prison Mine,4160
+Glenhaven Salt Shack,Glenhaven Salt Shack,2056
+Glenhaven Recharging Stn.,Glenhaven Recharging Stn.,0
+Glenhaven Deep Space Depot,Glenhaven Deep Space Depot,2048
+Glenhaven Ice Locker,Glenhaven Ice Locker,6144
+Glenhaven Rock Hopper,Glenhaven Rock Hopper,2048
+Glenhaven Glass Works,Glenhaven Glass Works,4
+Glenhaven Iron Yard,Glenhaven Iron Yard,12
+Hollowbrook Fortress,Hollowbrook Fortress,2112
+Hollowbrook Mine,Hollowbrook Mine,2049
+Hollowbrook Memorial,Hollowbrook Memorial,3072
+Hollowbrook Lair,Hollowbrook Lair,2048
+Hollowbrook Prison,Hollowbrook Prison,64
+Hollowbrook Rose,Hollowbrook Rose,2048
+Hollowbrook Reef,Hollowbrook Reef,2056
+Hollowbrook Iceberg,Hollowbrook Iceberg,2048
+Hollowbrook Prison Mine,Hollowbrook Prison Mine,4160
+Hollowbrook Salt Shack,Hollowbrook Salt Shack,2056
+Hollowbrook Recharging Stn.,Hollowbrook Recharging Stn.,0
+Hollowbrook Deep Space Depot,Hollowbrook Deep Space Depot,2048
+Hollowbrook Ice Locker,Hollowbrook Ice Locker,6144
+Hollowbrook Rock Hopper,Hollowbrook Rock Hopper,2048
+Hollowbrook Glass Works,Hollowbrook Glass Works,4
+Hollowbrook Iron Yard,Hollowbrook Iron Yard,12
+Ironvale Fortress,Ironvale Fortress,2112
+Ironvale Mine,Ironvale Mine,2049
+Ironvale Memorial,Ironvale Memorial,3072
+Ironvale Lair,Ironvale Lair,2048
+Ironvale Prison,Ironvale Prison,64
+Ironvale Rose,Ironvale Rose,2048
+Ironvale Reef,Ironvale Reef,2056
+Ironvale Iceberg,Ironvale Iceberg,2048
+Ironvale Prison Mine,Ironvale Prison Mine,4160
+Ironvale Salt Shack,Ironvale Salt Shack,2056
+Ironvale Recharging Stn.,Ironvale Recharging Stn.,0
+Ironvale Deep Space Depot,Ironvale Deep Space Depot,2048
+Ironvale Ice Locker,Ironvale Ice Locker,6144
+Ironvale Rock Hopper,Ironvale Rock Hopper,2048
+Ironvale Glass Works,Ironvale Glass Works,4
+Ironvale Iron Yard,Ironvale Iron Yard,12
+Kirkbride Fortress,Kirkbride Fortress,2112
+Kirkbride Mine,Kirkbride Mine,2049
+Kirkbride Memorial,Kirkbride Memorial,3072
+Kirkbride Lair,Kirkbride Lair,2048
+Kirkbride Prison,Kirkbride Prison,64
+Kirkbride Rose,Kirkbride Rose,2048
+Kirkbride Reef,Kirkbride Reef,2056
+Kirkbride Iceberg,Kirkbride Iceberg,2048
+Kirkbride Prison Mine,Kirkbride Prison Mine,4160
+Kirkbride Salt Shack,Kirkbride Salt Shack,2056
+Kirkbride Recharging Stn.,Kirkbride Recharging Stn.,0
+Kirkbride Deep Space Depot,Kirkbride Deep Space Depot,2048
+Kirkbride Ice Locker,Kirkbride Ice Locker,6144
+Kirkbride Rock Hopper,Kirkbride Rock Hopper,2048
+Kirkbride Glass Works,Kirkbride Glass Works,4
+Kirkbride Iron Yard,Kirkbride Iron Yard,12
+Longmere Fortress,Longmere Fortress,2112
+Longmere Mine,Longmere Mine,2049
+Longmere Memorial,Longmere Memorial,3072
+Longmere Lair,Longmere Lair,2048
+Longmere Prison,Longmere Prison,64
+Longmere Rose,Longmere Rose,2048
+Longmere Reef,Longmere Reef,2056
+Longmere Iceberg,Longmere Iceberg,2048
+Longmere Prison Mine,Longmere Prison Mine,4160
+Longmere Salt Shack,Longmere Salt Shack,2056
+Longmere Recharging Stn.,Longmere Recharging Stn.,0
+Longmere Deep Space Depot,Longmere Deep Space Depot,2048
+Longmere Ice Locker,Longmere Ice Locker,6144
+Longmere Rock Hopper,Longmere Rock Hopper,2048
+Longmere Glass Works,Longmere Glass Works,4
+Longmere Iron Yard,Longmere Iron Yard,12
+Marchfield Fortress,Marchfield Fortress,2112
+Marchfield Mine,Marchfield Mine,2049
+Marchfield Memorial,Marchfield Memorial,3072
+Marchfield Lair,Marchfield Lair,2048
+Marchfield Prison,Marchfield Prison,64
+Marchfield Rose,Marchfield Rose,2048
+Marchfield Reef,Marchfield Reef,2056
+Marchfield Iceberg,Marchfield Iceberg,2048
+Marchfield Prison Mine,Marchfield Prison Mine,4160
+Marchfield Salt Shack,Marchfield Salt Shack,2056
+Marchfield Recharging Stn.,Marchfield Recharging Stn.,0
+Marchfield Deep Space Depot,Marchfield Deep Space Depot,2048
+Marchfield Ice Locker,Marchfield Ice Locker,6144
+Marchfield Rock Hopper,Marchfield Rock Hopper,2048
+Marchfield Glass Works,Marchfield Glass Works,4
+Marchfield Iron Yard,Marchfield Iron Yard,12
+Northwind Fortress,Northwind Fortress,2112
+Northwind Mine,Northwind Mine,2049
+Northwind Memorial,Northwind Memorial,3072
+Northwind Lair,Northwind Lair,2048
+Northwind Prison,Northwind Prison,64
+Northwind Rose,Northwind Rose,2048
+Northwind Reef,Northwind Reef,2056
+Northwind Iceberg,Northwind Iceberg,2048
+Northwind Prison Mine,Northwind Prison Mine,4160
+Northwind Salt Shack,Northwind Salt Shack,2056
+Northwind Recharging Stn.,Northwind Recharging Stn.,0
+Northwind Deep Space Depot,Northwind Deep Space Depot,2048
+Northwind Ice Locker,Northwind Ice Locker,6144
+Northwind Rock Hopper,Northwind Rock Hopper,2048
+Northwind Glass Works,Northwind Glass Works,4
+Northwind Iron Yard,Northwind Iron Yard,12
+Overdale Fortress,Overdale Fortress,2112
+Overdale Mine,Overdale Mine,2049
+Overdale Memorial,Overdale Memorial,3072
+Overdale Lair,Overdale Lair,2048
+Overdale Prison,Overdale Prison,64
+Overdale Rose,Overdale Rose,2048
+Overdale Reef,Overdale Reef,2056
+Overdale Iceberg,Overdale Iceberg,2048
+Overdale Prison Mine,Overdale Prison Mine,4160
+Overdale Salt Shack,Overdale Salt Shack,2056
+Overdale Recharging Stn.,Overdale Recharging Stn.,0
+Overdale Deep Space Depot,Overdale Deep Space Depot,2048
+Overdale Ice Locker,Overdale Ice Locker,6144
+Overdale Rock Hopper,Overdale Rock Hopper,2048
+Overdale Glass Works,Overdale Glass Works,4
+Overdale Iron Yard,Overdale Iron Yard,12
+Penhallow Fortress,Penhallow Fortress,2112
+Penhallow Mine,Penhallow Mine,2049
+Penhallow Memorial,Penhallow Memorial,3072
+Penhallow Lair,Penhallow Lair,2048
+Penhallow Prison,Penhallow Prison,64
+Penhallow Rose,Penhallow Rose,2048
+Penhallow Reef,Penhallow Reef,2056
+Penhallow Iceberg,Penhallow Iceberg,2048
+Penhallow Prison Mine,Penhallow Prison Mine,4160
+Penhallow Salt Shack,Penhallow Salt Shack,2056
+Penhallow Recharging Stn.,Penhallow Recharging Stn.,0
+Penhallow Deep Space Depot,Penhallow Deep Space Depot,2048
+Penhallow Ice Locker,Penhallow Ice Locker,6144
+Penhallow Rock Hopper,Penhallow Rock Hopper,2048
+Penhallow Glass Works,Penhallow Glass Works,4
+Penhallow Iron Yard,Penhallow Iron Yard,12
+Quicksilver Fortress,Quicksilver Fortress,2112
+Quicksilver Mine,Quicksilver Mine,2049
+Quicksilver Memorial,Quicksilver Memorial,3072
+Quicksilver Lair,Quicksilver Lair,2048
+Quicksilver Prison,Quicksilver Prison,64
+Quicksilver Rose,Quicksilver Rose,2048
+Quicksilver Reef,Quicksilver Reef,2056
+Quicksilver Iceberg,Quicksilver Iceberg,2048
+Quicksilver Prison Mine,Quicksilver Prison Mine,4160
+Quicksilver Salt Shack,Quicksilver Salt Shack,2056
+Quicksilver Recharging Stn.,Quicksilver Recharging Stn.,0
+Quicksilver Deep Space Depot,Quicksilver Deep Space Depot,2048
+Quicksilver Ice Locker,Quicksilver Ice Locker,6144
+Quicksilver Rock Hopper,Quicksilver Rock Hopper,2048
+Quicksilver Glass Works,Quicksilver Glass Works,4
+Quicksilver Iron Yard,Quicksilver Iron Yard,12
+Ravensworth Fortress,Ravensworth Fortress,2112
+Ravensworth Mine,Ravensworth Mine,2049
+Ravensworth Memorial,Ravensworth Memorial,3072
+Ravensworth Lair,Ravensworth Lair,2048
+Ravensworth Prison,Ravensworth Prison,64
+Ravensworth Rose,Ravensworth Rose,2048
+Ravensworth Reef,Ravensworth Reef,2056
+Ravensworth Iceberg,Ravensworth Iceberg,2048
+Ravensworth Prison Mine,Ravensworth Prison Mine,4160
+Ravensworth Salt Shack,Ravensworth Salt Shack,2056
+Ravensworth Recharging Stn.,Ravensworth Recharging Stn.,0
+Ravensworth Deep Space Depot,Ravensworth Deep Space Depot,2048
+Ravensworth Ice Locker,Ravensworth Ice Locker,6144
+Ravensworth Rock Hopper,Ravensworth Rock Hopper,2048
+Ravensworth Glass Works,Ravensworth Glass Works,4
+Ravensworth Iron Yard,Ravensworth Iron Yard,12
+Silverdale Fortress,Silverdale Fortress,2112
+Silverdale Mine,Silverdale Mine,2049
+Silverdale Memorial,Silverdale Memorial,3072
+Silverdale Lair,Silverdale Lair,2048
+Silverdale Prison,Silverdale Prison,64
+Silverdale Rose,Silverdale Rose,2048
+Silverdale Reef,Silverdale Reef,2056
+Silverdale Iceberg,Silverdale Iceberg,2048
+Silverdale Prison Mine,Silverdale Prison Mine,4160
+Silverdale Salt Shack,Silverdale Salt Shack,2056
+Silverdale Recharging Stn.,Silverdale Recharging Stn.,0
+Silverdale Deep Space Depot,Silverdale Deep Space Depot,2048
+Silverdale Ice Locker,Silverdale Ice Locker,6144
+Silverdale Rock Hopper,Silverdale Rock Hopper,2048
+Silverdale Glass Works,Silverdale Glass Works,4
+Silverdale Iron Yard,Silverdale Iron Yard,12
+Thornhaven Fortress,Thornhaven Fortress,2112
+Thornhaven Mine,Thornhaven Mine,2049
+Thornhaven Memorial,Thornhaven Memorial,3072
+Thornhaven Lair,Thornhaven Lair,2048
+Thornhaven Prison,Thornhaven Prison,64
+Thornhaven Rose,Thornhaven Rose,2048
+Thornhaven Reef,Thornhaven Reef,2056
+Thornhaven Iceberg,Thornhaven Iceberg,2048
+Thornhaven Prison Mine,Thornhaven Prison Mine,4160
+Thornhaven Salt Shack,Thornhaven Salt Shack,2056
+Thornhaven Recharging Stn.,Thornhaven Recharging Stn.,0
+Thornhaven Deep Space Depot,Thornhaven Deep Space Depot,2048
+Thornhaven Ice Locker,Thornhaven Ice Locker,6144
+Thornhaven Rock Hopper,Thornhaven Rock Hopper,2048
+Thornhaven Glass Works,Thornhaven Glass Works,4
+Thornhaven Iron Yard,Thornhaven Iron Yard,12
+Umberlee Fortress,Umberlee Fortress,2112
+Umberlee Mine,Umberlee Mine,2049
+Umberlee Memorial,Umberlee Memorial,3072
+Umberlee Lair,Umberlee Lair,2048
+Umberlee Prison,Umberlee Prison,64
+Umberlee Rose,Umberlee Rose,2048
+Umberlee Reef,Umberlee Reef,2056
+Umberlee Iceberg,Umberlee Iceberg,2048
+Umberlee Prison Mine,Umberlee Prison Mine,4160
+Umberlee Salt Shack,Umberlee Salt Shack,2056
+Umberlee Recharging Stn.,Umberlee Recharging Stn.,0
+Umberlee Deep Space Depot,Umberlee Deep Space Depot,2048
+Umberlee Ice Locker,Umberlee Ice Locker,6144
+Umberlee Rock Hopper,Umberlee Rock Hopper,2048
+Umberlee Glass Works,Umberlee Glass Works,4
+Umberlee Iron Yard,Umberlee Iron Yard,12
+Valewood Fortress,Valewood Fortress,2112
+Valewood Mine,Valewood Mine,2049
+Valewood Memorial,Valewood Memorial,3072
+Valewood Lair,Valewood Lair,2048
+Valewood Prison,Valewood Prison,64
+Valewood Rose,Valewood Rose,2048
+Valewood Reef,Valewood Reef,2056
+Valewood Iceberg,Valewood Iceberg,2048
+Valewood Prison Mine,Valewood Prison Mine,4160
+Valewood Salt Shack,Valewood Salt Shack,2056
+Valewood Recharging Stn.,Valewood Recharging Stn.,0
+Valewood Deep Space Depot,Valewood Deep Space Depot,2048
+Valewood Ice Locker,Valewood Ice Locker,6144
+Valewood Rock Hopper,Valewood Rock Hopper,2048
+Valewood Glass Works,Valewood Glass Works,4
+Valewood Iron Yard,Valewood Iron Yard,12
+Westbrook Fortress,Westbrook Fortress,2112
+Westbrook Mine,Westbrook Mine,2049
+Westbrook Memorial,Westbrook Memorial,3072
+Westbrook Lair,Westbrook Lair,2048
+Westbrook Prison,Westbrook Prison,64
+Westbrook Rose,Westbrook Rose,2048
+Westbrook Reef,Westbrook Reef,2056
+Westbrook Iceberg,Westbrook Iceberg,2048
+Westbrook Prison Mine,Westbrook Prison Mine,4160
+Westbrook Salt Shack,Westbrook Salt Shack,2056
+Westbrook Recharging Stn.,Westbrook Recharging Stn.,0
+Westbrook Deep Space Depot,Westbrook Deep Space Depot,2048
+Westbrook Ice Locker,Westbrook Ice Locker,6144
+Westbrook Rock Hopper,Westbrook Rock Hopper,2048
+Westbrook Glass Works,Westbrook Glass Works,4
+Westbrook Iron Yard,Westbrook Iron Yard,12
+Yewfield Fortress,Yewfield Fortress,2112
+Yewfield Mine,Yewfield Mine,2049
+Yewfield Memorial,Yewfield Memorial,3072
+Yewfield Lair,Yewfield Lair,2048
+Yewfield Prison,Yewfield Prison,64
+Yewfield Rose,Yewfield Rose,2048
+Yewfield Reef,Yewfield Reef,2056
+Yewfield Iceberg,Yewfield Iceberg,2048
+Yewfield Prison Mine,Yewfield Prison Mine,4160
+Yewfield Salt Shack,Yewfield Salt Shack,2056
+Yewfield Recharging Stn.,Yewfield Recharging Stn.,0
+Yewfield Deep Space Depot,Yewfield Deep Space Depot,2048
+Yewfield Ice Locker,Yewfield Ice Locker,6144
+Yewfield Rock Hopper,Yewfield Rock Hopper,2048
+Yewfield Glass Works,Yewfield Glass Works,4
+Yewfield Iron Yard,Yewfield Iron Yard,12
+Aldergate Fortress,Aldergate Fortress,2112
+Aldergate Mine,Aldergate Mine,2049
+Aldergate Memorial,Aldergate Memorial,3072
+Aldergate Lair,Aldergate Lair,2048
+Aldergate Prison,Aldergate Prison,64
+Aldergate Rose,Aldergate Rose,2048
+Aldergate Reef,Aldergate Reef,2056
+Aldergate Iceberg,Aldergate Iceberg,2048
+Aldergate Prison Mine,Aldergate Prison Mine,4160
+Aldergate Salt Shack,Aldergate Salt Shack,2056
+Aldergate Recharging Stn.,Aldergate Recharging Stn.,0
+Aldergate Deep Space Depot,Aldergate Deep Space Depot,2048
+Aldergate Ice Locker,Aldergate Ice Locker,6144
+Aldergate Rock Hopper,Aldergate Rock Hopper,2048
+Aldergate Glass Works,Aldergate Glass Works,4
+Aldergate Iron Yard,Aldergate Iron Yard,12
+Brackenhill Fortress,Brackenhill Fortress,2112
+Brackenhill Mine,Brackenhill Mine,2049
+Brackenhill Memorial,Brackenhill Memorial,3072
+Brackenhill Lair,Brackenhill Lair,2048
+Brackenhill Prison,Brackenhill Prison,64
+Brackenhill Rose,Brackenhill Rose,2048
+Brackenhill Reef,Brackenhill Reef,2056
+Brackenhill Iceberg,Brackenhill Iceberg,2048
+Brackenhill Prison Mine,Brackenhill Prison Mine,4160
+Brackenhill Salt Shack,Brackenhill Salt Shack,2056
+Brackenhill Recharging Stn.,Brackenhill Recharging Stn.,0
+Brackenhill Deep Space Depot,Brackenhill Deep Space Depot,2048
+Brackenhill Ice Locker,Brackenhill Ice Locker,6144
+Brackenhill Rock Hopper,Brackenhill Rock Hopper,2048
+Brackenhill Glass Works,Brackenhill Glass Works,4
+Brackenhill Iron Yard,Brackenhill Iron Yard,12
+Clearwater Fortress,Clearwater Fortress,2112
+Clearwater Mine,Clearwater Mine,2049
+Clearwater Memorial,Clearwater Memorial,3072
+Clearwater Lair,Clearwater Lair,2048
+Clearwater Prison,Clearwater Prison,64
+Clearwater Rose,Clearwater Rose,2048
+Clearwater Reef,Clearwater Reef,2056
+Clearwater Iceberg,Clearwater Iceberg,2048
+Clearwater Prison Mine,Clearwater Prison Mine,4160
+Clearwater Salt Shack,Clearwater Salt Shack,2056
+Clearwater Recharging Stn.,Clearwater Recharging Stn.,0
+Clearwater Deep Space Depot,Clearwater Deep Space Depot,2048
+Clearwater Ice Locker,Clearwater Ice Locker,6144
+Clearwater Rock Hopper,Clearwater Rock Hopper,2048
+Clearwater Glass Works,Clearwater Glass Works,4
+Clearwater Iron Yard,Clearwater Iron Yard,12
+Downholme Fortress,Downholme Fortress,2112
+Downholme Mine,Downholme Mine,2049
+Downholme Memorial,Downholme Memorial,3072
+Downholme Lair,Downholme Lair,2048
+Downholme Prison,Downholme Prison,64
+Downholme Rose,Downholme Rose,2048
+Downholme Reef,Downholme Reef,2056
+Downholme Iceberg,Downholme Iceberg,2048
+Downholme Prison Mine,Downholme Prison Mine,4160
+Downholme Salt Shack,Downholme Salt Shack,2056
+Downholme Recharging Stn.,Downholme Recharging Stn.,0
+Downholme Deep Space Depot,Downholme Deep Space Depot,2048
+Downholme Ice Locker,Downholme Ice Locker,6144
+Downholme Rock Hopper,Downholme Rock Hopper,2048
+Downholme Glass Works,Downholme Glass Works,4
+Downholme Iron Yard,Downholme Iron Yard,12
+Eastmarch Fortress,Eastmarch Fortress,2112
+Eastmarch Mine,Eastmarch Mine,2049
+Eastmarch Memorial,Eastmarch Memorial,3072
+Eastmarch Lair,Eastmarch Lair,2048
+Eastmarch Prison,Eastmarch Prison,64
+Eastmarch Rose,Eastmarch Rose,2048
+Eastmarch Reef,Eastmarch Reef,2056
+Eastmarch Iceberg,Eastmarch Iceberg,2048
+Eastmarch Prison Mine,Eastmarch Prison Mine,4160
+Eastmarch Salt Shack,Eastmarch Salt Shack,2056
+Eastmarch Recharging Stn.,Eastmarch Recharging Stn.,0
+Eastmarch Deep Space Depot,Eastmarch Deep Space Depot,2048
+Eastmarch Ice Locker,Eastmarch Ice Locker,6144
+Eastmarch Rock Hopper,Eastmarch Rock Hopper,2048
+Eastmarch Glass Works,Eastmarch Glass Works,4
+Eastmarch Iron Yard,Eastmarch Iron Yard,12
+Fallowfield Fortress,Fallowfield Fortress,2112
+Fallowfield Mine,Fallowfield Mine,2049
+Fallowfield Memorial,Fallowfield Memorial,3072
+Fallowfield Lair,Fallowfield Lair,2048
+Fallowfield Prison,Fallowfield Prison,64
+Fallowfield Rose,Fallowfield Rose,2048
+Fallowfield Reef,Fallowfield Reef,2056
+Fallowfield Iceberg,Fallowfield Iceberg,2048
+Fallowfield Prison Mine,Fallowfield Prison Mine,4160
+Fallowfield Salt Shack,Fallowfield Salt Shack,2056
+Fallowfield Recharging Stn.,Fallowfield Recharging Stn.,0
+Fallowfield Deep Space Depot,Fallowfield Deep Space Depot,2048
+Fallowfield Ice Locker,Fallowfield Ice Locker,6144
+Fallowfield Rock Hopper,Fallowfield Rock Hopper,2048
+Fallowfield Glass Works,Fallowfield Glass Works,4
+Fallowfield Iron Yard,Fallowfield Iron Yard,12
+Glenmorrow Fortress,Glenmorrow Fortress,2112
+Glenmorrow Mine,Glenmorrow Mine,2049
+Glenmorrow Memorial,Glenmorrow Memorial,3072
+Glenmorrow Lair,Glenmorrow Lair,2048
+Glenmorrow Prison,Glenmorrow Prison,64
+Glenmorrow Rose,Glenmorrow Rose,2048
+Glenmorrow Reef,Glenmorrow Reef,2056
+Glenmorrow Iceberg,Glenmorrow Iceberg,2048
+Glenmorrow Prison Mine,Glenmorrow Prison Mine,4160
+Glenmorrow Salt Shack,Glenmorrow Salt Shack,2056
+Glenmorrow Recharging Stn.,Glenmorrow Recharging Stn.,0
+Glenmorrow Deep Space Depot,Glenmorrow Deep Space Depot,2048
+Glenmorrow Ice Locker,Glenmorrow Ice Locker,6144
+Glenmorrow Rock Hopper,Glenmorrow Rock Hopper,2048
+Glenmorrow Glass Works,Glenmorrow Glass Works,4
+Glenmorrow Iron Yard,Glenmorrow Iron Yard,12
+Hartsmere Fortress,Hartsmere Fortress,2112
+Hartsmere Mine,Hartsmere Mine,2049
+Hartsmere Memorial,Hartsmere Memorial,3072
+Hartsmere Lair,Hartsmere Lair,2048
+Hartsmere Prison,Hartsmere Prison,64
+Hartsmere Rose,Hartsmere Rose,2048
+Hartsmere Reef,Hartsmere Reef,2056
+Hartsmere Iceberg,Hartsmere Iceberg,2048
+Hartsmere Prison Mine,Hartsmere Prison Mine,4160
+Hartsmere Salt Shack,Hartsmere Salt Shack,2056
+Hartsmere Recharging Stn.,Hartsmere Recharging Stn.,0
+Hartsmere Deep Space Depot,Hartsmere Deep Space Depot,2048
+Hartsmere Ice Locker,Hartsmere Ice Locker,6144
+Hartsmere Rock Hopper,Hartsmere Rock Hopper,2048
+Hartsmere Glass Works,Hartsmere Glass Works,4
+Hartsmere Iron Yard,Hartsmere Iron Yard,12
+Inglewood Fortress,Inglewood Fortress,2112
+Inglewood Mine,Inglewood Mine,2049
+Inglewood Memorial,Inglewood Memorial,3072
+Inglewood Lair,Inglewood Lair,2048
+Inglewood Prison,Inglewood Prison,64
+Inglewood Rose,Inglewood Rose,2048
+Inglewood Reef,Inglewood Reef,2056
+Inglewood Iceberg,Inglewood Iceberg,2048
+Inglewood Prison Mine,Inglewood Prison Mine,4160
+Inglewood Salt Shack,Inglewood Salt Shack,2056
+Inglewood Recharging Stn.,Inglewood Recharging Stn.,0
+Inglewood Deep Space Depot,Inglewood Deep Space Depot,2048
+Inglewood Ice Locker,Inglewood Ice Locker,6144
+Inglewood Rock Hopper,Inglewood Rock Hopper,2048
+Inglewood Glass Works,Inglewood Glass Works,4
+Inglewood Iron Yard,Inglewood Iron Yard,12
+Jesmond Fortress,Jesmond Fortress,2112
+Jesmond Mine,Jesmond Mine,2049
+Jesmond Memorial,Jesmond Memorial,3072
+Jesmond Lair,Jesmond Lair,2048
+Jesmond Prison,Jesmond Prison,64
+Jesmond Rose,Jesmond Rose,2048
+Jesmond Reef,Jesmond Reef,2056
+Jesmond Iceberg,Jesmond Iceberg,2048
+Jesmond Prison Mine,Jesmond Prison Mine,4160
+Jesmond Salt Shack,Jesmond Salt Shack,2056
+Jesmond Recharging Stn.,Jesmond Recharging Stn.,0
+Jesmond Deep Space Depot,Jesmond Deep Space Depot,2048
+Jesmond Ice Locker,Jesmond Ice Locker,6144
+Jesmond Rock Hopper,Jesmond Rock Hopper,2048
+Jesmond Glass Works,Jesmond Glass Works,4
+Jesmond Iron Yard,Jesmond Iron Yard,12
+Kirkhaven Fortress,Kirkhaven Fortress,2112
+Kirkhaven Mine,Kirkhaven Mine,2049
+Kirkhaven Memorial,Kirkhaven Memorial,3072
+Kirkhaven Lair,Kirkhaven Lair,2048
+Kirkhaven Prison,Kirkhaven Prison,64
+Kirkhaven Rose,Kirkhaven Rose,2048
+Kirkhaven Reef,Kirkhaven Reef,2056
+Kirkhaven Iceberg,Kirkhaven Iceberg,2048
+Kirkhaven Prison Mine,Kirkhaven Prison Mine,4160
+Kirkhaven Salt Shack,Kirkhaven Salt Shack,2056
+Kirkhaven Recharging Stn.,Kirkhaven Recharging Stn.,0
+Kirkhaven Deep Space Depot,Kirkhaven Deep Space Depot,2048
+Kirkhaven Ice Locker,Kirkhaven Ice Locker,6144
+Kirkhaven Rock Hopper,Kirkhaven Rock Hopper,2048
+Kirkhaven Glass Works,Kirkhaven Glass Works,4
+Kirkhaven Iron Yard,Kirkhaven Iron Yard,12
+Lindenhall Fortress,Lindenhall Fortress,2112
+Lindenhall Mine,Lindenhall Mine,2049
+Lindenhall Memorial,Lindenhall Memorial,3072
+Lindenhall Lair,Lindenhall Lair,2048
+Lindenhall Prison,Lindenhall Prison,64
+Lindenhall Rose,Lindenhall Rose,2048
+Lindenhall Reef,Lindenhall Reef,2056
+Lindenhall Iceberg,Lindenhall Iceberg,2048
+Lindenhall Prison Mine,Lindenhall Prison Mine,4160
+Lindenhall Salt Shack,Lindenhall Salt Shack,2056
+Lindenhall Recharging Stn.,Lindenhall Recharging Stn.,0
+Lindenhall Deep Space Depot,Lindenhall Deep Space Depot,2048
+Lindenhall Ice Locker,Lindenhall Ice Locker,6144
+Lindenhall Rock Hopper,Lindenhall Rock Hopper,2048
+Lindenhall Glass Works,Lindenhall Glass Works,4
+Lindenhall Iron Yard,Lindenhall Iron Yard,12
+Moorcroft Fortress,Moorcroft Fortress,2112
+Moorcroft Mine,Moorcroft Mine,2049
+Moorcroft Memorial,Moorcroft Memorial,3072
+Moorcroft Lair,Moorcroft Lair,2048
+Moorcroft Prison,Moorcroft Prison,64
+Moorcroft Rose,Moorcroft Rose,2048
+Moorcroft Reef,Moorcroft Reef,2056
+Moorcroft Iceberg,Moorcroft Iceberg,2048
+Moorcroft Prison Mine,Moorcroft Prison Mine,4160
+Moorcroft Salt Shack,Moorcroft Salt Shack,2056
+Moorcroft Recharging Stn.,Moorcroft Recharging Stn.,0
+Moorcroft Deep Space Depot,Moorcroft Deep Space Depot,2048
+Moorcroft Ice Locker,Moorcroft Ice Locker,6144
+Moorcroft Rock Hopper,Moorcroft Rock Hopper,2048
+Moorcroft Glass Works,Moorcroft Glass Works,4
+Moorcroft Iron Yard,Moorcroft Iron Yard,12
+Netherby Fortress,Netherby Fortress,2112
+Netherby Mine,Netherby Mine,2049
+Netherby Memorial,Netherby Memorial,3072
+Netherby Lair,Netherby Lair,2048
+Netherby Prison,Netherby Prison,64
+Netherby Rose,Netherby Rose,2048
+Netherby Reef,Netherby Reef,2056
+Netherby Iceberg,Netherby Iceberg,2048
+Netherby Prison Mine,Netherby Prison Mine,4160
+Netherby Salt Shack,Netherby Salt Shack,2056
+Netherby Recharging Stn.,Netherby Recharging Stn.,0
+Netherby Deep Space Depot,Netherby Deep Space Depot,2048
+Netherby Ice Locker,Netherby Ice Locker,6144
+Netherby Rock Hopper,Netherby Rock Hopper,2048
+Netherby Glass Works,Netherby Glass Works,4
+Netherby Iron Yard,Netherby Iron Yard,12
+Oakhanger Fortress,Oakhanger Fortress,2112
+Oakhanger Mine,Oakhanger Mine,2049
+Oakhanger Memorial,Oakhanger Memorial,3072
+Oakhanger Lair,Oakhanger Lair,2048
+Oakhanger Prison,Oakhanger Prison,64
+Oakhanger Rose,Oakhanger Rose,2048
+Oakhanger Reef,Oakhanger Reef,2056
+Oakhanger Iceberg,Oakhanger Iceberg,2048
+Oakhanger Prison Mine,Oakhanger Prison Mine,4160
+Oakhanger Salt Shack,Oakhanger Salt Shack,2056
+Oakhanger Recharging Stn.,Oakhanger Recharging Stn.,0
+Oakhanger Deep Space Depot,Oakhanger Deep Space Depot,2048
+Oakhanger Ice Locker,Oakhanger Ice Locker,6144
+Oakhanger Rock Hopper,Oakhanger Rock Hopper,2048
+Oakhanger Glass Works,Oakhanger Glass Works,4
+Oakhanger Iron Yard,Oakhanger Iron Yard,12
+Pellowgate Fortress,Pellowgate Fortress,2112
+Pellowgate Mine,Pellowgate Mine,2049
+Pellowgate Memorial,Pellowgate Memorial,3072
+Pellowgate Lair,Pellowgate Lair,2048
+Pellowgate Prison,Pellowgate Prison,64
+Pellowgate Rose,Pellowgate Rose,2048
+Pellowgate Reef,Pellowgate Reef,2056
+Pellowgate Iceberg,Pellowgate Iceberg,2048
+Pellowgate Prison Mine,Pellowgate Prison Mine,4160
+Pellowgate Salt Shack,Pellowgate Salt Shack,2056
+Pellowgate Recharging Stn.,Pellowgate Recharging Stn.,0
+Pellowgate Deep Space Depot,Pellowgate Deep Space Depot,2048
+Pellowgate Ice Locker,Pellowgate Ice Locker,6144
+Pellowgate Rock Hopper,Pellowgate Rock Hopper,2048
+Pellowgate Glass Works,Pellowgate Glass Works,4
+Pellowgate Iron Yard,Pellowgate Iron Yard,12
+Quartermain Fortress,Quartermain Fortress,2112
+Quartermain Mine,Quartermain Mine,2049
+Quartermain Memorial,Quartermain Memorial,3072
+Quartermain Lair,Quartermain Lair,2048
+Quartermain Prison,Quartermain Prison,64
+Quartermain Rose,Quartermain Rose,2048
+Quartermain Reef,Quartermain Reef,2056
+Quartermain Iceberg,Quartermain Iceberg,2048
+Quartermain Prison Mine,Quartermain Prison Mine,4160
+Quartermain Salt Shack,Quartermain Salt Shack,2056
+Quartermain Recharging Stn.,Quartermain Recharging Stn.,0
+Quartermain Deep Space Depot,Quartermain Deep Space Depot,2048
+Quartermain Ice Locker,Quartermain Ice Locker,6144
+Quartermain Rock Hopper,Quartermain Rock Hopper,2048
+Quartermain Glass Works,Quartermain Glass Works,4
+Quartermain Iron Yard,Quartermain Iron Yard,12
+Riddlesworth Fortress,Riddlesworth Fortress,2112
+Riddlesworth Mine,Riddlesworth Mine,2049
+Riddlesworth Memorial,Riddlesworth Memorial,3072
+Riddlesworth Lair,Riddlesworth Lair,2048
+Riddlesworth Prison,Riddlesworth Prison,64
+Riddlesworth Rose,Riddlesworth Rose,2048
+Riddlesworth Reef,Riddlesworth Reef,2056
+Riddlesworth Iceberg,Riddlesworth Iceberg,2048
+Riddlesworth Prison Mine,Riddlesworth Prison Mine,4160
+Riddlesworth Salt Shack,Riddlesworth Salt Shack,2056
+Riddlesworth Recharging Stn.,Riddlesworth Recharging Stn.,0
+Riddlesworth Deep Space Depot,Riddlesworth Deep Space Depot,2048
+Riddlesworth Ice Locker,Riddlesworth Ice Locker,6144
+Riddlesworth Rock Hopper,Riddlesworth Rock Hopper,2048
+Riddlesworth Glass Works,Riddlesworth Glass Works,4
+Riddlesworth Iron Yard,Riddlesworth Iron Yard,12
+Stanmere Fortress,Stanmere Fortress,2112
+Stanmere Mine,Stanmere Mine,2049
+Stanmere Memorial,Stanmere Memorial,3072
+Stanmere Lair,Stanmere Lair,2048
+Stanmere Prison,Stanmere Prison,64
+Stanmere Rose,Stanmere Rose,2048
+Stanmere Reef,Stanmere Reef,2056
+Stanmere Iceberg,Stanmere Iceberg,2048
+Stanmere Prison Mine,Stanmere Prison Mine,4160
+Stanmere Salt Shack,Stanmere Salt Shack,2056
+Stanmere Recharging Stn.,Stanmere Recharging Stn.,0
+Stanmere Deep Space Depot,Stanmere Deep Space Depot,2048
+Stanmere Ice Locker,Stanmere Ice Locker,6144
+Stanmere Rock Hopper,Stanmere Rock Hopper,2048
+Stanmere Glass Works,Stanmere Glass Works,4
+Stanmere Iron Yard,Stanmere Iron Yard,12
+Thistledown Fortress,Thistledown Fortress,2112
+Thistledown Mine,Thistledown Mine,2049
+Thistledown Memorial,Thistledown Memorial,3072
+Thistledown Lair,Thistledown Lair,2048
+Thistledown Prison,Thistledown Prison,64
+Thistledown Rose,Thistledown Rose,2048
+Thistledown Reef,Thistledown Reef,2056
+Thistledown Iceberg,Thistledown Iceberg,2048
+Thistledown Prison Mine,Thistledown Prison Mine,4160
+Thistledown Salt Shack,Thistledown Salt Shack,2056
+Thistledown Recharging Stn.,Thistledown Recharging Stn.,0
+Thistledown Deep Space Depot,Thistledown Deep Space Depot,2048
+Thistledown Ice Locker,Thistledown Ice Locker,6144
+Thistledown Rock Hopper,Thistledown Rock Hopper,2048
+Thistledown Glass Works,Thistledown Glass Works,4
+Thistledown Iron Yard,Thistledown Iron Yard,12
+Uppingham Fortress,Uppingham Fortress,2112
+Uppingham Mine,Uppingham Mine,2049
+Uppingham Memorial,Uppingham Memorial,3072
+Uppingham Lair,Uppingham Lair,2048
+Uppingham Prison,Uppingham Prison,64
+Uppingham Rose,Uppingham Rose,2048
+Uppingham Reef,Uppingham Reef,2056
+Uppingham Iceberg,Uppingham Iceberg,2048
+Uppingham Prison Mine,Uppingham Prison Mine,4160
+Uppingham Salt Shack,Uppingham Salt Shack,2056
+Uppingham Recharging Stn.,Uppingham Recharging Stn.,0
+Uppingham Deep Space Depot,Uppingham Deep Space Depot,2048
+Uppingham Ice Locker,Uppingham Ice Locker,6144
+Uppingham Rock Hopper,Uppingham Rock Hopper,2048
+Uppingham Glass Works,Uppingham Glass Works,4
+Uppingham Iron Yard,Uppingham Iron Yard,12
+Vellamore Fortress,Vellamore Fortress,2112
+Vellamore Mine,Vellamore Mine,2049
+Vellamore Memorial,Vellamore Memorial,3072
+Vellamore Lair,Vellamore Lair,2048
+Vellamore Prison,Vellamore Prison,64
+Vellamore Rose,Vellamore Rose,2048
+Vellamore Reef,Vellamore Reef,2056
+Vellamore Iceberg,Vellamore Iceberg,2048
+Vellamore Prison Mine,Vellamore Prison Mine,4160
+Vellamore Salt Shack,Vellamore Salt Shack,2056
+Vellamore Recharging Stn.,Vellamore Recharging Stn.,0
+Vellamore Deep Space Depot,Vellamore Deep Space Depot,2048
+Vellamore Ice Locker,Vellamore Ice Locker,6144
+Vellamore Rock Hopper,Vellamore Rock Hopper,2048
+Vellamore Glass Works,Vellamore Glass Works,4
+Vellamore Iron Yard,Vellamore Iron Yard,12
+Windermere Fortress,Windermere Fortress,2112
+Windermere Mine,Windermere Mine,2049
+Windermere Memorial,Windermere Memorial,3072
+Windermere Lair,Windermere Lair,2048
+Windermere Prison,Windermere Prison,64
+Windermere Rose,Windermere Rose,2048
+Windermere Reef,Windermere Reef,2056
+Windermere Iceberg,Windermere Iceberg,2048
+Windermere Prison Mine,Windermere Prison Mine,4160
+Windermere Salt Shack,Windermere Salt Shack,2056
+Windermere Recharging Stn.,Windermere Recharging Stn.,0
+Windermere Deep Space Depot,Windermere Deep Space Depot,2048
+Windermere Ice Locker,Windermere Ice Locker,6144
+Windermere Rock Hopper,Windermere Rock Hopper,2048
+Windermere Glass Works,Windermere Glass Works,4
+Windermere Iron Yard,Windermere Iron Yard,12
+Yateley Fortress,Yateley Fortress,2112
+Yateley Mine,Yateley Mine,2049
+Yateley Memorial,Yateley Memorial,3072
+Yateley Lair,Yateley Lair,2048
+Yateley Prison,Yateley Prison,64
+Yateley Rose,Yateley Rose,2048
+Yateley Reef,Yateley Reef,2056
+Yateley Iceberg,Yateley Iceberg,2048
+Yateley Prison Mine,Yateley Prison Mine,4160
+Yateley Salt Shack,Yateley Salt Shack,2056
+Yateley Recharging Stn.,Yateley Recharging Stn.,0
+Yateley Deep Space Depot,Yateley Deep Space Depot,2048
+Yateley Ice Locker,Yateley Ice Locker,6144
+Yateley Rock Hopper,Yateley Rock Hopper,2048
+Yateley Glass Works,Yateley Glass Works,4
+Yateley Iron Yard,Yateley Iron Yard,12
+Cranmoor Fortress,Cranmoor Fortress,2112
+Cranmoor Mine,Cranmoor Mine,2049
+Cranmoor Memorial,Cranmoor Memorial,3072
+Cranmoor Lair,Cranmoor Lair,2048
+Cranmoor Prison,Cranmoor Prison,64
+Cranmoor Rose,Cranmoor Rose,2048
+Cranmoor Reef,Cranmoor Reef,2056
+Cranmoor Iceberg,Cranmoor Iceberg,2048
+Cranmoor Prison Mine,Cranmoor Prison Mine,4160
+Cranmoor Salt Shack,Cranmoor Salt Shack,2056
+Cranmoor Recharging Stn.,Cranmoor Recharging Stn.,0
+Cranmoor Deep Space Depot,Cranmoor Deep Space Depot,2048
+Cranmoor Ice Locker,Cranmoor Ice Locker,6144
+Cranmoor Rock Hopper,Cranmoor Rock Hopper,2048
+Cranmoor Glass Works,Cranmoor Glass Works,4
+Cranmoor Iron Yard,Cranmoor Iron Yard,12
+Duskwater Fortress,Duskwater Fortress,2112
+Duskwater Mine,Duskwater Mine,2049
+Duskwater Memorial,Duskwater Memorial,3072
+Duskwater Lair,Duskwater Lair,2048
+Duskwater Prison,Duskwater Prison,64
+Duskwater Rose,Duskwater Rose,2048
+Duskwater Reef,Duskwater Reef,2056
+Duskwater Iceberg,Duskwater Iceberg,2048
+Duskwater Prison Mine,Duskwater Prison Mine,4160
+Duskwater Salt Shack,Duskwater Salt Shack,2056
+Duskwater Recharging Stn.,Duskwater Recharging Stn.,0
+Duskwater Deep Space Depot,Duskwater Deep Space Depot,2048
+Duskwater Ice Locker,Duskwater Ice Locker,6144
+Duskwater Rock Hopper,Duskwater Rock Hopper,2048
+Duskwater Glass Works,Duskwater Glass Works,4
+Duskwater Iron Yard,Duskwater Iron Yard,12
+Emberly Fortress,Emberly Fortress,2112
+Emberly Mine,Emberly Mine,2049
+Emberly Memorial,Emberly Memorial,3072
+Emberly Lair,Emberly Lair,2048
+Emberly Prison,Emberly Prison,64
+Emberly Rose,Emberly Rose,2048
+Emberly Reef,Emberly Reef,2056
+Emberly Iceberg,Emberly Iceberg,2048
+Emberly Prison Mine,Emberly Prison Mine,4160
+Emberly Salt Shack,Emberly Salt Shack,2056
+Emberly Recharging Stn.,Emberly Recharging Stn.,0
+Emberly Deep Space Depot,Emberly Deep Space Depot,2048
+Emberly Ice Locker,Emberly Ice Locker,6144
+Emberly Rock Hopper,Emberly Rock Hopper,2048
+Emberly Glass Works,Emberly Glass Works,4
+Emberly Iron Yard,Emberly Iron Yard,12
+Foxglove Fortress,Foxglove Fortress,2112
+Foxglove Mine,Foxglove Mine,2049
+Foxglove Memorial,Foxglove Memorial,3072
+Foxglove Lair,Foxglove Lair,2048
+Foxglove Prison,Foxglove Prison,64
+Foxglove Rose,Foxglove Rose,2048
+Foxglove Reef,Foxglove Reef,2056
+Foxglove Iceberg,Foxglove Iceberg,2048
+Foxglove Prison Mine,Foxglove Prison Mine,4160
+Foxglove Salt Shack,Foxglove Salt Shack,2056
+Foxglove Recharging Stn.,Foxglove Recharging Stn.,0
+Foxglove Deep Space Depot,Foxglove Deep Space Depot,2048
+Foxglove Ice Locker,Foxglove Ice Locker,6144
+Foxglove Rock Hopper,Foxglove Rock Hopper,2048
+Foxglove Glass Works,Foxglove Glass Works,4
+Foxglove Iron Yard,Foxglove Iron Yard,12
+Greyloch Fortress,Greyloch Fortress,2112
+Greyloch Mine,Greyloch Mine,2049
+Greyloch Memorial,Greyloch Memorial,3072
+Greyloch Lair,Greyloch Lair,2048
+Greyloch Prison,Greyloch Prison,64
+Greyloch Rose,Greyloch Rose,2048
+Greyloch Reef,Greyloch Reef,2056
+Greyloch Iceberg,Greyloch Iceberg,2048
+Greyloch Prison Mine,Greyloch Prison Mine,4160
+Greyloch Salt Shack,Greyloch Salt Shack,2056
+Greyloch Recharging Stn.,Greyloch Recharging Stn.,0
+Greyloch Deep Space Depot,Greyloch Deep Space Depot,2048
+Greyloch Ice Locker,Greyloch Ice Locker,6144
+Greyloch Rock Hopper,Greyloch Rock Hopper,2048
+Greyloch Glass Works,Greyloch Glass Works,4
+Greyloch Iron Yard,Greyloch Iron Yard,12
+Hollowmere Fortress,Hollowmere Fortress,2112
+Hollowmere Mine,Hollowmere Mine,2049
+Hollowmere Memorial,Hollowmere Memorial,3072
+Hollowmere Lair,Hollowmere Lair,2048
+Hollowmere Prison,Hollowmere Prison,64
+Hollowmere Rose,Hollowmere Rose,2048
+Hollowmere Reef,Hollowmere Reef,2056
+Hollowmere Iceberg,Hollowmere Iceberg,2048
+Hollowmere Prison Mine,Hollowmere Prison Mine,4160
+Hollowmere Salt Shack,Hollowmere Salt Shack,2056
+Hollowmere Recharging Stn.,Hollowmere Recharging Stn.,0
+Hollowmere Deep Space Depot,Hollowmere Deep Space Depot,2048
+Hollowmere Ice Locker,Hollowmere Ice Locker,6144
+Hollowmere Rock Hopper,Hollowmere Rock Hopper,2048
+Hollowmere Glass Works,Hollowmere Glass Works,4
+Hollowmere Iron Yard,Hollowmere Iron Yard,12
+Ironbridge Fortress,Ironbridge Fortress,2112
+Ironbridge Mine,Ironbridge Mine,2049
+Ironbridge Memorial,Ironbridge Memorial,3072
+Ironbridge Lair,Ironbridge Lair,2048
+Ironbridge Prison,Ironbridge Prison,64
+Ironbridge Rose,Ironbridge Rose,2048
+Ironbridge Reef,Ironbridge Reef,2056
+Ironbridge Iceberg,Ironbridge Iceberg,2048
+Ironbridge Prison Mine,Ironbridge Prison Mine,4160
+Ironbridge Salt Shack,Ironbridge Salt Shack,2056
+Ironbridge Recharging Stn.,Ironbridge Recharging Stn.,0
+Ironbridge Deep Space Depot,Ironbridge Deep Space Depot,2048
+Ironbridge Ice Locker,Ironbridge Ice Locker,6144
+Ironbridge Rock Hopper,Ironbridge Rock Hopper,2048
+Ironbridge Glass Works,Ironbridge Glass Works,4
+Ironbridge Iron Yard,Ironbridge Iron Yard,12
+Netherfold Fortress,Netherfold Fortress,2112
+Netherfold Mine,Netherfold Mine,2049
+Netherfold Memorial,Netherfold Memorial,3072
+Netherfold Lair,Netherfold Lair,2048
+Netherfold Prison,Netherfold Prison,64
+Netherfold Rose,Netherfold Rose,2048
+Netherfold Reef,Netherfold Reef,2056
+Netherfold Iceberg,Netherfold Iceberg,2048
+Netherfold Prison Mine,Netherfold Prison Mine,4160
+Netherfold Salt Shack,Netherfold Salt Shack,2056
+Netherfold Recharging Stn.,Netherfold Recharging Stn.,0
+Netherfold Deep Space Depot,Netherfold Deep Space Depot,2048
+Netherfold Ice Locker,Netherfold Ice Locker,6144
+Netherfold Rock Hopper,Netherfold Rock Hopper,2048
+Netherfold Glass Works,Netherfold Glass Works,4
+Netherfold Iron Yard,Netherfold Iron Yard,12
+Oakenshaw Fortress,Oakenshaw Fortress,2112
+Oakenshaw Mine,Oakenshaw Mine,2049
+Oakenshaw Memorial,Oakenshaw Memorial,3072
+Oakenshaw Lair,Oakenshaw Lair,2048
+Oakenshaw Prison,Oakenshaw Prison,64
+Oakenshaw Rose,Oakenshaw Rose,2048
+Oakenshaw Reef,Oakenshaw Reef,2056
+Oakenshaw Iceberg,Oakenshaw Iceberg,2048
+Oakenshaw Prison Mine,Oakenshaw Prison Mine,4160
+Oakenshaw Salt Shack,Oakenshaw Salt Shack,2056
+Oakenshaw Recharging Stn.,Oakenshaw Recharging Stn.,0
+Oakenshaw Deep Space Depot,Oakenshaw Deep Space Depot,2048
+Oakenshaw Ice Locker,Oakenshaw Ice Locker,6144
+Oakenshaw Rock Hopper,Oakenshaw Rock Hopper,2048
+Oakenshaw Glass Works,Oakenshaw Glass Works,4
+Oakenshaw Iron Yard,Oakenshaw Iron Yard,12
+Quarrenden Fortress,Quarrenden Fortress,2112
+Quarrenden Mine,Quarrenden Mine,2049
+Quarrenden Memorial,Quarrenden Memorial,3072
+Quarrenden Lair,Quarrenden Lair,2048
+Quarrenden Prison,Quarrenden Prison,64
+Quarrenden Rose,Quarrenden Rose,2048
+Quarrenden Reef,Quarrenden Reef,2056
+Quarrenden Iceberg,Quarrenden Iceberg,2048
+Quarrenden Prison Mine,Quarrenden Prison Mine,4160
+Quarrenden Salt Shack,Quarrenden Salt Shack,2056
+Quarrenden Recharging Stn.,Quarrenden Recharging Stn.,0
+Quarrenden Deep Space Depot,Quarrenden Deep Space Depot,2048
+Quarrenden Ice Locker,Quarrenden Ice Locker,6144
+Quarrenden Rock Hopper,Quarrenden Rock Hopper,2048
+Quarrenden Glass Works,Quarrenden Glass Works,4
+Quarrenden Iron Yard,Quarrenden Iron Yard,12
+Saltmarsh Fortress,Saltmarsh Fortress,2112
+Saltmarsh Mine,Saltmarsh Mine,2049
+Saltmarsh Memorial,Saltmarsh Memorial,3072
+Saltmarsh Lair,Saltmarsh Lair,2048
+Saltmarsh Prison,Saltmarsh Prison,64
+Saltmarsh Rose,Saltmarsh Rose,2048
+Saltmarsh Reef,Saltmarsh Reef,2056
+Saltmarsh Iceberg,Saltmarsh Iceberg,2048
+Saltmarsh Prison Mine,Saltmarsh Prison Mine,4160
+Saltmarsh Salt Shack,Saltmarsh Salt Shack,2056
+Saltmarsh Recharging Stn.,Saltmarsh Recharging Stn.,0
+Saltmarsh Deep Space Depot,Saltmarsh Deep Space Depot,2048
+Saltmarsh Ice Locker,Saltmarsh Ice Locker,6144
+Saltmarsh Rock Hopper,Saltmarsh Rock Hopper,2048
+Saltmarsh Glass Works,Saltmarsh Glass Works,4
+Saltmarsh Iron Yard,Saltmarsh Iron Yard,12
+Thurlby Fortress,Thurlby Fortress,2112
+Thurlby Mine,Thurlby Mine,2049
+Thurlby Memorial,Thurlby Memorial,3072
+Thurlby Lair,Thurlby Lair,2048
+Thurlby Prison,Thurlby Prison,64
+Thurlby Rose,Thurlby Rose,2048
+Thurlby Reef,Thurlby Reef,2056
+Thurlby Iceberg,Thurlby Iceberg,2048
+Thurlby Prison Mine,Thurlby Prison Mine,4160
+Thurlby Salt Shack,Thurlby Salt Shack,2056
+Thurlby Recharging Stn.,Thurlby Recharging Stn.,0
+Thurlby Deep Space Depot,Thurlby Deep Space Depot,2048
+Thurlby Ice Locker,Thurlby Ice Locker,6144
+Thurlby Rock Hopper,Thurlby Rock Hopper,2048
+Thurlby Glass Works,Thurlby Glass Works,4
+Thurlby Iron Yard,Thurlby Iron Yard,12
+Vantage Fortress,Vantage Fortress,2112
+Vantage Mine,Vantage Mine,2049
+Vantage Memorial,Vantage Memorial,3072
+Vantage Lair,Vantage Lair,2048
+Vantage Prison,Vantage Prison,64
+Vantage Rose,Vantage Rose,2048
+Vantage Reef,Vantage Reef,2056
+Vantage Iceberg,Vantage Iceberg,2048
+Vantage Prison Mine,Vantage Prison Mine,4160
+Vantage Salt Shack,Vantage Salt Shack,2056
+Vantage Recharging Stn.,Vantage Recharging Stn.,0
+Vantage Deep Space Depot,Vantage Deep Space Depot,2048
+Vantage Ice Locker,Vantage Ice Locker,6144
+Vantage Rock Hopper,Vantage Rock Hopper,2048
+Vantage Glass Works,Vantage Glass Works,4
+Vantage Iron Yard,Vantage Iron Yard,12
+Windhollow Fortress,Windhollow Fortress,2112
+Windhollow Mine,Windhollow Mine,2049
+Windhollow Memorial,Windhollow Memorial,3072
+Windhollow Lair,Windhollow Lair,2048
+Windhollow Prison,Windhollow Prison,64
+Windhollow Rose,Windhollow Rose,2048
+Windhollow Reef,Windhollow Reef,2056
+Windhollow Iceberg,Windhollow Iceberg,2048
+Windhollow Prison Mine,Windhollow Prison Mine,4160
+Windhollow Salt Shack,Windhollow Salt Shack,2056
+Windhollow Recharging Stn.,Windhollow Recharging Stn.,0
+Windhollow Deep Space Depot,Windhollow Deep Space Depot,2048
+Windhollow Ice Locker,Windhollow Ice Locker,6144
+Windhollow Rock Hopper,Windhollow Rock Hopper,2048
+Windhollow Glass Works,Windhollow Glass Works,4
+Windhollow Iron Yard,Windhollow Iron Yard,12
+Yarrowmoor Fortress,Yarrowmoor Fortress,2112
+Yarrowmoor Mine,Yarrowmoor Mine,2049
+Yarrowmoor Memorial,Yarrowmoor Memorial,3072
+Yarrowmoor Lair,Yarrowmoor Lair,2048
+Yarrowmoor Prison,Yarrowmoor Prison,64
+Yarrowmoor Rose,Yarrowmoor Rose,2048
+Yarrowmoor Reef,Yarrowmoor Reef,2056
+Yarrowmoor Iceberg,Yarrowmoor Iceberg,2048
+Yarrowmoor Prison Mine,Yarrowmoor Prison Mine,4160
+Yarrowmoor Salt Shack,Yarrowmoor Salt Shack,2056
+Yarrowmoor Recharging Stn.,Yarrowmoor Recharging Stn.,0
+Yarrowmoor Deep Space Depot,Yarrowmoor Deep Space Depot,2048
+Yarrowmoor Ice Locker,Yarrowmoor Ice Locker,6144
+Yarrowmoor Rock Hopper,Yarrowmoor Rock Hopper,2048
+Yarrowmoor Glass Works,Yarrowmoor Glass Works,4
+Yarrowmoor Iron Yard,Yarrowmoor Iron Yard,12
+Abernathy Fortress,Abernathy Fortress,2112
+Abernathy Mine,Abernathy Mine,2049
+Abernathy Memorial,Abernathy Memorial,3072
+Abernathy Lair,Abernathy Lair,2048
+Abernathy Prison,Abernathy Prison,64
+Abernathy Rose,Abernathy Rose,2048
+Abernathy Reef,Abernathy Reef,2056
+Abernathy Iceberg,Abernathy Iceberg,2048
+Abernathy Prison Mine,Abernathy Prison Mine,4160
+Abernathy Salt Shack,Abernathy Salt Shack,2056
+Abernathy Recharging Stn.,Abernathy Recharging Stn.,0
+Abernathy Deep Space Depot,Abernathy Deep Space Depot,2048
+Abernathy Ice Locker,Abernathy Ice Locker,6144
+Abernathy Rock Hopper,Abernathy Rock Hopper,2048
+Abernathy Glass Works,Abernathy Glass Works,4
+Abernathy Iron Yard,Abernathy Iron Yard,12
+Blackthorn Fortress,Blackthorn Fortress,2112
+Blackthorn Mine,Blackthorn Mine,2049
+Blackthorn Memorial,Blackthorn Memorial,3072
+Blackthorn Lair,Blackthorn Lair,2048
+Blackthorn Prison,Blackthorn Prison,64
+Blackthorn Rose,Blackthorn Rose,2048
+Blackthorn Reef,Blackthorn Reef,2056
+Blackthorn Iceberg,Blackthorn Iceberg,2048
+Blackthorn Prison Mine,Blackthorn Prison Mine,4160
+Blackthorn Salt Shack,Blackthorn Salt Shack,2056
+Blackthorn Recharging Stn.,Blackthorn Recharging Stn.,0
+Blackthorn Deep Space Depot,Blackthorn Deep Space Depot,2048
+Blackthorn Ice Locker,Blackthorn Ice Locker,6144
+Blackthorn Rock Hopper,Blackthorn Rock Hopper,2048
+Blackthorn Glass Works,Blackthorn Glass Works,4
+Blackthorn Iron Yard,Blackthorn Iron Yard,12
+Calderum Fortress,Calderum Fortress,2112
+Calderum Mine,Calderum Mine,2049
+Calderum Memorial,Calderum Memorial,3072
+Calderum Lair,Calderum Lair,2048
+Calderum Prison,Calderum Prison,64
+Calderum Rose,Calderum Rose,2048
+Calderum Reef,Calderum Reef,2056
+Calderum Iceberg,Calderum Iceberg,2048
+Calderum Prison Mine,Calderum Prison Mine,4160
+Calderum Salt Shack,Calderum Salt Shack,2056
+Calderum Recharging Stn.,Calderum Recharging Stn.,0
+Calderum Deep Space Depot,Calderum Deep Space Depot,2048
+Calderum Ice Locker,Calderum Ice Locker,6144
+Calderum Rock Hopper,Calderum Rock Hopper,2048
+Calderum Glass Works,Calderum Glass Works,4
+Calderum Iron Yard,Calderum Iron Yard,12
+Draycott Fortress,Draycott Fortress,2112
+Draycott Mine,Draycott Mine,2049
+Draycott Memorial,Draycott Memorial,3072
+Draycott Lair,Draycott Lair,2048
+Draycott Prison,Draycott Prison,64
+Draycott Rose,Draycott Rose,2048
+Draycott Reef,Draycott Reef,2056
+Draycott Iceberg,Draycott Iceberg,2048
+Draycott Prison Mine,Draycott Prison Mine,4160
+Draycott Salt Shack,Draycott Salt Shack,2056
+Draycott Recharging Stn.,Draycott Recharging Stn.,0
+Draycott Deep Space Depot,Draycott Deep Space Depot,2048
+Draycott Ice Locker,Draycott Ice Locker,6144
+Draycott Rock Hopper,Draycott Rock Hopper,2048
+Draycott Glass Works,Draycott Glass Works,4
+Draycott Iron Yard,Draycott Iron Yard,12
+Elmsworth Fortress,Elmsworth Fortress,2112
+Elmsworth Mine,Elmsworth Mine,2049
+Elmsworth Memorial,Elmsworth Memorial,3072
+Elmsworth Lair,Elmsworth Lair,2048
+Elmsworth Prison,Elmsworth Prison,64
+Elmsworth Rose,Elmsworth Rose,2048
+Elmsworth Reef,Elmsworth Reef,2056
+Elmsworth Iceberg,Elmsworth Iceberg,2048
+Elmsworth Prison Mine,Elmsworth Prison Mine,4160
+Elmsworth Salt Shack,Elmsworth Salt Shack,2056
+Elmsworth Recharging Stn.,Elmsworth Recharging Stn.,0
+Elmsworth Deep Space Depot,Elmsworth Deep Space Depot,2048
+Elmsworth Ice Locker,Elmsworth Ice Locker,6144
+Elmsworth Rock Hopper,Elmsworth Rock Hopper,2048
+Elmsworth Glass Works,Elmsworth Glass Works,4
+Elmsworth Iron Yard,Elmsworth Iron Yard,12
+Fairbriar Fortress,Fairbriar Fortress,2112
+Fairbriar Mine,Fairbriar Mine,2049
+Fairbriar Memorial,Fairbriar Memorial,3072
+Fairbriar Lair,Fairbriar Lair,2048
+Fairbriar Prison,Fairbriar Prison,64
+Fairbriar Rose,Fairbriar Rose,2048
+Fairbriar Reef,Fairbriar Reef,2056
+Fairbriar Iceberg,Fairbriar Iceberg,2048
+Fairbriar Prison Mine,Fairbriar Prison Mine,4160
+Fairbriar Salt Shack,Fairbriar Salt Shack,2056
+Fairbriar Recharging Stn.,Fairbriar Recharging Stn.,0
+Fairbriar Deep Space Depot,Fairbriar Deep Space Depot,2048
+Fairbriar Ice Locker,Fairbriar Ice Locker,6144
+Fairbriar Rock Hopper,Fairbriar Rock Hopper,2048
+Fairbriar Glass Works,Fairbriar Glass Works,4
+Fairbriar Iron Yard,Fairbriar Iron Yard,12
+Garnock Fortress,Garnock Fortress,2112
+Garnock Mine,Garnock Mine,2049
+Garnock Memorial,Garnock Memorial,3072
+Garnock Lair,Garnock Lair,2048
+Garnock Prison,Garnock Prison,64
+Garnock Rose,Garnock Rose,2048
+Garnock Reef,Garnock Reef,2056
+Garnock Iceberg,Garnock Iceberg,2048
+Garnock Prison Mine,Garnock Prison Mine,4160
+Garnock Salt Shack,Garnock Salt Shack,2056
+Garnock Recharging Stn.,Garnock Recharging Stn.,0
+Garnock Deep Space Depot,Garnock Deep Space Depot,2048
+Garnock Ice Locker,Garnock Ice Locker,6144
+Garnock Rock Hopper,Garnock Rock Hopper,2048
+Garnock Glass Works,Garnock Glass Works,4
+Garnock Iron Yard,Garnock Iron Yard,12
+Halloran Fortress,Halloran Fortress,2112
+Halloran Mine,Halloran Mine,2049
+Halloran Memorial,Halloran Memorial,3072
+Halloran Lair,Halloran Lair,2048
+Halloran Prison,Halloran Prison,64
+Halloran Rose,Halloran Rose,2048
+Halloran Reef,Halloran Reef,2056
+Halloran Iceberg,Halloran Iceberg,2048
+Halloran Prison Mine,Halloran Prison Mine,4160
+Halloran Salt Shack,Halloran Salt Shack,2056
+Halloran Recharging Stn.,Halloran Recharging Stn.,0
+Halloran Deep Space Depot,Halloran Deep Space Depot,2048
+Halloran Ice Locker,Halloran Ice Locker,6144
+Halloran Rock Hopper,Halloran Rock Hopper,2048
+Halloran Glass Works,Halloran Glass Works,4
+Halloran Iron Yard,Halloran Iron Yard,12
+Isherwood Fortress,Isherwood Fortress,2112
+Isherwood Mine,Isherwood Mine,2049
+Isherwood Memorial,Isherwood Memorial,3072
+Isherwood Lair,Isherwood Lair,2048
+Isherwood Prison,Isherwood Prison,64
+Isherwood Rose,Isherwood Rose,2048
+Isherwood Reef,Isherwood Reef,2056
+Isherwood Iceberg,Isherwood Iceberg,2048
+Isherwood Prison Mine,Isherwood Prison Mine,4160
+Isherwood Salt Shack,Isherwood Salt Shack,2056
+Isherwood Recharging Stn.,Isherwood Recharging Stn.,0
+Isherwood Deep Space Depot,Isherwood Deep Space Depot,2048
+Isherwood Ice Locker,Isherwood Ice Locker,6144
+Isherwood Rock Hopper,Isherwood Rock Hopper,2048
+Isherwood Glass Works,Isherwood Glass Works,4
+Isherwood Iron Yard,Isherwood Iron Yard,12
+Jessamine Fortress,Jessamine Fortress,2112
+Jessamine Mine,Jessamine Mine,2049
+Jessamine Memorial,Jessamine Memorial,3072
+Jessamine Lair,Jessamine Lair,2048
+Jessamine Prison,Jessamine Prison,64
+Jessamine Rose,Jessamine Rose,2048
+Jessamine Reef,Jessamine Reef,2056
+Jessamine Iceberg,Jessamine Iceberg,2048
+Jessamine Prison Mine,Jessamine Prison Mine,4160
+Jessamine Salt Shack,Jessamine Salt Shack,2056
+Jessamine Recharging Stn.,Jessamine Recharging Stn.,0
+Jessamine Deep Space Depot,Jessamine Deep Space Depot,2048
+Jessamine Ice Locker,Jessamine Ice Locker,6144
+Jessamine Rock Hopper,Jessamine Rock Hopper,2048
+Jessamine Glass Works,Jessamine Glass Works,4
+Jessamine Iron Yard,Jessamine Iron Yard,12
+Larkin Fortress,Larkin Fortress,2112
+Larkin Mine,Larkin Mine,2049
+Larkin Memorial,Larkin Memorial,3072
+Larkin Lair,Larkin Lair,2048
+Larkin Prison,Larkin Prison,64
+Larkin Rose,Larkin Rose,2048
+Larkin Reef,Larkin Reef,2056
+Larkin Iceberg,Larkin Iceberg,2048
+Larkin Prison Mine,Larkin Prison Mine,4160
+Larkin Salt Shack,Larkin Salt Shack,2056
+Larkin Recharging Stn.,Larkin Recharging Stn.,0
+Larkin Deep Space Depot,Larkin Deep Space Depot,2048
+Larkin Ice Locker,Larkin Ice Locker,6144
+Larkin Rock Hopper,Larkin Rock Hopper,2048
+Larkin Glass Works,Larkin Glass Works,4
+Larkin Iron Yard,Larkin Iron Yard,12
+Merriwether Fortress,Merriwether Fortress,2112
+Merriwether Mine,Merriwether Mine,2049
+Merriwether Memorial,Merriwether Memorial,3072
+Merriwether Lair,Merriwether Lair,2048
+Merriwether Prison,Merriwether Prison,64
+Merriwether Rose,Merriwether Rose,2048
+Merriwether Reef,Merriwether Reef,2056
+Merriwether Iceberg,Merriwether Iceberg,2048
+Merriwether Prison Mine,Merriwether Prison Mine,4160
+Merriwether Salt Shack,Merriwether Salt Shack,2056
+Merriwether Recharging Stn.,Merriwether Recharging Stn.,0
+Merriwether Deep Space Depot,Merriwether Deep Space Depot,2048
+Merriwether Ice Locker,Merriwether Ice Locker,6144
+Merriwether Rock Hopper,Merriwether Rock Hopper,2048
+Merriwether Glass Works,Merriwether Glass Works,4
+Merriwether Iron Yard,Merriwether Iron Yard,12
+Nightingale Fortress,Nightingale Fortress,2112
+Nightingale Mine,Nightingale Mine,2049
+Nightingale Memorial,Nightingale Memorial,3072
+Nightingale Lair,Nightingale Lair,2048
+Nightingale Prison,Nightingale Prison,64
+Nightingale Rose,Nightingale Rose,2048
+Nightingale Reef,Nightingale Reef,2056
+Nightingale Iceberg,Nightingale Iceberg,2048
+Nightingale Prison Mine,Nightingale Prison Mine,4160
+Nightingale Salt Shack,Nightingale Salt Shack,2056
+Nightingale Recharging Stn.,Nightingale Recharging Stn.,0
+Nightingale Deep Space Depot,Nightingale Deep Space Depot,2048
+Nightingale Ice Locker,Nightingale Ice Locker,6144
+Nightingale Rock Hopper,Nightingale Rock Hopper,2048
+Nightingale Glass Works,Nightingale Glass Works,4
+Nightingale Iron Yard,Nightingale Iron Yard,12
+Pemberton Fortress,Pemberton Fortress,2112
+Pemberton Mine,Pemberton Mine,2049
+Pemberton Memorial,Pemberton Memorial,3072
+Pemberton Lair,Pemberton Lair,2048
+Pemberton Prison,Pemberton Prison,64
+Pemberton Rose,Pemberton Rose,2048
+Pemberton Reef,Pemberton Reef,2056
+Pemberton Iceberg,Pemberton Iceberg,2048
+Pemberton Prison Mine,Pemberton Prison Mine,4160
+Pemberton Salt Shack,Pemberton Salt Shack,2056
+Pemberton Recharging Stn.,Pemberton Recharging Stn.,0
+Pemberton Deep Space Depot,Pemberton Deep Space Depot,2048
+Pemberton Ice Locker,Pemberton Ice Locker,6144
+Pemberton Rock Hopper,Pemberton Rock Hopper,2048
+Pemberton Glass Works,Pemberton Glass Works,4
+Pemberton Iron Yard,Pemberton Iron Yard,12
+Sedgemoore Fortress,Sedgemoore Fortress,2112
+Sedgemoore Mine,Sedgemoore Mine,2049
+Sedgemoore Memorial,Sedgemoore Memorial,3072
+Sedgemoore Lair,Sedgemoore Lair,2048
+Sedgemoore Prison,Sedgemoore Prison,64
+Sedgemoore Rose,Sedgemoore Rose,2048
+Sedgemoore Reef,Sedgemoore Reef,2056
+Sedgemoore Iceberg,Sedgemoore Iceberg,2048
+Sedgemoore Prison Mine,Sedgemoore Prison Mine,4160
+Sedgemoore Salt Shack,Sedgemoore Salt Shack,2056
+Sedgemoore Recharging Stn.,Sedgemoore Recharging Stn.,0
+Sedgemoore Deep Space Depot,Sedgemoore Deep Space Depot,2048
+Sedgemoore Ice Locker,Sedgemoore Ice Locker,6144
+Sedgemoore Rock Hopper,Sedgemoore Rock Hopper,2048
+Sedgemoore Glass Works,Sedgemoore Glass Works,4
+Sedgemoore Iron Yard,Sedgemoore Iron Yard,12
+Trelawney Fortress,Trelawney Fortress,2112
+Trelawney Mine,Trelawney Mine,2049
+Trelawney Memorial,Trelawney Memorial,3072
+Trelawney Lair,Trelawney Lair,2048
+Trelawney Prison,Trelawney Prison,64
+Trelawney Rose,Trelawney Rose,2048
+Trelawney Reef,Trelawney Reef,2056
+Trelawney Iceberg,Trelawney Iceberg,2048
+Trelawney Prison Mine,Trelawney Prison Mine,4160
+Trelawney Salt Shack,Trelawney Salt Shack,2056
+Trelawney Recharging Stn.,Trelawney Recharging Stn.,0
+Trelawney Deep Space Depot,Trelawney Deep Space Depot,2048
+Trelawney Ice Locker,Trelawney Ice Locker,6144
+Trelawney Rock Hopper,Trelawney Rock Hopper,2048
+Trelawney Glass Works,Trelawney Glass Works,4
+Trelawney Iron Yard,Trelawney Iron Yard,12
+Vesperine Fortress,Vesperine Fortress,2112
+Vesperine Mine,Vesperine Mine,2049
+Vesperine Memorial,Vesperine Memorial,3072
+Vesperine Lair,Vesperine Lair,2048
+Vesperine Prison,Vesperine Prison,64
+Vesperine Rose,Vesperine Rose,2048
+Vesperine Reef,Vesperine Reef,2056
+Vesperine Iceberg,Vesperine Iceberg,2048
+Vesperine Prison Mine,Vesperine Prison Mine,4160
+Vesperine Salt Shack,Vesperine Salt Shack,2056
+Vesperine Recharging Stn.,Vesperine Recharging Stn.,0
+Vesperine Deep Space Depot,Vesperine Deep Space Depot,2048
+Vesperine Ice Locker,Vesperine Ice Locker,6144
+Vesperine Rock Hopper,Vesperine Rock Hopper,2048
+Vesperine Glass Works,Vesperine Glass Works,4
+Vesperine Iron Yard,Vesperine Iron Yard,12
+Wrenford Fortress,Wrenford Fortress,2112
+Wrenford Mine,Wrenford Mine,2049
+Wrenford Memorial,Wrenford Memorial,3072
+Wrenford Lair,Wrenford Lair,2048
+Wrenford Prison,Wrenford Prison,64
+Wrenford Rose,Wrenford Rose,2048
+Wrenford Reef,Wrenford Reef,2056
+Wrenford Iceberg,Wrenford Iceberg,2048
+Wrenford Prison Mine,Wrenford Prison Mine,4160
+Wrenford Salt Shack,Wrenford Salt Shack,2056
+Wrenford Recharging Stn.,Wrenford Recharging Stn.,0
+Wrenford Deep Space Depot,Wrenford Deep Space Depot,2048
+Wrenford Ice Locker,Wrenford Ice Locker,6144
+Wrenford Rock Hopper,Wrenford Rock Hopper,2048
+Wrenford Glass Works,Wrenford Glass Works,4
+Wrenford Iron Yard,Wrenford Iron Yard,12
+Yardley Fortress,Yardley Fortress,2112
+Yardley Mine,Yardley Mine,2049
+Yardley Memorial,Yardley Memorial,3072
+Yardley Lair,Yardley Lair,2048
+Yardley Prison,Yardley Prison,64
+Yardley Rose,Yardley Rose,2048
+Yardley Reef,Yardley Reef,2056
+Yardley Iceberg,Yardley Iceberg,2048
+Yardley Prison Mine,Yardley Prison Mine,4160
+Yardley Salt Shack,Yardley Salt Shack,2056
+Yardley Recharging Stn.,Yardley Recharging Stn.,0
+Yardley Deep Space Depot,Yardley Deep Space Depot,2048
+Yardley Ice Locker,Yardley Ice Locker,6144
+Yardley Rock Hopper,Yardley Rock Hopper,2048
+Yardley Glass Works,Yardley Glass Works,4
+Yardley Iron Yard,Yardley Iron Yard,12
+Abernethy Fortress,Abernethy Fortress,2112
+Abernethy Mine,Abernethy Mine,2049
+Abernethy Memorial,Abernethy Memorial,3072
+Abernethy Lair,Abernethy Lair,2048
+Abernethy Prison,Abernethy Prison,64
+Abernethy Rose,Abernethy Rose,2048
+Abernethy Reef,Abernethy Reef,2056
+Abernethy Iceberg,Abernethy Iceberg,2048
+Abernethy Prison Mine,Abernethy Prison Mine,4160
+Abernethy Salt Shack,Abernethy Salt Shack,2056
+Abernethy Recharging Stn.,Abernethy Recharging Stn.,0
+Abernethy Deep Space Depot,Abernethy Deep Space Depot,2048
+Abernethy Ice Locker,Abernethy Ice Locker,6144
+Abernethy Rock Hopper,Abernethy Rock Hopper,2048
+Abernethy Glass Works,Abernethy Glass Works,4
+Abernethy Iron Yard,Abernethy Iron Yard,12
+Blythe Fortress,Blythe Fortress,2112
+Blythe Mine,Blythe Mine,2049
+Blythe Memorial,Blythe Memorial,3072
+Blythe Lair,Blythe Lair,2048
+Blythe Prison,Blythe Prison,64
+Blythe Rose,Blythe Rose,2048
+Blythe Reef,Blythe Reef,2056
+Blythe Iceberg,Blythe Iceberg,2048
+Blythe Prison Mine,Blythe Prison Mine,4160
+Blythe Salt Shack,Blythe Salt Shack,2056
+Blythe Recharging Stn.,Blythe Recharging Stn.,0
+Blythe Deep Space Depot,Blythe Deep Space Depot,2048
+Blythe Ice Locker,Blythe Ice Locker,6144
+Blythe Rock Hopper,Blythe Rock Hopper,2048
+Blythe Glass Works,Blythe Glass Works,4
+Blythe Iron Yard,Blythe Iron Yard,12
+Calderon Fortress,Calderon Fortress,2112
+Calderon Mine,Calderon Mine,2049
+Calderon Memorial,Calderon Memorial,3072
+Calderon Lair,Calderon Lair,2048
+Calderon Prison,Calderon Prison,64
+Calderon Rose,Calderon Rose,2048
+Calderon Reef,Calderon Reef,2056
+Calderon Iceberg,Calderon Iceberg,2048
+Calderon Prison Mine,Calderon Prison Mine,4160
+Calderon Salt Shack,Calderon Salt Shack,2056
+Calderon Recharging Stn.,Calderon Recharging Stn.,0
+Calderon Deep Space Depot,Calderon Deep Space Depot,2048
+Calderon Ice Locker,Calderon Ice Locker,6144
+Calderon Rock Hopper,Calderon Rock Hopper,2048
+Calderon Glass Works,Calderon Glass Works,4
+Calderon Iron Yard,Calderon Iron Yard,12
+Dunmoss Fortress,Dunmoss Fortress,2112
+Dunmoss Mine,Dunmoss Mine,2049
+Dunmoss Memorial,Dunmoss Memorial,3072
+Dunmoss Lair,Dunmoss Lair,2048
+Dunmoss Prison,Dunmoss Prison,64
+Dunmoss Rose,Dunmoss Rose,2048
+Dunmoss Reef,Dunmoss Reef,2056
+Dunmoss Iceberg,Dunmoss Iceberg,2048
+Dunmoss Prison Mine,Dunmoss Prison Mine,4160
+Dunmoss Salt Shack,Dunmoss Salt Shack,2056
+Dunmoss Recharging Stn.,Dunmoss Recharging Stn.,0
+Dunmoss Deep Space Depot,Dunmoss Deep Space Depot,2048
+Dunmoss Ice Locker,Dunmoss Ice Locker,6144
+Dunmoss Rock Hopper,Dunmoss Rock Hopper,2048
+Dunmoss Glass Works,Dunmoss Glass Works,4
+Dunmoss Iron Yard,Dunmoss Iron Yard,12
+Edgeley Fortress,Edgeley Fortress,2112
+Edgeley Mine,Edgeley Mine,2049
+Edgeley Memorial,Edgeley Memorial,3072
+Edgeley Lair,Edgeley Lair,2048
+Edgeley Prison,Edgeley Prison,64
+Edgeley Rose,Edgeley Rose,2048
+Edgeley Reef,Edgeley Reef,2056
+Edgeley Iceberg,Edgeley Iceberg,2048
+Edgeley Prison Mine,Edgeley Prison Mine,4160
+Edgeley Salt Shack,Edgeley Salt Shack,2056
+Edgeley Recharging Stn.,Edgeley Recharging Stn.,0
+Edgeley Deep Space Depot,Edgeley Deep Space Depot,2048
+Edgeley Ice Locker,Edgeley Ice Locker,6144
+Edgeley Rock Hopper,Edgeley Rock Hopper,2048
+Edgeley Glass Works,Edgeley Glass Works,4
+Edgeley Iron Yard,Edgeley Iron Yard,12
+Fallowmere Fortress,Fallowmere Fortress,2112
+Fallowmere Mine,Fallowmere Mine,2049
+Fallowmere Memorial,Fallowmere Memorial,3072
+Fallowmere Lair,Fallowmere Lair,2048
+Fallowmere Prison,Fallowmere Prison,64
+Fallowmere Rose,Fallowmere Rose,2048
+Fallowmere Reef,Fallowmere Reef,2056
+Fallowmere Iceberg,Fallowmere Iceberg,2048
+Fallowmere Prison Mine,Fallowmere Prison Mine,4160
+Fallowmere Salt Shack,Fallowmere Salt Shack,2056
+Fallowmere Recharging Stn.,Fallowmere Recharging Stn.,0
+Fallowmere Deep Space Depot,Fallowmere Deep Space Depot,2048
+Fallowmere Ice Locker,Fallowmere Ice Locker,6144
+Fallowmere Rock Hopper,Fallowmere Rock Hopper,2048
+Fallowmere Glass Works,Fallowmere Glass Works,4
+Fallowmere Iron Yard,Fallowmere Iron Yard,12
+Grimshaw Fortress,Grimshaw Fortress,2112
+Grimshaw Mine,Grimshaw Mine,2049
+Grimshaw Memorial,Grimshaw Memorial,3072
+Grimshaw Lair,Grimshaw Lair,2048
+Grimshaw Prison,Grimshaw Prison,64
+Grimshaw Rose,Grimshaw Rose,2048
+Grimshaw Reef,Grimshaw Reef,2056
+Grimshaw Iceberg,Grimshaw Iceberg,2048
+Grimshaw Prison Mine,Grimshaw Prison Mine,4160
+Grimshaw Salt Shack,Grimshaw Salt Shack,2056
+Grimshaw Recharging Stn.,Grimshaw Recharging Stn.,0
+Grimshaw Deep Space Depot,Grimshaw Deep Space Depot,2048
+Grimshaw Ice Locker,Grimshaw Ice Locker,6144
+Grimshaw Rock Hopper,Grimshaw Rock Hopper,2048
+Grimshaw Glass Works,Grimshaw Glass Works,4
+Grimshaw Iron Yard,Grimshaw Iron Yard,12
+Ingoldsby Fortress,Ingoldsby Fortress,2112
+Ingoldsby Mine,Ingoldsby Mine,2049
+Ingoldsby Memorial,Ingoldsby Memorial,3072
+Ingoldsby Lair,Ingoldsby Lair,2048
+Ingoldsby Prison,Ingoldsby Prison,64
+Ingoldsby Rose,Ingoldsby Rose,2048
+Ingoldsby Reef,Ingoldsby Reef,2056
+Ingoldsby Iceberg,Ingoldsby Iceberg,2048
+Ingoldsby Prison Mine,Ingoldsby Prison Mine,4160
+Ingoldsby Salt Shack,Ingoldsby Salt Shack,2056
+Ingoldsby Recharging Stn.,Ingoldsby Recharging Stn.,0
+Ingoldsby Deep Space Depot,Ingoldsby Deep Space Depot,2048
+Ingoldsby Ice Locker,Ingoldsby Ice Locker,6144
+Ingoldsby Rock Hopper,Ingoldsby Rock Hopper,2048
+Ingoldsby Glass Works,Ingoldsby Glass Works,4
+Ingoldsby Iron Yard,Ingoldsby Iron Yard,12
+Jarrow Fortress,Jarrow Fortress,2112
+Jarrow Mine,Jarrow Mine,2049
+Jarrow Memorial,Jarrow Memorial,3072
+Jarrow Lair,Jarrow Lair,2048
+Jarrow Prison,Jarrow Prison,64
+Jarrow Rose,Jarrow Rose,2048
+Jarrow Reef,Jarrow Reef,2056
+Jarrow Iceberg,Jarrow Iceberg,2048
+Jarrow Prison Mine,Jarrow Prison Mine,4160
+Jarrow Salt Shack,Jarrow Salt Shack,2056
+Jarrow Recharging Stn.,Jarrow Recharging Stn.,0
+Jarrow Deep Space Depot,Jarrow Deep Space Depot,2048
+Jarrow Ice Locker,Jarrow Ice Locker,6144
+Jarrow Rock Hopper,Jarrow Rock Hopper,2048
+Jarrow Glass Works,Jarrow Glass Works,4
+Jarrow Iron Yard,Jarrow Iron Yard,12
+Kipping Fortress,Kipping Fortress,2112
+Kipping Mine,Kipping Mine,2049
+Kipping Memorial,Kipping Memorial,3072
+Kipping Lair,Kipping Lair,2048
+Kipping Prison,Kipping Prison,64
+Kipping Rose,Kipping Rose,2048
+Kipping Reef,Kipping Reef,2056
+Kipping Iceberg,Kipping Iceberg,2048
+Kipping Prison Mine,Kipping Prison Mine,4160
+Kipping Salt Shack,Kipping Salt Shack,2056
+Kipping Recharging Stn.,Kipping Recharging Stn.,0
+Kipping Deep Space Depot,Kipping Deep Space Depot,2048
+Kipping Ice Locker,Kipping Ice Locker,6144
+Kipping Rock Hopper,Kipping Rock Hopper,2048
+Kipping Glass Works,Kipping Glass Works,4
+Kipping Iron Yard,Kipping Iron Yard,12
+Lacertus Fortress,Lacertus Fortress,2112
+Lacertus Mine,Lacertus Mine,2049
+Lacertus Memorial,Lacertus Memorial,3072
+Lacertus Lair,Lacertus Lair,2048
+Lacertus Prison,Lacertus Prison,64
+Lacertus Rose,Lacertus Rose,2048
+Lacertus Reef,Lacertus Reef,2056
+Lacertus Iceberg,Lacertus Iceberg,2048
+Lacertus Prison Mine,Lacertus Prison Mine,4160
+Lacertus Salt Shack,Lacertus Salt Shack,2056
+Lacertus Recharging Stn.,Lacertus Recharging Stn.,0
+Lacertus Deep Space Depot,Lacertus Deep Space Depot,2048
+Lacertus Ice Locker,Lacertus Ice Locker,6144
+Lacertus Rock Hopper,Lacertus Rock Hopper,2048
+Lacertus Glass Works,Lacertus Glass Works,4
+Lacertus Iron Yard,Lacertus Iron Yard,12
+Mowbray Fortress,Mowbray Fortress,2112
+Mowbray Mine,Mowbray Mine,2049
+Mowbray Memorial,Mowbray Memorial,3072
+Mowbray Lair,Mowbray Lair,2048
+Mowbray Prison,Mowbray Prison,64
+Mowbray Rose,Mowbray Rose,2048
+Mowbray Reef,Mowbray Reef,2056
+Mowbray Iceberg,Mowbray Iceberg,2048
+Mowbray Prison Mine,Mowbray Prison Mine,4160
+Mowbray Salt Shack,Mowbray Salt Shack,2056
+Mowbray Recharging Stn.,Mowbray Recharging Stn.,0
+Mowbray Deep Space Depot,Mowbray Deep Space Depot,2048
+Mowbray Ice Locker,Mowbray Ice Locker,6144
+Mowbray Rock Hopper,Mowbray Rock Hopper,2048
+Mowbray Glass Works,Mowbray Glass Works,4
+Mowbray Iron Yard,Mowbray Iron Yard,12
+Nethercott Fortress,Nethercott Fortress,2112
+Nethercott Mine,Nethercott Mine,2049
+Nethercott Memorial,Nethercott Memorial,3072
+Nethercott Lair,Nethercott Lair,2048
+Nethercott Prison,Nethercott Prison,64
+Nethercott Rose,Nethercott Rose,2048
+Nethercott Reef,Nethercott Reef,2056
+Nethercott Iceberg,Nethercott Iceberg,2048
+Nethercott Prison Mine,Nethercott Prison Mine,4160
+Nethercott Salt Shack,Nethercott Salt Shack,2056
+Nethercott Recharging Stn.,Nethercott Recharging Stn.,0
+Nethercott Deep Space Depot,Nethercott Deep Space Depot,2048
+Nethercott Ice Locker,Nethercott Ice Locker,6144
+Nethercott Rock Hopper,Nethercott Rock Hopper,2048
+Nethercott Glass Works,Nethercott Glass Works,4
+Nethercott Iron Yard,Nethercott Iron Yard,12
+Overbeck Fortress,Overbeck Fortress,2112
+Overbeck Mine,Overbeck Mine,2049
+Overbeck Memorial,Overbeck Memorial,3072
+Overbeck Lair,Overbeck Lair,2048
+Overbeck Prison,Overbeck Prison,64
+Overbeck Rose,Overbeck Rose,2048
+Overbeck Reef,Overbeck Reef,2056
+Overbeck Iceberg,Overbeck Iceberg,2048
+Overbeck Prison Mine,Overbeck Prison Mine,4160
+Overbeck Salt Shack,Overbeck Salt Shack,2056
+Overbeck Recharging Stn.,Overbeck Recharging Stn.,0
+Overbeck Deep Space Depot,Overbeck Deep Space Depot,2048
+Overbeck Ice Locker,Overbeck Ice Locker,6144
+Overbeck Rock Hopper,Overbeck Rock Hopper,2048
+Overbeck Glass Works,Overbeck Glass Works,4
+Overbeck Iron Yard,Overbeck Iron Yard,12
+Pellworth Fortress,Pellworth Fortress,2112
+Pellworth Mine,Pellworth Mine,2049
+Pellworth Memorial,Pellworth Memorial,3072
+Pellworth Lair,Pellworth Lair,2048
+Pellworth Prison,Pellworth Prison,64
+Pellworth Rose,Pellworth Rose,2048
+Pellworth Reef,Pellworth Reef,2056
+Pellworth Iceberg,Pellworth Iceberg,2048
+Pellworth Prison Mine,Pellworth Prison Mine,4160
+Pellworth Salt Shack,Pellworth Salt Shack,2056
+Pellworth Recharging Stn.,Pellworth Recharging Stn.,0
+Pellworth Deep Space Depot,Pellworth Deep Space Depot,2048
+Pellworth Ice Locker,Pellworth Ice Locker,6144
+Pellworth Rock Hopper,Pellworth Rock Hopper,2048
+Pellworth Glass Works,Pellworth Glass Works,4
+Pellworth Iron Yard,Pellworth Iron Yard,12
+Quimbridge Fortress,Quimbridge Fortress,2112
+Quimbridge Mine,Quimbridge Mine,2049
+Quimbridge Memorial,Quimbridge Memorial,3072
+Quimbridge Lair,Quimbridge Lair,2048
+Quimbridge Prison,Quimbridge Prison,64
+Quimbridge Rose,Quimbridge Rose,2048
+Quimbridge Reef,Quimbridge Reef,2056
+Quimbridge Iceberg,Quimbridge Iceberg,2048
+Quimbridge Prison Mine,Quimbridge Prison Mine,4160
+Quimbridge Salt Shack,Quimbridge Salt Shack,2056
+Quimbridge Recharging Stn.,Quimbridge Recharging Stn.,0
+Quimbridge Deep Space Depot,Quimbridge Deep Space Depot,2048
+Quimbridge Ice Locker,Quimbridge Ice Locker,6144
+Quimbridge Rock Hopper,Quimbridge Rock Hopper,2048
+Quimbridge Glass Works,Quimbridge Glass Works,4
+Quimbridge Iron Yard,Quimbridge Iron Yard,12
+Sheringham Fortress,Sheringham Fortress,2112
+Sheringham Mine,Sheringham Mine,2049
+Sheringham Memorial,Sheringham Memorial,3072
+Sheringham Lair,Sheringham Lair,2048
+Sheringham Prison,Sheringham Prison,64
+Sheringham Rose,Sheringham Rose,2048
+Sheringham Reef,Sheringham Reef,2056
+Sheringham Iceberg,Sheringham Iceberg,2048
+Sheringham Prison Mine,Sheringham Prison Mine,4160
+Sheringham Salt Shack,Sheringham Salt Shack,2056
+Sheringham Recharging Stn.,Sheringham Recharging Stn.,0
+Sheringham Deep Space Depot,Sheringham Deep Space Depot,2048
+Sheringham Ice Locker,Sheringham Ice Locker,6144
+Sheringham Rock Hopper,Sheringham Rock Hopper,2048
+Sheringham Glass Works,Sheringham Glass Works,4
+Sheringham Iron Yard,Sheringham Iron Yard,12
+Tregarth Fortress,Tregarth Fortress,2112
+Tregarth Mine,Tregarth Mine,2049
+Tregarth Memorial,Tregarth Memorial,3072
+Tregarth Lair,Tregarth Lair,2048
+Tregarth Prison,Tregarth Prison,64
+Tregarth Rose,Tregarth Rose,2048
+Tregarth Reef,Tregarth Reef,2056
+Tregarth Iceberg,Tregarth Iceberg,2048
+Tregarth Prison Mine,Tregarth Prison Mine,4160
+Tregarth Salt Shack,Tregarth Salt Shack,2056
+Tregarth Recharging Stn.,Tregarth Recharging Stn.,0
+Tregarth Deep Space Depot,Tregarth Deep Space Depot,2048
+Tregarth Ice Locker,Tregarth Ice Locker,6144
+Tregarth Rock Hopper,Tregarth Rock Hopper,2048
+Tregarth Glass Works,Tregarth Glass Works,4
+Tregarth Iron Yard,Tregarth Iron Yard,12
+Vandermeer Fortress,Vandermeer Fortress,2112
+Vandermeer Mine,Vandermeer Mine,2049
+Vandermeer Memorial,Vandermeer Memorial,3072
+Vandermeer Lair,Vandermeer Lair,2048
+Vandermeer Prison,Vandermeer Prison,64
+Vandermeer Rose,Vandermeer Rose,2048
+Vandermeer Reef,Vandermeer Reef,2056
+Vandermeer Iceberg,Vandermeer Iceberg,2048
+Vandermeer Prison Mine,Vandermeer Prison Mine,4160
+Vandermeer Salt Shack,Vandermeer Salt Shack,2056
+Vandermeer Recharging Stn.,Vandermeer Recharging Stn.,0
+Vandermeer Deep Space Depot,Vandermeer Deep Space Depot,2048
+Vandermeer Ice Locker,Vandermeer Ice Locker,6144
+Vandermeer Rock Hopper,Vandermeer Rock Hopper,2048
+Vandermeer Glass Works,Vandermeer Glass Works,4
+Vandermeer Iron Yard,Vandermeer Iron Yard,12
+Windrush Fortress,Windrush Fortress,2112
+Windrush Mine,Windrush Mine,2049
+Windrush Memorial,Windrush Memorial,3072
+Windrush Lair,Windrush Lair,2048
+Windrush Prison,Windrush Prison,64
+Windrush Rose,Windrush Rose,2048
+Windrush Reef,Windrush Reef,2056
+Windrush Iceberg,Windrush Iceberg,2048
+Windrush Prison Mine,Windrush Prison Mine,4160
+Windrush Salt Shack,Windrush Salt Shack,2056
+Windrush Recharging Stn.,Windrush Recharging Stn.,0
+Windrush Deep Space Depot,Windrush Deep Space Depot,2048
+Windrush Ice Locker,Windrush Ice Locker,6144
+Windrush Rock Hopper,Windrush Rock Hopper,2048
+Windrush Glass Works,Windrush Glass Works,4
+Windrush Iron Yard,Windrush Iron Yard,12
+Yarrowby Fortress,Yarrowby Fortress,2112
+Yarrowby Mine,Yarrowby Mine,2049
+Yarrowby Memorial,Yarrowby Memorial,3072
+Yarrowby Lair,Yarrowby Lair,2048
+Yarrowby Prison,Yarrowby Prison,64
+Yarrowby Rose,Yarrowby Rose,2048
+Yarrowby Reef,Yarrowby Reef,2056
+Yarrowby Iceberg,Yarrowby Iceberg,2048
+Yarrowby Prison Mine,Yarrowby Prison Mine,4160
+Yarrowby Salt Shack,Yarrowby Salt Shack,2056
+Yarrowby Recharging Stn.,Yarrowby Recharging Stn.,0
+Yarrowby Deep Space Depot,Yarrowby Deep Space Depot,2048
+Yarrowby Ice Locker,Yarrowby Ice Locker,6144
+Yarrowby Rock Hopper,Yarrowby Rock Hopper,2048
+Yarrowby Glass Works,Yarrowby Glass Works,4
+Yarrowby Iron Yard,Yarrowby Iron Yard,12
+Boulton Fortress,Boulton Fortress,2112
+Boulton Mine,Boulton Mine,2049
+Boulton Memorial,Boulton Memorial,3072
+Boulton Lair,Boulton Lair,2048
+Boulton Prison,Boulton Prison,64
+Boulton Rose,Boulton Rose,2048
+Boulton Reef,Boulton Reef,2056
+Boulton Iceberg,Boulton Iceberg,2048
+Boulton Prison Mine,Boulton Prison Mine,4160
+Boulton Salt Shack,Boulton Salt Shack,2056
+Boulton Recharging Stn.,Boulton Recharging Stn.,0
+Boulton Deep Space Depot,Boulton Deep Space Depot,2048
+Boulton Ice Locker,Boulton Ice Locker,6144
+Boulton Rock Hopper,Boulton Rock Hopper,2048
+Boulton Glass Works,Boulton Glass Works,4
+Boulton Iron Yard,Boulton Iron Yard,12
+Arkwright Fortress,Arkwright Fortress,2112
+Arkwright Mine,Arkwright Mine,2049
+Arkwright Memorial,Arkwright Memorial,3072
+Arkwright Lair,Arkwright Lair,2048
+Arkwright Prison,Arkwright Prison,64
+Arkwright Rose,Arkwright Rose,2048
+Arkwright Reef,Arkwright Reef,2056
+Arkwright Iceberg,Arkwright Iceberg,2048
+Arkwright Prison Mine,Arkwright Prison Mine,4160
+Arkwright Salt Shack,Arkwright Salt Shack,2056
+Arkwright Recharging Stn.,Arkwright Recharging Stn.,0
+Arkwright Deep Space Depot,Arkwright Deep Space Depot,2048
+Arkwright Ice Locker,Arkwright Ice Locker,6144
+Arkwright Rock Hopper,Arkwright Rock Hopper,2048
+Arkwright Glass Works,Arkwright Glass Works,4
+Arkwright Iron Yard,Arkwright Iron Yard,12
+Bramah Fortress,Bramah Fortress,2112
+Bramah Mine,Bramah Mine,2049
+Bramah Memorial,Bramah Memorial,3072
+Bramah Lair,Bramah Lair,2048
+Bramah Prison,Bramah Prison,64
+Bramah Rose,Bramah Rose,2048
+Bramah Reef,Bramah Reef,2056
+Bramah Iceberg,Bramah Iceberg,2048
+Bramah Prison Mine,Bramah Prison Mine,4160
+Bramah Salt Shack,Bramah Salt Shack,2056
+Bramah Recharging Stn.,Bramah Recharging Stn.,0
+Bramah Deep Space Depot,Bramah Deep Space Depot,2048
+Bramah Ice Locker,Bramah Ice Locker,6144
+Bramah Rock Hopper,Bramah Rock Hopper,2048
+Bramah Glass Works,Bramah Glass Works,4
+Bramah Iron Yard,Bramah Iron Yard,12
+Bessemer Fortress,Bessemer Fortress,2112
+Bessemer Mine,Bessemer Mine,2049
+Bessemer Memorial,Bessemer Memorial,3072
+Bessemer Lair,Bessemer Lair,2048
+Bessemer Prison,Bessemer Prison,64
+Bessemer Rose,Bessemer Rose,2048
+Bessemer Reef,Bessemer Reef,2056
+Bessemer Iceberg,Bessemer Iceberg,2048
+Bessemer Prison Mine,Bessemer Prison Mine,4160
+Bessemer Salt Shack,Bessemer Salt Shack,2056
+Bessemer Recharging Stn.,Bessemer Recharging Stn.,0
+Bessemer Deep Space Depot,Bessemer Deep Space Depot,2048
+Bessemer Ice Locker,Bessemer Ice Locker,6144
+Bessemer Rock Hopper,Bessemer Rock Hopper,2048
+Bessemer Glass Works,Bessemer Glass Works,4
+Bessemer Iron Yard,Bessemer Iron Yard,12
+Maudslay Fortress,Maudslay Fortress,2112
+Maudslay Mine,Maudslay Mine,2049
+Maudslay Memorial,Maudslay Memorial,3072
+Maudslay Lair,Maudslay Lair,2048
+Maudslay Prison,Maudslay Prison,64
+Maudslay Rose,Maudslay Rose,2048
+Maudslay Reef,Maudslay Reef,2056
+Maudslay Iceberg,Maudslay Iceberg,2048
+Maudslay Prison Mine,Maudslay Prison Mine,4160
+Maudslay Salt Shack,Maudslay Salt Shack,2056
+Maudslay Recharging Stn.,Maudslay Recharging Stn.,0
+Maudslay Deep Space Depot,Maudslay Deep Space Depot,2048
+Maudslay Ice Locker,Maudslay Ice Locker,6144
+Maudslay Rock Hopper,Maudslay Rock Hopper,2048
+Maudslay Glass Works,Maudslay Glass Works,4
+Maudslay Iron Yard,Maudslay Iron Yard,12
+Nasmyth Fortress,Nasmyth Fortress,2112
+Nasmyth Mine,Nasmyth Mine,2049
+Nasmyth Memorial,Nasmyth Memorial,3072
+Nasmyth Lair,Nasmyth Lair,2048
+Nasmyth Prison,Nasmyth Prison,64
+Nasmyth Rose,Nasmyth Rose,2048
+Nasmyth Reef,Nasmyth Reef,2056
+Nasmyth Iceberg,Nasmyth Iceberg,2048
+Nasmyth Prison Mine,Nasmyth Prison Mine,4160
+Nasmyth Salt Shack,Nasmyth Salt Shack,2056
+Nasmyth Recharging Stn.,Nasmyth Recharging Stn.,0
+Nasmyth Deep Space Depot,Nasmyth Deep Space Depot,2048
+Nasmyth Ice Locker,Nasmyth Ice Locker,6144
+Nasmyth Rock Hopper,Nasmyth Rock Hopper,2048
+Nasmyth Glass Works,Nasmyth Glass Works,4
+Nasmyth Iron Yard,Nasmyth Iron Yard,12
+Rennie Fortress,Rennie Fortress,2112
+Rennie Mine,Rennie Mine,2049
+Rennie Memorial,Rennie Memorial,3072
+Rennie Lair,Rennie Lair,2048
+Rennie Prison,Rennie Prison,64
+Rennie Rose,Rennie Rose,2048
+Rennie Reef,Rennie Reef,2056
+Rennie Iceberg,Rennie Iceberg,2048
+Rennie Prison Mine,Rennie Prison Mine,4160
+Rennie Salt Shack,Rennie Salt Shack,2056
+Rennie Recharging Stn.,Rennie Recharging Stn.,0
+Rennie Deep Space Depot,Rennie Deep Space Depot,2048
+Rennie Ice Locker,Rennie Ice Locker,6144
+Rennie Rock Hopper,Rennie Rock Hopper,2048
+Rennie Glass Works,Rennie Glass Works,4
+Rennie Iron Yard,Rennie Iron Yard,12
+Telford Fortress,Telford Fortress,2112
+Telford Mine,Telford Mine,2049
+Telford Memorial,Telford Memorial,3072
+Telford Lair,Telford Lair,2048
+Telford Prison,Telford Prison,64
+Telford Rose,Telford Rose,2048
+Telford Reef,Telford Reef,2056
+Telford Iceberg,Telford Iceberg,2048
+Telford Prison Mine,Telford Prison Mine,4160
+Telford Salt Shack,Telford Salt Shack,2056
+Telford Recharging Stn.,Telford Recharging Stn.,0
+Telford Deep Space Depot,Telford Deep Space Depot,2048
+Telford Ice Locker,Telford Ice Locker,6144
+Telford Rock Hopper,Telford Rock Hopper,2048
+Telford Glass Works,Telford Glass Works,4
+Telford Iron Yard,Telford Iron Yard,12
+Jessop Fortress,Jessop Fortress,2112
+Jessop Mine,Jessop Mine,2049
+Jessop Memorial,Jessop Memorial,3072
+Jessop Lair,Jessop Lair,2048
+Jessop Prison,Jessop Prison,64
+Jessop Rose,Jessop Rose,2048
+Jessop Reef,Jessop Reef,2056
+Jessop Iceberg,Jessop Iceberg,2048
+Jessop Prison Mine,Jessop Prison Mine,4160
+Jessop Salt Shack,Jessop Salt Shack,2056
+Jessop Recharging Stn.,Jessop Recharging Stn.,0
+Jessop Deep Space Depot,Jessop Deep Space Depot,2048
+Jessop Ice Locker,Jessop Ice Locker,6144
+Jessop Rock Hopper,Jessop Rock Hopper,2048
+Jessop Glass Works,Jessop Glass Works,4
+Jessop Iron Yard,Jessop Iron Yard,12
+Fairbairn Fortress,Fairbairn Fortress,2112
+Fairbairn Mine,Fairbairn Mine,2049
+Fairbairn Memorial,Fairbairn Memorial,3072
+Fairbairn Lair,Fairbairn Lair,2048
+Fairbairn Prison,Fairbairn Prison,64
+Fairbairn Rose,Fairbairn Rose,2048
+Fairbairn Reef,Fairbairn Reef,2056
+Fairbairn Iceberg,Fairbairn Iceberg,2048
+Fairbairn Prison Mine,Fairbairn Prison Mine,4160
+Fairbairn Salt Shack,Fairbairn Salt Shack,2056
+Fairbairn Recharging Stn.,Fairbairn Recharging Stn.,0
+Fairbairn Deep Space Depot,Fairbairn Deep Space Depot,2048
+Fairbairn Ice Locker,Fairbairn Ice Locker,6144
+Fairbairn Rock Hopper,Fairbairn Rock Hopper,2048
+Fairbairn Glass Works,Fairbairn Glass Works,4
+Fairbairn Iron Yard,Fairbairn Iron Yard,12
+Whitworth Fortress,Whitworth Fortress,2112
+Whitworth Mine,Whitworth Mine,2049
+Whitworth Memorial,Whitworth Memorial,3072
+Whitworth Lair,Whitworth Lair,2048
+Whitworth Prison,Whitworth Prison,64
+Whitworth Rose,Whitworth Rose,2048
+Whitworth Reef,Whitworth Reef,2056
+Whitworth Iceberg,Whitworth Iceberg,2048
+Whitworth Prison Mine,Whitworth Prison Mine,4160
+Whitworth Salt Shack,Whitworth Salt Shack,2056
+Whitworth Recharging Stn.,Whitworth Recharging Stn.,0
+Whitworth Deep Space Depot,Whitworth Deep Space Depot,2048
+Whitworth Ice Locker,Whitworth Ice Locker,6144
+Whitworth Rock Hopper,Whitworth Rock Hopper,2048
+Whitworth Glass Works,Whitworth Glass Works,4
+Whitworth Iron Yard,Whitworth Iron Yard,12
+Marc Fortress,Marc Fortress,2112
+Marc Mine,Marc Mine,2049
+Marc Memorial,Marc Memorial,3072
+Marc Lair,Marc Lair,2048
+Marc Prison,Marc Prison,64
+Marc Rose,Marc Rose,2048
+Marc Reef,Marc Reef,2056
+Marc Iceberg,Marc Iceberg,2048
+Marc Prison Mine,Marc Prison Mine,4160
+Marc Salt Shack,Marc Salt Shack,2056
+Marc Recharging Stn.,Marc Recharging Stn.,0
+Marc Deep Space Depot,Marc Deep Space Depot,2048
+Marc Ice Locker,Marc Ice Locker,6144
+Marc Rock Hopper,Marc Rock Hopper,2048
+Marc Glass Works,Marc Glass Works,4
+Marc Iron Yard,Marc Iron Yard,12
+Isambard Fortress,Isambard Fortress,2112
+Isambard Mine,Isambard Mine,2049
+Isambard Memorial,Isambard Memorial,3072
+Isambard Lair,Isambard Lair,2048
+Isambard Prison,Isambard Prison,64
+Isambard Rose,Isambard Rose,2048
+Isambard Reef,Isambard Reef,2056
+Isambard Iceberg,Isambard Iceberg,2048
+Isambard Prison Mine,Isambard Prison Mine,4160
+Isambard Salt Shack,Isambard Salt Shack,2056
+Isambard Recharging Stn.,Isambard Recharging Stn.,0
+Isambard Deep Space Depot,Isambard Deep Space Depot,2048
+Isambard Ice Locker,Isambard Ice Locker,6144
+Isambard Rock Hopper,Isambard Rock Hopper,2048
+Isambard Glass Works,Isambard Glass Works,4
+Isambard Iron Yard,Isambard Iron Yard,12
+Torricelli Fortress,Torricelli Fortress,2112
+Torricelli Mine,Torricelli Mine,2049
+Torricelli Memorial,Torricelli Memorial,3072
+Torricelli Lair,Torricelli Lair,2048
+Torricelli Prison,Torricelli Prison,64
+Torricelli Rose,Torricelli Rose,2048
+Torricelli Reef,Torricelli Reef,2056
+Torricelli Iceberg,Torricelli Iceberg,2048
+Torricelli Prison Mine,Torricelli Prison Mine,4160
+Torricelli Salt Shack,Torricelli Salt Shack,2056
+Torricelli Recharging Stn.,Torricelli Recharging Stn.,0
+Torricelli Deep Space Depot,Torricelli Deep Space Depot,2048
+Torricelli Ice Locker,Torricelli Ice Locker,6144
+Torricelli Rock Hopper,Torricelli Rock Hopper,2048
+Torricelli Glass Works,Torricelli Glass Works,4
+Torricelli Iron Yard,Torricelli Iron Yard,12
+Viviani Fortress,Viviani Fortress,2112
+Viviani Mine,Viviani Mine,2049
+Viviani Memorial,Viviani Memorial,3072
+Viviani Lair,Viviani Lair,2048
+Viviani Prison,Viviani Prison,64
+Viviani Rose,Viviani Rose,2048
+Viviani Reef,Viviani Reef,2056
+Viviani Iceberg,Viviani Iceberg,2048
+Viviani Prison Mine,Viviani Prison Mine,4160
+Viviani Salt Shack,Viviani Salt Shack,2056
+Viviani Recharging Stn.,Viviani Recharging Stn.,0
+Viviani Deep Space Depot,Viviani Deep Space Depot,2048
+Viviani Ice Locker,Viviani Ice Locker,6144
+Viviani Rock Hopper,Viviani Rock Hopper,2048
+Viviani Glass Works,Viviani Glass Works,4
+Viviani Iron Yard,Viviani Iron Yard,12
+Hooke Fortress,Hooke Fortress,2112
+Hooke Mine,Hooke Mine,2049
+Hooke Memorial,Hooke Memorial,3072
+Hooke Lair,Hooke Lair,2048
+Hooke Prison,Hooke Prison,64
+Hooke Rose,Hooke Rose,2048
+Hooke Reef,Hooke Reef,2056
+Hooke Iceberg,Hooke Iceberg,2048
+Hooke Prison Mine,Hooke Prison Mine,4160
+Hooke Salt Shack,Hooke Salt Shack,2056
+Hooke Recharging Stn.,Hooke Recharging Stn.,0
+Hooke Deep Space Depot,Hooke Deep Space Depot,2048
+Hooke Ice Locker,Hooke Ice Locker,6144
+Hooke Rock Hopper,Hooke Rock Hopper,2048
+Hooke Glass Works,Hooke Glass Works,4
+Hooke Iron Yard,Hooke Iron Yard,12
+Barrow Fortress,Barrow Fortress,2112
+Barrow Mine,Barrow Mine,2049
+Barrow Memorial,Barrow Memorial,3072
+Barrow Lair,Barrow Lair,2048
+Barrow Prison,Barrow Prison,64
+Barrow Rose,Barrow Rose,2048
+Barrow Reef,Barrow Reef,2056
+Barrow Iceberg,Barrow Iceberg,2048
+Barrow Prison Mine,Barrow Prison Mine,4160
+Barrow Salt Shack,Barrow Salt Shack,2056
+Barrow Recharging Stn.,Barrow Recharging Stn.,0
+Barrow Deep Space Depot,Barrow Deep Space Depot,2048
+Barrow Ice Locker,Barrow Ice Locker,6144
+Barrow Rock Hopper,Barrow Rock Hopper,2048
+Barrow Glass Works,Barrow Glass Works,4
+Barrow Iron Yard,Barrow Iron Yard,12
+Wallis Fortress,Wallis Fortress,2112
+Wallis Mine,Wallis Mine,2049
+Wallis Memorial,Wallis Memorial,3072
+Wallis Lair,Wallis Lair,2048
+Wallis Prison,Wallis Prison,64
+Wallis Rose,Wallis Rose,2048
+Wallis Reef,Wallis Reef,2056
+Wallis Iceberg,Wallis Iceberg,2048
+Wallis Prison Mine,Wallis Prison Mine,4160
+Wallis Salt Shack,Wallis Salt Shack,2056
+Wallis Recharging Stn.,Wallis Recharging Stn.,0
+Wallis Deep Space Depot,Wallis Deep Space Depot,2048
+Wallis Ice Locker,Wallis Ice Locker,6144
+Wallis Rock Hopper,Wallis Rock Hopper,2048
+Wallis Glass Works,Wallis Glass Works,4
+Wallis Iron Yard,Wallis Iron Yard,12
+Halley Fortress,Halley Fortress,2112
+Halley Mine,Halley Mine,2049
+Halley Memorial,Halley Memorial,3072
+Halley Lair,Halley Lair,2048
+Halley Prison,Halley Prison,64
+Halley Rose,Halley Rose,2048
+Halley Reef,Halley Reef,2056
+Halley Iceberg,Halley Iceberg,2048
+Halley Prison Mine,Halley Prison Mine,4160
+Halley Salt Shack,Halley Salt Shack,2056
+Halley Recharging Stn.,Halley Recharging Stn.,0
+Halley Deep Space Depot,Halley Deep Space Depot,2048
+Halley Ice Locker,Halley Ice Locker,6144
+Halley Rock Hopper,Halley Rock Hopper,2048
+Halley Glass Works,Halley Glass Works,4
+Halley Iron Yard,Halley Iron Yard,12
+Flamsteed Fortress,Flamsteed Fortress,2112
+Flamsteed Mine,Flamsteed Mine,2049
+Flamsteed Memorial,Flamsteed Memorial,3072
+Flamsteed Lair,Flamsteed Lair,2048
+Flamsteed Prison,Flamsteed Prison,64
+Flamsteed Rose,Flamsteed Rose,2048
+Flamsteed Reef,Flamsteed Reef,2056
+Flamsteed Iceberg,Flamsteed Iceberg,2048
+Flamsteed Prison Mine,Flamsteed Prison Mine,4160
+Flamsteed Salt Shack,Flamsteed Salt Shack,2056
+Flamsteed Recharging Stn.,Flamsteed Recharging Stn.,0
+Flamsteed Deep Space Depot,Flamsteed Deep Space Depot,2048
+Flamsteed Ice Locker,Flamsteed Ice Locker,6144
+Flamsteed Rock Hopper,Flamsteed Rock Hopper,2048
+Flamsteed Glass Works,Flamsteed Glass Works,4
+Flamsteed Iron Yard,Flamsteed Iron Yard,12
+Bradley Fortress,Bradley Fortress,2112
+Bradley Mine,Bradley Mine,2049
+Bradley Memorial,Bradley Memorial,3072
+Bradley Lair,Bradley Lair,2048
+Bradley Prison,Bradley Prison,64
+Bradley Rose,Bradley Rose,2048
+Bradley Reef,Bradley Reef,2056
+Bradley Iceberg,Bradley Iceberg,2048
+Bradley Prison Mine,Bradley Prison Mine,4160
+Bradley Salt Shack,Bradley Salt Shack,2056
+Bradley Recharging Stn.,Bradley Recharging Stn.,0
+Bradley Deep Space Depot,Bradley Deep Space Depot,2048
+Bradley Ice Locker,Bradley Ice Locker,6144
+Bradley Rock Hopper,Bradley Rock Hopper,2048
+Bradley Glass Works,Bradley Glass Works,4
+Bradley Iron Yard,Bradley Iron Yard,12
+Jarry Fortress,Jarry Fortress,2112
+Jarry Mine,Jarry Mine,2049
+Jarry Memorial,Jarry Memorial,3072
+Jarry Lair,Jarry Lair,2048
+Jarry Prison,Jarry Prison,64
+Jarry Rose,Jarry Rose,2048
+Jarry Reef,Jarry Reef,2056
+Jarry Iceberg,Jarry Iceberg,2048
+Jarry Prison Mine,Jarry Prison Mine,4160
+Jarry Salt Shack,Jarry Salt Shack,2056
+Jarry Recharging Stn.,Jarry Recharging Stn.,0
+Jarry Deep Space Depot,Jarry Deep Space Depot,2048
+Jarry Ice Locker,Jarry Ice Locker,6144
+Jarry Rock Hopper,Jarry Rock Hopper,2048
+Jarry Glass Works,Jarry Glass Works,4
+Jarry Iron Yard,Jarry Iron Yard,12
+Blenkinsop Fortress,Blenkinsop Fortress,2112
+Blenkinsop Mine,Blenkinsop Mine,2049
+Blenkinsop Memorial,Blenkinsop Memorial,3072
+Blenkinsop Lair,Blenkinsop Lair,2048
+Blenkinsop Prison,Blenkinsop Prison,64
+Blenkinsop Rose,Blenkinsop Rose,2048
+Blenkinsop Reef,Blenkinsop Reef,2056
+Blenkinsop Iceberg,Blenkinsop Iceberg,2048
+Blenkinsop Prison Mine,Blenkinsop Prison Mine,4160
+Blenkinsop Salt Shack,Blenkinsop Salt Shack,2056
+Blenkinsop Recharging Stn.,Blenkinsop Recharging Stn.,0
+Blenkinsop Deep Space Depot,Blenkinsop Deep Space Depot,2048
+Blenkinsop Ice Locker,Blenkinsop Ice Locker,6144
+Blenkinsop Rock Hopper,Blenkinsop Rock Hopper,2048
+Blenkinsop Glass Works,Blenkinsop Glass Works,4
+Blenkinsop Iron Yard,Blenkinsop Iron Yard,12
+Cavour Fortress,Cavour Fortress,2112
+Cavour Mine,Cavour Mine,2049
+Cavour Memorial,Cavour Memorial,3072
+Cavour Lair,Cavour Lair,2048
+Cavour Prison,Cavour Prison,64
+Cavour Rose,Cavour Rose,2048
+Cavour Reef,Cavour Reef,2056
+Cavour Iceberg,Cavour Iceberg,2048
+Cavour Prison Mine,Cavour Prison Mine,4160
+Cavour Salt Shack,Cavour Salt Shack,2056
+Cavour Recharging Stn.,Cavour Recharging Stn.,0
+Cavour Deep Space Depot,Cavour Deep Space Depot,2048
+Cavour Ice Locker,Cavour Ice Locker,6144
+Cavour Rock Hopper,Cavour Rock Hopper,2048
+Cavour Glass Works,Cavour Glass Works,4
+Cavour Iron Yard,Cavour Iron Yard,12
+Casale Fortress,Casale Fortress,2112
+Casale Mine,Casale Mine,2049
+Casale Memorial,Casale Memorial,3072
+Casale Lair,Casale Lair,2048
+Casale Prison,Casale Prison,64
+Casale Rose,Casale Rose,2048
+Casale Reef,Casale Reef,2056
+Casale Iceberg,Casale Iceberg,2048
+Casale Prison Mine,Casale Prison Mine,4160
+Casale Salt Shack,Casale Salt Shack,2056
+Casale Recharging Stn.,Casale Recharging Stn.,0
+Casale Deep Space Depot,Casale Deep Space Depot,2048
+Casale Ice Locker,Casale Ice Locker,6144
+Casale Rock Hopper,Casale Rock Hopper,2048
+Casale Glass Works,Casale Glass Works,4
+Casale Iron Yard,Casale Iron Yard,12
+Giolitti Fortress,Giolitti Fortress,2112
+Giolitti Mine,Giolitti Mine,2049
+Giolitti Memorial,Giolitti Memorial,3072
+Giolitti Lair,Giolitti Lair,2048
+Giolitti Prison,Giolitti Prison,64
+Giolitti Rose,Giolitti Rose,2048
+Giolitti Reef,Giolitti Reef,2056
+Giolitti Iceberg,Giolitti Iceberg,2048
+Giolitti Prison Mine,Giolitti Prison Mine,4160
+Giolitti Salt Shack,Giolitti Salt Shack,2056
+Giolitti Recharging Stn.,Giolitti Recharging Stn.,0
+Giolitti Deep Space Depot,Giolitti Deep Space Depot,2048
+Giolitti Ice Locker,Giolitti Ice Locker,6144
+Giolitti Rock Hopper,Giolitti Rock Hopper,2048
+Giolitti Glass Works,Giolitti Glass Works,4
+Giolitti Iron Yard,Giolitti Iron Yard,12
+Marconi Fortress,Marconi Fortress,2112
+Marconi Mine,Marconi Mine,2049
+Marconi Memorial,Marconi Memorial,3072
+Marconi Lair,Marconi Lair,2048
+Marconi Prison,Marconi Prison,64
+Marconi Rose,Marconi Rose,2048
+Marconi Reef,Marconi Reef,2056
+Marconi Iceberg,Marconi Iceberg,2048
+Marconi Prison Mine,Marconi Prison Mine,4160
+Marconi Salt Shack,Marconi Salt Shack,2056
+Marconi Recharging Stn.,Marconi Recharging Stn.,0
+Marconi Deep Space Depot,Marconi Deep Space Depot,2048
+Marconi Ice Locker,Marconi Ice Locker,6144
+Marconi Rock Hopper,Marconi Rock Hopper,2048
+Marconi Glass Works,Marconi Glass Works,4
+Marconi Iron Yard,Marconi Iron Yard,12
+Tesla Fortress,Tesla Fortress,2112
+Tesla Mine,Tesla Mine,2049
+Tesla Memorial,Tesla Memorial,3072
+Tesla Lair,Tesla Lair,2048
+Tesla Prison,Tesla Prison,64
+Tesla Rose,Tesla Rose,2048
+Tesla Reef,Tesla Reef,2056
+Tesla Iceberg,Tesla Iceberg,2048
+Tesla Prison Mine,Tesla Prison Mine,4160
+Tesla Salt Shack,Tesla Salt Shack,2056
+Tesla Recharging Stn.,Tesla Recharging Stn.,0
+Tesla Deep Space Depot,Tesla Deep Space Depot,2048
+Tesla Ice Locker,Tesla Ice Locker,6144
+Tesla Rock Hopper,Tesla Rock Hopper,2048
+Tesla Glass Works,Tesla Glass Works,4
+Tesla Iron Yard,Tesla Iron Yard,12
+Ericsson Fortress,Ericsson Fortress,2112
+Ericsson Mine,Ericsson Mine,2049
+Ericsson Memorial,Ericsson Memorial,3072
+Ericsson Lair,Ericsson Lair,2048
+Ericsson Prison,Ericsson Prison,64
+Ericsson Rose,Ericsson Rose,2048
+Ericsson Reef,Ericsson Reef,2056
+Ericsson Iceberg,Ericsson Iceberg,2048
+Ericsson Prison Mine,Ericsson Prison Mine,4160
+Ericsson Salt Shack,Ericsson Salt Shack,2056
+Ericsson Recharging Stn.,Ericsson Recharging Stn.,0
+Ericsson Deep Space Depot,Ericsson Deep Space Depot,2048
+Ericsson Ice Locker,Ericsson Ice Locker,6144
+Ericsson Rock Hopper,Ericsson Rock Hopper,2048
+Ericsson Glass Works,Ericsson Glass Works,4
+Ericsson Iron Yard,Ericsson Iron Yard,12
+Baudot Fortress,Baudot Fortress,2112
+Baudot Mine,Baudot Mine,2049
+Baudot Memorial,Baudot Memorial,3072
+Baudot Lair,Baudot Lair,2048
+Baudot Prison,Baudot Prison,64
+Baudot Rose,Baudot Rose,2048
+Baudot Reef,Baudot Reef,2056
+Baudot Iceberg,Baudot Iceberg,2048
+Baudot Prison Mine,Baudot Prison Mine,4160
+Baudot Salt Shack,Baudot Salt Shack,2056
+Baudot Recharging Stn.,Baudot Recharging Stn.,0
+Baudot Deep Space Depot,Baudot Deep Space Depot,2048
+Baudot Ice Locker,Baudot Ice Locker,6144
+Baudot Rock Hopper,Baudot Rock Hopper,2048
+Baudot Glass Works,Baudot Glass Works,4
+Baudot Iron Yard,Baudot Iron Yard,12
+Babbage Fortress,Babbage Fortress,2112
+Babbage Mine,Babbage Mine,2049
+Babbage Memorial,Babbage Memorial,3072
+Babbage Lair,Babbage Lair,2048
+Babbage Prison,Babbage Prison,64
+Babbage Rose,Babbage Rose,2048
+Babbage Reef,Babbage Reef,2056
+Babbage Iceberg,Babbage Iceberg,2048
+Babbage Prison Mine,Babbage Prison Mine,4160
+Babbage Salt Shack,Babbage Salt Shack,2056
+Babbage Recharging Stn.,Babbage Recharging Stn.,0
+Babbage Deep Space Depot,Babbage Deep Space Depot,2048
+Babbage Ice Locker,Babbage Ice Locker,6144
+Babbage Rock Hopper,Babbage Rock Hopper,2048
+Babbage Glass Works,Babbage Glass Works,4
+Babbage Iron Yard,Babbage Iron Yard,12
+Lovelace Fortress,Lovelace Fortress,2112
+Lovelace Mine,Lovelace Mine,2049
+Lovelace Memorial,Lovelace Memorial,3072
+Lovelace Lair,Lovelace Lair,2048
+Lovelace Prison,Lovelace Prison,64
+Lovelace Rose,Lovelace Rose,2048
+Lovelace Reef,Lovelace Reef,2056
+Lovelace Iceberg,Lovelace Iceberg,2048
+Lovelace Prison Mine,Lovelace Prison Mine,4160
+Lovelace Salt Shack,Lovelace Salt Shack,2056
+Lovelace Recharging Stn.,Lovelace Recharging Stn.,0
+Lovelace Deep Space Depot,Lovelace Deep Space Depot,2048
+Lovelace Ice Locker,Lovelace Ice Locker,6144
+Lovelace Rock Hopper,Lovelace Rock Hopper,2048
+Lovelace Glass Works,Lovelace Glass Works,4
+Lovelace Iron Yard,Lovelace Iron Yard,12
+Hollerith Fortress,Hollerith Fortress,2112
+Hollerith Mine,Hollerith Mine,2049
+Hollerith Memorial,Hollerith Memorial,3072
+Hollerith Lair,Hollerith Lair,2048
+Hollerith Prison,Hollerith Prison,64
+Hollerith Rose,Hollerith Rose,2048
+Hollerith Reef,Hollerith Reef,2056
+Hollerith Iceberg,Hollerith Iceberg,2048
+Hollerith Prison Mine,Hollerith Prison Mine,4160
+Hollerith Salt Shack,Hollerith Salt Shack,2056
+Hollerith Recharging Stn.,Hollerith Recharging Stn.,0
+Hollerith Deep Space Depot,Hollerith Deep Space Depot,2048
+Hollerith Ice Locker,Hollerith Ice Locker,6144
+Hollerith Rock Hopper,Hollerith Rock Hopper,2048
+Hollerith Glass Works,Hollerith Glass Works,4
+Hollerith Iron Yard,Hollerith Iron Yard,12
+Eckert Fortress,Eckert Fortress,2112
+Eckert Mine,Eckert Mine,2049
+Eckert Memorial,Eckert Memorial,3072
+Eckert Lair,Eckert Lair,2048
+Eckert Prison,Eckert Prison,64
+Eckert Rose,Eckert Rose,2048
+Eckert Reef,Eckert Reef,2056
+Eckert Iceberg,Eckert Iceberg,2048
+Eckert Prison Mine,Eckert Prison Mine,4160
+Eckert Salt Shack,Eckert Salt Shack,2056
+Eckert Recharging Stn.,Eckert Recharging Stn.,0
+Eckert Deep Space Depot,Eckert Deep Space Depot,2048
+Eckert Ice Locker,Eckert Ice Locker,6144
+Eckert Rock Hopper,Eckert Rock Hopper,2048
+Eckert Glass Works,Eckert Glass Works,4
+Eckert Iron Yard,Eckert Iron Yard,12
+Atanasoff Fortress,Atanasoff Fortress,2112
+Atanasoff Mine,Atanasoff Mine,2049
+Atanasoff Memorial,Atanasoff Memorial,3072
+Atanasoff Lair,Atanasoff Lair,2048
+Atanasoff Prison,Atanasoff Prison,64
+Atanasoff Rose,Atanasoff Rose,2048
+Atanasoff Reef,Atanasoff Reef,2056
+Atanasoff Iceberg,Atanasoff Iceberg,2048
+Atanasoff Prison Mine,Atanasoff Prison Mine,4160
+Atanasoff Salt Shack,Atanasoff Salt Shack,2056
+Atanasoff Recharging Stn.,Atanasoff Recharging Stn.,0
+Atanasoff Deep Space Depot,Atanasoff Deep Space Depot,2048
+Atanasoff Ice Locker,Atanasoff Ice Locker,6144
+Atanasoff Rock Hopper,Atanasoff Rock Hopper,2048
+Atanasoff Glass Works,Atanasoff Glass Works,4
+Atanasoff Iron Yard,Atanasoff Iron Yard,12
+Zworykin Fortress,Zworykin Fortress,2112
+Zworykin Mine,Zworykin Mine,2049
+Zworykin Memorial,Zworykin Memorial,3072
+Zworykin Lair,Zworykin Lair,2048
+Zworykin Prison,Zworykin Prison,64
+Zworykin Rose,Zworykin Rose,2048
+Zworykin Reef,Zworykin Reef,2056
+Zworykin Iceberg,Zworykin Iceberg,2048
+Zworykin Prison Mine,Zworykin Prison Mine,4160
+Zworykin Salt Shack,Zworykin Salt Shack,2056
+Zworykin Recharging Stn.,Zworykin Recharging Stn.,0
+Zworykin Deep Space Depot,Zworykin Deep Space Depot,2048
+Zworykin Ice Locker,Zworykin Ice Locker,6144
+Zworykin Rock Hopper,Zworykin Rock Hopper,2048
+Zworykin Glass Works,Zworykin Glass Works,4
+Zworykin Iron Yard,Zworykin Iron Yard,12
+Kubischkin Fortress,Kubischkin Fortress,2112
+Kubischkin Mine,Kubischkin Mine,2049
+Kubischkin Memorial,Kubischkin Memorial,3072
+Kubischkin Lair,Kubischkin Lair,2048
+Kubischkin Prison,Kubischkin Prison,64
+Kubischkin Rose,Kubischkin Rose,2048
+Kubischkin Reef,Kubischkin Reef,2056
+Kubischkin Iceberg,Kubischkin Iceberg,2048
+Kubischkin Prison Mine,Kubischkin Prison Mine,4160
+Kubischkin Salt Shack,Kubischkin Salt Shack,2056
+Kubischkin Recharging Stn.,Kubischkin Recharging Stn.,0
+Kubischkin Deep Space Depot,Kubischkin Deep Space Depot,2048
+Kubischkin Ice Locker,Kubischkin Ice Locker,6144
+Kubischkin Rock Hopper,Kubischkin Rock Hopper,2048
+Kubischkin Glass Works,Kubischkin Glass Works,4
+Kubischkin Iron Yard,Kubischkin Iron Yard,12
+Rydberg Fortress,Rydberg Fortress,2112
+Rydberg Mine,Rydberg Mine,2049
+Rydberg Memorial,Rydberg Memorial,3072
+Rydberg Lair,Rydberg Lair,2048
+Rydberg Prison,Rydberg Prison,64
+Rydberg Rose,Rydberg Rose,2048
+Rydberg Reef,Rydberg Reef,2056
+Rydberg Iceberg,Rydberg Iceberg,2048
+Rydberg Prison Mine,Rydberg Prison Mine,4160
+Rydberg Salt Shack,Rydberg Salt Shack,2056
+Rydberg Recharging Stn.,Rydberg Recharging Stn.,0
+Rydberg Deep Space Depot,Rydberg Deep Space Depot,2048
+Rydberg Ice Locker,Rydberg Ice Locker,6144
+Rydberg Rock Hopper,Rydberg Rock Hopper,2048
+Rydberg Glass Works,Rydberg Glass Works,4
+Rydberg Iron Yard,Rydberg Iron Yard,12
+Zeeman Fortress,Zeeman Fortress,2112
+Zeeman Mine,Zeeman Mine,2049
+Zeeman Memorial,Zeeman Memorial,3072
+Zeeman Lair,Zeeman Lair,2048
+Zeeman Prison,Zeeman Prison,64
+Zeeman Rose,Zeeman Rose,2048
+Zeeman Reef,Zeeman Reef,2056
+Zeeman Iceberg,Zeeman Iceberg,2048
+Zeeman Prison Mine,Zeeman Prison Mine,4160
+Zeeman Salt Shack,Zeeman Salt Shack,2056
+Zeeman Recharging Stn.,Zeeman Recharging Stn.,0
+Zeeman Deep Space Depot,Zeeman Deep Space Depot,2048
+Zeeman Ice Locker,Zeeman Ice Locker,6144
+Zeeman Rock Hopper,Zeeman Rock Hopper,2048
+Zeeman Glass Works,Zeeman Glass Works,4
+Zeeman Iron Yard,Zeeman Iron Yard,12
+Meitner Fortress,Meitner Fortress,2112
+Meitner Mine,Meitner Mine,2049
+Meitner Memorial,Meitner Memorial,3072
+Meitner Lair,Meitner Lair,2048
+Meitner Prison,Meitner Prison,64
+Meitner Rose,Meitner Rose,2048
+Meitner Reef,Meitner Reef,2056
+Meitner Iceberg,Meitner Iceberg,2048
+Meitner Prison Mine,Meitner Prison Mine,4160
+Meitner Salt Shack,Meitner Salt Shack,2056
+Meitner Recharging Stn.,Meitner Recharging Stn.,0
+Meitner Deep Space Depot,Meitner Deep Space Depot,2048
+Meitner Ice Locker,Meitner Ice Locker,6144
+Meitner Rock Hopper,Meitner Rock Hopper,2048
+Meitner Glass Works,Meitner Glass Works,4
+Meitner Iron Yard,Meitner Iron Yard,12
+Arkel Fortress,Arkel Fortress,2112
+Arkel Mine,Arkel Mine,2049
+Arkel Memorial,Arkel Memorial,3072
+Arkel Lair,Arkel Lair,2048
+Arkel Prison,Arkel Prison,64
+Arkel Rose,Arkel Rose,2048
+Arkel Reef,Arkel Reef,2056
+Arkel Iceberg,Arkel Iceberg,2048
+Arkel Prison Mine,Arkel Prison Mine,4160
+Arkel Salt Shack,Arkel Salt Shack,2056
+Arkel Recharging Stn.,Arkel Recharging Stn.,0
+Arkel Deep Space Depot,Arkel Deep Space Depot,2048
+Arkel Ice Locker,Arkel Ice Locker,6144
+Arkel Rock Hopper,Arkel Rock Hopper,2048
+Arkel Glass Works,Arkel Glass Works,4
+Arkel Iron Yard,Arkel Iron Yard,12
+Ptolemy Fortress,Ptolemy Fortress,2112
+Ptolemy Mine,Ptolemy Mine,2049
+Ptolemy Memorial,Ptolemy Memorial,3072
+Ptolemy Lair,Ptolemy Lair,2048
+Ptolemy Prison,Ptolemy Prison,64
+Ptolemy Rose,Ptolemy Rose,2048
+Ptolemy Reef,Ptolemy Reef,2056
+Ptolemy Iceberg,Ptolemy Iceberg,2048
+Ptolemy Prison Mine,Ptolemy Prison Mine,4160
+Ptolemy Salt Shack,Ptolemy Salt Shack,2056
+Ptolemy Recharging Stn.,Ptolemy Recharging Stn.,0
+Ptolemy Deep Space Depot,Ptolemy Deep Space Depot,2048
+Ptolemy Ice Locker,Ptolemy Ice Locker,6144
+Ptolemy Rock Hopper,Ptolemy Rock Hopper,2048
+Ptolemy Glass Works,Ptolemy Glass Works,4
+Ptolemy Iron Yard,Ptolemy Iron Yard,12
+Bianchini Fortress,Bianchini Fortress,2112
+Bianchini Mine,Bianchini Mine,2049
+Bianchini Memorial,Bianchini Memorial,3072
+Bianchini Lair,Bianchini Lair,2048
+Bianchini Prison,Bianchini Prison,64
+Bianchini Rose,Bianchini Rose,2048
+Bianchini Reef,Bianchini Reef,2056
+Bianchini Iceberg,Bianchini Iceberg,2048
+Bianchini Prison Mine,Bianchini Prison Mine,4160
+Bianchini Salt Shack,Bianchini Salt Shack,2056
+Bianchini Recharging Stn.,Bianchini Recharging Stn.,0
+Bianchini Deep Space Depot,Bianchini Deep Space Depot,2048
+Bianchini Ice Locker,Bianchini Ice Locker,6144
+Bianchini Rock Hopper,Bianchini Rock Hopper,2048
+Bianchini Glass Works,Bianchini Glass Works,4
+Bianchini Iron Yard,Bianchini Iron Yard,12
+Alhazen Fortress,Alhazen Fortress,2112
+Alhazen Mine,Alhazen Mine,2049
+Alhazen Memorial,Alhazen Memorial,3072
+Alhazen Lair,Alhazen Lair,2048
+Alhazen Prison,Alhazen Prison,64
+Alhazen Rose,Alhazen Rose,2048
+Alhazen Reef,Alhazen Reef,2056
+Alhazen Iceberg,Alhazen Iceberg,2048
+Alhazen Prison Mine,Alhazen Prison Mine,4160
+Alhazen Salt Shack,Alhazen Salt Shack,2056
+Alhazen Recharging Stn.,Alhazen Recharging Stn.,0
+Alhazen Deep Space Depot,Alhazen Deep Space Depot,2048
+Alhazen Ice Locker,Alhazen Ice Locker,6144
+Alhazen Rock Hopper,Alhazen Rock Hopper,2048
+Alhazen Glass Works,Alhazen Glass Works,4
+Alhazen Iron Yard,Alhazen Iron Yard,12
+Nasireddin Fortress,Nasireddin Fortress,2112
+Nasireddin Mine,Nasireddin Mine,2049
+Nasireddin Memorial,Nasireddin Memorial,3072
+Nasireddin Lair,Nasireddin Lair,2048
+Nasireddin Prison,Nasireddin Prison,64
+Nasireddin Rose,Nasireddin Rose,2048
+Nasireddin Reef,Nasireddin Reef,2056
+Nasireddin Iceberg,Nasireddin Iceberg,2048
+Nasireddin Prison Mine,Nasireddin Prison Mine,4160
+Nasireddin Salt Shack,Nasireddin Salt Shack,2056
+Nasireddin Recharging Stn.,Nasireddin Recharging Stn.,0
+Nasireddin Deep Space Depot,Nasireddin Deep Space Depot,2048
+Nasireddin Ice Locker,Nasireddin Ice Locker,6144
+Nasireddin Rock Hopper,Nasireddin Rock Hopper,2048
+Nasireddin Glass Works,Nasireddin Glass Works,4
+Nasireddin Iron Yard,Nasireddin Iron Yard,12
+Ulugh Fortress,Ulugh Fortress,2112
+Ulugh Mine,Ulugh Mine,2049
+Ulugh Memorial,Ulugh Memorial,3072
+Ulugh Lair,Ulugh Lair,2048
+Ulugh Prison,Ulugh Prison,64
+Ulugh Rose,Ulugh Rose,2048
+Ulugh Reef,Ulugh Reef,2056
+Ulugh Iceberg,Ulugh Iceberg,2048
+Ulugh Prison Mine,Ulugh Prison Mine,4160
+Ulugh Salt Shack,Ulugh Salt Shack,2056
+Ulugh Recharging Stn.,Ulugh Recharging Stn.,0
+Ulugh Deep Space Depot,Ulugh Deep Space Depot,2048
+Ulugh Ice Locker,Ulugh Ice Locker,6144
+Ulugh Rock Hopper,Ulugh Rock Hopper,2048
+Ulugh Glass Works,Ulugh Glass Works,4
+Ulugh Iron Yard,Ulugh Iron Yard,12
+Beg Fortress,Beg Fortress,2112
+Beg Mine,Beg Mine,2049
+Beg Memorial,Beg Memorial,3072
+Beg Lair,Beg Lair,2048
+Beg Prison,Beg Prison,64
+Beg Rose,Beg Rose,2048
+Beg Reef,Beg Reef,2056
+Beg Iceberg,Beg Iceberg,2048
+Beg Prison Mine,Beg Prison Mine,4160
+Beg Salt Shack,Beg Salt Shack,2056
+Beg Recharging Stn.,Beg Recharging Stn.,0
+Beg Deep Space Depot,Beg Deep Space Depot,2048
+Beg Ice Locker,Beg Ice Locker,6144
+Beg Rock Hopper,Beg Rock Hopper,2048
+Beg Glass Works,Beg Glass Works,4
+Beg Iron Yard,Beg Iron Yard,12
+Bicchieri Fortress,Bicchieri Fortress,2112
+Bicchieri Mine,Bicchieri Mine,2049
+Bicchieri Memorial,Bicchieri Memorial,3072
+Bicchieri Lair,Bicchieri Lair,2048
+Bicchieri Prison,Bicchieri Prison,64
+Bicchieri Rose,Bicchieri Rose,2048
+Bicchieri Reef,Bicchieri Reef,2056
+Bicchieri Iceberg,Bicchieri Iceberg,2048
+Bicchieri Prison Mine,Bicchieri Prison Mine,4160
+Bicchieri Salt Shack,Bicchieri Salt Shack,2056
+Bicchieri Recharging Stn.,Bicchieri Recharging Stn.,0
+Bicchieri Deep Space Depot,Bicchieri Deep Space Depot,2048
+Bicchieri Ice Locker,Bicchieri Ice Locker,6144
+Bicchieri Rock Hopper,Bicchieri Rock Hopper,2048
+Bicchieri Glass Works,Bicchieri Glass Works,4
+Bicchieri Iron Yard,Bicchieri Iron Yard,12
+Hevelius Fortress,Hevelius Fortress,2112
+Hevelius Mine,Hevelius Mine,2049
+Hevelius Memorial,Hevelius Memorial,3072
+Hevelius Lair,Hevelius Lair,2048
+Hevelius Prison,Hevelius Prison,64
+Hevelius Rose,Hevelius Rose,2048
+Hevelius Reef,Hevelius Reef,2056
+Hevelius Iceberg,Hevelius Iceberg,2048
+Hevelius Prison Mine,Hevelius Prison Mine,4160
+Hevelius Salt Shack,Hevelius Salt Shack,2056
+Hevelius Recharging Stn.,Hevelius Recharging Stn.,0
+Hevelius Deep Space Depot,Hevelius Deep Space Depot,2048
+Hevelius Ice Locker,Hevelius Ice Locker,6144
+Hevelius Rock Hopper,Hevelius Rock Hopper,2048
+Hevelius Glass Works,Hevelius Glass Works,4
+Hevelius Iron Yard,Hevelius Iron Yard,12
+Olbers Fortress,Olbers Fortress,2112
+Olbers Mine,Olbers Mine,2049
+Olbers Memorial,Olbers Memorial,3072
+Olbers Lair,Olbers Lair,2048
+Olbers Prison,Olbers Prison,64
+Olbers Rose,Olbers Rose,2048
+Olbers Reef,Olbers Reef,2056
+Olbers Iceberg,Olbers Iceberg,2048
+Olbers Prison Mine,Olbers Prison Mine,4160
+Olbers Salt Shack,Olbers Salt Shack,2056
+Olbers Recharging Stn.,Olbers Recharging Stn.,0
+Olbers Deep Space Depot,Olbers Deep Space Depot,2048
+Olbers Ice Locker,Olbers Ice Locker,6144
+Olbers Rock Hopper,Olbers Rock Hopper,2048
+Olbers Glass Works,Olbers Glass Works,4
+Olbers Iron Yard,Olbers Iron Yard,12
+Piazzi Fortress,Piazzi Fortress,2112
+Piazzi Mine,Piazzi Mine,2049
+Piazzi Memorial,Piazzi Memorial,3072
+Piazzi Lair,Piazzi Lair,2048
+Piazzi Prison,Piazzi Prison,64
+Piazzi Rose,Piazzi Rose,2048
+Piazzi Reef,Piazzi Reef,2056
+Piazzi Iceberg,Piazzi Iceberg,2048
+Piazzi Prison Mine,Piazzi Prison Mine,4160
+Piazzi Salt Shack,Piazzi Salt Shack,2056
+Piazzi Recharging Stn.,Piazzi Recharging Stn.,0
+Piazzi Deep Space Depot,Piazzi Deep Space Depot,2048
+Piazzi Ice Locker,Piazzi Ice Locker,6144
+Piazzi Rock Hopper,Piazzi Rock Hopper,2048
+Piazzi Glass Works,Piazzi Glass Works,4
+Piazzi Iron Yard,Piazzi Iron Yard,12
+LeVerrier Fortress,LeVerrier Fortress,2112
+LeVerrier Mine,LeVerrier Mine,2049
+LeVerrier Memorial,LeVerrier Memorial,3072
+LeVerrier Lair,LeVerrier Lair,2048
+LeVerrier Prison,LeVerrier Prison,64
+LeVerrier Rose,LeVerrier Rose,2048
+LeVerrier Reef,LeVerrier Reef,2056
+LeVerrier Iceberg,LeVerrier Iceberg,2048
+LeVerrier Prison Mine,LeVerrier Prison Mine,4160
+LeVerrier Salt Shack,LeVerrier Salt Shack,2056
+LeVerrier Recharging Stn.,LeVerrier Recharging Stn.,0
+LeVerrier Deep Space Depot,LeVerrier Deep Space Depot,2048
+LeVerrier Ice Locker,LeVerrier Ice Locker,6144
+LeVerrier Rock Hopper,LeVerrier Rock Hopper,2048
+LeVerrier Glass Works,LeVerrier Glass Works,4
+LeVerrier Iron Yard,LeVerrier Iron Yard,12
+Leavitt Fortress,Leavitt Fortress,2112
+Leavitt Mine,Leavitt Mine,2049
+Leavitt Memorial,Leavitt Memorial,3072
+Leavitt Lair,Leavitt Lair,2048
+Leavitt Prison,Leavitt Prison,64
+Leavitt Rose,Leavitt Rose,2048
+Leavitt Reef,Leavitt Reef,2056
+Leavitt Iceberg,Leavitt Iceberg,2048
+Leavitt Prison Mine,Leavitt Prison Mine,4160
+Leavitt Salt Shack,Leavitt Salt Shack,2056
+Leavitt Recharging Stn.,Leavitt Recharging Stn.,0
+Leavitt Deep Space Depot,Leavitt Deep Space Depot,2048
+Leavitt Ice Locker,Leavitt Ice Locker,6144
+Leavitt Rock Hopper,Leavitt Rock Hopper,2048
+Leavitt Glass Works,Leavitt Glass Works,4
+Leavitt Iron Yard,Leavitt Iron Yard,12
+Lowell Fortress,Lowell Fortress,2112
+Lowell Mine,Lowell Mine,2049
+Lowell Memorial,Lowell Memorial,3072
+Lowell Lair,Lowell Lair,2048
+Lowell Prison,Lowell Prison,64
+Lowell Rose,Lowell Rose,2048
+Lowell Reef,Lowell Reef,2056
+Lowell Iceberg,Lowell Iceberg,2048
+Lowell Prison Mine,Lowell Prison Mine,4160
+Lowell Salt Shack,Lowell Salt Shack,2056
+Lowell Recharging Stn.,Lowell Recharging Stn.,0
+Lowell Deep Space Depot,Lowell Deep Space Depot,2048
+Lowell Ice Locker,Lowell Ice Locker,6144
+Lowell Rock Hopper,Lowell Rock Hopper,2048
+Lowell Glass Works,Lowell Glass Works,4
+Lowell Iron Yard,Lowell Iron Yard,12
+Messier Fortress,Messier Fortress,2112
+Messier Mine,Messier Mine,2049
+Messier Memorial,Messier Memorial,3072
+Messier Lair,Messier Lair,2048
+Messier Prison,Messier Prison,64
+Messier Rose,Messier Rose,2048
+Messier Reef,Messier Reef,2056
+Messier Iceberg,Messier Iceberg,2048
+Messier Prison Mine,Messier Prison Mine,4160
+Messier Salt Shack,Messier Salt Shack,2056
+Messier Recharging Stn.,Messier Recharging Stn.,0
+Messier Deep Space Depot,Messier Deep Space Depot,2048
+Messier Ice Locker,Messier Ice Locker,6144
+Messier Rock Hopper,Messier Rock Hopper,2048
+Messier Glass Works,Messier Glass Works,4
+Messier Iron Yard,Messier Iron Yard,12
+Hodge Fortress,Hodge Fortress,2112
+Hodge Mine,Hodge Mine,2049
+Hodge Memorial,Hodge Memorial,3072
+Hodge Lair,Hodge Lair,2048
+Hodge Prison,Hodge Prison,64
+Hodge Rose,Hodge Rose,2048
+Hodge Reef,Hodge Reef,2056
+Hodge Iceberg,Hodge Iceberg,2048
+Hodge Prison Mine,Hodge Prison Mine,4160
+Hodge Salt Shack,Hodge Salt Shack,2056
+Hodge Recharging Stn.,Hodge Recharging Stn.,0
+Hodge Deep Space Depot,Hodge Deep Space Depot,2048
+Hodge Ice Locker,Hodge Ice Locker,6144
+Hodge Rock Hopper,Hodge Rock Hopper,2048
+Hodge Glass Works,Hodge Glass Works,4
+Hodge Iron Yard,Hodge Iron Yard,12
+Shkaplerov Fortress,Shkaplerov Fortress,2112
+Shkaplerov Mine,Shkaplerov Mine,2049
+Shkaplerov Memorial,Shkaplerov Memorial,3072
+Shkaplerov Lair,Shkaplerov Lair,2048
+Shkaplerov Prison,Shkaplerov Prison,64
+Shkaplerov Rose,Shkaplerov Rose,2048
+Shkaplerov Reef,Shkaplerov Reef,2056
+Shkaplerov Iceberg,Shkaplerov Iceberg,2048
+Shkaplerov Prison Mine,Shkaplerov Prison Mine,4160
+Shkaplerov Salt Shack,Shkaplerov Salt Shack,2056
+Shkaplerov Recharging Stn.,Shkaplerov Recharging Stn.,0
+Shkaplerov Deep Space Depot,Shkaplerov Deep Space Depot,2048
+Shkaplerov Ice Locker,Shkaplerov Ice Locker,6144
+Shkaplerov Rock Hopper,Shkaplerov Rock Hopper,2048
+Shkaplerov Glass Works,Shkaplerov Glass Works,4
+Shkaplerov Iron Yard,Shkaplerov Iron Yard,12
+Umov Fortress,Umov Fortress,2112
+Umov Mine,Umov Mine,2049
+Umov Memorial,Umov Memorial,3072
+Umov Lair,Umov Lair,2048
+Umov Prison,Umov Prison,64
+Umov Rose,Umov Rose,2048
+Umov Reef,Umov Reef,2056
+Umov Iceberg,Umov Iceberg,2048
+Umov Prison Mine,Umov Prison Mine,4160
+Umov Salt Shack,Umov Salt Shack,2056
+Umov Recharging Stn.,Umov Recharging Stn.,0
+Umov Deep Space Depot,Umov Deep Space Depot,2048
+Umov Ice Locker,Umov Ice Locker,6144
+Umov Rock Hopper,Umov Rock Hopper,2048
+Umov Glass Works,Umov Glass Works,4
+Umov Iron Yard,Umov Iron Yard,12
+Maunder Fortress,Maunder Fortress,2112
+Maunder Mine,Maunder Mine,2049
+Maunder Memorial,Maunder Memorial,3072
+Maunder Lair,Maunder Lair,2048
+Maunder Prison,Maunder Prison,64
+Maunder Rose,Maunder Rose,2048
+Maunder Reef,Maunder Reef,2056
+Maunder Iceberg,Maunder Iceberg,2048
+Maunder Prison Mine,Maunder Prison Mine,4160
+Maunder Salt Shack,Maunder Salt Shack,2056
+Maunder Recharging Stn.,Maunder Recharging Stn.,0
+Maunder Deep Space Depot,Maunder Deep Space Depot,2048
+Maunder Ice Locker,Maunder Ice Locker,6144
+Maunder Rock Hopper,Maunder Rock Hopper,2048
+Maunder Glass Works,Maunder Glass Works,4
+Maunder Iron Yard,Maunder Iron Yard,12
+Aristoge Fortress,Aristoge Fortress,2112
+Aristoge Mine,Aristoge Mine,2049
+Aristoge Memorial,Aristoge Memorial,3072
+Aristoge Lair,Aristoge Lair,2048
+Aristoge Prison,Aristoge Prison,64
+Aristoge Rose,Aristoge Rose,2048
+Aristoge Reef,Aristoge Reef,2056
+Aristoge Iceberg,Aristoge Iceberg,2048
+Aristoge Prison Mine,Aristoge Prison Mine,4160
+Aristoge Salt Shack,Aristoge Salt Shack,2056
+Aristoge Recharging Stn.,Aristoge Recharging Stn.,0
+Aristoge Deep Space Depot,Aristoge Deep Space Depot,2048
+Aristoge Ice Locker,Aristoge Ice Locker,6144
+Aristoge Rock Hopper,Aristoge Rock Hopper,2048
+Aristoge Glass Works,Aristoge Glass Works,4
+Aristoge Iron Yard,Aristoge Iron Yard,12
+Hook Fortress,Hook Fortress,2112
+Hook Mine,Hook Mine,2049
+Hook Memorial,Hook Memorial,3072
+Hook Lair,Hook Lair,2048
+Hook Prison,Hook Prison,64
+Hook Rose,Hook Rose,2048
+Hook Reef,Hook Reef,2056
+Hook Iceberg,Hook Iceberg,2048
+Hook Prison Mine,Hook Prison Mine,4160
+Hook Salt Shack,Hook Salt Shack,2056
+Hook Recharging Stn.,Hook Recharging Stn.,0
+Hook Deep Space Depot,Hook Deep Space Depot,2048
+Hook Ice Locker,Hook Ice Locker,6144
+Hook Rock Hopper,Hook Rock Hopper,2048
+Hook Glass Works,Hook Glass Works,4
+Hook Iron Yard,Hook Iron Yard,12
+Kepler Fortress,Kepler Fortress,2112
+Kepler Mine,Kepler Mine,2049
+Kepler Memorial,Kepler Memorial,3072
+Kepler Lair,Kepler Lair,2048
+Kepler Prison,Kepler Prison,64
+Kepler Rose,Kepler Rose,2048
+Kepler Reef,Kepler Reef,2056
+Kepler Iceberg,Kepler Iceberg,2048
+Kepler Prison Mine,Kepler Prison Mine,4160
+Kepler Salt Shack,Kepler Salt Shack,2056
+Kepler Recharging Stn.,Kepler Recharging Stn.,0
+Kepler Deep Space Depot,Kepler Deep Space Depot,2048
+Kepler Ice Locker,Kepler Ice Locker,6144
+Kepler Rock Hopper,Kepler Rock Hopper,2048
+Kepler Glass Works,Kepler Glass Works,4
+Kepler Iron Yard,Kepler Iron Yard,12
+Herschon Fortress,Herschon Fortress,2112
+Herschon Mine,Herschon Mine,2049
+Herschon Memorial,Herschon Memorial,3072
+Herschon Lair,Herschon Lair,2048
+Herschon Prison,Herschon Prison,64
+Herschon Rose,Herschon Rose,2048
+Herschon Reef,Herschon Reef,2056
+Herschon Iceberg,Herschon Iceberg,2048
+Herschon Prison Mine,Herschon Prison Mine,4160
+Herschon Salt Shack,Herschon Salt Shack,2056
+Herschon Recharging Stn.,Herschon Recharging Stn.,0
+Herschon Deep Space Depot,Herschon Deep Space Depot,2048
+Herschon Ice Locker,Herschon Ice Locker,6144
+Herschon Rock Hopper,Herschon Rock Hopper,2048
+Herschon Glass Works,Herschon Glass Works,4
+Herschon Iron Yard,Herschon Iron Yard,12
+Tycho Fortress,Tycho Fortress,2112
+Tycho Mine,Tycho Mine,2049
+Tycho Memorial,Tycho Memorial,3072
+Tycho Lair,Tycho Lair,2048
+Tycho Prison,Tycho Prison,64
+Tycho Rose,Tycho Rose,2048
+Tycho Reef,Tycho Reef,2056
+Tycho Iceberg,Tycho Iceberg,2048
+Tycho Prison Mine,Tycho Prison Mine,4160
+Tycho Salt Shack,Tycho Salt Shack,2056
+Tycho Recharging Stn.,Tycho Recharging Stn.,0
+Tycho Deep Space Depot,Tycho Deep Space Depot,2048
+Tycho Ice Locker,Tycho Ice Locker,6144
+Tycho Rock Hopper,Tycho Rock Hopper,2048
+Tycho Glass Works,Tycho Glass Works,4
+Tycho Iron Yard,Tycho Iron Yard,12
+Laplace Fortress,Laplace Fortress,2112
+Laplace Mine,Laplace Mine,2049
+Laplace Memorial,Laplace Memorial,3072
+Laplace Lair,Laplace Lair,2048
+Laplace Prison,Laplace Prison,64
+Laplace Rose,Laplace Rose,2048
+Laplace Reef,Laplace Reef,2056
+Laplace Iceberg,Laplace Iceberg,2048
+Laplace Prison Mine,Laplace Prison Mine,4160
+Laplace Salt Shack,Laplace Salt Shack,2056
+Laplace Recharging Stn.,Laplace Recharging Stn.,0
+Laplace Deep Space Depot,Laplace Deep Space Depot,2048
+Laplace Ice Locker,Laplace Ice Locker,6144
+Laplace Rock Hopper,Laplace Rock Hopper,2048
+Laplace Glass Works,Laplace Glass Works,4
+Laplace Iron Yard,Laplace Iron Yard,12
+Gauss Fortress,Gauss Fortress,2112
+Gauss Mine,Gauss Mine,2049
+Gauss Memorial,Gauss Memorial,3072
+Gauss Lair,Gauss Lair,2048
+Gauss Prison,Gauss Prison,64
+Gauss Rose,Gauss Rose,2048
+Gauss Reef,Gauss Reef,2056
+Gauss Iceberg,Gauss Iceberg,2048
+Gauss Prison Mine,Gauss Prison Mine,4160
+Gauss Salt Shack,Gauss Salt Shack,2056
+Gauss Recharging Stn.,Gauss Recharging Stn.,0
+Gauss Deep Space Depot,Gauss Deep Space Depot,2048
+Gauss Ice Locker,Gauss Ice Locker,6144
+Gauss Rock Hopper,Gauss Rock Hopper,2048
+Gauss Glass Works,Gauss Glass Works,4
+Gauss Iron Yard,Gauss Iron Yard,12
+Riemann Fortress,Riemann Fortress,2112
+Riemann Mine,Riemann Mine,2049
+Riemann Memorial,Riemann Memorial,3072
+Riemann Lair,Riemann Lair,2048
+Riemann Prison,Riemann Prison,64
+Riemann Rose,Riemann Rose,2048
+Riemann Reef,Riemann Reef,2056
+Riemann Iceberg,Riemann Iceberg,2048
+Riemann Prison Mine,Riemann Prison Mine,4160
+Riemann Salt Shack,Riemann Salt Shack,2056
+Riemann Recharging Stn.,Riemann Recharging Stn.,0
+Riemann Deep Space Depot,Riemann Deep Space Depot,2048
+Riemann Ice Locker,Riemann Ice Locker,6144
+Riemann Rock Hopper,Riemann Rock Hopper,2048
+Riemann Glass Works,Riemann Glass Works,4
+Riemann Iron Yard,Riemann Iron Yard,12
+Raman Fortress,Raman Fortress,2112
+Raman Mine,Raman Mine,2049
+Raman Memorial,Raman Memorial,3072
+Raman Lair,Raman Lair,2048
+Raman Prison,Raman Prison,64
+Raman Rose,Raman Rose,2048
+Raman Reef,Raman Reef,2056
+Raman Iceberg,Raman Iceberg,2048
+Raman Prison Mine,Raman Prison Mine,4160
+Raman Salt Shack,Raman Salt Shack,2056
+Raman Recharging Stn.,Raman Recharging Stn.,0
+Raman Deep Space Depot,Raman Deep Space Depot,2048
+Raman Ice Locker,Raman Ice Locker,6144
+Raman Rock Hopper,Raman Rock Hopper,2048
+Raman Glass Works,Raman Glass Works,4
+Raman Iron Yard,Raman Iron Yard,12
+Oppenheimer Fortress,Oppenheimer Fortress,2112
+Oppenheimer Mine,Oppenheimer Mine,2049
+Oppenheimer Memorial,Oppenheimer Memorial,3072
+Oppenheimer Lair,Oppenheimer Lair,2048
+Oppenheimer Prison,Oppenheimer Prison,64
+Oppenheimer Rose,Oppenheimer Rose,2048
+Oppenheimer Reef,Oppenheimer Reef,2056
+Oppenheimer Iceberg,Oppenheimer Iceberg,2048
+Oppenheimer Prison Mine,Oppenheimer Prison Mine,4160
+Oppenheimer Salt Shack,Oppenheimer Salt Shack,2056
+Oppenheimer Recharging Stn.,Oppenheimer Recharging Stn.,0
+Oppenheimer Deep Space Depot,Oppenheimer Deep Space Depot,2048
+Oppenheimer Ice Locker,Oppenheimer Ice Locker,6144
+Oppenheimer Rock Hopper,Oppenheimer Rock Hopper,2048
+Oppenheimer Glass Works,Oppenheimer Glass Works,4
+Oppenheimer Iron Yard,Oppenheimer Iron Yard,12
+Feynman Fortress,Feynman Fortress,2112
+Feynman Mine,Feynman Mine,2049
+Feynman Memorial,Feynman Memorial,3072
+Feynman Lair,Feynman Lair,2048
+Feynman Prison,Feynman Prison,64
+Feynman Rose,Feynman Rose,2048
+Feynman Reef,Feynman Reef,2056
+Feynman Iceberg,Feynman Iceberg,2048
+Feynman Prison Mine,Feynman Prison Mine,4160
+Feynman Salt Shack,Feynman Salt Shack,2056
+Feynman Recharging Stn.,Feynman Recharging Stn.,0
+Feynman Deep Space Depot,Feynman Deep Space Depot,2048
+Feynman Ice Locker,Feynman Ice Locker,6144
+Feynman Rock Hopper,Feynman Rock Hopper,2048
+Feynman Glass Works,Feynman Glass Works,4
+Feynman Iron Yard,Feynman Iron Yard,12
+Hubble Fortress,Hubble Fortress,2112
+Hubble Mine,Hubble Mine,2049
+Hubble Memorial,Hubble Memorial,3072
+Hubble Lair,Hubble Lair,2048
+Hubble Prison,Hubble Prison,64
+Hubble Rose,Hubble Rose,2048
+Hubble Reef,Hubble Reef,2056
+Hubble Iceberg,Hubble Iceberg,2048
+Hubble Prison Mine,Hubble Prison Mine,4160
+Hubble Salt Shack,Hubble Salt Shack,2056
+Hubble Recharging Stn.,Hubble Recharging Stn.,0
+Hubble Deep Space Depot,Hubble Deep Space Depot,2048
+Hubble Ice Locker,Hubble Ice Locker,6144
+Hubble Rock Hopper,Hubble Rock Hopper,2048
+Hubble Glass Works,Hubble Glass Works,4
+Hubble Iron Yard,Hubble Iron Yard,12
+Rubin Fortress,Rubin Fortress,2112
+Rubin Mine,Rubin Mine,2049
+Rubin Memorial,Rubin Memorial,3072
+Rubin Lair,Rubin Lair,2048
+Rubin Prison,Rubin Prison,64
+Rubin Rose,Rubin Rose,2048
+Rubin Reef,Rubin Reef,2056
+Rubin Iceberg,Rubin Iceberg,2048
+Rubin Prison Mine,Rubin Prison Mine,4160
+Rubin Salt Shack,Rubin Salt Shack,2056
+Rubin Recharging Stn.,Rubin Recharging Stn.,0
+Rubin Deep Space Depot,Rubin Deep Space Depot,2048
+Rubin Ice Locker,Rubin Ice Locker,6144
+Rubin Rock Hopper,Rubin Rock Hopper,2048
+Rubin Glass Works,Rubin Glass Works,4
+Rubin Iron Yard,Rubin Iron Yard,12
+Teller Fortress,Teller Fortress,2112
+Teller Mine,Teller Mine,2049
+Teller Memorial,Teller Memorial,3072
+Teller Lair,Teller Lair,2048
+Teller Prison,Teller Prison,64
+Teller Rose,Teller Rose,2048
+Teller Reef,Teller Reef,2056
+Teller Iceberg,Teller Iceberg,2048
+Teller Prison Mine,Teller Prison Mine,4160
+Teller Salt Shack,Teller Salt Shack,2056
+Teller Recharging Stn.,Teller Recharging Stn.,0
+Teller Deep Space Depot,Teller Deep Space Depot,2048
+Teller Ice Locker,Teller Ice Locker,6144
+Teller Rock Hopper,Teller Rock Hopper,2048
+Teller Glass Works,Teller Glass Works,4
+Teller Iron Yard,Teller Iron Yard,12
+Bethe Fortress,Bethe Fortress,2112
+Bethe Mine,Bethe Mine,2049
+Bethe Memorial,Bethe Memorial,3072
+Bethe Lair,Bethe Lair,2048
+Bethe Prison,Bethe Prison,64
+Bethe Rose,Bethe Rose,2048
+Bethe Reef,Bethe Reef,2056
+Bethe Iceberg,Bethe Iceberg,2048
+Bethe Prison Mine,Bethe Prison Mine,4160
+Bethe Salt Shack,Bethe Salt Shack,2056
+Bethe Recharging Stn.,Bethe Recharging Stn.,0
+Bethe Deep Space Depot,Bethe Deep Space Depot,2048
+Bethe Ice Locker,Bethe Ice Locker,6144
+Bethe Rock Hopper,Bethe Rock Hopper,2048
+Bethe Glass Works,Bethe Glass Works,4
+Bethe Iron Yard,Bethe Iron Yard,12
+Chandrasekhar Fortress,Chandrasekhar Fortress,2112
+Chandrasekhar Mine,Chandrasekhar Mine,2049
+Chandrasekhar Memorial,Chandrasekhar Memorial,3072
+Chandrasekhar Lair,Chandrasekhar Lair,2048
+Chandrasekhar Prison,Chandrasekhar Prison,64
+Chandrasekhar Rose,Chandrasekhar Rose,2048
+Chandrasekhar Reef,Chandrasekhar Reef,2056
+Chandrasekhar Iceberg,Chandrasekhar Iceberg,2048
+Chandrasekhar Prison Mine,Chandrasekhar Prison Mine,4160
+Chandrasekhar Salt Shack,Chandrasekhar Salt Shack,2056
+Chandrasekhar Recharging Stn.,Chandrasekhar Recharging Stn.,0
+Chandrasekhar Deep Space Depot,Chandrasekhar Deep Space Depot,2048
+Chandrasekhar Ice Locker,Chandrasekhar Ice Locker,6144
+Chandrasekhar Rock Hopper,Chandrasekhar Rock Hopper,2048
+Chandrasekhar Glass Works,Chandrasekhar Glass Works,4
+Chandrasekhar Iron Yard,Chandrasekhar Iron Yard,12
+Grote Fortress,Grote Fortress,2112
+Grote Mine,Grote Mine,2049
+Grote Memorial,Grote Memorial,3072
+Grote Lair,Grote Lair,2048
+Grote Prison,Grote Prison,64
+Grote Rose,Grote Rose,2048
+Grote Reef,Grote Reef,2056
+Grote Iceberg,Grote Iceberg,2048
+Grote Prison Mine,Grote Prison Mine,4160
+Grote Salt Shack,Grote Salt Shack,2056
+Grote Recharging Stn.,Grote Recharging Stn.,0
+Grote Deep Space Depot,Grote Deep Space Depot,2048
+Grote Ice Locker,Grote Ice Locker,6144
+Grote Rock Hopper,Grote Rock Hopper,2048
+Grote Glass Works,Grote Glass Works,4
+Grote Iron Yard,Grote Iron Yard,12
+Fermi Fortress,Fermi Fortress,2112
+Fermi Mine,Fermi Mine,2049
+Fermi Memorial,Fermi Memorial,3072
+Fermi Lair,Fermi Lair,2048
+Fermi Prison,Fermi Prison,64
+Fermi Rose,Fermi Rose,2048
+Fermi Reef,Fermi Reef,2056
+Fermi Iceberg,Fermi Iceberg,2048
+Fermi Prison Mine,Fermi Prison Mine,4160
+Fermi Salt Shack,Fermi Salt Shack,2056
+Fermi Recharging Stn.,Fermi Recharging Stn.,0
+Fermi Deep Space Depot,Fermi Deep Space Depot,2048
+Fermi Ice Locker,Fermi Ice Locker,6144
+Fermi Rock Hopper,Fermi Rock Hopper,2048
+Fermi Glass Works,Fermi Glass Works,4
+Fermi Iron Yard,Fermi Iron Yard,12
+Withered Rose,Withered Rose,2048
+The Grier Reef,Grier Reef,2048
+The Salt Path,Salt Path,2048
+The Cold Front,Cold Front,2048
+The Broken Orbit,Broken Orbit,2048
+The Quiet Belt,Quiet Belt,2048
+The Last Ember,Last Ember,2048
+The Slow Wheel,Slow Wheel,2048
+The Dredger's Mark,Dredger's Mark,4096
+Double Header,Double Header,2048
+The Wrong Side,Wrong Side,2048
+The Bitter End,Bitter End,2048
+The Iron Cradle,Iron Cradle,2048
+The Third Shift,Third Shift,32
+The Long Hall,Long Hall,2048
+The Dead Centre,Dead Centre,2048
+The Heimdall Spire,Heimdall Spire,0
+Heimdall Spire,Heimdall Spire,0
+The Heimdall Reach,Heimdall Reach,0
+Heimdall Reach,Heimdall Reach,0
+The Heimdall Watch,Heimdall Watch,0
+Heimdall Watch,Heimdall Watch,0
+The Heimdall Keep,Heimdall Keep,0
+Heimdall Keep,Heimdall Keep,0
+The Heimdall Bastion,Heimdall Bastion,0
+Heimdall Bastion,Heimdall Bastion,0
+The Heimdall Terminus,Heimdall Terminus,0
+Heimdall Terminus,Heimdall Terminus,0
+The Heimdall Lighthouse,Heimdall Lighthouse,0
+Heimdall Lighthouse,Heimdall Lighthouse,0
+The Heimdall Observatory,Heimdall Observatory,0
+Heimdall Observatory,Heimdall Observatory,0
+The Heimdall Gate,Heimdall Gate,0
+Heimdall Gate,Heimdall Gate,0
+The Heimdall Station,Heimdall Station,0
+Heimdall Station,Heimdall Station,0
+The Baldur Spire,Baldur Spire,0
+Baldur Spire,Baldur Spire,0
+The Baldur Reach,Baldur Reach,0
+Baldur Reach,Baldur Reach,0
+The Baldur Watch,Baldur Watch,0
+Baldur Watch,Baldur Watch,0
+The Baldur Keep,Baldur Keep,0
+Baldur Keep,Baldur Keep,0
+The Baldur Bastion,Baldur Bastion,0
+Baldur Bastion,Baldur Bastion,0
+The Baldur Terminus,Baldur Terminus,0
+Baldur Terminus,Baldur Terminus,0
+The Baldur Lighthouse,Baldur Lighthouse,0
+Baldur Lighthouse,Baldur Lighthouse,0
+The Baldur Observatory,Baldur Observatory,0
+Baldur Observatory,Baldur Observatory,0
+The Baldur Gate,Baldur Gate,0
+Baldur Gate,Baldur Gate,0
+The Baldur Station,Baldur Station,0
+Baldur Station,Baldur Station,0
+The Thor Spire,Thor Spire,0
+Thor Spire,Thor Spire,0
+The Thor Reach,Thor Reach,0
+Thor Reach,Thor Reach,0
+The Thor Watch,Thor Watch,0
+Thor Watch,Thor Watch,0
+The Thor Keep,Thor Keep,0
+Thor Keep,Thor Keep,0
+The Thor Bastion,Thor Bastion,0
+Thor Bastion,Thor Bastion,0
+The Thor Terminus,Thor Terminus,0
+Thor Terminus,Thor Terminus,0
+The Thor Lighthouse,Thor Lighthouse,0
+Thor Lighthouse,Thor Lighthouse,0
+The Thor Observatory,Thor Observatory,0
+Thor Observatory,Thor Observatory,0
+The Thor Gate,Thor Gate,0
+Thor Gate,Thor Gate,0
+The Thor Station,Thor Station,0
+Thor Station,Thor Station,0
+The Odin Spire,Odin Spire,0
+Odin Spire,Odin Spire,0
+The Odin Reach,Odin Reach,0
+Odin Reach,Odin Reach,0
+The Odin Watch,Odin Watch,0
+Odin Watch,Odin Watch,0
+The Odin Keep,Odin Keep,0
+Odin Keep,Odin Keep,0
+The Odin Bastion,Odin Bastion,0
+Odin Bastion,Odin Bastion,0
+The Odin Terminus,Odin Terminus,0
+Odin Terminus,Odin Terminus,0
+The Odin Lighthouse,Odin Lighthouse,0
+Odin Lighthouse,Odin Lighthouse,0
+The Odin Observatory,Odin Observatory,0
+Odin Observatory,Odin Observatory,0
+The Odin Gate,Odin Gate,0
+Odin Gate,Odin Gate,0
+The Odin Station,Odin Station,0
+Odin Station,Odin Station,0
+The Loki Spire,Loki Spire,0
+Loki Spire,Loki Spire,0
+The Loki Reach,Loki Reach,0
+Loki Reach,Loki Reach,0
+The Loki Watch,Loki Watch,0
+Loki Watch,Loki Watch,0
+The Loki Keep,Loki Keep,0
+Loki Keep,Loki Keep,0
+The Loki Bastion,Loki Bastion,0
+Loki Bastion,Loki Bastion,0
+The Loki Terminus,Loki Terminus,0
+Loki Terminus,Loki Terminus,0
+The Loki Lighthouse,Loki Lighthouse,0
+Loki Lighthouse,Loki Lighthouse,0
+The Loki Observatory,Loki Observatory,0
+Loki Observatory,Loki Observatory,0
+The Loki Gate,Loki Gate,0
+Loki Gate,Loki Gate,0
+The Loki Station,Loki Station,0
+Loki Station,Loki Station,0
+The Freya Spire,Freya Spire,0
+Freya Spire,Freya Spire,0
+The Freya Reach,Freya Reach,0
+Freya Reach,Freya Reach,0
+The Freya Watch,Freya Watch,0
+Freya Watch,Freya Watch,0
+The Freya Keep,Freya Keep,0
+Freya Keep,Freya Keep,0
+The Freya Bastion,Freya Bastion,0
+Freya Bastion,Freya Bastion,0
+The Freya Terminus,Freya Terminus,0
+Freya Terminus,Freya Terminus,0
+The Freya Lighthouse,Freya Lighthouse,0
+Freya Lighthouse,Freya Lighthouse,0
+The Freya Observatory,Freya Observatory,0
+Freya Observatory,Freya Observatory,0
+The Freya Gate,Freya Gate,0
+Freya Gate,Freya Gate,0
+The Freya Station,Freya Station,0
+Freya Station,Freya Station,0
+The Frigg Spire,Frigg Spire,0
+Frigg Spire,Frigg Spire,0
+The Frigg Reach,Frigg Reach,0
+Frigg Reach,Frigg Reach,0
+The Frigg Watch,Frigg Watch,0
+Frigg Watch,Frigg Watch,0
+The Frigg Keep,Frigg Keep,0
+Frigg Keep,Frigg Keep,0
+The Frigg Bastion,Frigg Bastion,0
+Frigg Bastion,Frigg Bastion,0
+The Frigg Terminus,Frigg Terminus,0
+Frigg Terminus,Frigg Terminus,0
+The Frigg Lighthouse,Frigg Lighthouse,0
+Frigg Lighthouse,Frigg Lighthouse,0
+The Frigg Observatory,Frigg Observatory,0
+Frigg Observatory,Frigg Observatory,0
+The Frigg Gate,Frigg Gate,0
+Frigg Gate,Frigg Gate,0
+The Frigg Station,Frigg Station,0
+Frigg Station,Frigg Station,0
+The Tyr Spire,Tyr Spire,0
+Tyr Spire,Tyr Spire,0
+The Tyr Reach,Tyr Reach,0
+Tyr Reach,Tyr Reach,0
+The Tyr Watch,Tyr Watch,0
+Tyr Watch,Tyr Watch,0
+The Tyr Keep,Tyr Keep,0
+Tyr Keep,Tyr Keep,0
+The Tyr Bastion,Tyr Bastion,0
+Tyr Bastion,Tyr Bastion,0
+The Tyr Terminus,Tyr Terminus,0
+Tyr Terminus,Tyr Terminus,0
+The Tyr Lighthouse,Tyr Lighthouse,0
+Tyr Lighthouse,Tyr Lighthouse,0
+The Tyr Observatory,Tyr Observatory,0
+Tyr Observatory,Tyr Observatory,0
+The Tyr Gate,Tyr Gate,0
+Tyr Gate,Tyr Gate,0
+The Tyr Station,Tyr Station,0
+Tyr Station,Tyr Station,0
+The Sigurd Spire,Sigurd Spire,0
+Sigurd Spire,Sigurd Spire,0
+The Sigurd Reach,Sigurd Reach,0
+Sigurd Reach,Sigurd Reach,0
+The Sigurd Watch,Sigurd Watch,0
+Sigurd Watch,Sigurd Watch,0
+The Sigurd Keep,Sigurd Keep,0
+Sigurd Keep,Sigurd Keep,0
+The Sigurd Bastion,Sigurd Bastion,0
+Sigurd Bastion,Sigurd Bastion,0
+The Sigurd Terminus,Sigurd Terminus,0
+Sigurd Terminus,Sigurd Terminus,0
+The Sigurd Lighthouse,Sigurd Lighthouse,0
+Sigurd Lighthouse,Sigurd Lighthouse,0
+The Sigurd Observatory,Sigurd Observatory,0
+Sigurd Observatory,Sigurd Observatory,0
+The Sigurd Gate,Sigurd Gate,0
+Sigurd Gate,Sigurd Gate,0
+The Sigurd Station,Sigurd Station,0
+Sigurd Station,Sigurd Station,0
+The Niflheim Spire,Niflheim Spire,0
+Niflheim Spire,Niflheim Spire,0
+The Niflheim Reach,Niflheim Reach,0
+Niflheim Reach,Niflheim Reach,0
+The Niflheim Watch,Niflheim Watch,0
+Niflheim Watch,Niflheim Watch,0
+The Niflheim Keep,Niflheim Keep,0
+Niflheim Keep,Niflheim Keep,0
+The Niflheim Bastion,Niflheim Bastion,0
+Niflheim Bastion,Niflheim Bastion,0
+The Niflheim Terminus,Niflheim Terminus,0
+Niflheim Terminus,Niflheim Terminus,0
+The Niflheim Lighthouse,Niflheim Lighthouse,0
+Niflheim Lighthouse,Niflheim Lighthouse,0
+The Niflheim Observatory,Niflheim Observatory,0
+Niflheim Observatory,Niflheim Observatory,0
+The Niflheim Gate,Niflheim Gate,0
+Niflheim Gate,Niflheim Gate,0
+The Niflheim Station,Niflheim Station,0
+Niflheim Station,Niflheim Station,0
+The Bifrost Spire,Bifrost Spire,0
+Bifrost Spire,Bifrost Spire,0
+The Bifrost Reach,Bifrost Reach,0
+Bifrost Reach,Bifrost Reach,0
+The Bifrost Watch,Bifrost Watch,0
+Bifrost Watch,Bifrost Watch,0
+The Bifrost Keep,Bifrost Keep,0
+Bifrost Keep,Bifrost Keep,0
+The Bifrost Bastion,Bifrost Bastion,0
+Bifrost Bastion,Bifrost Bastion,0
+The Bifrost Terminus,Bifrost Terminus,0
+Bifrost Terminus,Bifrost Terminus,0
+The Bifrost Lighthouse,Bifrost Lighthouse,0
+Bifrost Lighthouse,Bifrost Lighthouse,0
+The Bifrost Observatory,Bifrost Observatory,0
+Bifrost Observatory,Bifrost Observatory,0
+The Bifrost Gate,Bifrost Gate,0
+Bifrost Gate,Bifrost Gate,0
+The Bifrost Station,Bifrost Station,0
+Bifrost Station,Bifrost Station,0
+The Yggdrasil Spire,Yggdrasil Spire,0
+Yggdrasil Spire,Yggdrasil Spire,0
+The Yggdrasil Reach,Yggdrasil Reach,0
+Yggdrasil Reach,Yggdrasil Reach,0
+The Yggdrasil Watch,Yggdrasil Watch,0
+Yggdrasil Watch,Yggdrasil Watch,0
+The Yggdrasil Keep,Yggdrasil Keep,0
+Yggdrasil Keep,Yggdrasil Keep,0
+The Yggdrasil Bastion,Yggdrasil Bastion,0
+Yggdrasil Bastion,Yggdrasil Bastion,0
+The Yggdrasil Terminus,Yggdrasil Terminus,0
+Yggdrasil Terminus,Yggdrasil Terminus,0
+The Yggdrasil Lighthouse,Yggdrasil Lighthouse,0
+Yggdrasil Lighthouse,Yggdrasil Lighthouse,0
+The Yggdrasil Observatory,Yggdrasil Observatory,0
+Yggdrasil Observatory,Yggdrasil Observatory,0
+The Yggdrasil Gate,Yggdrasil Gate,0
+Yggdrasil Gate,Yggdrasil Gate,0
+The Yggdrasil Station,Yggdrasil Station,0
+Yggdrasil Station,Yggdrasil Station,0
+The Valhalla Spire,Valhalla Spire,0
+Valhalla Spire,Valhalla Spire,0
+The Valhalla Reach,Valhalla Reach,0
+Valhalla Reach,Valhalla Reach,0
+The Valhalla Watch,Valhalla Watch,0
+Valhalla Watch,Valhalla Watch,0
+The Valhalla Keep,Valhalla Keep,0
+Valhalla Keep,Valhalla Keep,0
+The Valhalla Bastion,Valhalla Bastion,0
+Valhalla Bastion,Valhalla Bastion,0
+The Valhalla Terminus,Valhalla Terminus,0
+Valhalla Terminus,Valhalla Terminus,0
+The Valhalla Lighthouse,Valhalla Lighthouse,0
+Valhalla Lighthouse,Valhalla Lighthouse,0
+The Valhalla Observatory,Valhalla Observatory,0
+Valhalla Observatory,Valhalla Observatory,0
+The Valhalla Gate,Valhalla Gate,0
+Valhalla Gate,Valhalla Gate,0
+The Valhalla Station,Valhalla Station,0
+Valhalla Station,Valhalla Station,0
+The Asgard Spire,Asgard Spire,0
+Asgard Spire,Asgard Spire,0
+The Asgard Reach,Asgard Reach,0
+Asgard Reach,Asgard Reach,0
+The Asgard Watch,Asgard Watch,0
+Asgard Watch,Asgard Watch,0
+The Asgard Keep,Asgard Keep,0
+Asgard Keep,Asgard Keep,0
+The Asgard Bastion,Asgard Bastion,0
+Asgard Bastion,Asgard Bastion,0
+The Asgard Terminus,Asgard Terminus,0
+Asgard Terminus,Asgard Terminus,0
+The Asgard Lighthouse,Asgard Lighthouse,0
+Asgard Lighthouse,Asgard Lighthouse,0
+The Asgard Observatory,Asgard Observatory,0
+Asgard Observatory,Asgard Observatory,0
+The Asgard Gate,Asgard Gate,0
+Asgard Gate,Asgard Gate,0
+The Asgard Station,Asgard Station,0
+Asgard Station,Asgard Station,0
+The Helios Spire,Helios Spire,0
+Helios Spire,Helios Spire,0
+The Helios Reach,Helios Reach,0
+Helios Reach,Helios Reach,0
+The Helios Watch,Helios Watch,0
+Helios Watch,Helios Watch,0
+The Helios Keep,Helios Keep,0
+Helios Keep,Helios Keep,0
+The Helios Bastion,Helios Bastion,0
+Helios Bastion,Helios Bastion,0
+The Helios Terminus,Helios Terminus,0
+Helios Terminus,Helios Terminus,0
+The Helios Lighthouse,Helios Lighthouse,0
+Helios Lighthouse,Helios Lighthouse,0
+The Helios Observatory,Helios Observatory,0
+Helios Observatory,Helios Observatory,0
+The Helios Gate,Helios Gate,0
+Helios Gate,Helios Gate,0
+The Helios Station,Helios Station,0
+Helios Station,Helios Station,0
+The Selene Spire,Selene Spire,0
+Selene Spire,Selene Spire,0
+The Selene Reach,Selene Reach,0
+Selene Reach,Selene Reach,0
+The Selene Watch,Selene Watch,0
+Selene Watch,Selene Watch,0
+The Selene Keep,Selene Keep,0
+Selene Keep,Selene Keep,0
+The Selene Bastion,Selene Bastion,0
+Selene Bastion,Selene Bastion,0
+The Selene Terminus,Selene Terminus,0
+Selene Terminus,Selene Terminus,0
+The Selene Lighthouse,Selene Lighthouse,0
+Selene Lighthouse,Selene Lighthouse,0
+The Selene Observatory,Selene Observatory,0
+Selene Observatory,Selene Observatory,0
+The Selene Gate,Selene Gate,0
+Selene Gate,Selene Gate,0
+The Selene Station,Selene Station,0
+Selene Station,Selene Station,0
+The Gaia Spire,Gaia Spire,0
+Gaia Spire,Gaia Spire,0
+The Gaia Reach,Gaia Reach,0
+Gaia Reach,Gaia Reach,0
+The Gaia Watch,Gaia Watch,0
+Gaia Watch,Gaia Watch,0
+The Gaia Keep,Gaia Keep,0
+Gaia Keep,Gaia Keep,0
+The Gaia Bastion,Gaia Bastion,0
+Gaia Bastion,Gaia Bastion,0
+The Gaia Terminus,Gaia Terminus,0
+Gaia Terminus,Gaia Terminus,0
+The Gaia Lighthouse,Gaia Lighthouse,0
+Gaia Lighthouse,Gaia Lighthouse,0
+The Gaia Observatory,Gaia Observatory,0
+Gaia Observatory,Gaia Observatory,0
+The Gaia Gate,Gaia Gate,0
+Gaia Gate,Gaia Gate,0
+The Gaia Station,Gaia Station,0
+Gaia Station,Gaia Station,0
+The Oceanus Spire,Oceanus Spire,0
+Oceanus Spire,Oceanus Spire,0
+The Oceanus Reach,Oceanus Reach,0
+Oceanus Reach,Oceanus Reach,0
+The Oceanus Watch,Oceanus Watch,0
+Oceanus Watch,Oceanus Watch,0
+The Oceanus Keep,Oceanus Keep,0
+Oceanus Keep,Oceanus Keep,0
+The Oceanus Bastion,Oceanus Bastion,0
+Oceanus Bastion,Oceanus Bastion,0
+The Oceanus Terminus,Oceanus Terminus,0
+Oceanus Terminus,Oceanus Terminus,0
+The Oceanus Lighthouse,Oceanus Lighthouse,0
+Oceanus Lighthouse,Oceanus Lighthouse,0
+The Oceanus Observatory,Oceanus Observatory,0
+Oceanus Observatory,Oceanus Observatory,0
+The Oceanus Gate,Oceanus Gate,0
+Oceanus Gate,Oceanus Gate,0
+The Oceanus Station,Oceanus Station,0
+Oceanus Station,Oceanus Station,0
+The Hyperion Spire,Hyperion Spire,0
+Hyperion Spire,Hyperion Spire,0
+The Hyperion Reach,Hyperion Reach,0
+Hyperion Reach,Hyperion Reach,0
+The Hyperion Watch,Hyperion Watch,0
+Hyperion Watch,Hyperion Watch,0
+The Hyperion Keep,Hyperion Keep,0
+Hyperion Keep,Hyperion Keep,0
+The Hyperion Bastion,Hyperion Bastion,0
+Hyperion Bastion,Hyperion Bastion,0
+The Hyperion Terminus,Hyperion Terminus,0
+Hyperion Terminus,Hyperion Terminus,0
+The Hyperion Lighthouse,Hyperion Lighthouse,0
+Hyperion Lighthouse,Hyperion Lighthouse,0
+The Hyperion Observatory,Hyperion Observatory,0
+Hyperion Observatory,Hyperion Observatory,0
+The Hyperion Gate,Hyperion Gate,0
+Hyperion Gate,Hyperion Gate,0
+The Hyperion Station,Hyperion Station,0
+Hyperion Station,Hyperion Station,0
+The Theia Spire,Theia Spire,0
+Theia Spire,Theia Spire,0
+The Theia Reach,Theia Reach,0
+Theia Reach,Theia Reach,0
+The Theia Watch,Theia Watch,0
+Theia Watch,Theia Watch,0
+The Theia Keep,Theia Keep,0
+Theia Keep,Theia Keep,0
+The Theia Bastion,Theia Bastion,0
+Theia Bastion,Theia Bastion,0
+The Theia Terminus,Theia Terminus,0
+Theia Terminus,Theia Terminus,0
+The Theia Lighthouse,Theia Lighthouse,0
+Theia Lighthouse,Theia Lighthouse,0
+The Theia Observatory,Theia Observatory,0
+Theia Observatory,Theia Observatory,0
+The Theia Gate,Theia Gate,0
+Theia Gate,Theia Gate,0
+The Theia Station,Theia Station,0
+Theia Station,Theia Station,0
+The Coeus Spire,Coeus Spire,0
+Coeus Spire,Coeus Spire,0
+The Coeus Reach,Coeus Reach,0
+Coeus Reach,Coeus Reach,0
+The Coeus Watch,Coeus Watch,0
+Coeus Watch,Coeus Watch,0
+The Coeus Keep,Coeus Keep,0
+Coeus Keep,Coeus Keep,0
+The Coeus Bastion,Coeus Bastion,0
+Coeus Bastion,Coeus Bastion,0
+The Coeus Terminus,Coeus Terminus,0
+Coeus Terminus,Coeus Terminus,0
+The Coeus Lighthouse,Coeus Lighthouse,0
+Coeus Lighthouse,Coeus Lighthouse,0
+The Coeus Observatory,Coeus Observatory,0
+Coeus Observatory,Coeus Observatory,0
+The Coeus Gate,Coeus Gate,0
+Coeus Gate,Coeus Gate,0
+The Coeus Station,Coeus Station,0
+Coeus Station,Coeus Station,0
+The Cronus Spire,Cronus Spire,0
+Cronus Spire,Cronus Spire,0
+The Cronus Reach,Cronus Reach,0
+Cronus Reach,Cronus Reach,0
+The Cronus Watch,Cronus Watch,0
+Cronus Watch,Cronus Watch,0
+The Cronus Keep,Cronus Keep,0
+Cronus Keep,Cronus Keep,0
+The Cronus Bastion,Cronus Bastion,0
+Cronus Bastion,Cronus Bastion,0
+The Cronus Terminus,Cronus Terminus,0
+Cronus Terminus,Cronus Terminus,0
+The Cronus Lighthouse,Cronus Lighthouse,0
+Cronus Lighthouse,Cronus Lighthouse,0
+The Cronus Observatory,Cronus Observatory,0
+Cronus Observatory,Cronus Observatory,0
+The Cronus Gate,Cronus Gate,0
+Cronus Gate,Cronus Gate,0
+The Cronus Station,Cronus Station,0
+Cronus Station,Cronus Station,0
+The Rhea Spire,Rhea Spire,0
+Rhea Spire,Rhea Spire,0
+The Rhea Reach,Rhea Reach,0
+Rhea Reach,Rhea Reach,0
+The Rhea Watch,Rhea Watch,0
+Rhea Watch,Rhea Watch,0
+The Rhea Keep,Rhea Keep,0
+Rhea Keep,Rhea Keep,0
+The Rhea Bastion,Rhea Bastion,0
+Rhea Bastion,Rhea Bastion,0
+The Rhea Terminus,Rhea Terminus,0
+Rhea Terminus,Rhea Terminus,0
+The Rhea Lighthouse,Rhea Lighthouse,0
+Rhea Lighthouse,Rhea Lighthouse,0
+The Rhea Observatory,Rhea Observatory,0
+Rhea Observatory,Rhea Observatory,0
+The Rhea Gate,Rhea Gate,0
+Rhea Gate,Rhea Gate,0
+The Rhea Station,Rhea Station,0
+Rhea Station,Rhea Station,0
+The Themis Spire,Themis Spire,0
+Themis Spire,Themis Spire,0
+The Themis Reach,Themis Reach,0
+Themis Reach,Themis Reach,0
+The Themis Watch,Themis Watch,0
+Themis Watch,Themis Watch,0
+The Themis Keep,Themis Keep,0
+Themis Keep,Themis Keep,0
+The Themis Bastion,Themis Bastion,0
+Themis Bastion,Themis Bastion,0
+The Themis Terminus,Themis Terminus,0
+Themis Terminus,Themis Terminus,0
+The Themis Lighthouse,Themis Lighthouse,0
+Themis Lighthouse,Themis Lighthouse,0
+The Themis Observatory,Themis Observatory,0
+Themis Observatory,Themis Observatory,0
+The Themis Gate,Themis Gate,0
+Themis Gate,Themis Gate,0
+The Themis Station,Themis Station,0
+Themis Station,Themis Station,0
+The Mnemosyne Spire,Mnemosyne Spire,0
+Mnemosyne Spire,Mnemosyne Spire,0
+The Mnemosyne Reach,Mnemosyne Reach,0
+Mnemosyne Reach,Mnemosyne Reach,0
+The Mnemosyne Watch,Mnemosyne Watch,0
+Mnemosyne Watch,Mnemosyne Watch,0
+The Mnemosyne Keep,Mnemosyne Keep,0
+Mnemosyne Keep,Mnemosyne Keep,0
+The Mnemosyne Bastion,Mnemosyne Bastion,0
+Mnemosyne Bastion,Mnemosyne Bastion,0
+The Mnemosyne Terminus,Mnemosyne Terminus,0
+Mnemosyne Terminus,Mnemosyne Terminus,0
+The Mnemosyne Lighthouse,Mnemosyne Lighthouse,0
+Mnemosyne Lighthouse,Mnemosyne Lighthouse,0
+The Mnemosyne Observatory,Mnemosyne Observatory,0
+Mnemosyne Observatory,Mnemosyne Observatory,0
+The Mnemosyne Gate,Mnemosyne Gate,0
+Mnemosyne Gate,Mnemosyne Gate,0
+The Mnemosyne Station,Mnemosyne Station,0
+Mnemosyne Station,Mnemosyne Station,0
+The Nemesis Spire,Nemesis Spire,0
+Nemesis Spire,Nemesis Spire,0
+The Nemesis Reach,Nemesis Reach,0
+Nemesis Reach,Nemesis Reach,0
+The Nemesis Watch,Nemesis Watch,0
+Nemesis Watch,Nemesis Watch,0
+The Nemesis Keep,Nemesis Keep,0
+Nemesis Keep,Nemesis Keep,0
+The Nemesis Bastion,Nemesis Bastion,0
+Nemesis Bastion,Nemesis Bastion,0
+The Nemesis Terminus,Nemesis Terminus,0
+Nemesis Terminus,Nemesis Terminus,0
+The Nemesis Lighthouse,Nemesis Lighthouse,0
+Nemesis Lighthouse,Nemesis Lighthouse,0
+The Nemesis Observatory,Nemesis Observatory,0
+Nemesis Observatory,Nemesis Observatory,0
+The Nemesis Gate,Nemesis Gate,0
+Nemesis Gate,Nemesis Gate,0
+The Nemesis Station,Nemesis Station,0
+Nemesis Station,Nemesis Station,0
+The Eris Spire,Eris Spire,0
+Eris Spire,Eris Spire,0
+The Eris Reach,Eris Reach,0
+Eris Reach,Eris Reach,0
+The Eris Watch,Eris Watch,0
+Eris Watch,Eris Watch,0
+The Eris Keep,Eris Keep,0
+Eris Keep,Eris Keep,0
+The Eris Bastion,Eris Bastion,0
+Eris Bastion,Eris Bastion,0
+The Eris Terminus,Eris Terminus,0
+Eris Terminus,Eris Terminus,0
+The Eris Lighthouse,Eris Lighthouse,0
+Eris Lighthouse,Eris Lighthouse,0
+The Eris Observatory,Eris Observatory,0
+Eris Observatory,Eris Observatory,0
+The Eris Gate,Eris Gate,0
+Eris Gate,Eris Gate,0
+The Eris Station,Eris Station,0
+Eris Station,Eris Station,0
+The Tyche Spire,Tyche Spire,0
+Tyche Spire,Tyche Spire,0
+The Tyche Reach,Tyche Reach,0
+Tyche Reach,Tyche Reach,0
+The Tyche Watch,Tyche Watch,0
+Tyche Watch,Tyche Watch,0
+The Tyche Keep,Tyche Keep,0
+Tyche Keep,Tyche Keep,0
+The Tyche Bastion,Tyche Bastion,0
+Tyche Bastion,Tyche Bastion,0
+The Tyche Terminus,Tyche Terminus,0
+Tyche Terminus,Tyche Terminus,0
+The Tyche Lighthouse,Tyche Lighthouse,0
+Tyche Lighthouse,Tyche Lighthouse,0
+The Tyche Observatory,Tyche Observatory,0
+Tyche Observatory,Tyche Observatory,0
+The Tyche Gate,Tyche Gate,0
+Tyche Gate,Tyche Gate,0
+The Tyche Station,Tyche Station,0
+Tyche Station,Tyche Station,0
+The Hecate Spire,Hecate Spire,0
+Hecate Spire,Hecate Spire,0
+The Hecate Reach,Hecate Reach,0
+Hecate Reach,Hecate Reach,0
+The Hecate Watch,Hecate Watch,0
+Hecate Watch,Hecate Watch,0
+The Hecate Keep,Hecate Keep,0
+Hecate Keep,Hecate Keep,0
+The Hecate Bastion,Hecate Bastion,0
+Hecate Bastion,Hecate Bastion,0
+The Hecate Terminus,Hecate Terminus,0
+Hecate Terminus,Hecate Terminus,0
+The Hecate Lighthouse,Hecate Lighthouse,0
+Hecate Lighthouse,Hecate Lighthouse,0
+The Hecate Observatory,Hecate Observatory,0
+Hecate Observatory,Hecate Observatory,0
+The Hecate Gate,Hecate Gate,0
+Hecate Gate,Hecate Gate,0
+The Hecate Station,Hecate Station,0
+Hecate Station,Hecate Station,0
+The Nyx Spire,Nyx Spire,0
+Nyx Spire,Nyx Spire,0
+The Nyx Reach,Nyx Reach,0
+Nyx Reach,Nyx Reach,0
+The Nyx Watch,Nyx Watch,0
+Nyx Watch,Nyx Watch,0
+The Nyx Keep,Nyx Keep,0
+Nyx Keep,Nyx Keep,0
+The Nyx Bastion,Nyx Bastion,0
+Nyx Bastion,Nyx Bastion,0
+The Nyx Terminus,Nyx Terminus,0
+Nyx Terminus,Nyx Terminus,0
+The Nyx Lighthouse,Nyx Lighthouse,0
+Nyx Lighthouse,Nyx Lighthouse,0
+The Nyx Observatory,Nyx Observatory,0
+Nyx Observatory,Nyx Observatory,0
+The Nyx Gate,Nyx Gate,0
+Nyx Gate,Nyx Gate,0
+The Nyx Station,Nyx Station,0
+Nyx Station,Nyx Station,0
+The Erebus Spire,Erebus Spire,0
+Erebus Spire,Erebus Spire,0
+The Erebus Reach,Erebus Reach,0
+Erebus Reach,Erebus Reach,0
+The Erebus Watch,Erebus Watch,0
+Erebus Watch,Erebus Watch,0
+The Erebus Keep,Erebus Keep,0
+Erebus Keep,Erebus Keep,0
+The Erebus Bastion,Erebus Bastion,0
+Erebus Bastion,Erebus Bastion,0
+The Erebus Terminus,Erebus Terminus,0
+Erebus Terminus,Erebus Terminus,0
+The Erebus Lighthouse,Erebus Lighthouse,0
+Erebus Lighthouse,Erebus Lighthouse,0
+The Erebus Observatory,Erebus Observatory,0
+Erebus Observatory,Erebus Observatory,0
+The Erebus Gate,Erebus Gate,0
+Erebus Gate,Erebus Gate,0
+The Erebus Station,Erebus Station,0
+Erebus Station,Erebus Station,0
+The Aether Spire,Aether Spire,0
+Aether Spire,Aether Spire,0
+The Aether Reach,Aether Reach,0
+Aether Reach,Aether Reach,0
+The Aether Watch,Aether Watch,0
+Aether Watch,Aether Watch,0
+The Aether Keep,Aether Keep,0
+Aether Keep,Aether Keep,0
+The Aether Bastion,Aether Bastion,0
+Aether Bastion,Aether Bastion,0
+The Aether Terminus,Aether Terminus,0
+Aether Terminus,Aether Terminus,0
+The Aether Lighthouse,Aether Lighthouse,0
+Aether Lighthouse,Aether Lighthouse,0
+The Aether Observatory,Aether Observatory,0
+Aether Observatory,Aether Observatory,0
+The Aether Gate,Aether Gate,0
+Aether Gate,Aether Gate,0
+The Aether Station,Aether Station,0
+Aether Station,Aether Station,0
+The Chaos Spire,Chaos Spire,0
+Chaos Spire,Chaos Spire,0
+The Chaos Reach,Chaos Reach,0
+Chaos Reach,Chaos Reach,0
+The Chaos Watch,Chaos Watch,0
+Chaos Watch,Chaos Watch,0
+The Chaos Keep,Chaos Keep,0
+Chaos Keep,Chaos Keep,0
+The Chaos Bastion,Chaos Bastion,0
+Chaos Bastion,Chaos Bastion,0
+The Chaos Terminus,Chaos Terminus,0
+Chaos Terminus,Chaos Terminus,0
+The Chaos Lighthouse,Chaos Lighthouse,0
+Chaos Lighthouse,Chaos Lighthouse,0
+The Chaos Observatory,Chaos Observatory,0
+Chaos Observatory,Chaos Observatory,0
+The Chaos Gate,Chaos Gate,0
+Chaos Gate,Chaos Gate,0
+The Chaos Station,Chaos Station,0
+Chaos Station,Chaos Station,0
+The Mercury Spire,Mercury Spire,0
+Mercury Spire,Mercury Spire,0
+The Mercury Reach,Mercury Reach,0
+Mercury Reach,Mercury Reach,0
+The Mercury Watch,Mercury Watch,0
+Mercury Watch,Mercury Watch,0
+The Mercury Keep,Mercury Keep,0
+Mercury Keep,Mercury Keep,0
+The Mercury Bastion,Mercury Bastion,0
+Mercury Bastion,Mercury Bastion,0
+The Mercury Terminus,Mercury Terminus,0
+Mercury Terminus,Mercury Terminus,0
+The Mercury Lighthouse,Mercury Lighthouse,0
+Mercury Lighthouse,Mercury Lighthouse,0
+The Mercury Observatory,Mercury Observatory,0
+Mercury Observatory,Mercury Observatory,0
+The Mercury Gate,Mercury Gate,0
+Mercury Gate,Mercury Gate,0
+The Mercury Station,Mercury Station,0
+Mercury Station,Mercury Station,0
+The Venus Spire,Venus Spire,0
+Venus Spire,Venus Spire,0
+The Venus Reach,Venus Reach,0
+Venus Reach,Venus Reach,0
+The Venus Watch,Venus Watch,0
+Venus Watch,Venus Watch,0
+The Venus Keep,Venus Keep,0
+Venus Keep,Venus Keep,0
+The Venus Bastion,Venus Bastion,0
+Venus Bastion,Venus Bastion,0
+The Venus Terminus,Venus Terminus,0
+Venus Terminus,Venus Terminus,0
+The Venus Lighthouse,Venus Lighthouse,0
+Venus Lighthouse,Venus Lighthouse,0
+The Venus Observatory,Venus Observatory,0
+Venus Observatory,Venus Observatory,0
+The Venus Gate,Venus Gate,0
+Venus Gate,Venus Gate,0
+The Venus Station,Venus Station,0
+Venus Station,Venus Station,0
+The Mars Spire,Mars Spire,0
+Mars Spire,Mars Spire,0
+The Mars Reach,Mars Reach,0
+Mars Reach,Mars Reach,0
+The Mars Watch,Mars Watch,0
+Mars Watch,Mars Watch,0
+The Mars Keep,Mars Keep,0
+Mars Keep,Mars Keep,0
+The Mars Bastion,Mars Bastion,0
+Mars Bastion,Mars Bastion,0
+The Mars Terminus,Mars Terminus,0
+Mars Terminus,Mars Terminus,0
+The Mars Lighthouse,Mars Lighthouse,0
+Mars Lighthouse,Mars Lighthouse,0
+The Mars Observatory,Mars Observatory,0
+Mars Observatory,Mars Observatory,0
+The Mars Gate,Mars Gate,0
+Mars Gate,Mars Gate,0
+The Mars Station,Mars Station,0
+Mars Station,Mars Station,0
+The Jupiter Spire,Jupiter Spire,0
+Jupiter Spire,Jupiter Spire,0
+The Jupiter Reach,Jupiter Reach,0
+Jupiter Reach,Jupiter Reach,0
+The Jupiter Watch,Jupiter Watch,0
+Jupiter Watch,Jupiter Watch,0
+The Jupiter Keep,Jupiter Keep,0
+Jupiter Keep,Jupiter Keep,0
+The Jupiter Bastion,Jupiter Bastion,0
+Jupiter Bastion,Jupiter Bastion,0
+The Jupiter Terminus,Jupiter Terminus,0
+Jupiter Terminus,Jupiter Terminus,0
+The Jupiter Lighthouse,Jupiter Lighthouse,0
+Jupiter Lighthouse,Jupiter Lighthouse,0
+The Jupiter Observatory,Jupiter Observatory,0
+Jupiter Observatory,Jupiter Observatory,0
+The Jupiter Gate,Jupiter Gate,0
+Jupiter Gate,Jupiter Gate,0
+The Jupiter Station,Jupiter Station,0
+Jupiter Station,Jupiter Station,0
+The Saturn Spire,Saturn Spire,0
+Saturn Spire,Saturn Spire,0
+The Saturn Reach,Saturn Reach,0
+Saturn Reach,Saturn Reach,0
+The Saturn Watch,Saturn Watch,0
+Saturn Watch,Saturn Watch,0
+The Saturn Keep,Saturn Keep,0
+Saturn Keep,Saturn Keep,0
+The Saturn Bastion,Saturn Bastion,0
+Saturn Bastion,Saturn Bastion,0
+The Saturn Terminus,Saturn Terminus,0
+Saturn Terminus,Saturn Terminus,0
+The Saturn Lighthouse,Saturn Lighthouse,0
+Saturn Lighthouse,Saturn Lighthouse,0
+The Saturn Observatory,Saturn Observatory,0
+Saturn Observatory,Saturn Observatory,0
+The Saturn Gate,Saturn Gate,0
+Saturn Gate,Saturn Gate,0
+The Saturn Station,Saturn Station,0
+Saturn Station,Saturn Station,0
+The Uranus Spire,Uranus Spire,0
+Uranus Spire,Uranus Spire,0
+The Uranus Reach,Uranus Reach,0
+Uranus Reach,Uranus Reach,0
+The Uranus Watch,Uranus Watch,0
+Uranus Watch,Uranus Watch,0
+The Uranus Keep,Uranus Keep,0
+Uranus Keep,Uranus Keep,0
+The Uranus Bastion,Uranus Bastion,0
+Uranus Bastion,Uranus Bastion,0
+The Uranus Terminus,Uranus Terminus,0
+Uranus Terminus,Uranus Terminus,0
+The Uranus Lighthouse,Uranus Lighthouse,0
+Uranus Lighthouse,Uranus Lighthouse,0
+The Uranus Observatory,Uranus Observatory,0
+Uranus Observatory,Uranus Observatory,0
+The Uranus Gate,Uranus Gate,0
+Uranus Gate,Uranus Gate,0
+The Uranus Station,Uranus Station,0
+Uranus Station,Uranus Station,0
+The Neptune Spire,Neptune Spire,0
+Neptune Spire,Neptune Spire,0
+The Neptune Reach,Neptune Reach,0
+Neptune Reach,Neptune Reach,0
+The Neptune Watch,Neptune Watch,0
+Neptune Watch,Neptune Watch,0
+The Neptune Keep,Neptune Keep,0
+Neptune Keep,Neptune Keep,0
+The Neptune Bastion,Neptune Bastion,0
+Neptune Bastion,Neptune Bastion,0
+The Neptune Terminus,Neptune Terminus,0
+Neptune Terminus,Neptune Terminus,0
+The Neptune Lighthouse,Neptune Lighthouse,0
+Neptune Lighthouse,Neptune Lighthouse,0
+The Neptune Observatory,Neptune Observatory,0
+Neptune Observatory,Neptune Observatory,0
+The Neptune Gate,Neptune Gate,0
+Neptune Gate,Neptune Gate,0
+The Neptune Station,Neptune Station,0
+Neptune Station,Neptune Station,0
+The Pluto Spire,Pluto Spire,0
+Pluto Spire,Pluto Spire,0
+The Pluto Reach,Pluto Reach,0
+Pluto Reach,Pluto Reach,0
+The Pluto Watch,Pluto Watch,0
+Pluto Watch,Pluto Watch,0
+The Pluto Keep,Pluto Keep,0
+Pluto Keep,Pluto Keep,0
+The Pluto Bastion,Pluto Bastion,0
+Pluto Bastion,Pluto Bastion,0
+The Pluto Terminus,Pluto Terminus,0
+Pluto Terminus,Pluto Terminus,0
+The Pluto Lighthouse,Pluto Lighthouse,0
+Pluto Lighthouse,Pluto Lighthouse,0
+The Pluto Observatory,Pluto Observatory,0
+Pluto Observatory,Pluto Observatory,0
+The Pluto Gate,Pluto Gate,0
+Pluto Gate,Pluto Gate,0
+The Pluto Station,Pluto Station,0
+Pluto Station,Pluto Station,0
+The Hermes Spire,Hermes Spire,0
+Hermes Spire,Hermes Spire,0
+The Hermes Reach,Hermes Reach,0
+Hermes Reach,Hermes Reach,0
+The Hermes Watch,Hermes Watch,0
+Hermes Watch,Hermes Watch,0
+The Hermes Keep,Hermes Keep,0
+Hermes Keep,Hermes Keep,0
+The Hermes Bastion,Hermes Bastion,0
+Hermes Bastion,Hermes Bastion,0
+The Hermes Terminus,Hermes Terminus,0
+Hermes Terminus,Hermes Terminus,0
+The Hermes Lighthouse,Hermes Lighthouse,0
+Hermes Lighthouse,Hermes Lighthouse,0
+The Hermes Observatory,Hermes Observatory,0
+Hermes Observatory,Hermes Observatory,0
+The Hermes Gate,Hermes Gate,0
+Hermes Gate,Hermes Gate,0
+The Hermes Station,Hermes Station,0
+Hermes Station,Hermes Station,0
+The Athena Spire,Athena Spire,0
+Athena Spire,Athena Spire,0
+The Athena Reach,Athena Reach,0
+Athena Reach,Athena Reach,0
+The Athena Watch,Athena Watch,0
+Athena Watch,Athena Watch,0
+The Athena Keep,Athena Keep,0
+Athena Keep,Athena Keep,0
+The Athena Bastion,Athena Bastion,0
+Athena Bastion,Athena Bastion,0
+The Athena Terminus,Athena Terminus,0
+Athena Terminus,Athena Terminus,0
+The Athena Lighthouse,Athena Lighthouse,0
+Athena Lighthouse,Athena Lighthouse,0
+The Athena Observatory,Athena Observatory,0
+Athena Observatory,Athena Observatory,0
+The Athena Gate,Athena Gate,0
+Athena Gate,Athena Gate,0
+The Athena Station,Athena Station,0
+Athena Station,Athena Station,0
+The Apollo Spire,Apollo Spire,0
+Apollo Spire,Apollo Spire,0
+The Apollo Reach,Apollo Reach,0
+Apollo Reach,Apollo Reach,0
+The Apollo Watch,Apollo Watch,0
+Apollo Watch,Apollo Watch,0
+The Apollo Keep,Apollo Keep,0
+Apollo Keep,Apollo Keep,0
+The Apollo Bastion,Apollo Bastion,0
+Apollo Bastion,Apollo Bastion,0
+The Apollo Terminus,Apollo Terminus,0
+Apollo Terminus,Apollo Terminus,0
+The Apollo Lighthouse,Apollo Lighthouse,0
+Apollo Lighthouse,Apollo Lighthouse,0
+The Apollo Observatory,Apollo Observatory,0
+Apollo Observatory,Apollo Observatory,0
+The Apollo Gate,Apollo Gate,0
+Apollo Gate,Apollo Gate,0
+The Apollo Station,Apollo Station,0
+Apollo Station,Apollo Station,0
+The Artemis Spire,Artemis Spire,0
+Artemis Spire,Artemis Spire,0
+The Artemis Reach,Artemis Reach,0
+Artemis Reach,Artemis Reach,0
+The Artemis Watch,Artemis Watch,0
+Artemis Watch,Artemis Watch,0
+The Artemis Keep,Artemis Keep,0
+Artemis Keep,Artemis Keep,0
+The Artemis Bastion,Artemis Bastion,0
+Artemis Bastion,Artemis Bastion,0
+The Artemis Terminus,Artemis Terminus,0
+Artemis Terminus,Artemis Terminus,0
+The Artemis Lighthouse,Artemis Lighthouse,0
+Artemis Lighthouse,Artemis Lighthouse,0
+The Artemis Observatory,Artemis Observatory,0
+Artemis Observatory,Artemis Observatory,0
+The Artemis Gate,Artemis Gate,0
+Artemis Gate,Artemis Gate,0
+The Artemis Station,Artemis Station,0
+Artemis Station,Artemis Station,0
+The Hestia Spire,Hestia Spire,0
+Hestia Spire,Hestia Spire,0
+The Hestia Reach,Hestia Reach,0
+Hestia Reach,Hestia Reach,0
+The Hestia Watch,Hestia Watch,0
+Hestia Watch,Hestia Watch,0
+The Hestia Keep,Hestia Keep,0
+Hestia Keep,Hestia Keep,0
+The Hestia Bastion,Hestia Bastion,0
+Hestia Bastion,Hestia Bastion,0
+The Hestia Terminus,Hestia Terminus,0
+Hestia Terminus,Hestia Terminus,0
+The Hestia Lighthouse,Hestia Lighthouse,0
+Hestia Lighthouse,Hestia Lighthouse,0
+The Hestia Observatory,Hestia Observatory,0
+Hestia Observatory,Hestia Observatory,0
+The Hestia Gate,Hestia Gate,0
+Hestia Gate,Hestia Gate,0
+The Hestia Station,Hestia Station,0
+Hestia Station,Hestia Station,0
+The Demeter Spire,Demeter Spire,0
+Demeter Spire,Demeter Spire,0
+The Demeter Reach,Demeter Reach,0
+Demeter Reach,Demeter Reach,0
+The Demeter Watch,Demeter Watch,0
+Demeter Watch,Demeter Watch,0
+The Demeter Keep,Demeter Keep,0
+Demeter Keep,Demeter Keep,0
+The Demeter Bastion,Demeter Bastion,0
+Demeter Bastion,Demeter Bastion,0
+The Demeter Terminus,Demeter Terminus,0
+Demeter Terminus,Demeter Terminus,0
+The Demeter Lighthouse,Demeter Lighthouse,0
+Demeter Lighthouse,Demeter Lighthouse,0
+The Demeter Observatory,Demeter Observatory,0
+Demeter Observatory,Demeter Observatory,0
+The Demeter Gate,Demeter Gate,0
+Demeter Gate,Demeter Gate,0
+The Demeter Station,Demeter Station,0
+Demeter Station,Demeter Station,0
+The Persephone Spire,Persephone Spire,0
+Persephone Spire,Persephone Spire,0
+The Persephone Reach,Persephone Reach,0
+Persephone Reach,Persephone Reach,0
+The Persephone Watch,Persephone Watch,0
+Persephone Watch,Persephone Watch,0
+The Persephone Keep,Persephone Keep,0
+Persephone Keep,Persephone Keep,0
+The Persephone Bastion,Persephone Bastion,0
+Persephone Bastion,Persephone Bastion,0
+The Persephone Terminus,Persephone Terminus,0
+Persephone Terminus,Persephone Terminus,0
+The Persephone Lighthouse,Persephone Lighthouse,0
+Persephone Lighthouse,Persephone Lighthouse,0
+The Persephone Observatory,Persephone Observatory,0
+Persephone Observatory,Persephone Observatory,0
+The Persephone Gate,Persephone Gate,0
+Persephone Gate,Persephone Gate,0
+The Persephone Station,Persephone Station,0
+Persephone Station,Persephone Station,0
+The Poseidon Spire,Poseidon Spire,0
+Poseidon Spire,Poseidon Spire,0
+The Poseidon Reach,Poseidon Reach,0
+Poseidon Reach,Poseidon Reach,0
+The Poseidon Watch,Poseidon Watch,0
+Poseidon Watch,Poseidon Watch,0
+The Poseidon Keep,Poseidon Keep,0
+Poseidon Keep,Poseidon Keep,0
+The Poseidon Bastion,Poseidon Bastion,0
+Poseidon Bastion,Poseidon Bastion,0
+The Poseidon Terminus,Poseidon Terminus,0
+Poseidon Terminus,Poseidon Terminus,0
+The Poseidon Lighthouse,Poseidon Lighthouse,0
+Poseidon Lighthouse,Poseidon Lighthouse,0
+The Poseidon Observatory,Poseidon Observatory,0
+Poseidon Observatory,Poseidon Observatory,0
+The Poseidon Gate,Poseidon Gate,0
+Poseidon Gate,Poseidon Gate,0
+The Poseidon Station,Poseidon Station,0
+Poseidon Station,Poseidon Station,0
+The Hades Spire,Hades Spire,0
+Hades Spire,Hades Spire,0
+The Hades Reach,Hades Reach,0
+Hades Reach,Hades Reach,0
+The Hades Watch,Hades Watch,0
+Hades Watch,Hades Watch,0
+The Hades Keep,Hades Keep,0
+Hades Keep,Hades Keep,0
+The Hades Bastion,Hades Bastion,0
+Hades Bastion,Hades Bastion,0
+The Hades Terminus,Hades Terminus,0
+Hades Terminus,Hades Terminus,0
+The Hades Lighthouse,Hades Lighthouse,0
+Hades Lighthouse,Hades Lighthouse,0
+The Hades Observatory,Hades Observatory,0
+Hades Observatory,Hades Observatory,0
+The Hades Gate,Hades Gate,0
+Hades Gate,Hades Gate,0
+The Hades Station,Hades Station,0
+Hades Station,Hades Station,0
+The Aphrodite Spire,Aphrodite Spire,0
+Aphrodite Spire,Aphrodite Spire,0
+The Aphrodite Reach,Aphrodite Reach,0
+Aphrodite Reach,Aphrodite Reach,0
+The Aphrodite Watch,Aphrodite Watch,0
+Aphrodite Watch,Aphrodite Watch,0
+The Aphrodite Keep,Aphrodite Keep,0
+Aphrodite Keep,Aphrodite Keep,0
+The Aphrodite Bastion,Aphrodite Bastion,0
+Aphrodite Bastion,Aphrodite Bastion,0
+The Aphrodite Terminus,Aphrodite Terminus,0
+Aphrodite Terminus,Aphrodite Terminus,0
+The Aphrodite Lighthouse,Aphrodite Lighthouse,0
+Aphrodite Lighthouse,Aphrodite Lighthouse,0
+The Aphrodite Observatory,Aphrodite Observatory,0
+Aphrodite Observatory,Aphrodite Observatory,0
+The Aphrodite Gate,Aphrodite Gate,0
+Aphrodite Gate,Aphrodite Gate,0
+The Aphrodite Station,Aphrodite Station,0
+Aphrodite Station,Aphrodite Station,0
+The Ares Spire,Ares Spire,0
+Ares Spire,Ares Spire,0
+The Ares Reach,Ares Reach,0
+Ares Reach,Ares Reach,0
+The Ares Watch,Ares Watch,0
+Ares Watch,Ares Watch,0
+The Ares Keep,Ares Keep,0
+Ares Keep,Ares Keep,0
+The Ares Bastion,Ares Bastion,0
+Ares Bastion,Ares Bastion,0
+The Ares Terminus,Ares Terminus,0
+Ares Terminus,Ares Terminus,0
+The Ares Lighthouse,Ares Lighthouse,0
+Ares Lighthouse,Ares Lighthouse,0
+The Ares Observatory,Ares Observatory,0
+Ares Observatory,Ares Observatory,0
+The Ares Gate,Ares Gate,0
+Ares Gate,Ares Gate,0
+The Ares Station,Ares Station,0
+Ares Station,Ares Station,0
+The Hephaestus Spire,Hephaestus Spire,0
+Hephaestus Spire,Hephaestus Spire,0
+The Hephaestus Reach,Hephaestus Reach,0
+Hephaestus Reach,Hephaestus Reach,0
+The Hephaestus Watch,Hephaestus Watch,0
+Hephaestus Watch,Hephaestus Watch,0
+The Hephaestus Keep,Hephaestus Keep,0
+Hephaestus Keep,Hephaestus Keep,0
+The Hephaestus Bastion,Hephaestus Bastion,0
+Hephaestus Bastion,Hephaestus Bastion,0
+The Hephaestus Terminus,Hephaestus Terminus,0
+Hephaestus Terminus,Hephaestus Terminus,0
+The Hephaestus Lighthouse,Hephaestus Lighthouse,0
+Hephaestus Lighthouse,Hephaestus Lighthouse,0
+The Hephaestus Observatory,Hephaestus Observatory,0
+Hephaestus Observatory,Hephaestus Observatory,0
+The Hephaestus Gate,Hephaestus Gate,0
+Hephaestus Gate,Hephaestus Gate,0
+The Hephaestus Station,Hephaestus Station,0
+Hephaestus Station,Hephaestus Station,0
+The Prometheus Spire,Prometheus Spire,0
+Prometheus Spire,Prometheus Spire,0
+The Prometheus Reach,Prometheus Reach,0
+Prometheus Reach,Prometheus Reach,0
+The Prometheus Watch,Prometheus Watch,0
+Prometheus Watch,Prometheus Watch,0
+The Prometheus Keep,Prometheus Keep,0
+Prometheus Keep,Prometheus Keep,0
+The Prometheus Bastion,Prometheus Bastion,0
+Prometheus Bastion,Prometheus Bastion,0
+The Prometheus Terminus,Prometheus Terminus,0
+Prometheus Terminus,Prometheus Terminus,0
+The Prometheus Lighthouse,Prometheus Lighthouse,0
+Prometheus Lighthouse,Prometheus Lighthouse,0
+The Prometheus Observatory,Prometheus Observatory,0
+Prometheus Observatory,Prometheus Observatory,0
+The Prometheus Gate,Prometheus Gate,0
+Prometheus Gate,Prometheus Gate,0
+The Prometheus Station,Prometheus Station,0
+Prometheus Station,Prometheus Station,0
+The Icarus Spire,Icarus Spire,0
+Icarus Spire,Icarus Spire,0
+The Icarus Reach,Icarus Reach,0
+Icarus Reach,Icarus Reach,0
+The Icarus Watch,Icarus Watch,0
+Icarus Watch,Icarus Watch,0
+The Icarus Keep,Icarus Keep,0
+Icarus Keep,Icarus Keep,0
+The Icarus Bastion,Icarus Bastion,0
+Icarus Bastion,Icarus Bastion,0
+The Icarus Terminus,Icarus Terminus,0
+Icarus Terminus,Icarus Terminus,0
+The Icarus Lighthouse,Icarus Lighthouse,0
+Icarus Lighthouse,Icarus Lighthouse,0
+The Icarus Observatory,Icarus Observatory,0
+Icarus Observatory,Icarus Observatory,0
+The Icarus Gate,Icarus Gate,0
+Icarus Gate,Icarus Gate,0
+The Icarus Station,Icarus Station,0
+Icarus Station,Icarus Station,0
+The Daedalus Spire,Daedalus Spire,0
+Daedalus Spire,Daedalus Spire,0
+The Daedalus Reach,Daedalus Reach,0
+Daedalus Reach,Daedalus Reach,0
+The Daedalus Watch,Daedalus Watch,0
+Daedalus Watch,Daedalus Watch,0
+The Daedalus Keep,Daedalus Keep,0
+Daedalus Keep,Daedalus Keep,0
+The Daedalus Bastion,Daedalus Bastion,0
+Daedalus Bastion,Daedalus Bastion,0
+The Daedalus Terminus,Daedalus Terminus,0
+Daedalus Terminus,Daedalus Terminus,0
+The Daedalus Lighthouse,Daedalus Lighthouse,0
+Daedalus Lighthouse,Daedalus Lighthouse,0
+The Daedalus Observatory,Daedalus Observatory,0
+Daedalus Observatory,Daedalus Observatory,0
+The Daedalus Gate,Daedalus Gate,0
+Daedalus Gate,Daedalus Gate,0
+The Daedalus Station,Daedalus Station,0
+Daedalus Station,Daedalus Station,0
+The Perseus Spire,Perseus Spire,0
+Perseus Spire,Perseus Spire,0
+The Perseus Reach,Perseus Reach,0
+Perseus Reach,Perseus Reach,0
+The Perseus Watch,Perseus Watch,0
+Perseus Watch,Perseus Watch,0
+The Perseus Keep,Perseus Keep,0
+Perseus Keep,Perseus Keep,0
+The Perseus Bastion,Perseus Bastion,0
+Perseus Bastion,Perseus Bastion,0
+The Perseus Terminus,Perseus Terminus,0
+Perseus Terminus,Perseus Terminus,0
+The Perseus Lighthouse,Perseus Lighthouse,0
+Perseus Lighthouse,Perseus Lighthouse,0
+The Perseus Observatory,Perseus Observatory,0
+Perseus Observatory,Perseus Observatory,0
+The Perseus Gate,Perseus Gate,0
+Perseus Gate,Perseus Gate,0
+The Perseus Station,Perseus Station,0
+Perseus Station,Perseus Station,0
+The Andromeda Spire,Andromeda Spire,0
+Andromeda Spire,Andromeda Spire,0
+The Andromeda Reach,Andromeda Reach,0
+Andromeda Reach,Andromeda Reach,0
+The Andromeda Watch,Andromeda Watch,0
+Andromeda Watch,Andromeda Watch,0
+The Andromeda Keep,Andromeda Keep,0
+Andromeda Keep,Andromeda Keep,0
+The Andromeda Bastion,Andromeda Bastion,0
+Andromeda Bastion,Andromeda Bastion,0
+The Andromeda Terminus,Andromeda Terminus,0
+Andromeda Terminus,Andromeda Terminus,0
+The Andromeda Lighthouse,Andromeda Lighthouse,0
+Andromeda Lighthouse,Andromeda Lighthouse,0
+The Andromeda Observatory,Andromeda Observatory,0
+Andromeda Observatory,Andromeda Observatory,0
+The Andromeda Gate,Andromeda Gate,0
+Andromeda Gate,Andromeda Gate,0
+The Andromeda Station,Andromeda Station,0
+Andromeda Station,Andromeda Station,0
+The Cassiopeia Spire,Cassiopeia Spire,0
+Cassiopeia Spire,Cassiopeia Spire,0
+The Cassiopeia Reach,Cassiopeia Reach,0
+Cassiopeia Reach,Cassiopeia Reach,0
+The Cassiopeia Watch,Cassiopeia Watch,0
+Cassiopeia Watch,Cassiopeia Watch,0
+The Cassiopeia Keep,Cassiopeia Keep,0
+Cassiopeia Keep,Cassiopeia Keep,0
+The Cassiopeia Bastion,Cassiopeia Bastion,0
+Cassiopeia Bastion,Cassiopeia Bastion,0
+The Cassiopeia Terminus,Cassiopeia Terminus,0
+Cassiopeia Terminus,Cassiopeia Terminus,0
+The Cassiopeia Lighthouse,Cassiopeia Lighthouse,0
+Cassiopeia Lighthouse,Cassiopeia Lighthouse,0
+The Cassiopeia Observatory,Cassiopeia Observatory,0
+Cassiopeia Observatory,Cassiopeia Observatory,0
+The Cassiopeia Gate,Cassiopeia Gate,0
+Cassiopeia Gate,Cassiopeia Gate,0
+The Cassiopeia Station,Cassiopeia Station,0
+Cassiopeia Station,Cassiopeia Station,0
+The Anubis Spire,Anubis Spire,0
+Anubis Spire,Anubis Spire,0
+The Anubis Reach,Anubis Reach,0
+Anubis Reach,Anubis Reach,0
+The Anubis Watch,Anubis Watch,0
+Anubis Watch,Anubis Watch,0
+The Anubis Keep,Anubis Keep,0
+Anubis Keep,Anubis Keep,0
+The Anubis Bastion,Anubis Bastion,0
+Anubis Bastion,Anubis Bastion,0
+The Anubis Terminus,Anubis Terminus,0
+Anubis Terminus,Anubis Terminus,0
+The Anubis Lighthouse,Anubis Lighthouse,0
+Anubis Lighthouse,Anubis Lighthouse,0
+The Anubis Observatory,Anubis Observatory,0
+Anubis Observatory,Anubis Observatory,0
+The Anubis Gate,Anubis Gate,0
+Anubis Gate,Anubis Gate,0
+The Anubis Station,Anubis Station,0
+Anubis Station,Anubis Station,0
+The Thoth Spire,Thoth Spire,0
+Thoth Spire,Thoth Spire,0
+The Thoth Reach,Thoth Reach,0
+Thoth Reach,Thoth Reach,0
+The Thoth Watch,Thoth Watch,0
+Thoth Watch,Thoth Watch,0
+The Thoth Keep,Thoth Keep,0
+Thoth Keep,Thoth Keep,0
+The Thoth Bastion,Thoth Bastion,0
+Thoth Bastion,Thoth Bastion,0
+The Thoth Terminus,Thoth Terminus,0
+Thoth Terminus,Thoth Terminus,0
+The Thoth Lighthouse,Thoth Lighthouse,0
+Thoth Lighthouse,Thoth Lighthouse,0
+The Thoth Observatory,Thoth Observatory,0
+Thoth Observatory,Thoth Observatory,0
+The Thoth Gate,Thoth Gate,0
+Thoth Gate,Thoth Gate,0
+The Thoth Station,Thoth Station,0
+Thoth Station,Thoth Station,0
+The Isis Spire,Isis Spire,0
+Isis Spire,Isis Spire,0
+The Isis Reach,Isis Reach,0
+Isis Reach,Isis Reach,0
+The Isis Watch,Isis Watch,0
+Isis Watch,Isis Watch,0
+The Isis Keep,Isis Keep,0
+Isis Keep,Isis Keep,0
+The Isis Bastion,Isis Bastion,0
+Isis Bastion,Isis Bastion,0
+The Isis Terminus,Isis Terminus,0
+Isis Terminus,Isis Terminus,0
+The Isis Lighthouse,Isis Lighthouse,0
+Isis Lighthouse,Isis Lighthouse,0
+The Isis Observatory,Isis Observatory,0
+Isis Observatory,Isis Observatory,0
+The Isis Gate,Isis Gate,0
+Isis Gate,Isis Gate,0
+The Isis Station,Isis Station,0
+Isis Station,Isis Station,0
+The Osiris Spire,Osiris Spire,0
+Osiris Spire,Osiris Spire,0
+The Osiris Reach,Osiris Reach,0
+Osiris Reach,Osiris Reach,0
+The Osiris Watch,Osiris Watch,0
+Osiris Watch,Osiris Watch,0
+The Osiris Keep,Osiris Keep,0
+Osiris Keep,Osiris Keep,0
+The Osiris Bastion,Osiris Bastion,0
+Osiris Bastion,Osiris Bastion,0
+The Osiris Terminus,Osiris Terminus,0
+Osiris Terminus,Osiris Terminus,0
+The Osiris Lighthouse,Osiris Lighthouse,0
+Osiris Lighthouse,Osiris Lighthouse,0
+The Osiris Observatory,Osiris Observatory,0
+Osiris Observatory,Osiris Observatory,0
+The Osiris Gate,Osiris Gate,0
+Osiris Gate,Osiris Gate,0
+The Osiris Station,Osiris Station,0
+Osiris Station,Osiris Station,0
+The Horus Spire,Horus Spire,0
+Horus Spire,Horus Spire,0
+The Horus Reach,Horus Reach,0
+Horus Reach,Horus Reach,0
+The Horus Watch,Horus Watch,0
+Horus Watch,Horus Watch,0
+The Horus Keep,Horus Keep,0
+Horus Keep,Horus Keep,0
+The Horus Bastion,Horus Bastion,0
+Horus Bastion,Horus Bastion,0
+The Horus Terminus,Horus Terminus,0
+Horus Terminus,Horus Terminus,0
+The Horus Lighthouse,Horus Lighthouse,0
+Horus Lighthouse,Horus Lighthouse,0
+The Horus Observatory,Horus Observatory,0
+Horus Observatory,Horus Observatory,0
+The Horus Gate,Horus Gate,0
+Horus Gate,Horus Gate,0
+The Horus Station,Horus Station,0
+Horus Station,Horus Station,0
+The Sekhmet Spire,Sekhmet Spire,0
+Sekhmet Spire,Sekhmet Spire,0
+The Sekhmet Reach,Sekhmet Reach,0
+Sekhmet Reach,Sekhmet Reach,0
+The Sekhmet Watch,Sekhmet Watch,0
+Sekhmet Watch,Sekhmet Watch,0
+The Sekhmet Keep,Sekhmet Keep,0
+Sekhmet Keep,Sekhmet Keep,0
+The Sekhmet Bastion,Sekhmet Bastion,0
+Sekhmet Bastion,Sekhmet Bastion,0
+The Sekhmet Terminus,Sekhmet Terminus,0
+Sekhmet Terminus,Sekhmet Terminus,0
+The Sekhmet Lighthouse,Sekhmet Lighthouse,0
+Sekhmet Lighthouse,Sekhmet Lighthouse,0
+The Sekhmet Observatory,Sekhmet Observatory,0
+Sekhmet Observatory,Sekhmet Observatory,0
+The Sekhmet Gate,Sekhmet Gate,0
+Sekhmet Gate,Sekhmet Gate,0
+The Sekhmet Station,Sekhmet Station,0
+Sekhmet Station,Sekhmet Station,0
+The Ptah Spire,Ptah Spire,0
+Ptah Spire,Ptah Spire,0
+The Ptah Reach,Ptah Reach,0
+Ptah Reach,Ptah Reach,0
+The Ptah Watch,Ptah Watch,0
+Ptah Watch,Ptah Watch,0
+The Ptah Keep,Ptah Keep,0
+Ptah Keep,Ptah Keep,0
+The Ptah Bastion,Ptah Bastion,0
+Ptah Bastion,Ptah Bastion,0
+The Ptah Terminus,Ptah Terminus,0
+Ptah Terminus,Ptah Terminus,0
+The Ptah Lighthouse,Ptah Lighthouse,0
+Ptah Lighthouse,Ptah Lighthouse,0
+The Ptah Observatory,Ptah Observatory,0
+Ptah Observatory,Ptah Observatory,0
+The Ptah Gate,Ptah Gate,0
+Ptah Gate,Ptah Gate,0
+The Ptah Station,Ptah Station,0
+Ptah Station,Ptah Station,0
+The Maat Spire,Maat Spire,0
+Maat Spire,Maat Spire,0
+The Maat Reach,Maat Reach,0
+Maat Reach,Maat Reach,0
+The Maat Watch,Maat Watch,0
+Maat Watch,Maat Watch,0
+The Maat Keep,Maat Keep,0
+Maat Keep,Maat Keep,0
+The Maat Bastion,Maat Bastion,0
+Maat Bastion,Maat Bastion,0
+The Maat Terminus,Maat Terminus,0
+Maat Terminus,Maat Terminus,0
+The Maat Lighthouse,Maat Lighthouse,0
+Maat Lighthouse,Maat Lighthouse,0
+The Maat Observatory,Maat Observatory,0
+Maat Observatory,Maat Observatory,0
+The Maat Gate,Maat Gate,0
+Maat Gate,Maat Gate,0
+The Maat Station,Maat Station,0
+Maat Station,Maat Station,0
+The Quetzalcoatl Spire,Quetzalcoatl Spire,0
+Quetzalcoatl Spire,Quetzalcoatl Spire,0
+The Quetzalcoatl Reach,Quetzalcoatl Reach,0
+Quetzalcoatl Reach,Quetzalcoatl Reach,0
+The Quetzalcoatl Watch,Quetzalcoatl Watch,0
+Quetzalcoatl Watch,Quetzalcoatl Watch,0
+The Quetzalcoatl Keep,Quetzalcoatl Keep,0
+Quetzalcoatl Keep,Quetzalcoatl Keep,0
+The Quetzalcoatl Bastion,Quetzalcoatl Bastion,0
+Quetzalcoatl Bastion,Quetzalcoatl Bastion,0
+The Quetzalcoatl Terminus,Quetzalcoatl Terminus,0
+Quetzalcoatl Terminus,Quetzalcoatl Terminus,0
+The Quetzalcoatl Lighthouse,Quetzalcoatl Lighthouse,0
+Quetzalcoatl Lighthouse,Quetzalcoatl Lighthouse,0
+The Quetzalcoatl Observatory,Quetzalcoatl Observatory,0
+Quetzalcoatl Observatory,Quetzalcoatl Observatory,0
+The Quetzalcoatl Gate,Quetzalcoatl Gate,0
+Quetzalcoatl Gate,Quetzalcoatl Gate,0
+The Quetzalcoatl Station,Quetzalcoatl Station,0
+Quetzalcoatl Station,Quetzalcoatl Station,0
+The Tlaloc Spire,Tlaloc Spire,0
+Tlaloc Spire,Tlaloc Spire,0
+The Tlaloc Reach,Tlaloc Reach,0
+Tlaloc Reach,Tlaloc Reach,0
+The Tlaloc Watch,Tlaloc Watch,0
+Tlaloc Watch,Tlaloc Watch,0
+The Tlaloc Keep,Tlaloc Keep,0
+Tlaloc Keep,Tlaloc Keep,0
+The Tlaloc Bastion,Tlaloc Bastion,0
+Tlaloc Bastion,Tlaloc Bastion,0
+The Tlaloc Terminus,Tlaloc Terminus,0
+Tlaloc Terminus,Tlaloc Terminus,0
+The Tlaloc Lighthouse,Tlaloc Lighthouse,0
+Tlaloc Lighthouse,Tlaloc Lighthouse,0
+The Tlaloc Observatory,Tlaloc Observatory,0
+Tlaloc Observatory,Tlaloc Observatory,0
+The Tlaloc Gate,Tlaloc Gate,0
+Tlaloc Gate,Tlaloc Gate,0
+The Tlaloc Station,Tlaloc Station,0
+Tlaloc Station,Tlaloc Station,0
+The Huitzilopochtli Spire,Huitzilopochtli Spire,0
+Huitzilopochtli Spire,Huitzilopochtli Spire,0
+The Huitzilopochtli Reach,Huitzilopochtli Reach,0
+Huitzilopochtli Reach,Huitzilopochtli Reach,0
+The Huitzilopochtli Watch,Huitzilopochtli Watch,0
+Huitzilopochtli Watch,Huitzilopochtli Watch,0
+The Huitzilopochtli Keep,Huitzilopochtli Keep,0
+Huitzilopochtli Keep,Huitzilopochtli Keep,0
+The Huitzilopochtli Bastion,Huitzilopochtli Bastion,0
+Huitzilopochtli Bastion,Huitzilopochtli Bastion,0
+The Huitzilopochtli Terminus,Huitzilopochtli Terminus,0
+Huitzilopochtli Terminus,Huitzilopochtli Terminus,0
+The Huitzilopochtli Lighthouse,Huitzilopochtli Lighthouse,0
+Huitzilopochtli Lighthouse,Huitzilopochtli Lighthouse,0
+The Huitzilopochtli Observatory,Huitzilopochtli Observatory,0
+Huitzilopochtli Observatory,Huitzilopochtli Observatory,0
+The Huitzilopochtli Gate,Huitzilopochtli Gate,0
+Huitzilopochtli Gate,Huitzilopochtli Gate,0
+The Huitzilopochtli Station,Huitzilopochtli Station,0
+Huitzilopochtli Station,Huitzilopochtli Station,0
+The Kukulkan Spire,Kukulkan Spire,0
+Kukulkan Spire,Kukulkan Spire,0
+The Kukulkan Reach,Kukulkan Reach,0
+Kukulkan Reach,Kukulkan Reach,0
+The Kukulkan Watch,Kukulkan Watch,0
+Kukulkan Watch,Kukulkan Watch,0
+The Kukulkan Keep,Kukulkan Keep,0
+Kukulkan Keep,Kukulkan Keep,0
+The Kukulkan Bastion,Kukulkan Bastion,0
+Kukulkan Bastion,Kukulkan Bastion,0
+The Kukulkan Terminus,Kukulkan Terminus,0
+Kukulkan Terminus,Kukulkan Terminus,0
+The Kukulkan Lighthouse,Kukulkan Lighthouse,0
+Kukulkan Lighthouse,Kukulkan Lighthouse,0
+The Kukulkan Observatory,Kukulkan Observatory,0
+Kukulkan Observatory,Kukulkan Observatory,0
+The Kukulkan Gate,Kukulkan Gate,0
+Kukulkan Gate,Kukulkan Gate,0
+The Kukulkan Station,Kukulkan Station,0
+Kukulkan Station,Kukulkan Station,0
+The Ragnar Spire,Ragnar Spire,0
+Ragnar Spire,Ragnar Spire,0
+The Ragnar Reach,Ragnar Reach,0
+Ragnar Reach,Ragnar Reach,0
+The Ragnar Watch,Ragnar Watch,0
+Ragnar Watch,Ragnar Watch,0
+The Ragnar Keep,Ragnar Keep,0
+Ragnar Keep,Ragnar Keep,0
+The Ragnar Bastion,Ragnar Bastion,0
+Ragnar Bastion,Ragnar Bastion,0
+The Ragnar Terminus,Ragnar Terminus,0
+Ragnar Terminus,Ragnar Terminus,0
+The Ragnar Lighthouse,Ragnar Lighthouse,0
+Ragnar Lighthouse,Ragnar Lighthouse,0
+The Ragnar Observatory,Ragnar Observatory,0
+Ragnar Observatory,Ragnar Observatory,0
+The Ragnar Gate,Ragnar Gate,0
+Ragnar Gate,Ragnar Gate,0
+The Ragnar Station,Ragnar Station,0
+Ragnar Station,Ragnar Station,0
+The Freyja Spire,Freyja Spire,0
+Freyja Spire,Freyja Spire,0
+The Freyja Reach,Freyja Reach,0
+Freyja Reach,Freyja Reach,0
+The Freyja Watch,Freyja Watch,0
+Freyja Watch,Freyja Watch,0
+The Freyja Keep,Freyja Keep,0
+Freyja Keep,Freyja Keep,0
+The Freyja Bastion,Freyja Bastion,0
+Freyja Bastion,Freyja Bastion,0
+The Freyja Terminus,Freyja Terminus,0
+Freyja Terminus,Freyja Terminus,0
+The Freyja Lighthouse,Freyja Lighthouse,0
+Freyja Lighthouse,Freyja Lighthouse,0
+The Freyja Observatory,Freyja Observatory,0
+Freyja Observatory,Freyja Observatory,0
+The Freyja Gate,Freyja Gate,0
+Freyja Gate,Freyja Gate,0
+The Freyja Station,Freyja Station,0
+Freyja Station,Freyja Station,0
+The Balder Spire,Balder Spire,0
+Balder Spire,Balder Spire,0
+The Balder Reach,Balder Reach,0
+Balder Reach,Balder Reach,0
+The Balder Watch,Balder Watch,0
+Balder Watch,Balder Watch,0
+The Balder Keep,Balder Keep,0
+Balder Keep,Balder Keep,0
+The Balder Bastion,Balder Bastion,0
+Balder Bastion,Balder Bastion,0
+The Balder Terminus,Balder Terminus,0
+Balder Terminus,Balder Terminus,0
+The Balder Lighthouse,Balder Lighthouse,0
+Balder Lighthouse,Balder Lighthouse,0
+The Balder Observatory,Balder Observatory,0
+Balder Observatory,Balder Observatory,0
+The Balder Gate,Balder Gate,0
+Balder Gate,Balder Gate,0
+The Balder Station,Balder Station,0
+Balder Station,Balder Station,0
+Mo Mo Eve's Scamberland,Mo Mo Eve's,0
+Mo Mo Eve's Landing,Mo Mo Eve's,0
+Mo Mo Eve's Camp,Mo Mo Eve's,0
+Mo Mo Eve's Rest,Mo Mo Eve's,0
+Mo Mo Eve's Lodge,Mo Mo Eve's,0
+Mo Mo Eve's Crossing,Mo Mo Eve's,0
+Mo Mo Eve's End,Mo Mo Eve's,0
+Mo Mo Eve's Hold,Mo Mo Eve's,0
+Mo Mo Eve's Hollow,Mo Mo Eve's,0
+Red Robin's Scamberland,Red Robin's,0
+Red Robin's Landing,Red Robin's,0
+Red Robin's Camp,Red Robin's,0
+Red Robin's Rest,Red Robin's,0
+Red Robin's Lodge,Red Robin's,0
+Red Robin's Crossing,Red Robin's,0
+Red Robin's End,Red Robin's,0
+Red Robin's Hold,Red Robin's,0
+Red Robin's Hollow,Red Robin's,0
+Rusty Jack's Scamberland,Rusty Jack's,0
+Rusty Jack's Landing,Rusty Jack's,0
+Rusty Jack's Camp,Rusty Jack's,0
+Rusty Jack's Rest,Rusty Jack's,0
+Rusty Jack's Lodge,Rusty Jack's,0
+Rusty Jack's Crossing,Rusty Jack's,0
+Rusty Jack's End,Rusty Jack's,0
+Rusty Jack's Hold,Rusty Jack's,0
+Rusty Jack's Hollow,Rusty Jack's,0
+Sparrow Kit's Scamberland,Sparrow Kit's,0
+Sparrow Kit's Landing,Sparrow Kit's,0
+Sparrow Kit's Camp,Sparrow Kit's,0
+Sparrow Kit's Rest,Sparrow Kit's,0
+Sparrow Kit's Lodge,Sparrow Kit's,0
+Sparrow Kit's Crossing,Sparrow Kit's,0
+Sparrow Kit's End,Sparrow Kit's,0
+Sparrow Kit's Hold,Sparrow Kit's,0
+Sparrow Kit's Hollow,Sparrow Kit's,0
+Ghost Mara's Scamberland,Ghost Mara's,0
+Ghost Mara's Landing,Ghost Mara's,0
+Ghost Mara's Camp,Ghost Mara's,0
+Ghost Mara's Rest,Ghost Mara's,0
+Ghost Mara's Lodge,Ghost Mara's,0
+Ghost Mara's Crossing,Ghost Mara's,0
+Ghost Mara's End,Ghost Mara's,0
+Ghost Mara's Hold,Ghost Mara's,0
+Ghost Mara's Hollow,Ghost Mara's,0
+Pike Cormac's Scamberland,Pike Cormac's,0
+Pike Cormac's Landing,Pike Cormac's,0
+Pike Cormac's Camp,Pike Cormac's,0
+Pike Cormac's Rest,Pike Cormac's,0
+Pike Cormac's Lodge,Pike Cormac's,0
+Pike Cormac's Crossing,Pike Cormac's,0
+Pike Cormac's End,Pike Cormac's,0
+Pike Cormac's Hold,Pike Cormac's,0
+Pike Cormac's Hollow,Pike Cormac's,0
+Sparrow Ilse's Scamberland,Sparrow Ilse's,0
+Sparrow Ilse's Landing,Sparrow Ilse's,0
+Sparrow Ilse's Camp,Sparrow Ilse's,0
+Sparrow Ilse's Rest,Sparrow Ilse's,0
+Sparrow Ilse's Lodge,Sparrow Ilse's,0
+Sparrow Ilse's Crossing,Sparrow Ilse's,0
+Sparrow Ilse's End,Sparrow Ilse's,0
+Sparrow Ilse's Hold,Sparrow Ilse's,0
+Sparrow Ilse's Hollow,Sparrow Ilse's,0
+Crow Bryn's Scamberland,Crow Bryn's,0
+Crow Bryn's Landing,Crow Bryn's,0
+Crow Bryn's Camp,Crow Bryn's,0
+Crow Bryn's Rest,Crow Bryn's,0
+Crow Bryn's Lodge,Crow Bryn's,0
+Crow Bryn's Crossing,Crow Bryn's,0
+Crow Bryn's End,Crow Bryn's,0
+Crow Bryn's Hold,Crow Bryn's,0
+Crow Bryn's Hollow,Crow Bryn's,0
+Fable Nim's Scamberland,Fable Nim's,0
+Fable Nim's Landing,Fable Nim's,0
+Fable Nim's Camp,Fable Nim's,0
+Fable Nim's Rest,Fable Nim's,0
+Fable Nim's Lodge,Fable Nim's,0
+Fable Nim's Crossing,Fable Nim's,0
+Fable Nim's End,Fable Nim's,0
+Fable Nim's Hold,Fable Nim's,0
+Fable Nim's Hollow,Fable Nim's,0
+Tuppence Otto's Scamberland,Tuppence Otto's,0
+Tuppence Otto's Landing,Tuppence Otto's,0
+Tuppence Otto's Camp,Tuppence Otto's,0
+Tuppence Otto's Rest,Tuppence Otto's,0
+Tuppence Otto's Lodge,Tuppence Otto's,0
+Tuppence Otto's Crossing,Tuppence Otto's,0
+Tuppence Otto's End,Tuppence Otto's,0
+Tuppence Otto's Hold,Tuppence Otto's,0
+Tuppence Otto's Hollow,Tuppence Otto's,0
+Scrap Hana's Scamberland,Scrap Hana's,0
+Scrap Hana's Landing,Scrap Hana's,0
+Scrap Hana's Camp,Scrap Hana's,0
+Scrap Hana's Rest,Scrap Hana's,0
+Scrap Hana's Lodge,Scrap Hana's,0
+Scrap Hana's Crossing,Scrap Hana's,0
+Scrap Hana's End,Scrap Hana's,0
+Scrap Hana's Hold,Scrap Hana's,0
+Scrap Hana's Hollow,Scrap Hana's,0
+Smoke Ilya's Scamberland,Smoke Ilya's,0
+Smoke Ilya's Landing,Smoke Ilya's,0
+Smoke Ilya's Camp,Smoke Ilya's,0
+Smoke Ilya's Rest,Smoke Ilya's,0
+Smoke Ilya's Lodge,Smoke Ilya's,0
+Smoke Ilya's Crossing,Smoke Ilya's,0
+Smoke Ilya's End,Smoke Ilya's,0
+Smoke Ilya's Hold,Smoke Ilya's,0
+Smoke Ilya's Hollow,Smoke Ilya's,0
+Grit Joss's Scamberland,Grit Joss's,0
+Grit Joss's Landing,Grit Joss's,0
+Grit Joss's Camp,Grit Joss's,0
+Grit Joss's Rest,Grit Joss's,0
+Grit Joss's Lodge,Grit Joss's,0
+Grit Joss's Crossing,Grit Joss's,0
+Grit Joss's End,Grit Joss's,0
+Grit Joss's Hold,Grit Joss's,0
+Grit Joss's Hollow,Grit Joss's,0
+Sixpence Merle's Scamberland,Sixpence Merle's,0
+Sixpence Merle's Landing,Sixpence Merle's,0
+Sixpence Merle's Camp,Sixpence Merle's,0
+Sixpence Merle's Rest,Sixpence Merle's,0
+Sixpence Merle's Lodge,Sixpence Merle's,0
+Sixpence Merle's Crossing,Sixpence Merle's,0
+Sixpence Merle's End,Sixpence Merle's,0
+Sixpence Merle's Hold,Sixpence Merle's,0
+Sixpence Merle's Hollow,Sixpence Merle's,0
+Little Bird Tam's Scamberland,Little Bird Tam's,0
+Little Bird Tam's Landing,Little Bird Tam's,0
+Little Bird Tam's Camp,Little Bird Tam's,0
+Little Bird Tam's Rest,Little Bird Tam's,0
+Little Bird Tam's Lodge,Little Bird Tam's,0
+Little Bird Tam's Crossing,Little Bird Tam's,0
+Little Bird Tam's End,Little Bird Tam's,0
+Little Bird Tam's Hold,Little Bird Tam's,0
+Little Bird Tam's Hollow,Little Bird Tam's,0
+Penny Esme's Scamberland,Penny Esme's,0
+Penny Esme's Landing,Penny Esme's,0
+Penny Esme's Camp,Penny Esme's,0
+Penny Esme's Rest,Penny Esme's,0
+Penny Esme's Lodge,Penny Esme's,0
+Penny Esme's Crossing,Penny Esme's,0
+Penny Esme's End,Penny Esme's,0
+Penny Esme's Hold,Penny Esme's,0
+Penny Esme's Hollow,Penny Esme's,0
+Twig Rurik's Scamberland,Twig Rurik's,0
+Twig Rurik's Landing,Twig Rurik's,0
+Twig Rurik's Camp,Twig Rurik's,0
+Twig Rurik's Rest,Twig Rurik's,0
+Twig Rurik's Lodge,Twig Rurik's,0
+Twig Rurik's Crossing,Twig Rurik's,0
+Twig Rurik's End,Twig Rurik's,0
+Twig Rurik's Hold,Twig Rurik's,0
+Twig Rurik's Hollow,Twig Rurik's,0
+Cinder Perrin's Scamberland,Cinder Perrin's,0
+Cinder Perrin's Landing,Cinder Perrin's,0
+Cinder Perrin's Camp,Cinder Perrin's,0
+Cinder Perrin's Rest,Cinder Perrin's,0
+Cinder Perrin's Lodge,Cinder Perrin's,0
+Cinder Perrin's Crossing,Cinder Perrin's,0
+Cinder Perrin's End,Cinder Perrin's,0
+Cinder Perrin's Hold,Cinder Perrin's,0
+Cinder Perrin's Hollow,Cinder Perrin's,0
+Dash Wren's Scamberland,Dash Wren's,0
+Dash Wren's Landing,Dash Wren's,0
+Dash Wren's Camp,Dash Wren's,0
+Dash Wren's Rest,Dash Wren's,0
+Dash Wren's Lodge,Dash Wren's,0
+Dash Wren's Crossing,Dash Wren's,0
+Dash Wren's End,Dash Wren's,0
+Dash Wren's Hold,Dash Wren's,0
+Dash Wren's Hollow,Dash Wren's,0
