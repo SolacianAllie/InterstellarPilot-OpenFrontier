@@ -43,9 +43,10 @@ Shader "SpaceUnity/PlanetStandard" {
 		_CloudWrap ("Cloud Wrap Light", Range(0, 1)) = 0.7
 		_CloudShadowStrength ("Cloud Shadow Strength", Range(0, 1)) = 0.5
 		[Header(Twilight)]
-		_TwilightDim ("Twilight Dimming", Range(0, 1)) = 0.55
-		_TwilightSharpness ("Twilight Sharpness", Range(0.01, 1)) = 0.2
-		_TwilightHaze ("Twilight Haze", Range(0, 1)) = 0.35
+		_TwilightStrength ("Twilight Strength", Range(0, 1)) = 0.55
+		_TwilightDim ("Twilight Dimming", Range(0, 1)) = 0.3
+		_TwilightSharpness ("Twilight Sharpness", Range(0.01, 1)) = 0.13
+		_TwilightHaze ("Twilight Haze", Range(0, 1)) = 0.1
 	}
 	SubShader {
 		Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
@@ -96,6 +97,7 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _CloudParallax;
 				float _CloudWrap;
 				float _CloudShadowStrength;
+				float _TwilightStrength;
 				float _TwilightDim;
 				float _TwilightSharpness;
 				float _TwilightHaze;
@@ -197,7 +199,16 @@ Shader "SpaceUnity/PlanetStandard" {
 				// _SunRimColor is reused rather than adding a second colour --
 				// it is already "the colour of the sun in the atmosphere" and
 				// the haze uses it, so the sky and the light stay coherent.
-				half3 sunTint = lerp(half3(1, 1, 1), _SunRimColor.rgb, twilight)
+				//
+				// Strength and dimming are SEPARATE. Driving both from the
+				// same twilight meant the core of the band hit the full
+				// sunset hue AND 45% brightness, which read as orange paint
+				// rather than as warm light -- R/B hit 3.33, the full
+				// saturation of _SunRimColor. Measured at 0.55 strength and
+				// 0.30 dimming it peaks at R/B 1.63, which reads as sunlight
+				// that has gone through a lot of air.
+				half3 sunTint = lerp(half3(1, 1, 1), _SunRimColor.rgb,
+				                    saturate(twilight * _TwilightStrength))
 				              * lerp(1.0, _TwilightDim, twilight);
 				half3 sunColour = mainLight.color * sunTint;
 
