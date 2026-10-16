@@ -71,6 +71,20 @@ Shader "OpenFrontier/PlanetaryRing"
 		_RockMask ("Rock Mask  R = metallic, A = smoothness", 2D) = "black" {}
 		[HDR] _RockColor ("Rock Tint", Color) = (1, 1, 1, 1)
 		_RockNormalStrength ("Rock Normal Strength", Range(0, 2)) = 1
+		// Unity builds Mikk tangents from UV0. On a ring whose UV2 is
+		// deliberately rotated away from UV1 -- which is what counteracting
+		// the circle's distortion does -- that imported frame is the wrong
+		// one for the rock normal map, by a median 40 degrees. Measured on
+		// this mesh: UV1's tangent is purely tangential (radial component
+		// 0.012), UV2's is a 45 degree diagonal (0.674). Decoding the rock
+		// map in the UV1 frame points its normals somewhere arbitrary and
+		// lights up as slivers.
+		//
+		// "From UV2" derives the frame from the uv that actually indexes the
+		// map, so the two cannot drift apart. Costs two derivative
+		// instructions and no texture fetch.
+		[Enum(From UV2, 1, From Imported Tangents, 0)]
+		_RockTangentSource ("Rock Tangent Source", Float) = 1
 		_RockMetallicScale ("Rock Metallic Scale", Range(0, 1)) = 1
 		_RockSmoothnessScale ("Rock Smoothness Scale", Range(0, 1)) = 0.6
 		// Hard silhouette for the rocks. Above this coverage a rock is solid,
@@ -187,6 +201,7 @@ Shader "OpenFrontier/PlanetaryRing"
 				float _DustDetailSmoothness;
 				float _DustNormalStrength;
 				float _RockNormalStrength;
+				float _RockTangentSource;
 				float _RockMetallicScale;
 				float _RockSmoothnessScale;
 				float _RockCutout;
@@ -275,6 +290,60 @@ Shader "OpenFrontier/PlanetaryRing"
 				return saturate(inner) * saturate(outer);
 			}
 
+			// A tangent frame derived from the uv that indexes the map, so the
+			// two cannot disagree. Cheaper than carrying a second set of
+			// imported tangents and, unlike them, guaranteed consistent.
+			//
+			// The uv must be RAW here, not TRANSFORM_TEX'd. Tiling is an
+			// affine scale of both axes, which leaves the frame's direction
+			// unchanged, so either works -- but raw makes that independence
+			// explicit instead of accidental.
+			//
+			// The guards are not defensive noise. A degenerate uv makes both
+			// vectors collapse to zero, and normalizing a zero vector is NaN,
+			// which reaches the framebuffer as a black or white speck rather
+			// than as an error anyone can find.
+			void FrameFromUV(float3 positionWS, float2 uv, float3 normalWS,
+			                 out float3 tangentOut, out float3 bitangentOut)
+			{
+				float3 dp1 = ddx(positionWS);
+				float3 dp2 = ddy(positionWS);
+				float2 duv1 = ddx(uv);
+				float2 duv2 = ddy(uv);
+
+				// Project the position derivatives into the surface plane, then
+				// solve for the directions that map d(uv) onto them.
+				float3 dp2perp = cross(dp2, normalWS);
+				float3 dp1perp = cross(normalWS, dp1);
+				float3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+				float3 B = dp2perp * duv1.y + dp1perp * duv2.y;
+
+				float inv = rcp(max(abs(dot(dp1, dp2perp)), 1e-8));
+				T *= inv;
+				B *= inv;
+
+				float lenT = length(T);
+				float lenB = length(B);
+				// Clamp before the divide: rcp(0) is the infinity that turns
+				// into the NaN above, and max() is cheaper than a branch.
+				T *= rcp(max(lenT, 1e-8));
+				B *= rcp(max(lenB, 1e-8));
+
+				// Gram-Schmidt against the geometric normal. T and B are not
+				// orthogonal to each other and not perpendicular to N once
+				// the map's V axis is skewed relative to the surface.
+				T = normalize(T - normalWS * dot(normalWS, T));
+				float3 Bortho = cross(normalWS, T);
+				// Keep the original B's handedness. A mirrored map needs its
+				// bitangent flipped or the bumps light from the wrong side.
+				Bortho *= (dot(B, Bortho) < 0.0) ? -1.0 : 1.0;
+
+				// Flag a collapsed frame so the caller can fall back rather
+				// than shade from NaN.
+				tangentOut = (min(lenT, lenB) > 1e-8) ? T : float3(1, 0, 0);
+				bitangentOut = (min(lenT, lenB) > 1e-8) ? Bortho : float3(0, 0, 1);
+			}
+
 			half4 frag(FragmentInput input) : SV_Target
 			{
 				Varyings v = input.interpolated;
@@ -345,19 +414,45 @@ Shader "OpenFrontier/PlanetaryRing"
 					return half4(1.0, 0.0, 1.0, 1.0);   // magenta: reached the end
 
 				// ---- normals ----
-				// Blended in TANGENT space before the TBN is built, then
-				// transformed once. Blending afterwards would need two TBNs and
-				// does not commute.
-				half3 normalTS = normalize(lerp(
-					dustN * _DustNormalStrength, rockN * _RockNormalStrength, rock));
-
+				// TWO FRAMES, because two UV channels are two tangent spaces.
+				//
+				// The dust normal map is indexed by UV1 and the imported tangent
+				// was built from UV1, so those agree and the imported frame is
+				// used unchanged. The rock map is indexed by UV2, whose frame on
+				// this mesh is rotated ~40 degrees away from the imported one,
+				// so it gets a frame derived from UV2 itself.
+				//
+				// Blend in WORLD space. The earlier version lerped in tangent
+				// space, which is only valid when both maps share a frame --
+				// here they do not, so there is no common space to lerp in.
+				// Transforming first and lerping the world normals is the
+				// correct order, and normalize() afterwards covers the fact
+				// that the two results are not exactly unit length.
+				//
 				// Flip the geometric normal on back faces, or the underside of
 				// the ring is lit from behind and comes out black.
-				half3 normalWS = normalize(v.normalWS) * IS_FRONT_VFACE(input.facing, 1.0, -1.0);
-				half3 tangentWS = normalize(v.tangentWS.xyz);
-				half3 bitangentWS = cross(normalWS, tangentWS) * v.tangentWS.w;
-				half3 shadedNormalWS = normalize(TransformTangentToWorld(normalTS,
-					half3x3(tangentWS, bitangentWS, normalWS)));
+				half3 geoNormalWS = normalize(v.normalWS)
+					* IS_FRONT_VFACE(input.facing, 1.0, -1.0);
+
+				half3 importedT = normalize(v.tangentWS.xyz);
+				half3 importedB = cross(geoNormalWS, importedT) * v.tangentWS.w;
+				half3 dustNormalWS = normalize(TransformTangentToWorld(
+					dustN * _DustNormalStrength,
+					half3x3(importedT, importedB, geoNormalWS)));
+
+				half3 rockT, rockB;
+				FrameFromUV(v.positionWS, v.uv2, geoNormalWS, rockT, rockB);
+
+				// The A/B switch: From Imported Tangents reproduces the old,
+				// visibly wrong behaviour so the difference is attributable.
+				half3 rockTsel = lerp(importedT, rockT, _RockTangentSource);
+				half3 rockBsel = lerp(importedB, rockB, _RockTangentSource);
+				half3 rockNormalWS = normalize(TransformTangentToWorld(
+					rockN * _RockNormalStrength,
+					half3x3(rockTsel, rockBsel, geoNormalWS)));
+
+				half3 shadedNormalWS = normalize(
+					lerp(dustNormalWS, rockNormalWS, rock));
 
 				SurfaceData surfaceData = (SurfaceData)0;
 				surfaceData.albedo = albedoDebug;
@@ -369,7 +464,12 @@ Shader "OpenFrontier/PlanetaryRing"
 					saturate(_DustSmoothness + dustSpec.r * _DustDetailSmoothness),
 					saturate(rockMask.a * _RockSmoothnessScale),
 					rock);
-				surfaceData.normalTS = normalTS;
+				// The real normal travels in inputData.normalWS; UniversalFragmentPBR
+				// never reads normalTS (InitializeBRDFData uses only albedo,
+				// metallic, specular, smoothness and alpha), so this is left flat
+				// rather than carrying a tangent-space value from a frame that no
+				// longer exists in one piece.
+				surfaceData.normalTS = half3(0, 0, 1);
 				surfaceData.occlusion = 1.0;
 
 				InputData inputData = (InputData)0;
@@ -425,7 +525,7 @@ Shader "OpenFrontier/PlanetaryRing"
 				// A flat sheet seen edge-on is all edge-on; without this the band
 				// ends in a wall rather than fading.
 				dustAlpha *= 1.0 - _AlphaGrazing
-					* pow(1.0 - saturate(dot(normalWS, viewDir)), 2.0);
+					* pow(1.0 - saturate(dot(geoNormalWS, viewDir)), 2.0);
 				dustAlpha *= lerp(1.0, EdgeFade(v.positionOS), _EdgeFadeStrength);
 
 				half alpha = lerp(saturate(dustAlpha * _AlphaScale), 1.0, rock);
