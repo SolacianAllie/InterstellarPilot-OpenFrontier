@@ -62,6 +62,22 @@ Shader "OpenFrontier/PlanetaryRing"
 		[HDR] _RockColor ("Rock Tint", Color) = (1, 1, 1, 1)
 		_RockNormalStrength ("Rock Normal Strength", Range(0, 2)) = 1
 		_RockMetallicScale ("Rock Metallic Scale", Range(0, 1)) = 1
+		// The rocks get their OWN projection rather than inheriting the mesh's.
+		// A ring's UV layout is strongly anisotropic -- a polar one smears
+		// every texel radially, a planar one smears it angularly -- and that is
+		// right for dust, which is a smooth band, and wrong for a rock texture,
+		// which wants near-isotropic texels. Sharing one layout for both is
+		// what produces the radial streaks.
+		//
+		// The generated UV is then still run through _RockAlbedo_ST, so the
+		// inspector's tiling and offset keep working on top of it.
+		[Enum(Mesh UV, 0, Polar, 1, Angular Only, 2)]
+		_RockUVMode ("Rock UV Mode", Float) = 2
+		// Which object-space plane the ring lies in. Y-up space games put
+		// orbits in XZ, so that is the default; a ring built in another
+		// plane streaks along the wrong axis without this.
+		[Enum(XZ, 0, XY, 1, YZ, 2)]
+		_RockUVPlane ("Rock UV Plane", Float) = 0
 		_RockSmoothnessScale ("Rock Smoothness Scale", Range(0, 1)) = 1
 
 		// ---- what turns dust into rock ----
@@ -166,6 +182,8 @@ Shader "OpenFrontier/PlanetaryRing"
 				float _DustNormalStrength;
 				float _RockNormalStrength;
 				float _RockMetallicScale;
+				float _RockUVMode;
+				float _RockUVPlane;
 				float _RockSmoothnessScale;
 				float _BlendMaskSource;
 				float _BlendShape;
@@ -254,7 +272,39 @@ Shader "OpenFrontier/PlanetaryRing"
 				// One fetch each. Anything that needs a second channel below
 				// reuses these rather than sampling again.
 				float2 uvDust = TRANSFORM_TEX(input.interpolated.uv, _MainTex);
-				float2 uvRock = TRANSFORM_TEX(input.interpolated.uv, _RockAlbedo);
+
+				// The rock UV, generated from object space rather than read from
+				// the mesh. Driven by uniforms, so the branch is uniform-
+				// coherent and costs a compare.
+				float2 rockP = input.interpolated.positionOS.xz;
+				if (_RockUVPlane > 0.5)
+				{
+					rockP = _RockUVPlane < 1.5
+						? input.interpolated.positionOS.xy
+						: input.interpolated.positionOS.yz;
+				}
+				// atan2 gives -pi..pi; fold it to 0..1 around the band.
+				float rockAngle = atan2(rockP.y, rockP.x) * 0.15915494 + 0.5;
+				float rockRadius = length(rockP);
+				float2 rockUV;
+				if (_RockUVMode > 1.5)
+				{
+					// Angular only: one row of the texture repeated around the
+					// ring. No radial coordinate at all, so a rock texel is as
+					// wide as it is tall and nothing can smear along the radius.
+					rockUV = float2(rockAngle, 0.5);
+				}
+				else if (_RockUVMode > 0.5)
+				{
+					// Polar: the layout an annulus actually wants, independent
+					// of how the mesh happens to be unwrapped.
+					rockUV = float2(rockAngle, rockRadius);
+				}
+				else
+				{
+					rockUV = input.interpolated.uv;
+				}
+				float2 uvRock = TRANSFORM_TEX(rockUV, _RockAlbedo);
 
 				half4 dustTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvDust);
 				half4 rockTex = SAMPLE_TEXTURE2D(_RockAlbedo, sampler_RockAlbedo, uvRock);
