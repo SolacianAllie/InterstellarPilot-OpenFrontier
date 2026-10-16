@@ -2953,6 +2953,8 @@ MonoBehaviour:
   - {fileID: 114724804207875695, guid: 7c6c103261679da45afccac4edae0773, type: 2}
   - {fileID: 114724804207875695, guid: 7cff8b2f9bbb0994e999c2dd31a06f7c, type: 2}
   - {fileID: 114724804207875695, guid: 65ea7569d1fbeb84396602b9f4a22687, type: 2}
+  - {fileID: 114724804207875695, guid: b51e7cb6cdb04f2583318a8381db0ed2, type: 2}
+  - {fileID: 114724804207875695, guid: 00b565b0ffe34ebe871ff2d0c39832c0, type: 2}
   MoonPrefabs:
   - {fileID: 114724804207875695, guid: 3fc47ecb877cfc142b8b0d19c275cf8d, type: 2}
   - {fileID: 114724804207875695, guid: cc4a30c18bbe011478fdd7a33b44e32d, type: 2}
