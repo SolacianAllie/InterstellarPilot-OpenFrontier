@@ -64,6 +64,23 @@ Shader "OpenFrontier/PlanetaryRing"
 		// which holds by construction, because the mesh is an annulus centred
 		// on it. That is why this needs no world position property: the offset
 		// from the centre is positionOS. 0 disables it entirely.
+		//
+		// ON THIS MESH THE VALID RANGE IS NARROW, and being outside it fails
+		// in a way that reads as a lighting bug rather than as a bad number.
+		// The band is centred on the planet and 2 * _PlanetRadius wide. The
+		// ring's own radii are 40.556 inner and 101.530 outer, so:
+		//
+		//   above ~20   a narrow strip, the classic look
+		//   20 to 30    the strip eats the inner rings, plausible
+		//   above ~30   the band is wider than the 60.97-unit width of the
+		//               annulus, so the whole anti-sun half goes dark at once
+		//               and the only visible edge left is the terminator plane
+		//               -- one straight line through the planet's centre,
+		//               which looks exactly like the shadow is inverted
+		//
+		// A ring's inner radius has to sit outside its planet, so the planet
+		// must be under 40.556. If the shadow looks like half the ring rather
+		// than a band across it, this number is too big -- it is not the sign.
 		_PlanetRadius ("Planet Radius (object units, 0 = off)", Float) = 0
 		_ShadowStrength ("Planet Shadow Strength", Range(0, 1)) = 1
 		// Penumbra tangent, i.e. tan of the star's angular radius. The real
@@ -240,10 +257,15 @@ Shader "OpenFrontier/PlanetaryRing"
 				inputData.normalWS = geoNormalWS;
 				inputData.viewDirectionWS = GetWorldSpaceNormalizeViewDir(v.positionWS);
 				inputData.shadowCoord = TransformWorldToShadowCoord(v.positionWS);
-				// The ambient lives here rather than being added to emission
-				// afterwards, so URP treats it as ambient instead of as extra
-				// outgoing light that ignores the surface.
-				inputData.bakedGI = _DustAmbient.rgb;
+				// Deliberately NOT _DustAmbient here. UniversalFragmentPBR
+				// folds bakedGI in as the GI term, so it arrives already
+				// summed with the direct light in color.rgb -- and the planet
+				// shadow below multiplies color.rgb. Leaving ambient in there
+				// therefore multiplied it by zero and made the shadowed side
+				// pure black, which is not a shadow, it is a hole. The planet
+				// blocks the star; it does not block the rest of the sky.
+				// It is added after the shadow instead.
+				inputData.bakedGI = half3(0, 0, 0);
 				inputData.vertexLighting = half3(0, 0, 0);
 				inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(v.positionCS);
 				inputData.shadowMask = half4(1, 1, 1, 1);
@@ -278,10 +300,13 @@ Shader "OpenFrontier/PlanetaryRing"
 						_ShadowStrength);
 				}
 
-				// Coverage. This also dims the ambient inside the shadow,
-				// which is defensible rather than an oversight: the planet is
-				// between that patch of ring and the sky, so it does receive
-				// less of everything, not just less sun.
+				// Ambient, added AFTER the shadow so the shadowed side stays a
+				// dark ring rather than a hole in one. URP's bakedGI is zero
+				// here, so with no additional lights nothing else would put
+				// anything in the unlit half.
+				color.rgb += _DustAmbient.rgb;
+
+				// Coverage.
 				color.a = saturate(dustTex.a);
 
 				// Premultiply, to match Blend One / OneMinusSrcAlpha above.
