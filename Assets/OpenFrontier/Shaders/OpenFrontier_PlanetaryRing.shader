@@ -196,7 +196,6 @@ Shader "OpenFrontier/PlanetaryRing"
 				output.normalWS = normInputs.normalWS;
 				output.tangentWS = half4(normInputs.tangentWS, input.tangentOS.w);
 				output.color = input.color;
-				output.facing = IS_FRONT_VFACE(input.positionCS, 1.0, -1.0);
 
 				// The RAW uv, not TRANSFORM_TEX'd: each texture carries its own
 				// _ST so the dust and the rocks can tile independently while
@@ -278,7 +277,8 @@ Shader "OpenFrontier/PlanetaryRing"
 				// Flip the geometric normal on back faces. Without this the
 				// underside of a ring is lit from behind and comes out black,
 				// which is the classic single-sided-an-annulus bug.
-				half3 normalWS = normalize(input.normalWS) * input.facing;
+				half3 normalWS = normalize(input.normalWS)
+					* IS_FRONT_VFACE(input.facing, 1.0, -1.0);
 				half3 tangentWS = normalize(input.tangentWS.xyz);
 				half3 bitangentWS = cross(normalWS, tangentWS) * input.tangentWS.w;
 				normalWS = normalize(TransformTangentToWorld(normalTS,
