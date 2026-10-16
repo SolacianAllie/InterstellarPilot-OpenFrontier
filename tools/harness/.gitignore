@@ -1,0 +1,11 @@
+# Generated projects and their build output. gen.py regenerates these from
+# the .asmdef files on disk; nothing here is hand-edited or worth keeping.
+build/
+
+__pycache__/
+
+# Prefab scan caches, keyed on (mtime_ns, size). They store the MESSAGES of
+# each scan, never just a verdict -- a cache holding a boolean would make a
+# second run of a failing check report "0 failures" and quietly invert it.
+.prefab-yaml-cache.json
+.prefab-null-cache.json
