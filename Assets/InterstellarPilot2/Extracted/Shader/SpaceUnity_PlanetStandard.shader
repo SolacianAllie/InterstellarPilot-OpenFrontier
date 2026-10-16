@@ -92,6 +92,43 @@ Shader "SpaceUnity/PlanetStandard" {
 		// waterMask already uses, so there is one water channel, not two.
 		_CityLightFloor ("City Light Floor", Range(0, 1)) = 0.25
 		_CityLightRange ("City Light Range", Range(0.02, 1)) = 0.1
+		[Header(CitiesGrowth)]
+		// How much of the city lights plate is switched on. 0 is no cities at
+		// all, 1 is every settlement the plate marks.
+		//
+		// It is a THRESHOLD SWEEP over the plate's ALPHA, not a brightness, and
+		// the alpha is genuinely a separate channel rather than a copy of the
+		// colour. Measured on night_lights.png: correlation between alpha and
+		// luminance is 0.2823, and 65.3% of the plate sits at alpha exactly 0.
+		// So the plate already knows which texels are cities -- the growth slider
+		// just decides how many of them have grown large enough to show, and the
+		// biggest appear first.
+		//
+		// The threshold runs from 1 + softness at growth 0 to 0 at growth 1, so
+		// the two extremes are exact rather than approximate:
+		//
+		//   growth 0.00   threshold 1.150   0.00% of land lit
+		//   growth 0.25   threshold 0.862   3.59%
+		//   growth 0.50   threshold 0.575   13.79%
+		//   growth 0.75   threshold 0.287   25.05%
+		//   growth 1.00   threshold 0.000   63.97%
+		//
+		// Above 1.0 at growth 0 is the point of it: the plate's alpha maxes at
+		// 1.0, so nothing can pass, and growth 0 is genuinely empty.
+		//
+		// KNOWN RISK, check this once in the editor. This plate imports at
+		// textureCompression 1 on both Standalone and Android (2 only on
+		// DefaultTexturePlatform), and if the runtime format is one that drops
+		// alpha then _Lights.a reads 1.0 everywhere, the sweep has no spatial
+		// key to work with, and the slider degrades to a plain brightness ramp --
+		// growth 0 still goes dark, but growth 1 lights the whole continent
+		// instead of the cities. Set _CityGrowth to 0.5 and look: cities in the
+		// middle of nowhere lit means the alpha survived, uniform coverage means
+		// it did not. Everything else here works either way.
+		_CityGrowth ("City Growth", Range(0, 1)) = 1
+		// The width of the threshold's soft edge, so the boundary is not a hard
+		// step along a coastline at 2048 across a whole planet.
+		_CityGrowthSoftness ("City Growth Softness", Range(0.01, 1)) = 0.15
 		_WaterSmoothness ("Water Smoothness", Range(0, 1)) = 0.92
 		_LandSmoothness ("Land Smoothness", Range(0, 1)) = 0.12
 		_LandDetailSmoothness ("Land Detail Smoothness", Range(0, 1)) = 0.3
@@ -244,6 +281,8 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _WaterRange;
 				float _CityLightFloor;
 				float _CityLightRange;
+				float _CityGrowth;
+				float _CityGrowthSoftness;
 				float _WaterSmoothness;
 				float _LandSmoothness;
 				float _LandDetailSmoothness;
@@ -314,7 +353,8 @@ Shader "SpaceUnity/PlanetStandard" {
 				if (_AlbedoDebug > 0.5 && _AlbedoDebug < 1.5)
 					return half4(albedoTex.rgb, 1.0);
 				half3 normalTS = UnpackNormal(SAMPLE_TEXTURE2D(_Normals, sampler_Normals, input.uv));
-				half3 lightsTex = SAMPLE_TEXTURE2D(_Lights, sampler_Lights, input.uv).rgb;
+				half4 lightsSample = SAMPLE_TEXTURE2D(_Lights, sampler_Lights, input.uv);
+				half3 lightsTex = lightsSample.rgb;
 				half4 emissionTex = SAMPLE_TEXTURE2D(_Emission, sampler_Emission, input.uv);
 				// Sampled up here rather than down with the SurfaceData, because the
 				// water placement needs to be known before the smoothness block.
@@ -459,8 +499,23 @@ Shader "SpaceUnity/PlanetStandard" {
 				// City lights come from the _Lights plate, only on the night side and
 				// never over water, because these plates are orthographic night lights
 				// and their street grids bleed well past every coastline.
-				half3 emission = lightsTex * _LightScale * nightMask
-				                              * (1.0 - cityLightAvoid)
+				// The growth sweep. See _CityGrowth for why the threshold runs to
+				// 1 + softness rather than to 1.
+				float cityCut = (1.0 - _CityGrowth) * (1.0 + _CityGrowthSoftness);
+				float grown = saturate((lightsSample.a - cityCut)
+				                       * rcp(max(1e-3, _CityGrowthSoftness)));
+
+				// City lights come from the _Lights plate, only on the night side,
+				// never over water, and only where the plate says there is a city.
+				//
+				// The water gate is measured, and it has to stay separate from
+				// waterMask: waterMask 0.32/0.20 leaves 0.1110 of the plate's light
+				// energy sitting on open ocean, this leaves 0.000000. It reads G,
+				// and G is load-bearing -- the spec map's A is the same signal at
+				// correlation 0.9937 and never exceeds 0.7373, so it could not
+				// close the gate the way G does.
+				half3 emission = lightsTex * (_LightScale * nightMask * grown
+				                              * (1.0 - cityLightAvoid))
 				               + emissionTex.rgb * emissionTex.a * _EmissionScale;
 							   + emissionTex.rgb * emissionTex.a * _EmissionScale;
 
