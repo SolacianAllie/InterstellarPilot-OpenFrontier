@@ -18,15 +18,26 @@ namespace OpenFrontier.IP.Engine.Core.Units.ActiveUnits
 
 		// ---- planetary ring ----
 
-		// The planet's radius in the RING'S OBJECT UNITS, not world units.
+		// The planet's radius is NOT authored. It is worked out from the
+		// planet's own mesh and its transform scale -- the two things that
+		// already define how big the planet is -- and then divided by the
+		// ring's scale to land in the ring's OBJECT units, which is the space
+		// the shader casts its shadow in. Every planet prefab already carries
+		// the answer as a scale (800, 900, 910; moons at 40), so a number typed
+		// here would only be a second copy of it waiting to disagree.
 		//
-		// The ring shader casts the shadow against a sphere sitting at the
-		// ring's object origin and never sees the transform scale, so this one
-		// number describes the planet correctly however the whole system is
-		// scaled. Measured from the planet's own mesh it is a fixed number per
-		// prefab; left at 0 the planet shadow is simply off, which is the
-		// right default for every planet that has no ring.
-		public float RingPlanetRadius;
+		// Nudge the result rather than replace it. 1 is exact; below 1 makes the
+		// planet read slightly smaller than it measures, which is usually what
+		// you want, because an exact match puts the shadow's outer edge exactly
+		// on the ring's inner rim and that looks like the ring is clipped
+		// rather than shadowed.
+		public float RingSizeMultiplier = 1f;
+
+		// Optional. Left null the planet mesh is found automatically as the
+		// first MeshFilter that is not the ring's. Worth setting explicitly on
+		// a prefab where the atmosphere shell or another child would be found
+		// first, since the shell's bounds are not the planet's.
+		public MeshFilter PlanetMeshFilter;
 
 		// Assigned per ring. Left null it is found at runtime by looking for a
 		// child MeshRenderer using the ring shader, so adding a ring to a
@@ -101,12 +112,14 @@ namespace OpenFrontier.IP.Engine.Core.Units.ActiveUnits
 				return;
 			}
 
+			float radius = ResolvePlanetRadius(renderer);
+
 			// Read into the existing block rather than setting a fresh one.
 			// A fresh block would wipe anything else driving this renderer, and
 			// ActiveUnitFadeOutMeshController sets a fade colour on the same
 			// kind of object.
 			renderer.GetPropertyBlock(ringBlock);
-			ringBlock.SetFloat(PlanetRadiusId, RingPlanetRadius);
+			ringBlock.SetFloat(PlanetRadiusId, radius);
 
 			if (SeedRingFromUnit)
 			{
@@ -114,6 +127,59 @@ namespace OpenFrontier.IP.Engine.Core.Units.ActiveUnits
 			}
 
 			renderer.SetPropertyBlock(ringBlock);
+
+			if (Application.isPlaying && radius <= 0f)
+			{
+				Debug.LogWarning("Ring planet radius came out 0, so the planet shadow is off. "
+					+ "Check PlanetMeshFilter, or that the ring is scaled above zero.", this);
+			}
+		}
+
+		private float ResolvePlanetRadius(MeshRenderer ringRenderer)
+		{
+			MeshFilter filter = PlanetMeshFilter != null ? PlanetMeshFilter
+				: FindPlanetMeshFilter(ringRenderer);
+			if (filter == null || filter.sharedMesh == null)
+			{
+				return 0f;
+			}
+
+			// Radius of the planet mesh about its own origin, in the mesh's own
+			// units. maxComponent, not magnitude: SphereMediumPoly's extents are
+			// (10,10,10) and the length of that vector is 17.3, which is not the
+			// radius. maxComponent is the radius for a sphere centred on its
+			// origin, and this mesh has m_Center {0,0,0} with m_Extent
+			// {10,10,10}, so it is exactly that.
+			Bounds bounds = filter.sharedMesh.bounds;
+			float local = Mathf.Max(bounds.extents.x, Mathf.Max(bounds.extents.y, bounds.extents.z));
+
+			// Largest axis on both transforms. A non-uniform scale would make
+			// the planet an ellipsoid; taking the largest matches the extent the
+			// renderer actually draws, which is the silhouette the shadow has to
+			// match.
+			float planetScale = LargestAxis(filter.transform.lossyScale);
+			float ringScale = LargestAxis(ringRenderer.transform.lossyScale);
+
+			// The ring is drawn in its own object space, so a radius in world
+			// units means nothing to the shader. This is the whole reason the
+			// shadow is cast in object space at all.
+			//
+			// A non-uniformly scaled ring makes the sphere the shader casts
+			// become an ellipsoid in world space, which is the honest result of
+			// it: an object-space sphere under a non-similarity transform is an
+			// ellipsoid. Rings are expected to be scaled uniformly, so this is
+			// noted rather than compensated for.
+			if (ringScale < 1e-5f)
+			{
+				return 0f;
+			}
+
+			return local * planetScale / ringScale * RingSizeMultiplier;
+		}
+
+		private static float LargestAxis(Vector3 v)
+		{
+			return Mathf.Max(v.x, Mathf.Max(v.y, v.z));
 		}
 
 		private float ResolveSeed()
@@ -149,6 +215,26 @@ namespace OpenFrontier.IP.Engine.Core.Units.ActiveUnits
 					&& material.shader.name == RingShaderName)
 				{
 					return renderers[i];
+				}
+			}
+			return null;
+		}
+
+		private MeshFilter FindPlanetMeshFilter(MeshRenderer ringRenderer)
+		{
+			// Skip the ring's own filter: it is a child like everything else,
+			// and its bounds describe the belt, not the planet.
+			Transform ringTransform = ringRenderer != null ? ringRenderer.transform : null;
+			MeshFilter[] filters = GetComponentsInChildren<MeshFilter>(true);
+			for (int i = 0; i < filters.Length; i++)
+			{
+				if (ringTransform != null && filters[i].transform == ringTransform)
+				{
+					continue;
+				}
+				if (filters[i].sharedMesh != null)
+				{
+					return filters[i];
 				}
 			}
 			return null;
