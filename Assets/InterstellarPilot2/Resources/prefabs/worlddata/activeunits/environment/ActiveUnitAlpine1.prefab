@@ -138,7 +138,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CloakDrawColor: {r: 1, g: 1, b: 1, a: 1}
-  ActiveUnitClass: {fileID: 114724804207875695, guid: 6820702f0325cd74489065d4bad5a992, type: 3}
+  ActiveUnitClass: {fileID: 114724804207875695, guid: 13e539b5d31f4d0496fd7a0aad39c5ae, type: 3}
   CommsDialogPositioner: {fileID: 0}
   DrawRangeObjects: []
   CloakOutlineRenderer: {fileID: 0}
