@@ -17,6 +17,10 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_SunBleed ("Sun Bleed", Range(0, 1)) = 1
 		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 2
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
+		// The twilight arch. Separate from _AtmoGlow, which is the air's own
+		// scattered colour and must not wrap past the terminator, and separate
+		// from _SunBleed, which is the forward-scattered beam.
+		_SunArchStrength ("Sun Arch Strength", Range(0, 2)) = 0.8
 		[Header(ForwardScatter)]
 		_ForwardBias ("Forward Bias", Range(-1, 1)) = 1
 		_ForwardRange ("Forward Range", Range(0.05, 2)) = 1
@@ -38,6 +42,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			fixed4 _AtmoColor;
 			fixed4 _SunRimColor;
 			fixed4 _SunRimDeep;
+			fixed _SunArchStrength;
 			float _SunExtinction;
 			float _SunReddening;
 			float _Size;
@@ -348,6 +353,27 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// limb evenly, which is the "glow all the way round" look.
 				float airGlow = dayAir * _AtmoGlow * transmit + _NightGlow;
 
+				// THE TWILIGHT ARCH.
+				//
+				// dayAir is smoothstep(0, 0.35, ndl), so it reaches zero exactly AT
+				// the terminator and leaves the entire night limb with _NightGlow alone
+				// -- measured 0.030 against a day-side 0.356. That is why a planet
+				// with its night side visible had a dead dark rim where it should have
+				// had a reddened one.
+				//
+				// The air at and just past the terminator IS still sunlit, because it is
+				// lit tangentially through the upper atmosphere. It is the GROUND below
+				// that is in shadow. That is what an arch is, and it is why this is not
+				// the wrap that _AtmoGlow was deliberately prevented from doing: this
+				// peaks where bearing is 0 and dies at both the sub-solar and the
+				// anti-solar limb, so it cannot ring the planet.
+				//
+				// It is sunlight, not the air's own scattered colour, so it ADDS. That
+				// matters: lerping the air from cyan toward orange passes through
+				// grey, measured at (0.61, 0.66, 0.69) right at the terminator, so the
+				// air was greying out at precisely the point it should be reddest.
+				float arch = pow(saturate(1.0 - abs(bearing) * 2.2), 2.0) * sunBehind;
+
 				// Two colours, and the sun REPLACES rather than adds. Additive
 				// warm on top of full-strength air washes the two together
 				// into cream, which is why they used to collapse into one
@@ -365,7 +391,11 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// term that decides what the rim looks like where the arc has faded,
 				// and previously it was a flat _AtmoColor -- so the night-side limb
 				// came out blue exactly where the sun was lowest.
-				fixed3 airColor = lerp(_AtmoColor.rgb, sunset, airMass * sunBehind);
+				// Two stages, matching the surface shader's hazeTint for the same
+				// reason: one lerp from cyan to orange goes through grey.
+				half3 warm = saturate(airMass * sunBehind);
+				fixed3 airColor = lerp(lerp(_AtmoColor.rgb, _SunRimColor.rgb, warm),
+				                      _SunRimDeep.rgb, warm * warm);
 
 				fixed3 tint = lerp(airColor, sunset, saturate(arc))
 				            * density * airGlow * lightCol;
@@ -374,6 +404,10 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// the sun is coming up.
 				tint += sunset
 				      * (density * arc * _SunRimBoost * lightCol);
+
+				// The arch, added after the arc and not multiplied by it.
+				tint += sunset
+				      * (density * arch * _SunArchStrength * transmit * lightCol);
 
 				// _Transparency is the master gain. The 0.4 scale is not arbitrary:
 				// it puts the core of the band at roughly (0.5, 0.85, 1.0)
