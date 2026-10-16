@@ -74,6 +74,34 @@ Shader "SpaceUnity/PlanetStandard" {
 		// waterMask already uses, so there is one water channel, not two.
 		_CityLightFloor ("City Light Floor", Range(0, 1)) = 0.25
 		_CityLightRange ("City Light Range", Range(0.02, 1)) = 0.1
+		[Header(CitiesByDay)]
+		// Cities by day are grey concrete and NOT a glow. That distinction is
+		// the whole implementation: grey belongs in the ALBEDO, where the sun
+		// lights it and the cloud shadow above darkens it, exactly as it does
+		// the terrain. Putting it in the emission would make it self-lit, so it
+		// would not dim under a cloud, would not fall off at the terminator,
+		// and would still be visible on the night side.
+		//
+		// Thresholded off the SAME _Lights plate the night city reads, so the
+		// grey towns by day sit exactly where the lights come on at dusk -- one
+		// plate, two presentations, no chance of them disagreeing.
+		//
+		// The floor is not cosmetic. Measured on night_lights.png (2048x1024):
+		// median luminance 0.007, mean 0.117, and 72% of the plate is below 0.1.
+		// Remapping that straight gives a uniform 12% wash over the entire
+		// planet rather than towns. The floor is what turns it back into spots:
+		//
+		//   floor 0.15 / range 0.15   31% of land partly grey, 19% fully
+		//   floor 0.30 / range 0.15   19% of land partly grey,  5% fully
+		_CityDayFloor ("City Day Floor", Range(0, 1)) = 0.15
+		_CityDayRange ("City Day Range", Range(0.02, 1)) = 0.15
+		// Master on/off. 1 replaces the albedo with grey outright.
+		_CityDayStrength ("City Day Strength", Range(0, 1)) = 0.6
+		// The grey, normalised against its own luminance at use so the swap
+		// preserves brightness and only moves hue -- a green valley becoming
+		// concrete must get darker or lighter on its own terms, not by being
+		// lerped toward a flat mid grey.
+		_CityDayColour ("City Day Colour", Color) = (0.63,0.61,0.58,1)
 		_WaterSmoothness ("Water Smoothness", Range(0, 1)) = 0.92
 		_LandSmoothness ("Land Smoothness", Range(0, 1)) = 0.12
 		_LandDetailSmoothness ("Land Detail Smoothness", Range(0, 1)) = 0.3
@@ -104,34 +132,37 @@ Shader "SpaceUnity/PlanetStandard" {
 		// authored shadows saturate to solid black rather than going negative
 		// -- see the saturate in the frag.
 		_CloudShadowStrength ("Cloud Shadow Strength", Range(0, 2)) = 1.5
-		// How much of the EMISSION survives the cloud deck above it. 1 is fully
-		// clear, 0 is fully blocked.
+		// How much of the EMISSION survives the CLOUD DECK between it and the
+		// camera. 1 is fully clear, 0 is fully blocked.
 		//
-		// This is a separate dial from _CloudShadowStrength on purpose. That one
-		// is applied to the LIT term only, so that the terrain goes dark under a
-		// cloud while city lights and magma keep burning through it -- right for
-		// the surface being shadowed, and wrong for the emission, which sits
-		// UNDER the deck and has to pass through it.
-		//
-		// At zero coverage this is exactly 1.0, so a planet with no cloud is
-		// untouched by this term.
-		//
-		// It is SQUARED, which is what makes it visible. Straight lerp at 0.3 was
+		// SQUARED, which is what makes it visible. Straight lerp at 0.3 was
 		// barely readable: under cloud the eye sees a mix of the dimmed lights and
 		// the deck's own bright colour, so dimming the lights moves that mix
-		// toward something already bright and the change compresses.
-		//
-		// Squaring puts the extra bite where coverage is highest, which is exactly
-		// where the eye is looking for it:
-		//
-		//   1.0 clear      1.000    nothing under any cloud
-		//   0.5 half       0.500    half covered is half as bright
-		//   0.5 full       0.250    fully covered is a quarter -- a 4x cut
-		//
-		// At 0.3 squared it is 0.09 at full cloud, which is too much: the lights
-		// vanish under the deck and the map reads as having no cities at all in
-		// the overcast regions.
+		// toward something already bright and the change compresses. Squaring
+		// puts the bite where coverage is highest. At zero coverage lerp is
+		// exactly 1.0, so an unclouded planet is untouched.
 		_CloudEmissionThrough ("Cloud Emission Through", Range(0, 1)) = 0.5
+		// How much of the CLOUD SHADOW also falls on the emission.
+		//
+		// This is the one that actually reads, and the reason is measured rather
+		// than guessed. On the maps Alpine1 actually ships (clouds_storm_diffuse
+		// and clouds_storm_shadow_diffuse, whose alpha means are both 0.5433 --
+		// undisplaced copies of each other, as this shader's notes say):
+		//
+		//   coverage term at default        13.88% of the planet fully covered
+		//   shadow term at strength 1.5      37.54% of the planet fully shadowed
+		//
+		// So the coverage term leaves 86% of the surface on a partial dimming
+		// that never reads as anything, while the shadow map puts more than a
+		// third of it into solid dark. That is the difference between the dial
+		// "barely changing" and the dial being obvious.
+		//
+		// Physically this is not quite honest -- a city keeps burning in a cloud
+		// shadow, because the sun is not what lights it. It is here because the
+		// shadow is what the eye already reads as "cloud", and lights that ignore
+		// it look pasted on top of the weather. Set this to 0 for the physical
+		// version, which is what the deck term above then carries alone.
+		_CityLightCloudShadow ("City Light Cloud Shadow", Range(0, 1)) = 0.75
 		// Pan and drift are a UV offset added before the parallax term, so all
 		// four cloud maps move together. Drift is UV per second off _Time.
 		// Cloud altitude in PLANET RADII, for projecting the shadow. A cloud at
@@ -206,6 +237,10 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _WaterRange;
 				float _CityLightFloor;
 				float _CityLightRange;
+				float _CityDayFloor;
+				float _CityDayRange;
+				float _CityDayStrength;
+				float4 _CityDayColour;
 				float _WaterSmoothness;
 				float _LandSmoothness;
 				float _LandDetailSmoothness;
@@ -219,6 +254,7 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _CloudShadowSharpness;
 				float _CloudShadowStrength;
 				float _CloudEmissionThrough;
+				float _CityLightCloudShadow;
 				float _CloudShadowHeight;
 				float4 _CloudPan;
 				float4 _CloudDrift;
@@ -478,8 +514,62 @@ Shader "SpaceUnity/PlanetStandard" {
 				// alpha; raising sharpness gives the hard-edged storm look.
 				float cloudCov = saturate((cloudTex.a - _CloudCoverage + 0.5) * _CloudSharpness);
 
+				// The one shadow term for the whole shader, hoisted here so the ground
+				// and the city lights below cannot drift apart: it is the same value,
+				// computed once, and if the two ever disagreed the lights would go dark
+				// where the terrain stayed lit.
+				//
+				// Gain first, then the strength. The order matters: strength alone
+				// cannot make a faint map visible. Measured alpha means across the
+				// shipped shadow maps: clouds_medium 0.371, clouds_locked 0.201, but
+				// clouds_aerial_shadow only 0.012 with 1.4% of texels above 0.3.
+				//
+				// The saturate around the whole expression is REQUIRED, not tidiness.
+				// _CloudShadowStrength goes to 2, so 1 - a*strength goes NEGATIVE
+				// wherever a*strength exceeds 1 -- on clouds_nuke, whose alpha mean
+				// is 0.794, that is most of the map. A negative cloudShadow
+				// multiplied into max(litTerm, 0) subtracts from the emission term,
+				// which is exactly what the separation further down exists to
+				// prevent. Saturating turns "overdriven" into "solid black shadow"
+				// instead of "shadow that eats the city lights".
+				float cloudShadow = saturate(
+					1.0 - saturate(shadowTex.a * _CloudShadowSharpness)
+					        * _CloudShadowStrength);
+
 				SurfaceData surfaceData = (SurfaceData)0;
 				surfaceData.albedo = albedoTex.rgb;
+
+				// Cities by day. Grey concrete is a property of the GROUND, so this
+				// goes into the albedo and is lit like terrain: it takes the sun, it
+				// dims under cloudShadow, it goes with the twilight band. Putting it
+				// in the emission instead would make towns self-lit, and a self-lit
+				// town is still shining at midnight under an overcast sky.
+				//
+				// Reuses the night plate and the night water gate, so the grey towns
+				// by day and the lights at dusk are the same settlements:
+				//
+				//   (1.0 - nightMask)         day side only. nightMask is already
+				//                           built on geoNdL, so this crossfades
+				//                           across the terminator on the same curve
+				//                           the lights do -- dusk is the handover,
+				//                           and there is no seam in it.
+				//   (1.0 - cityLightAvoid)    off the water, for the measured reason
+				//                           in the property block.
+				float urbanLum = dot(lightsTex, float3(0.2126, 0.7152, 0.0722));
+				float urban = saturate((urbanLum - _CityDayFloor)
+				                      * rcp(max(1e-3, _CityDayRange)))
+				             * (1.0 - nightMask) * (1.0 - cityLightAvoid);
+
+				// Normalised against its own luminance so the swap moves hue and
+				// preserves brightness. Lerping toward a flat mid grey instead would
+				// make every city the same value, and would darken bright snowfields
+				// while brightening dark forest, neither of which is what a city does.
+				const float3 kLuma = float3(0.2126, 0.7152, 0.0722);
+				float albedoLum = dot(surfaceData.albedo, kLuma);
+				float cityLum = max(1e-3, dot(_CityDayColour.rgb, kLuma));
+				surfaceData.albedo = lerp(surfaceData.albedo,
+				                           _CityDayColour.rgb * (albedoLum / cityLum),
+				                           urban * _CityDayStrength);
 				surfaceData.metallic = 0.0;
 
 				// Spec map convention, measured off the maps rather than
@@ -544,16 +634,26 @@ Shader "SpaceUnity/PlanetStandard" {
 				// #pragma multi_compile _ _SPECULAR_SETUP and the keyword set
 				// on the material, which also changes how diffuse is derived.
 				surfaceData.normalTS = normalTS;
-				// THE EMISSION IS UNDER THE DECK, so it is occluded by it. The
-				// deck composite further down is untouched and still HEAD's; this
-				// only scales what reaches the camera through the cloud in between.
+				// The emission sits UNDER the weather, and there are two different
+				// things standing between it and the camera, so it takes two terms.
 				//
-				// lerp is exactly 1.0 at zero coverage, so an unclouded planet is
-				// bit-identical to having no deck at all.
-				// Square, so the cut is concentrated under the thickest cloud --
-				// see the property block for why a straight lerp read as no change.
+				//   cloudCov     the deck itself, between the ground and the eye
+				//   cloudShadow  the deck's shadow, already projected onto the
+				//                ground at the sun's offset -- i.e. the part of the
+				//                weather sitting ON this texel rather than over it
+				//
+				// Both are separate dials because the second is the one that reads:
+				// on the shipped clouds_storm maps the coverage term leaves 86% of
+				// the surface on a partial dimming, while the shadow map puts 37%
+				// of it into solid dark. See the property block.
+				//
+				// The deck composite further down is untouched and still 6ecd533b's
+				// single lerp. Neither term changes what the deck looks like.
 				float throughLerp = lerp(1.0, _CloudEmissionThrough, cloudCov);
-				surfaceData.emission = emission * throughLerp * throughLerp;
+				float shadowCut = lerp(1.0, 1.0 - cloudShadow,
+				                       _CityLightCloudShadow);
+				surfaceData.emission = emission
+				                        * throughLerp * throughLerp * shadowCut;
 				surfaceData.occlusion = 1.0;
 				surfaceData.alpha = 1.0;
 				surfaceData.clearCoatMask = 0.0;
@@ -585,23 +685,6 @@ Shader "SpaceUnity/PlanetStandard" {
 				// emission: magma and city lights keep burning through the
 				// band instead of being dimmed with everything else.
 				half3 litTerm = (color.rgb - emissionTerm) * sunTint;
-				// Gain first, then the strength. The order matters: strength alone
-				// cannot make a faint map visible. Measured alpha means across the
-				// shipped shadow maps: clouds_medium 0.371, clouds_locked 0.201, but
-				// clouds_aerial_shadow only 0.012 with 1.4% of texels above 0.3.
-				//
-				// The saturate around the whole expression is REQUIRED, not tidiness.
-				// _CloudShadowStrength goes to 2, so 1 - a*strength goes NEGATIVE
-				// wherever a*strength exceeds 1 -- on clouds_nuke, whose alpha mean
-				// is 0.794, that is most of the map. A negative cloudShadow
-				// multiplied into max(litTerm, 0) subtracts from the emission term,
-				// which is exactly what the separation just above exists to
-				// prevent: city lights and magma are meant to keep burning under a
-				// cloud. Saturating turns "overdriven" into "solid black shadow"
-				// instead of "shadow that eats the city lights".
-				float cloudShadow = saturate(
-					1.0 - saturate(shadowTex.a * _CloudShadowSharpness)
-					        * _CloudShadowStrength);
 				color.rgb = emissionTerm + max(litTerm, 0.0) * cloudShadow;
 				half3 afterLit = color.rgb;          // bisect capture
 
