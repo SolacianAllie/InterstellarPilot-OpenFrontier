@@ -304,6 +304,13 @@ Shader "OpenFrontier/PlanetaryRing"
 					rock = rock * rock * (3.0 - 2.0 * rock);
 				}
 
+				// Declared before the bisect, which reads it. HLSL resolves an
+				// identifier where it is USED, not file-wide, so declaring this
+				// further down with the rest of the surface is "undeclared
+				// identifier" at the point of use.
+				half3 surfaceDebugAlbedo = lerp(dustTex.rgb * _DustColor.rgb,
+					rockTex.rgb * _RockColor.rgb, rock);
+
 				// ---- staged bisect ----
 				// Returned BEFORE the lighting and with alpha 1, so what is on
 				// screen is the value under test and nothing else. Bounded at
@@ -342,9 +349,6 @@ Shader "OpenFrontier/PlanetaryRing"
 				half3 bitangentWS = cross(normalWS, tangentWS) * input.interpolated.tangentWS.w;
 				normalWS = normalize(TransformTangentToWorld(normalTS,
 					half3x3(tangentWS, bitangentWS, normalWS)));
-
-				half3 surfaceDebugAlbedo = lerp(dustTex.rgb * _DustColor.rgb,
-					rockTex.rgb * _RockColor.rgb, rock);
 
 				// ---- surface ----
 				SurfaceData surfaceData = (SurfaceData)0;
