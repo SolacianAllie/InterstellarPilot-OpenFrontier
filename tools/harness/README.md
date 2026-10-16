@@ -30,10 +30,18 @@ under `Library/ScriptAssemblies`, and the vendored ones under
 | `checks/prefab_yaml_check.py` | prefab structure: anchors, internal references, missing scripts |
 | `checks/prefab_null_check.py` | advisory: null fields the script dereferences unguarded |
 
-There is also `tools/fbx/`, which verifies `Assets/Editor/FbxMeshWriter.cs`
-(the FBX exporter). It compiles the writer **outside Unity** against synthetic
-meshes and parses the output with an independent validator. `check.sh` runs it
-as part of the normal pass. See its own header for why it is not in `checks/`.
+There is also `tools/mesh/`, which exports a Unity `Mesh .asset` to a binary
+FBX without opening Unity. It is a tool rather than a check, so `check.sh` does
+not run it:
+
+```bash
+bash tools/mesh/run.sh Assets/InterstellarPilot2/Extracted/Mesh/SphereMediumPoly.asset out.fbx
+```
+
+An earlier version of this harness verified an ASCII FBX writer in
+`Assets/Editor/`. That check was **removed**, because Blender 5.x refuses ASCII
+FBX outright, so the writer could not produce a usable file. `tools/mesh/` does
+not write FBX by hand at all — Blender's own exporter does.
 
 ## How it is put together
 

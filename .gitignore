@@ -121,3 +121,4 @@ InitTestScene*.unity*
 # Naming a copy makes it a different player from every other copy on this
 # machine. Safe to delete; nothing depends on it existing.
 openfrontier-profile.txt
+MeshExports/

@@ -145,22 +145,14 @@ for c in "$CHECKS"/*.py; do
   fi
 done
 
-# --------------------------------------------------------------- fbx writer
-# FbxMeshWriter is pure C# with no UnityEngine in it precisely so it can be
-# checked here: compiled standalone against synthetic meshes, then the output
-# is parsed by an independent validator. It is the only test of that writer,
-# and the two things it guards -- the bitwise-complement marker on each face's
-# last index, and *N counting scalars rather than elements -- both fail
-# SILENTLY in the file rather than loudly here.
-FBX_RUN="$PROJECT/tools/fbx/run.sh"
-if [ -f "$FBX_RUN" ]; then
-  head1 "fbx writer"
-  if bash "$FBX_RUN"; then
-    :
-  else
-    note_fail "fbx writer verification"
-  fi
-fi
+# --------------------------------------------------------------- mesh export
+# tools/mesh decodes a Unity Mesh .asset and hands it to Blender's own
+# exporter, producing a binary FBX. It is NOT run by default: it is a
+# tool, not a check, and it needs blender on PATH. Run it directly --
+#   bash tools/mesh/run.sh <Mesh.asset> [out.fbx]
+# There used to be an fbx writer check here. It was removed because the
+# ASCII writer it verified could not produce a file Blender will open, and a
+# check that guards a tool nobody can use is worse than no check.
 
 # ------------------------------------------------------------------ verdict
 head1 ""
