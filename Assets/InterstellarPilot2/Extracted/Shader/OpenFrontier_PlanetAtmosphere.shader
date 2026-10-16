@@ -1,6 +1,20 @@
 Shader "OpenFrontier/Planet Atmosphere" {
 	Properties {
-		_AtmoColor ("Atmosphere Color", Vector) = (0.35,0.78,1,1)
+		// Color, not Vector. Both are four floats underneath, so nothing about
+		// the value or the HLSL changes -- but a Vector property is drawn by the
+		// inspector as X/Y/Z/W boxes while a Color property gets the swatch and
+		// the picker. This one was a Vector and the two below it were Colors,
+		// which is why this row alone read as four numbers.
+		//
+		// Safe for the existing materials. All eight of them are Unity 5 era
+		// (serializedVersion 8) and store properties inline in m_Properties as
+		// - _AtmoColor: {r:, g:, b:, a:}, where Color and Vector are written
+		// identically, so nothing is lost on reimport. Two of them carry a value
+		// that differs from the shader default -- Atmosphere-Blue-Medium at
+		// (0.3, 0.72, 1) and Atmosphere-Brown-Medium at (1, 0.8, 0.55) -- and
+		// both survive. The other six have no _AtmoColor entry at all and use
+		// the default either way.
+		_AtmoColor ("Atmosphere Color", Color) = (0.35,0.78,1,1)
 		_SunRimColor ("Sun Rim Color", Color) = (1,0.62,0.30,1)
 		_SunRimDeep ("Sun Rim Deep Color", Color) = (1,0.30,0.12,1)
 		_SunExtinction ("Sun Extinction", Range(0, 1.5)) = 0.25
