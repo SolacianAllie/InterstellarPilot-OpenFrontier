@@ -163,6 +163,51 @@ Shader "SpaceUnity/PlanetStandard" {
 		// it look pasted on top of the weather. Set this to 0 for the physical
 		// version, which is what the deck term above then carries alone.
 		_CityLightCloudShadow ("City Light Cloud Shadow", Range(0, 1)) = 0.75
+		// How much of the DECK'S OWN COLOUR negates the city lights.
+		//
+		// This is the colour-based version, and it is strictly more information
+		// than the coverage dial above: coverage says HOW MUCH cloud is there,
+		// while cloudColour says how much light the cloud is actually made of.
+		// A thin bright wisp and a thick dull storm can share a coverage value
+		// and should not take the same bite out of the lights.
+		//
+		// KNOW THE LIMIT OF IT, because on this planet it is doing nothing at
+		// night, which is exactly when the lights are on:
+		//
+		//   cloudLight = saturate(dot(cloudNormalWS, L) * _CloudWrap
+		//                         + (1.0 - _CloudWrap))
+		//
+		// Alpine1.mat sets _CloudWrap = 1, and at 1 that is a hard terminator --
+		// the deck's colour is EXACTLY ZERO on the night side. Negating the
+		// lights by the colour of a black cloud removes nothing. Measured: at
+		// wrap 1.0 the night-side cloudLight is 0.000; at the shader default
+		// 0.7 it is 0.300; at 0.3 it is 0.550.
+		//
+		// So the colour term only bites on the day side and in twilight. The
+		// lights still get occluded at night, but by the two terms below it
+		// rather than by this one -- which is why they are combined with max()
+		// and not swapped for it.
+		//
+		// Raise _CloudWrap on the material toward 0.7 to bring the deck back at
+		// night, and then this term starts working and the clouds over the
+		// cities become visible instead of being black holes in the map.
+		//
+		// Default 1, not higher, and that is measured. The dial saturates at 1,
+		// so anything above it flattens real differences in the deck:
+		//
+		//   veil 1.0    0.00% of texels saturate   -- full range kept
+		//   veil 1.5   42.59% of texels saturate   -- dull cloud and bright
+		//   veil 2.0   61.64% of texels saturate      cloud take the same bite
+		//
+		// AND ITS SECOND LIMIT, which is the honest one: on clouds_storm_diffuse
+		// the colour IS the opacity. Mean RGB correlates 0.9946 with the plate's
+		// own alpha, per channel 0.9944/0.9947/0.9944, mean |RGB - alpha| 0.046.
+		// The deck is authored in greyscale, so on this planet the veil is very
+		// nearly a restatement of coverage and adds almost nothing over the dial
+		// above it. It earns its place on a deck authored with colour that moves
+		// independently of opacity -- a coloured storm over thin cloud, or a
+		// bright rim on a thin edge. No such plate is in the project yet.
+		_CityLightCloudVeil ("City Light Cloud Veil", Range(0, 4)) = 1
 		// Pan and drift are a UV offset added before the parallax term, so all
 		// four cloud maps move together. Drift is UV per second off _Time.
 		// Cloud altitude in PLANET RADII, for projecting the shadow. A cloud at
@@ -255,6 +300,7 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _CloudShadowStrength;
 				float _CloudEmissionThrough;
 				float _CityLightCloudShadow;
+				float _CityLightCloudVeil;
 				float _CloudShadowHeight;
 				float4 _CloudPan;
 				float4 _CloudDrift;
@@ -536,6 +582,40 @@ Shader "SpaceUnity/PlanetStandard" {
 					1.0 - saturate(shadowTex.a * _CloudShadowSharpness)
 					        * _CloudShadowStrength);
 
+				// The deck's own lit colour, hoisted for the same reason as cloudShadow:
+				// the emission below has to be occluded by the deck, and to do that with
+				// the deck's COLOUR rather than a scalar it needs the colour to exist
+				// first. Pure move -- the composite at the end of this block is
+				// untouched.
+				//
+				// Clouds are a high-albedo layer sitting in the
+				// sky, so they take the sun's colour and are lit with a wrapped
+				// terminator -- they scatter forward and stay visible a little
+				// past where the ground has gone dark, which is most of what
+				// sells them as being above it rather than painted on.
+				// Lit off the deck's OWN normal, not the surface's. A cloud mass has
+				// relief of its own; lighting it from geoNormalWS made the deck perfectly
+				// smooth, which is most of why it read as painted on rather than above.
+				//
+				// The tangent frame is built on geoNormalWS, not the normal-mapped
+				// normal: the deck sits above the terrain, so terrain relief must not
+				// tilt it, same rule the haze and the cloud day/night gate already use.
+				float3 cloudNormalWS = normalize(TransformTangentToWorld(cloudNTS,
+					half3x3(input.tangentWS.xyz, bitangentWS, geoNormalWS)));
+				float cloudLight = saturate(dot(cloudNormalWS, mainLight.direction) * _CloudWrap
+				                           + (1.0 - _CloudWrap));
+				
+				// Specular. Read as data like every other map in this shader: G is the
+				// gloss mask, scaled by _CloudSmoothness. The shipped cloud specular maps
+				// are flat at G = 0.110, so this is a uniform sheen until real ones exist.
+				// A thick cloud deck is not very glossy, hence the low default.
+				half cloudGloss = _CloudSmoothness * saturate(cloudSpecTex.g);
+				half3 cloudHalf = normalize(mainLight.direction + viewDirWS);
+				half cloudSpec = pow(saturate(dot(cloudNormalWS, cloudHalf)),
+					                      exp2(2.0 + 10.0 * cloudGloss)) * cloudGloss;
+				half3 cloudColour = cloudTex.rgb * (sunColour * _CloudBrightness * cloudLight)
+					                  + sunColour * cloudSpec;
+
 				SurfaceData surfaceData = (SurfaceData)0;
 				surfaceData.albedo = albedoTex.rgb;
 
@@ -649,11 +729,26 @@ Shader "SpaceUnity/PlanetStandard" {
 				//
 				// The deck composite further down is untouched and still 6ecd533b's
 				// single lerp. Neither term changes what the deck looks like.
-				float throughLerp = lerp(1.0, _CloudEmissionThrough, cloudCov);
+				// THREE occluders, and they are combined with max() rather than
+				// multiplied, for a measured reason. On Alpine1's material values
+				// cloudCov is the cloud alpha a, and cloudShadow is 1 - a -- the
+				// shadow map and the cloud map are the same file. Multiplying any
+				// two terms built from those INVERTS one against the other and the
+				// product turns back UP near full coverage, where the deck composite
+				// has already painted the lights out anyway. max() of two things
+				// that each fall with cloud thickness cannot do that.
+				//
+				//   deckVeil   the deck's own lit colour. Bright cloud takes more
+				//             light than dull cloud at equal coverage. Zero on the
+				//             night side while _CloudWrap is 1 -- see the property.
+				//   coverVeil  raw coverage, which is what carries the night side.
+				float deckVeil = saturate(cloudColour * _CityLightCloudVeil);
+				float coverVeil = saturate(cloudCov * _CloudEmissionThrough);
 				float shadowCut = lerp(1.0, 1.0 - cloudShadow,
 				                       _CityLightCloudShadow);
 				surfaceData.emission = emission
-				                        * throughLerp * throughLerp * shadowCut;
+				                        * (1.0 - max(deckVeil, coverVeil))
+				                        * shadowCut;
 				surfaceData.occlusion = 1.0;
 				surfaceData.alpha = 1.0;
 				surfaceData.clearCoatMask = 0.0;
@@ -688,33 +783,6 @@ Shader "SpaceUnity/PlanetStandard" {
 				color.rgb = emissionTerm + max(litTerm, 0.0) * cloudShadow;
 				half3 afterLit = color.rgb;          // bisect capture
 
-				// The deck itself. Clouds are a high-albedo layer sitting in the
-				// sky, so they take the sun's colour and are lit with a wrapped
-				// terminator -- they scatter forward and stay visible a little
-				// past where the ground has gone dark, which is most of what
-				// sells them as being above it rather than painted on.
-				// Lit off the deck's OWN normal, not the surface's. A cloud mass has
-				// relief of its own; lighting it from geoNormalWS made the deck perfectly
-				// smooth, which is most of why it read as painted on rather than above.
-				//
-				// The tangent frame is built on geoNormalWS, not the normal-mapped
-				// normal: the deck sits above the terrain, so terrain relief must not
-				// tilt it, same rule the haze and the cloud day/night gate already use.
-				float3 cloudNormalWS = normalize(TransformTangentToWorld(cloudNTS,
-					half3x3(input.tangentWS.xyz, bitangentWS, geoNormalWS)));
-				float cloudLight = saturate(dot(cloudNormalWS, mainLight.direction) * _CloudWrap
-				                           + (1.0 - _CloudWrap));
-				
-				// Specular. Read as data like every other map in this shader: G is the
-				// gloss mask, scaled by _CloudSmoothness. The shipped cloud specular maps
-				// are flat at G = 0.110, so this is a uniform sheen until real ones exist.
-				// A thick cloud deck is not very glossy, hence the low default.
-				half cloudGloss = _CloudSmoothness * saturate(cloudSpecTex.g);
-				half3 cloudHalf = normalize(mainLight.direction + viewDirWS);
-				half cloudSpec = pow(saturate(dot(cloudNormalWS, cloudHalf)),
-					                      exp2(2.0 + 10.0 * cloudGloss)) * cloudGloss;
-				half3 cloudColour = cloudTex.rgb * (sunColour * _CloudBrightness * cloudLight)
-					                  + sunColour * cloudSpec;
 				color.rgb = lerp(color.rgb, cloudColour, cloudCov);
 				half3 afterDeck = color.rgb;         // bisect capture
 
