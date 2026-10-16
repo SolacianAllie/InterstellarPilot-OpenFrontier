@@ -85,13 +85,7 @@ Shader "SpaceUnity/PlanetStandard" {
 		_TwilightStrength ("Twilight Strength", Range(0, 1)) = 0.55
 		_TwilightDim ("Twilight Dimming", Range(0, 1)) = 0.3
 		_TwilightSharpness ("Twilight Sharpness", Range(0.01, 1)) = 0.13
-		// 0.6, not 0.3. Measured at the terminator band peak (geoNdL 0.10,
-		// where twilight is 1.0) the haze amount is exactly this value, and at
-		// 0.3 the band was lerping 20 percent of a surface that had already
-		// been dimmed to 70 -- which is what made it read as dark grey rather
-		// than orange. The colour was never the problem; the tint at that
-		// point is already (0.98, 0.38, 0.18).
-		_TwilightHaze ("Twilight Haze", Range(0, 1)) = 0.6
+		_TwilightHaze ("Twilight Haze", Range(0, 1)) = 0.3
 	}
 	SubShader {
 		Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
@@ -591,12 +585,7 @@ Shader "SpaceUnity/PlanetStandard" {
 				// straddles it. The clouds keep wrapping regardless -- that is
 				// _CloudWrap, a separate term, and it is the one that is
 				// supposed to reach past the terminator.
-				// Night-side bound UNCHANGED at -0.15, so this does not wrap any
-				// further than before. The day-side edge moves from 0.25 to 0.10 so
-				// the window reaches full strength closer to the terminator: at geoNdL
-				// 0 it went from 0.316 to 0.588, and the band peak went from 0.68
-				// to 1.0. Nothing past -0.15 is affected at all.
-				float twilightLit = smoothstep(-0.15, 0.10, geoNdL);
+				float twilightLit = smoothstep(-0.15, 0.25, geoNdL);
 
 				// The sunrise arc washes the surface too, not just the shell, and it
 				// has to be driven the SAME way the shell drives it or the two
