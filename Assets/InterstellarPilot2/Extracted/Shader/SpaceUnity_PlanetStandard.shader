@@ -152,6 +152,25 @@ Shader "SpaceUnity/PlanetStandard" {
 		_TwilightStrength ("Twilight Strength", Range(0, 1)) = 0.55
 		_TwilightDim ("Twilight Dimming", Range(0, 1)) = 0.3
 		_TwilightSharpness ("Twilight Sharpness", Range(0.01, 1)) = 0.13
+		// How far PAST the terminator the twilight band reaches. 0 is the old
+		// behaviour -- the band stopped dead on the terminator, which is why it
+		// read as a stripe painted on the day side rather than as light in air.
+		//
+		// In cosZ units, so it can be read straight off the sun's elevation:
+		//
+		//   0.05   2.9 deg past   the old gate, which is what that did anyway
+		//   0.105  6.0 deg past   the end of civil twilight
+		//   0.25  14.5 deg past   the end of nautical twilight   <- default
+		//   0.31  18.0 deg past   the end of astronomical twilight
+		//   1.0   90 deg past     the whole night side, which is not a twilight
+		//          -- it is a sunset that never finishes
+		//
+		// Note the band is ALREADY 90 degrees wide on the day side, from the
+		// sub-solar point down to where the sun-path air mass passes 7 (cosZ
+		// 0.115, sun 6.6 degrees up). That half is not a choice and should not
+		// be touched: the air really does have to cross seven atmospheres by
+		// then. Only the night side is a dial.
+		_TwilightDepth ("Twilight Night Depth", Range(0.01, 1)) = 0.25
 		// 0.6, not 0.3. Measured at the terminator band peak (geoNdL 0.10,
 		// where twilight is 1.0) the haze amount is exactly this value, and at
 		// 0.3 the band was lerping 20 percent of a surface that had already
@@ -226,6 +245,7 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _TwilightStrength;
 				float _TwilightDim;
 				float _TwilightSharpness;
+				float _TwilightDepth;
 				float _TwilightHaze;
 				float4 _Clouds_ST;
 				float4 _CloudShadows_ST;
@@ -351,17 +371,30 @@ Shader "SpaceUnity/PlanetStandard" {
 				float airMass = rcp(max(0.06, cosZ));
 				float twilight = saturate((airMass - 1.0) * _TwilightSharpness);
 
-				// Hold it right up to the terminator, then kill it over the
-				// couple of degrees past, where the sun is gone and only the
-				// night side's ambient is left to tint -- that should stay
-				// blue, not go orange.
+				// Straddle the terminator instead of stopping dead on it.
 				//
-				// The first attempt gated on saturate(cosZ * 6.0), which was
-				// too tight: it peaked the twilight at zenith 80 and dropped
-				// it to 0.10 by 89, i.e. the deepest red sat just BEFORE the
-				// horizon instead of on it. Measured, the profile now holds
-				// at full right through to the terminator.
-				twilight *= saturate(cosZ * 12.0 + 0.6);
+				// WHAT THIS REPLACED, and why it was wrong for the look: the gate was
+				// saturate(cosZ * 12.0 + 0.6), whose stated intent was to "hold it
+				// right up to the terminator, then kill it over the couple of
+				// degrees past". It did not. Measured, it is already down to 0.600
+				// AT cosZ = 0 -- the terminator itself -- and reaches 0 at
+				// cosZ = -0.05, which is 2.9 degrees of night side. So the band
+				// faded over its last 2.9 degrees of DAY side as well, and what
+				// read as a hard cut was the tail of that fade.
+				//
+				// It could not simply be loosened, because rcp(cosZ) has no meaning
+				// past zero -- that is the entire reason the gate was there. max()
+				// keeps airMass pinned at its floor and twilight saturated at 1.0,
+				// so on the night side this term is free to do all the work.
+				//
+				// The old gate also deliberately kept the night side BLUE, on the
+				// reasoning that the sun is gone there and only ambient is left.
+				// That is a defensible choice and it is being reversed on purpose:
+				// twilight on the night side is real -- it is the shadow of the
+				// planet falling across its own atmosphere -- and with the band
+				// confined to the day half, the terminator reads as an edge rather
+				// than as the place the light bends.
+				twilight *= 1.0 - saturate(-cosZ * rcp(max(1e-3, _TwilightDepth)));
 
 				// Multiplicative on purpose. A lerp toward the sunset colour
 				// would BRIGHTEN the terminator; real twilight darkens and
