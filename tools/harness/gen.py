@@ -180,9 +180,17 @@ def unity_refs_for(assembly, own_name):
         index.setdefault(os.path.basename(p)[:-len('.ref.dll')], p)
 
     def resolve(name):
-        if name.endswith('.ref.dll'):
-            name = name[:-len('.ref.dll')]
-        return index.get(name) or index.get(name + '.dll')
+        # Prefer the REAL built DLL over Unity's .ref.dll reference assembly.
+        # The .ref.dll files are keyed by STEM (no .dll suffix), so checking
+        # the stem first let every one of them shadow the ScriptAssemblies
+        # copy. Note: that ordering was NOT the cause of the CS0234 chased
+        # here -- with either reference in place the error persisted, and the
+        # real cause was a wrong `using` namespace in the source. Preferring
+        # the built DLL is still what this harness wants (a reference
+        # assembly can differ from what the editor actually compiles against),
+        # but it did not fix that error and should not be credited with it.
+        stem = name[:-len('.ref.dll')] if name.endswith('.ref.dll') else name
+        return index.get(stem + '.dll') or index.get(stem)
 
     dlls, defines, missing = [], [], []
     for line in open(rsp, encoding='utf-8', errors='ignore'):
