@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Compiles FbxMeshWriter (THE REAL FILE, not a copy) outside Unity, so the
+    FBX it writes can be checked by tools/fbx/validate_fbx.py.
+
+    A hand-maintained copy is how a test ends up passing against code the game
+    no longer has. This csproj reaches into Assets/Editor/ directly, so
+    editing the writer and re-running is the only way the test can go stale.
+
+    Note: no double hyphens in this comment. XML forbids them, and MSBuild
+    reports it as a truncated MSB4025 pointing at the wrong line.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <AssemblyName>fbxtest</AssemblyName>
+    <RootNamespace>OpenFrontier.FbxTest</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- "R" formatting of floats must not pick up a locale's decimal comma. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../Assets/Editor/FbxMeshWriter.cs" Link="FbxMeshWriter.cs" />
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+
+</Project>

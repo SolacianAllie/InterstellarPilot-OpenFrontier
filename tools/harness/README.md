@@ -30,6 +30,11 @@ under `Library/ScriptAssemblies`, and the vendored ones under
 | `checks/prefab_yaml_check.py` | prefab structure: anchors, internal references, missing scripts |
 | `checks/prefab_null_check.py` | advisory: null fields the script dereferences unguarded |
 
+There is also `tools/fbx/`, which verifies `Assets/Editor/FbxMeshWriter.cs`
+(the FBX exporter). It compiles the writer **outside Unity** against synthetic
+meshes and parses the output with an independent validator. `check.sh` runs it
+as part of the normal pass. See its own header for why it is not in `checks/`.
+
 ## How it is put together
 
 **One csproj per asmdef, with that asmdef's real references.** Compiling

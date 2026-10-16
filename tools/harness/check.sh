@@ -145,6 +145,23 @@ for c in "$CHECKS"/*.py; do
   fi
 done
 
+# --------------------------------------------------------------- fbx writer
+# FbxMeshWriter is pure C# with no UnityEngine in it precisely so it can be
+# checked here: compiled standalone against synthetic meshes, then the output
+# is parsed by an independent validator. It is the only test of that writer,
+# and the two things it guards -- the bitwise-complement marker on each face's
+# last index, and *N counting scalars rather than elements -- both fail
+# SILENTLY in the file rather than loudly here.
+FBX_RUN="$PROJECT/tools/fbx/run.sh"
+if [ -f "$FBX_RUN" ]; then
+  head1 "fbx writer"
+  if bash "$FBX_RUN"; then
+    :
+  else
+    note_fail "fbx writer verification"
+  fi
+fi
+
 # ------------------------------------------------------------------ verdict
 head1 ""
 if [ "$FAILED" = 0 ]; then
