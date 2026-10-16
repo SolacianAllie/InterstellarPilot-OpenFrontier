@@ -30,9 +30,6 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_AtmoGlow ("Atmosphere Glow", Range(0, 1.5)) = 0.4
 		_SunBleed ("Sun Bleed", Range(0, 1)) = 1
 		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 3
-		// Added to the exponent as the sun goes behind the planet, which
-		// pulls the arc's two ends together. 0 disables it.
-		_SunBleedTighten ("Sun Bleed Tighten", Range(0, 16)) = 9
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
 		[Header(ForwardScatter)]
 		_ForwardBias ("Forward Bias", Range(-1, 1)) = 1
@@ -67,7 +64,6 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			float _Density;
 			float _SunBleed;
 			float _SunBleedPower;
-			float _SunBleedTighten;
 			float _SunRimBoost;
 			float _AtmoGlow;
 			float _ForwardBias;
@@ -407,29 +403,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// night-side rim -- which is the case most of the references are.
 				// The gate that matters is sunBehind above. bearing already keeps
 				// the arc off the unlit limb, since it falls to zero there anyway.
-				// The exponent GROWS as the sun goes behind, so the lobe's two
-				// ends walk in toward the sun's screen bearing.
-				//
-				// bearing is |cos|, so the lobe is symmetric about the bearing and
-				// has exactly two ends -- the red ends. They sit where
-				// bearing^P falls off, and before this P was constant, so they
-				// never moved with the geometry: the same 37 degrees of limb at
-				// every sun position.
-				//
-				//     P   half-width
-				//     3       37 deg
-				//     6       27 deg
-				//     9       24 deg
-				//    12       19 deg
-				//
-				// saturate(-dot(l,v)) is 0 side-on and 1 at alignment.
-				//
-				// This is a mad and an add on top of a pow that was ALREADY
-				// runtime -- _SunBleedPower is a uniform, so the compiler cannot
-				// fold it either way and the instruction count is unchanged.
-				float arcPower = _SunBleedPower
-				               + saturate(-dot(l, v)) * _SunBleedTighten;
-				float arc = pow(bearing, arcPower)
+				float arc = pow(bearing, _SunBleedPower)
 				          * sunBehind * _SunBleed * transmit;
 
 				// The general air along the lit limb, kept deliberately
