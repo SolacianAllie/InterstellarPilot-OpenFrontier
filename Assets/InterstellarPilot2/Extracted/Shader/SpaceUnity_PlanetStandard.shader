@@ -46,10 +46,28 @@ Shader "SpaceUnity/PlanetStandard" {
 		_HazeSunStrength ("Haze Sun Strength", Range(0, 2)) = 0.8
 		_HazeFalloff ("Haze Falloff", Range(0.5, 8)) = 2.5
 		_HazeSunPower ("Haze Sun Power", Range(0.5, 6)) = 1.3
-		// How warm the twilight zone gets at the SIDE-ON viewing angle, where the
-		// sun is perpendicular to the view and this term peaks. Was a hardcoded
-		// 0.55, which capped hazeSun so low the tint came out neutral.
-		_HazeSunView ("Haze Sun Side-On", Range(0, 1)) = 0.85
+		// The angle off the sun at which the haze starts turning orange, and how
+		// many degrees it then takes to reach full.
+		//
+		// This REPLACES _HazeSunView, which was a Range(0,1) compared against
+		// dot(L,V) * 1.5 with the 1.5 hardcoded. The number in the inspector was
+		// not an angle and could not be read as one, which is the whole reason
+		// this could not simply be dialled to 45 before: the threshold was
+		// _HazeSunView / 1.5, so moving it meant moving two numbers that only
+		// meant anything together.
+		//
+		//   old: start = degrees(acos(_HazeSunView / 1.5))
+		//        0.85 -> 55.5 degrees     <- where it actually was
+		//        0.70 -> 62.2 degrees
+		//
+		// Only Alpine1.mat and MaterialEarth.mat serialised it, both at 0.85, so
+		// both fall through to the 45 below rather than keeping a stale value
+		// that would now silently mean something else.
+		_HazeSunAngle ("Haze Sun Angle", Range(0, 180)) = 45
+		// 35 keeps the old ramp WIDTH. The old term went 0 -> 0.85 between 55.5
+		// and 90 degrees, which is 34.5 degrees of ramp. The ceiling is now 1.0
+		// rather than 0.85, so the band tops out slightly hotter at full side-on.
+		_HazeSunSpread ("Haze Sun Spread", Range(1, 180)) = 35
 		[Header(SpecMap)]
 		_WaterFloor ("Water Floor", Range(0, 1)) = 0.32
 		_WaterRange ("Water Range", Range(0.02, 1)) = 0.2
@@ -220,7 +238,8 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _HazeSunStrength;
 				float _HazeFalloff;
 				float _HazeSunPower;
-				float _HazeSunView;
+				float _HazeSunAngle;
+				float _HazeSunSpread;
 				float _WaterFloor;
 				float _WaterRange;
 				float _CityLightFloor;
@@ -731,16 +750,31 @@ Shader "SpaceUnity/PlanetStandard" {
 				// limb, so it could not produce a gradient along the rim at all
 				// -- it could only switch the whole limb warm or not.
 				float lowSun = pow(saturate(1.0 - geoNdL), _HazeSunPower);
-				// and only when the sun is low for US, not just somewhere on
-				// the planet; otherwise a sun directly behind the camera puts
-				// the terminator exactly on the visible limb and the wash
-				// covers everything.
-				// Peaks at 1.0 when the sun is perpendicular to the view, i.e. the
-				// 90 degree side-on case, and falls off as the sun swings round behind
-				// the camera. The ceiling was a hardcoded 0.55, which is most of why
-				// the twilight zone never read as warm from the side.
-				float lowForUs = saturate(_HazeSunView
-				                        - dot(mainLight.direction, viewDirWS) * 1.5);
+				// Peaks at 1.0 when the sun is perpendicular to the view, the 90
+				// degree side-on case, and falls off as the sun swings round behind
+				// the camera. Reaches 1.0 at 80 degrees rather than 90 now, because
+				// the ramp is measured in DEGREES from _HazeSunAngle and the old one
+				// was measured in dot(L,V) -- two different shapes that happened to
+				// overlap over most of their range.
+				//
+				// Angle between the sun and the view ray, in degrees, so the dial
+				// above can be the angle instead of a dot product with a fudge
+				// factor. 0 = looking straight into the sun, 90 = the sun square
+				// across the view, 180 = the night side with the sun behind the
+				// planet. The orange starts bending in at _HazeSunAngle and is
+				// full by _HazeSunAngle + _HazeSunSpread.
+				//
+				// One acos per pixel, and this shader is mobile-first, so it is
+				// worth naming the cost. It is still noise beside the
+				// UniversalFragmentPBR call a few lines above, which is several
+				// hundred instructions. The saving alternative -- keep the ramp in
+				// dot(L,V) space and dial the threshold as a cosine -- gives the
+				// cost back by putting 0.70711 in the inspector where the request
+				// was for 45.
+				float sunAngle = degrees(acos(saturate(dot(mainLight.direction,
+				                                              viewDirWS))));
+				float lowForUs = saturate((sunAngle - _HazeSunAngle)
+				                         * rcp(max(1.0, _HazeSunSpread)));
 				float hazeSun = saturate(lowSun * lowForUs);
 
 				// TWO stages, not one. A single lerp from the air's cyan to the rim's
