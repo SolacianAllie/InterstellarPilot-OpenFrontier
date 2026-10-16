@@ -230,10 +230,15 @@ Shader "OpenFrontier/PlanetaryRing"
 					TRANSFORM_TEX(input.uv, _SpecMap));
 				half4 rockMask = SAMPLE_TEXTURE2D(_RockMask, sampler_RockMask,
 					TRANSFORM_TEX(input.uv, _RockMask));
+				// The WHOLE sample, not .xyz. The live overload in the core package is
+				// `real3 UnpackNormal(real4 packedNormal)` -- it takes a float4.
+				// Passing a half3 does not convert, and the only half3 overload
+				// is the DEPRECATED GBuffer one, which a UniversalForward pass
+				// does not resolve to.
 				half3 dustN = UnpackNormal(SAMPLE_TEXTURE2D(_Normals,
-					sampler_Normals, TRANSFORM_TEX(input.uv, _Normals)).xyz);
+					sampler_Normals, TRANSFORM_TEX(input.uv, _Normals)));
 				half3 rockN = UnpackNormal(SAMPLE_TEXTURE2D(_RockNormals,
-					sampler_RockNormals, TRANSFORM_TEX(input.uv, _RockNormals)).xyz);
+					sampler_RockNormals, TRANSFORM_TEX(input.uv, _RockNormals)));
 
 				// ---- how much rock is there here ----
 				// Driven by a uniform, so the branch is uniform-coherent and
@@ -333,65 +338,9 @@ Shader "OpenFrontier/PlanetaryRing"
 		}
 	}
 
-	// Opaque platforms without URP still get something, and it is not nothing:
-	// the ring draws unlit with its own alpha rather than vanishing.
-	SubShader
-	{
-		Tags { "RenderType" = "Transparent" "Queue" = "Transparent" }
-
-		Pass
-		{
-			Blend One OneMinusSrcAlpha
-			ZWrite Off
-			Cull Off
-
-			CGPROGRAM
-			#pragma vertex vert
-			#pragma fragment frag
-			#include "UnityCG.cginc"
-
-			struct appdata
-			{
-				float4 vertex : POSITION;
-				float2 uv : TEXCOORD0;
-			};
-
-			struct v2f
-			{
-				float4 pos : SV_POSITION;
-				float2 uv : TEXCOORD0;
-			};
-
-			sampler2D _MainTex;
-			sampler2D _RockAlbedo;
-			float4 _MainTex_ST;
-			float4 _RockAlbedo_ST;
-			float4 _DustColor;
-			float4 _RockColor;
-			float _AlphaScale;
-			float _BlendMaskSource;
-			float _Edges;
-
-			v2f vert(appdata v)
-			{
-				v2f o;
-				o.pos = UnityObjectToClipPos(v.vertex);
-				o.uv = v.uv;
-				return o;
-			}
-
-			fixed4 frag(v2f i) : SV_Target
-			{
-				half4 dust = tex2D(_MainTex, i.uv);
-				half4 rock = tex2D(_RockAlbedo, i.uv);
-				half mask = (_BlendMaskSource < 0.5) ? rock.a : 1.0;
-				half3 col = lerp(dust.rgb * _DustColor.rgb, rock.rgb * _RockColor.rgb, mask);
-				half a = saturate(lerp(dust.a, rock.a, mask) * _AlphaScale);
-				return half4(col * a, a);
-			}
-			ENDCG
-		}
-	}
-
+	// No fallback SubShader. The project is URP-only -- the graphics settings
+	// bind a UniversalRenderPipelineAsset -- so a built-in CGPROGRAM pass here
+	// is unreachable code that still gets compiled. Three compile errors came
+	// out of this file already; dead HLSL is not worth being unable to check.
 	Fallback Off
 }
