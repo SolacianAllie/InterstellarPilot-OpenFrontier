@@ -79,7 +79,19 @@ Shader "OpenFrontier/PlanetaryRing"
 		_AlphaScale ("Alpha Scale", Range(0, 1)) = 1
 		// x = inner edge start, y = inner fade width,
 		// z = outer edge end,   w = outer fade width
+		// Measured in OBJECT space, not world space -- see EdgeFade.
 		_Edges ("Edges (x=inner start, y=inner fade, z=outer end, w=outer fade)", Vector) = (0, 1, 10000, 1)
+		// 0 = no edge fade at all. Default OFF deliberately: the fade
+		// multiplies alpha, so a fade that is subtly wrong does not dim the
+		// ring, it erases it, with nothing in the render to say why.
+		_EdgeFadeStrength ("Edge Fade Strength", Range(0, 1)) = 0
+		// Staged bisect, matching the planet shader's _AlbedoDebug so the two
+		// are read the same way.
+		//   0 = final   1 = raw dust albedo   2 = blended albedo
+		//   3 = lit colour, alpha forced to 1
+		// Stages 1-3 return before the lighting and with alpha 1, so what is on
+		// screen is the value under test and nothing else.
+		_AlbedoDebug ("Albedo Debug", Range(0, 3)) = 0
 		[Enum(Off, 0, Back, 1, Front, 2)] _Cull ("Culling", Float) = 0
 	}
 
@@ -161,6 +173,8 @@ Shader "OpenFrontier/PlanetaryRing"
 				float _BlendRange;
 				float _AlphaScale;
 				float _Cull;
+				float _EdgeFadeStrength;
+				float _AlbedoDebug;
 			CBUFFER_END
 
 			struct Attributes
@@ -179,6 +193,7 @@ Shader "OpenFrontier/PlanetaryRing"
 				float3 positionWS : TEXCOORD1;
 				half3 normalWS : TEXCOORD2;
 				half4 tangentWS : TEXCOORD3;
+				float3 positionOS : TEXCOORD4;
 				half4 color : COLOR;
 			};
 
@@ -204,6 +219,7 @@ Shader "OpenFrontier/PlanetaryRing"
 
 				output.positionCS = posInputs.positionCS;
 				output.positionWS = posInputs.positionWS;
+				output.positionOS = input.positionOS.xyz;
 				output.normalWS = normInputs.normalWS;
 				output.tangentWS = half4(normInputs.tangentWS, input.tangentOS.w);
 				output.color = input.color;
@@ -217,12 +233,17 @@ Shader "OpenFrontier/PlanetaryRing"
 				return output;
 			}
 
-			// Fade the band out at its inner and outer edges without needing a
-			// texture for it. Cheap, and it stops a square-edged disc reading
-			// as a square-edged disc.
-			half EdgeFade(float3 positionWS)
+			// Fade the band out at its inner and outer edges.
+			//
+			// OBJECT space, not world. A ring's radius is a property of the ring,
+			// so it belongs to the object; measuring it in world space ties the
+			// fade to wherever the system happens to sit, and this did: with the
+			// default outer end at 10000 units, any world further than 10000
+			// units from the origin multiplied alpha by ZERO and the ring drew
+			// nothing at all -- no error, no pink, just an absence.
+			half EdgeFade(float3 positionOS)
 			{
-				half d = length(positionWS);
+				half d = length(positionOS);
 				half inner = saturate((d - _Edges.x) * rcp(max(1e-4, _Edges.y)));
 				half outer = 1.0 - saturate((d - _Edges.z) * rcp(max(1e-4, _Edges.w)));
 				return saturate(inner) * saturate(outer);
@@ -283,6 +304,28 @@ Shader "OpenFrontier/PlanetaryRing"
 					rock = rock * rock * (3.0 - 2.0 * rock);
 				}
 
+				// ---- staged bisect ----
+				// Returned BEFORE the lighting and with alpha 1, so what is on
+				// screen is the value under test and nothing else. Bounded at
+				// BOTH ends, which is not decoration: written as `> 0` alone,
+				// stages 1, 2 and 3 would all match and every one of them would
+				// look identical to stage 1, so the later stages would be
+				// unreachable and would report nothing. That is the bug the
+				// planet shader's own _AlbedoDebug comment warns about.
+				if (_AlbedoDebug > 0.5 && _AlbedoDebug < 1.5)
+				{
+					// Raw dust albedo. Opaque. Grey here means the texture or
+					// its import; flat grey across the whole ring means the UVs
+					// are not varying, i.e. the mesh has none.
+					return half4(dustTex.rgb, 1.0);
+				}
+				if (_AlbedoDebug > 1.5 && _AlbedoDebug < 2.5)
+				{
+					// After the dust/rock mask. Banded means the mask is
+					// reading the rock texture; uniform means it is not.
+					return half4(surfaceDebugAlbedo, 1.0);
+				}
+
 				// ---- normals ----
 				// Blended in TANGENT space, before the TBN is built, then
 				// transformed once. Blending after the transform would need two
@@ -300,10 +343,12 @@ Shader "OpenFrontier/PlanetaryRing"
 				normalWS = normalize(TransformTangentToWorld(normalTS,
 					half3x3(tangentWS, bitangentWS, normalWS)));
 
+				half3 surfaceDebugAlbedo = lerp(dustTex.rgb * _DustColor.rgb,
+					rockTex.rgb * _RockColor.rgb, rock);
+
 				// ---- surface ----
 				SurfaceData surfaceData = (SurfaceData)0;
-				surfaceData.albedo = lerp(dustTex.rgb * _DustColor.rgb,
-					rockTex.rgb * _RockColor.rgb, rock);
+				surfaceData.albedo = surfaceDebugAlbedo;
 				// Dust is a dielectric: constant 0 metallic, no map needed.
 				// Rocks are the metallic half of the pair, which is the whole
 				// reason they are a separate texture set.
@@ -339,7 +384,17 @@ Shader "OpenFrontier/PlanetaryRing"
 				// multiply the rock alpha in over dust the rock is not even
 				// covering, thinning the band wherever the two disagree.
 				half alpha = lerp(dustTex.a, rockTex.a, rock);
-				color.a = saturate(saturate(alpha * _AlphaScale) * EdgeFade(input.interpolated.positionWS));
+				color.a = saturate(saturate(alpha * _AlphaScale)
+					* lerp(1.0, EdgeFade(input.interpolated.positionOS), _EdgeFadeStrength));
+
+				// Stage 3: everything the shader computed, with alpha forced.
+				// Black here with stage 1 showing colour means the LIGHTING is
+				// taking it away -- no main light reaching the ring, or the
+				// normal map pointing it away from the sun.
+				if (_AlbedoDebug > 2.5)
+				{
+					return half4(color.rgb, 1.0);
+				}
 
 				// Premultiply, to match Blend One / OneMinusSrcAlpha above.
 				color.rgb *= color.a;
