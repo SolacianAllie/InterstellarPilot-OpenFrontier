@@ -180,6 +180,17 @@ Shader "OpenFrontier/PlanetaryRing"
 				half3 normalWS : TEXCOORD2;
 				half4 tangentWS : TEXCOORD3;
 				half4 color : COLOR;
+			};
+
+			// The facing flag goes in the FRAGMENT input, never in the vertex
+			// output. SV_IsFrontFace is input-only, so declaring it in
+			// Varyings -- which vert() writes -- is an illegal output semantic
+			// on Vulkan. URP does it this way in SpeedTree8Passes.hlsl:
+			// the varyings are nested as `interpolated`, and `facing` sits
+			// alongside them.
+			struct FragmentInput
+			{
+				Varyings interpolated;
 				FRONT_FACE_TYPE facing : FRONT_FACE_SEMANTIC;
 			};
 
@@ -217,28 +228,28 @@ Shader "OpenFrontier/PlanetaryRing"
 				return saturate(inner) * saturate(outer);
 			}
 
-			half4 frag(Varyings input) : SV_Target
+			half4 frag(FragmentInput input) : SV_Target
 			{
 				// One fetch each. Anything that needs a second channel below
 				// reuses these rather than sampling again.
-				float2 uvDust = TRANSFORM_TEX(input.uv, _MainTex);
-				float2 uvRock = TRANSFORM_TEX(input.uv, _RockAlbedo);
+				float2 uvDust = TRANSFORM_TEX(input.interpolated.uv, _MainTex);
+				float2 uvRock = TRANSFORM_TEX(input.interpolated.uv, _RockAlbedo);
 
 				half4 dustTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvDust);
 				half4 rockTex = SAMPLE_TEXTURE2D(_RockAlbedo, sampler_RockAlbedo, uvRock);
 				half4 dustSpec = SAMPLE_TEXTURE2D(_SpecMap, sampler_SpecMap,
-					TRANSFORM_TEX(input.uv, _SpecMap));
+					TRANSFORM_TEX(input.interpolated.uv, _SpecMap));
 				half4 rockMask = SAMPLE_TEXTURE2D(_RockMask, sampler_RockMask,
-					TRANSFORM_TEX(input.uv, _RockMask));
+					TRANSFORM_TEX(input.interpolated.uv, _RockMask));
 				// The WHOLE sample, not .xyz. The live overload in the core package is
 				// `real3 UnpackNormal(real4 packedNormal)` -- it takes a float4.
 				// Passing a half3 does not convert, and the only half3 overload
 				// is the DEPRECATED GBuffer one, which a UniversalForward pass
 				// does not resolve to.
 				half3 dustN = UnpackNormal(SAMPLE_TEXTURE2D(_Normals,
-					sampler_Normals, TRANSFORM_TEX(input.uv, _Normals)));
+					sampler_Normals, TRANSFORM_TEX(input.interpolated.uv, _Normals)));
 				half3 rockN = UnpackNormal(SAMPLE_TEXTURE2D(_RockNormals,
-					sampler_RockNormals, TRANSFORM_TEX(input.uv, _RockNormals)));
+					sampler_RockNormals, TRANSFORM_TEX(input.interpolated.uv, _RockNormals)));
 
 				// ---- how much rock is there here ----
 				// Driven by a uniform, so the branch is uniform-coherent and
@@ -252,11 +263,11 @@ Shader "OpenFrontier/PlanetaryRing"
 				else if (_BlendMaskSource < 1.5)
 				{
 					rock = SAMPLE_TEXTURE2D(_BlendMask, sampler_BlendMask,
-						TRANSFORM_TEX(input.uv, _BlendMask)).r;
+						TRANSFORM_TEX(input.interpolated.uv, _BlendMask)).r;
 				}
 				else if (_BlendMaskSource < 2.5)
 				{
-					rock = input.color.a;
+					rock = input.interpolated.color.a;
 				}
 				else
 				{
@@ -282,10 +293,10 @@ Shader "OpenFrontier/PlanetaryRing"
 				// Flip the geometric normal on back faces. Without this the
 				// underside of a ring is lit from behind and comes out black,
 				// which is the classic single-sided-an-annulus bug.
-				half3 normalWS = normalize(input.normalWS)
+				half3 normalWS = normalize(input.interpolated.normalWS)
 					* IS_FRONT_VFACE(input.facing, 1.0, -1.0);
-				half3 tangentWS = normalize(input.tangentWS.xyz);
-				half3 bitangentWS = cross(normalWS, tangentWS) * input.tangentWS.w;
+				half3 tangentWS = normalize(input.interpolated.tangentWS.xyz);
+				half3 bitangentWS = cross(normalWS, tangentWS) * input.interpolated.tangentWS.w;
 				normalWS = normalize(TransformTangentToWorld(normalTS,
 					half3x3(tangentWS, bitangentWS, normalWS)));
 
@@ -307,14 +318,14 @@ Shader "OpenFrontier/PlanetaryRing"
 				surfaceData.emission = half3(0, 0, 0);
 
 				InputData inputData = (InputData)0;
-				inputData.positionWS = input.positionWS;
+				inputData.positionWS = input.interpolated.positionWS;
 				inputData.normalWS = normalWS;
 				inputData.viewDirectionWS =
-					GetWorldSpaceNormalizeViewDir(input.positionWS);
-				inputData.shadowCoord = TransformWorldToShadowCoord(input.positionWS);
+					GetWorldSpaceNormalizeViewDir(input.interpolated.positionWS);
+				inputData.shadowCoord = TransformWorldToShadowCoord(input.interpolated.positionWS);
 				inputData.vertexLighting = half3(0, 0, 0);
 				inputData.normalizedScreenSpaceUV =
-					GetNormalizedScreenSpaceUV(input.positionCS);
+					GetNormalizedScreenSpaceUV(input.interpolated.positionCS);
 				inputData.shadowMask = half4(1, 1, 1, 1);
 
 				Light mainLight = GetMainLight(inputData.shadowCoord);
@@ -328,7 +339,7 @@ Shader "OpenFrontier/PlanetaryRing"
 				// multiply the rock alpha in over dust the rock is not even
 				// covering, thinning the band wherever the two disagree.
 				half alpha = lerp(dustTex.a, rockTex.a, rock);
-				color.a = saturate(saturate(alpha * _AlphaScale) * EdgeFade(input.positionWS));
+				color.a = saturate(saturate(alpha * _AlphaScale) * EdgeFade(input.interpolated.positionWS));
 
 				// Premultiply, to match Blend One / OneMinusSrcAlpha above.
 				color.rgb *= color.a;
