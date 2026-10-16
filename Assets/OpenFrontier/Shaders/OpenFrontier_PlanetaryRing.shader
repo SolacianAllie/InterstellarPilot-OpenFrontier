@@ -128,10 +128,26 @@ Shader "OpenFrontier/PlanetaryRing"
 		// than a band across it, this number is too big -- it is not the sign.
 		_PlanetRadius ("Planet Radius (object units, 0 = off)", Float) = 0
 		_ShadowStrength ("Planet Shadow Strength", Range(0, 1)) = 1
-		// Penumbra tangent, i.e. tan of the star's angular radius. The real
-		// Sun is about 0.27 degrees, so 0.005 is the right order of magnitude.
-		// A fixed softness instead reads as a stencil cut with scissors.
-		_PlanetShadowSoftness ("Shadow Penumbra Tangent", Float) = 0.005
+		// The ring's own radii, in the same object units as _PlanetRadius.
+		// Read for the penumbra below; it needs the ring's WIDTH, not the
+		// planet's size, to express a softness that means the same thing on a
+		// tight ring and an enormous one. Defaults match this mesh
+		// (40.556 inner, 101.530 outer) so it looks right before it is set.
+		_RingRadii ("Ring Radii (inner, outer)", Vector) = (40.556, 101.530)
+		// Penumbra as a FRACTION OF THE RING'S WIDTH, not as a tangent.
+		//
+		// The physically correct number is tan of the star's angular radius --
+		// about 0.005 for a Sun -- and that was what this used to be. It is
+		// correct and it is unusable here: 0.005 across a 60-unit ring is
+		// half a unit, which is sub-pixel, so a wide ring gets a razor-hard
+		// strip across it that reads as a modelling error rather than a
+		// shadow, while a narrow ring looks fine. One tangent cannot serve
+		// systems whose rings differ by an order of magnitude.
+		//
+		// As a fraction of the ring it scales with the thing it has to look
+		// right on. 0.15 means the shadow's soft edge is a sixth of the ring
+		// wide, which reads as a shadow at any scale.
+		_ShadowSoftness ("Shadow Softness (fraction of ring width)", Range(0, 0.5)) = 0.15
 
 		[Enum(Off, 0, Back, 1, Front, 2)] _Cull ("Culling", Float) = 0
 	}
@@ -186,7 +202,8 @@ Shader "OpenFrontier/PlanetaryRing"
 				float _DustSmoothness;
 				float _PlanetRadius;
 				float _ShadowStrength;
-				float _PlanetShadowSoftness;
+				float4 _RingRadii;
+				float _ShadowSoftness;
 				float _Cull;
 			CBUFFER_END
 
@@ -262,10 +279,14 @@ Shader "OpenFrontier/PlanetaryRing"
 				// stays non-negative under rounding.
 				half perp = sqrt(max(
 					dot(positionOS, positionOS) - axial * axial, 0.0));
-				// The penumbra widens with distance behind the occluder, which
-				// is what a star's angular diameter does. -axial is that
-				// distance, hence the negate.
-				half soft = _PlanetShadowSoftness * (-axial) + _PlanetRadius * 0.01;
+				// Penumbra measured against the ring rather than against the
+				// star, so the same setting reads the same on every ring in the
+				// game. The old form also grew with distance behind the occluder
+				// (correct -- a penumbra widens as it travels) but at ring
+				// scales that growth is half a unit across the whole belt, which
+				// is why it looked like it did nothing.
+				half ringWidth = max(1e-4, _RingRadii.y - _RingRadii.x);
+				half soft = ringWidth * _ShadowSoftness;
 				//
 				// NO 1.0- prefix. This was inverted for several commits and
 				// the inversion is invisible to inspection, because both ends
