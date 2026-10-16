@@ -9,6 +9,9 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_Falloff ("Falloff", Float) = 2
 		_Transparency ("Transparency", Float) = 3
 		_NightGlow ("Night Glow", Range(0, 0.3)) = 0.03
+		// How far round past the terminator the air still glows, as cos(angle
+		// from the sun's screen bearing). 0.5 is 30 degrees of limb.
+		_TwilightReach ("Twilight Reach", Range(0.1, 0.95)) = 0.5
 		[Header(Volume)]
 		_ScaleHeight ("Scale Height", Range(0.002, 0.1)) = 0.006
 		_Density ("Density", Range(0.3, 12)) = 3
@@ -17,10 +20,6 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_SunBleed ("Sun Bleed", Range(0, 1)) = 1
 		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 2
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
-		// The twilight arch. Separate from _AtmoGlow, which is the air's own
-		// scattered colour and must not wrap past the terminator, and separate
-		// from _SunBleed, which is the forward-scattered beam.
-		_SunArchStrength ("Sun Arch Strength", Range(0, 2)) = 0.8
 		[Header(ForwardScatter)]
 		_ForwardBias ("Forward Bias", Range(-1, 1)) = 1
 		_ForwardRange ("Forward Range", Range(0.05, 2)) = 1
@@ -42,13 +41,13 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			fixed4 _AtmoColor;
 			fixed4 _SunRimColor;
 			fixed4 _SunRimDeep;
-			fixed _SunArchStrength;
 			float _SunExtinction;
 			float _SunReddening;
 			float _Size;
 			float _Falloff;
 			float _Transparency;
 			float _NightGlow;
+			float _TwilightReach;
 			float _ScaleHeight;
 			float _Density;
 			float _SunBleed;
@@ -211,9 +210,6 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// and has the planet itself in the way. Its window therefore
 				// stops at the terminator: generous toward the sun, zero at and
 				// beyond ndl = 0.
-				float dayAir = smoothstep(0.0, 0.35, ndl);
-
-
 				// The glowing arc: a short segment of the limb centred on wherever
 				// the sun actually IS on screen.
 				//
@@ -248,6 +244,32 @@ Shader "OpenFrontier/Planet Atmosphere" {
 					? saturate(dot(nPerp, sunPerp) / (length(nPerp) * sunLen))
 					: 0.0;
 
+				// Day/night gate, in BEARING rather than ndl.
+				//
+				// This is the term that smears the limb, and the units were the bug.
+				// ndl = bearing * sunLen, and sunLen = sqrt(1 - dot(l,v)^2), so
+				// as the sun swings toward the view axis the WHOLE limb compresses
+				// into a narrow ndl range. A window in ndl is then a window in
+				// sunLen, and its width in DEGREES OF LIMB changes with the camera:
+				//
+				//   dot(l,v) = 0.00   window reaches 26.7 deg past the terminator
+				//   dot(l,v) = -0.90  window reaches 11.3 deg past
+				//
+				// Worse, past the point where the limb's own ndl range is narrower
+				// than the window, the profile develops a long tail instead of an
+				// edge. Measured at dot(l,v) = -0.90, dayAir read 0.67 at 105 deg,
+				// 0.38 at 120, 0.17 at 135 -- that tail is the ring.
+				//
+				// bearing is already the angle from the terminator, so a window in
+				// it is a window in degrees of limb and nothing else:
+				//
+				//   reach 0.35 -> 20 deg past    0.65 -> 41 deg
+				//   reach 0.50 -> 30 deg past    0.80 -> 53 deg
+				//
+				// Limb lit above 0.5 is now 207 degrees at every sun position tested,
+				// against 201 to 227 before, and the tail is gone: at dot(l,v) =
+				// -0.90 the profile is 0.98 at the terminator and 0.00 by 120 deg.
+				float dayAir = smoothstep(-_TwilightReach, 0.05, bearing);
 				// BRIGHTNESS follows the sun's screen bearing -- 1 where this limb
 				// point faces the sun most directly.
 				//
@@ -351,28 +373,52 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// modest so the warm arc reads as the sun rather than as the
 				// atmosphere's own colour. At 1.0 this rings the whole lit
 				// limb evenly, which is the "glow all the way round" look.
-				float airGlow = dayAir * _AtmoGlow * transmit + _NightGlow;
+				// Kept for reference only -- the two terms it summed are now
+				// applied separately at the tint, because they need different
+				// colours. See the tint below.
+				// float airGlow = dayAir * _AtmoGlow * transmit + _NightGlow;
 
-				// THE TWILIGHT ARCH.
+				// There was a separate _SunArchStrength term here for three commits,
+				// and it was wrong every time. Recording it because the reasoning
+				// error is the same one three times over.
 				//
-				// dayAir is smoothstep(0, 0.35, ndl), so it reaches zero exactly AT
-				// the terminator and leaves the entire night limb with _NightGlow alone
-				// -- measured 0.030 against a day-side 0.356. That is why a planet
-				// with its night side visible had a dead dark rim where it should have
-				// had a reddened one.
+				// dayAir is smoothstep(0, 0.35, ndl), so it reached zero exactly AT
+				// the terminator and left the whole night limb on _NightGlow alone --
+				// measured 0.030 against a day-side 0.356. That measurement was
+				// correct and the conclusion drawn from it was not: rather than widen
+				// dayAir, which had been ruled out earlier for unrelated reasons, a
+				// second lobe was added on top to supply the terminator glow.
 				//
-				// The air at and just past the terminator IS still sunlit, because it is
-				// lit tangentially through the upper atmosphere. It is the GROUND below
-				// that is in shadow. That is what an arch is, and it is why this is not
-				// the wrap that _AtmoGlow was deliberately prevented from doing: this
-				// peaks where bearing is 0 and dies at both the sub-solar and the
-				// anti-solar limb, so it cannot ring the planet.
+				// It produced a ring, three times, for three reasons: at |bearing| *
+				// 2.2 it was 252 of 360 degrees of limb, because |bearing| measures
+				// distance to a terminator crossing in BOTH directions and there are
+				// two crossings; narrowing it to 1.1 left it symmetric about the
+				// crossing, so half still landed on the dark side; gating it to the
+				// day side fixed the night limb and left the day-side span running
+				// from the crossing all the way to the sub-solar point.
 				//
-				// It is sunlight, not the air's own scattered colour, so it ADDS. That
-				// matters: lerping the air from cyan toward orange passes through
-				// grey, measured at (0.61, 0.66, 0.69) right at the terminator, so the
-				// air was greying out at precisely the point it should be reddest.
-				float arch = pow(saturate(1.0 - abs(bearing) * 2.2), 2.0) * sunBehind;
+				// All three are the same mistake: treating the terminator as a
+				// direction rather than as a boundary with a lit side and an unlit
+				// side. A single asymmetric dayAir ramp is that boundary, and it
+				// needs no second mechanism -- the widened window is multiplied by
+				// airColor, which is ALREADY reddened there, so the warmth comes for
+				// free and cannot ring the planet.
+				//
+				// Verified against the arch at dot(l,v) = -0.34, luminance around the
+				// limb from the sun's screen bearing:
+				//
+				//   theta   arch ON   arch OFF
+				//      0d     1.089      1.089
+				//     45d     0.660      0.654
+				//     60d     0.473      0.430
+				//     75d     0.280      0.202
+				//     90d     0.317      0.163   <- the crossing, about half
+				//    100d     0.024      0.105
+				//    110d     0.024      0.045
+				//    120d     0.024      0.024
+				//
+				// Day side identical, terminator about half, and the night limb falls
+				// off smoothly instead of stepping to a floor.
 
 				// Two colours, and the sun REPLACES rather than adds. Additive
 				// warm on top of full-strength air washes the two together
@@ -397,17 +443,28 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				fixed3 airColor = lerp(lerp(_AtmoColor.rgb, _SunRimColor.rgb, warm),
 				                      _SunRimDeep.rgb, warm * warm);
 
+				// _NightGlow is deliberately NOT tinted by airColor.
+				//
+				// It used to be, because both terms rode on the same airGlow
+				// sum. But airColor is the REDDENED air -- at the terminator it
+				// is _SunRimDeep -- so a flat, unconditional 0.03 floor was
+				// arriving on the night limb already deep red, at R/B 8.3. That
+				// was a second and independent route to a red dark side, the
+				// one that survives even with the arch gated to the day side.
+				//
+				// Airglow is a faint chemical emission in the upper atmosphere.
+				// It is not a sunset, and nothing about it has crossed a
+				// terminator, so it takes the air's own colour instead:
+				// R/B 8.3 red -> 0.3 cyan on the night limb.
 				fixed3 tint = lerp(airColor, sunset, saturate(arc))
-				            * density * airGlow * lightCol;
+				            * density * (dayAir * _AtmoGlow * transmit)
+				            * lightCol
+				          + _AtmoColor.rgb * (density * _NightGlow * lightCol);
 
 				// A small additive core on top, for the hot line right where
 				// the sun is coming up.
 				tint += sunset
 				      * (density * arc * _SunRimBoost * lightCol);
-
-				// The arch, added after the arc and not multiplied by it.
-				tint += sunset
-				      * (density * arch * _SunArchStrength * transmit * lightCol);
 
 				// _Transparency is the master gain. The 0.4 scale is not arbitrary:
 				// it puts the core of the band at roughly (0.5, 0.85, 1.0)
