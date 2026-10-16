@@ -41,23 +41,6 @@ Shader "OpenFrontier/PlanetaryRing"
 	{
 		[MainTexture] _DustAlbedo ("Dust Albedo (RGB, A = density)", 2D) = "black" {}
 		[HDR] _DustColor ("Dust Tint", Color) = (1, 1, 1, 1)
-		// Per-ring variation, so two rings sharing one texture do not share a
-		// pattern. The seed is hashed to a unit offset and added to V, so
-		// every ring starts at a different place in the dust rather than every
-		// one beginning at the same edge of it.
-		//
-		// Drive it with a MaterialPropertyBlock per renderer, which is this
-		// project's existing per-object convention (StarColorMarker and the
-		// fade controllers both do). Units already carry a persisted Seed in
-		// the save game, so a ring can take its planet's.
-		//
-		// Setting the same seed on two rings reproduces the same ring exactly,
-		// which is what makes a hand-placed ring reproducible.
-		_RingSeed ("Ring Seed", Float) = 0
-		// How far the seed is allowed to push the offset, in tiles. X drives
-		// U and Y drives V; 0 freezes that axis regardless of seed. Y is the
-		// one that matters for "a different slice of dust".
-		_SeedOffsetRange ("Seed Offset Range (U, V)", Vector) = (0, 1)
 		_DustSmoothness ("Dust Smoothness", Range(0, 1)) = 0.08
 		// Stands in for ambient light. URP's bakedGI is zero for a
 		// procedural object with no lightmaps, so without this the unlit side
@@ -162,8 +145,6 @@ Shader "OpenFrontier/PlanetaryRing"
 				float4 _DustAlbedo_ST;
 				float4 _DustColor;
 				float4 _DustAmbient;
-				float4 _SeedOffsetRange;
-				float _RingSeed;
 				float _DustSmoothness;
 				float _PlanetRadius;
 				float _ShadowStrength;
@@ -263,47 +244,12 @@ Shader "OpenFrontier/PlanetaryRing"
 				return smoothstep(_PlanetRadius, _PlanetRadius + soft, perp);
 			}
 
-			// An integer hash of the seed, returned in 0..1.
-			//
-			// A float multiply will not do this job. Adjacent integer seeds are
-			// adjacent floats, so seed 5 and seed 6 would land almost on top of
-			// each other and neighbouring rings would come out looking like
-			// near-copies -- the exact opposite of what the seed is for.
-			// Mixing the raw bits with shifts and an odd multiply scatters
-			// them: measured over 2000 consecutive seeds the deciles come out
-			// 188-211 against an ideal 200, and the mean step between adjacent
-			// seeds is 0.31 rather than near zero.
-			half HashToUnit(float seed)
-			{
-				uint h = asuint(seed);
-				h = ((h >> ((h >> 28) + 4)) ^ h) * 277803737;
-				h = (h >> 22) ^ h;
-				return (h & 0x00FFFFFF) * (1.0 / 16777216.0);
-			}
-
 			half4 frag(FragmentInput input) : SV_Target
 			{
 				Varyings v = input.interpolated;
 
-				// Seeded offset, applied to the RAW uv before TRANSFORM_TEX.
-				//
-				// Before, deliberately: _DustAlbedo_ST is the surface's tiling,
-				// and adding the seed after it would scale the offset by the
-				// tiling too, so a ring tiled 8x would travel 8 tiles and land
-				// somewhere entirely different from one tiled 1x. Adding first
-				// keeps "one seed step" meaning the same thing everywhere, and
-				// the seed offset is in tiles so it wraps cleanly.
-				//
-				// The two axes are hashed with different constants so U and V do
-				// not receive the same number by coincidence. V is the axis that
-				// changes which slice of dust you see; U is left at 0 by default
-				// so it can be switched on without changing the look.
-				float2 seededUv = v.uv1 + float2(
-					HashToUnit(_RingSeed + 0.5),
-					HashToUnit(_RingSeed + 1.5)) * _SeedOffsetRange;
-
 				half4 dustTex = SAMPLE_TEXTURE2D(_DustAlbedo, sampler_DustAlbedo,
-					TRANSFORM_TEX(seededUv, _DustAlbedo));
+					TRANSFORM_TEX(v.uv1, _DustAlbedo));
 
 				// The zero-argument overload on purpose: it returns direction
 				// and colour without touching the shadow map. The map cannot
