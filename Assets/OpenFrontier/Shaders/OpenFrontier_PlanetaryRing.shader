@@ -229,7 +229,19 @@ Shader "OpenFrontier/PlanetaryRing"
 				// is what a star's angular diameter does. -axial is that
 				// distance, hence the negate.
 				half soft = _PlanetShadowSoftness * (-axial) + _PlanetRadius * 0.01;
-				return 1.0 - smoothstep(_PlanetRadius, _PlanetRadius + soft, perp);
+				//
+				// NO 1.0- prefix. This was inverted for several commits and
+				// the inversion is invisible to inspection, because both ends
+				// of a smoothstep still reach 0 and 1 -- only WHICH end is
+				// where differs. Negated, the term returns 1 (lit) at perp=0,
+				// which is precisely where the planet blocks the star most
+				// completely, and puts the dark wedge out at perp > Rp where
+				// it flanks the axis instead of sitting under the planet. The
+				// result reads as a huge band of light with a dark stripe
+				// through it, which looks like a sign error in axial rather
+				// than what it is. Found by rendering the term alone at
+				// _AlbedoDebug 3, which is the reason that stage exists.
+				return smoothstep(_PlanetRadius, _PlanetRadius + soft, perp);
 			}
 
 			half4 frag(FragmentInput input) : SV_Target
