@@ -133,7 +133,7 @@ Shader "OpenFrontier/PlanetaryRing"
 		// planet's size, to express a softness that means the same thing on a
 		// tight ring and an enormous one. Defaults match this mesh
 		// (40.556 inner, 101.530 outer) so it looks right before it is set.
-		_RingRadii ("Ring Radii (inner, outer)", Vector) = (40.556, 101.530)
+		_RingRadii ("Ring Radii (inner, outer)", Vector) = (40.556, 101.530, 0, 0)
 		// Penumbra as a FRACTION OF THE RING'S WIDTH, not as a tangent.
 		//
 		// The physically correct number is tan of the star's angular radius --
