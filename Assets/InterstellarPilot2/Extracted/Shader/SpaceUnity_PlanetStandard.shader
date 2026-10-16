@@ -113,6 +113,44 @@ Shader "SpaceUnity/PlanetStandard" {
 		_CloudBrightness ("Cloud Brightness", Range(0, 3)) = 1
 		_CloudParallax ("Cloud Parallax", Range(-0.1, 0.1)) = 0.008
 		_CloudWrap ("Cloud Wrap Light", Range(0, 1)) = 0.7
+		// How brightly the deck is lit where there is NO sun. Separate from
+		// _CloudWrap, and it has to be, because the wrapped dot cannot do this
+		// job at any value that still gives a crisp terminator.
+		//
+		// The deck goes black when
+		//
+		//     dot(cloudNormalWS, L) * wrap + (1 - wrap)  <=  0
+		//  <=> dot(cloudNormalWS, L)  <=  (wrap - 1) / wrap
+		//
+		// and on a sphere the light's TANGENTIAL part vanishes at the
+		// anti-solar point, so dot(cloudNormalWS, L) is -1 there, not the -0.5 a
+		// flat guess suggests. That puts the survivable range at wrap <= 0.5,
+		// and at 0.5 the terminator has already smeared to 0.5 across the whole
+		// day/night line. Measured:
+		//
+		//   wrap    terminator    deep night (dot -0.71)   anti-solar (dot -1)
+		//   0.7        0.300               0.000                   0.000
+		//   0.5        0.500               0.145                   0.000
+		//   0.3        0.700               0.487                   0.400
+		//
+		// So the terminator wants 0.7 and the night side wants 0.5, and one
+		// number cannot do both. Hence this second term.
+		//
+		// It is the physically right answer as well, not only the convenient
+		// one: the reason a deck is visible over a city at night is that it is
+		// lit by something other than the sun -- moonlight, and the city's own
+		// glow scattering off the cloud base. A single wrapped-dot term has no
+		// quantity for either of those.
+		//
+		// This is also what gives a cloud SHADOW on the city lights something to
+		// read against. Without a visible caster the lights are merely dimmed,
+		// and a dimming reads as "the city is off", not "there is weather".
+		_CloudNightFloor ("Cloud Night Floor", Range(0, 1)) = 0.3
+		// The colour of that night light. Its own dial because the alternative
+		// is reusing the sun's colour, and a star this game renders warm would
+		// then light its moonlit cloud orange -- which reads as a bug rather
+		// than as a night.
+		_CloudNightColor ("Cloud Night Color", Color) = (0.55,0.62,0.80,1)
 		// Normal and specular maps for the deck itself. Both sets already exist
 		// on disk and were never wired up. The normals are real data; the
 		// specular maps are FLAT -- every pixel identical, measured std 0.000
@@ -294,6 +332,8 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _CloudBrightness;
 				float _CloudParallax;
 				float _CloudWrap;
+				float _CloudNightFloor;
+				float4 _CloudNightColor;
 				float _CloudNormalStrength;
 				float _CloudSmoothness;
 				float _CloudShadowSharpness;
@@ -604,6 +644,17 @@ Shader "SpaceUnity/PlanetStandard" {
 					half3x3(input.tangentWS.xyz, bitangentWS, geoNormalWS)));
 				float cloudLight = saturate(dot(cloudNormalWS, mainLight.direction) * _CloudWrap
 				                           + (1.0 - _CloudWrap));
+
+				// And the light that is not the sun. nightMask is the same
+				// sat(-geoNdL * 2) the city lights use, so the deck's night side and
+				// the lights' night side are the same side of the same terminator
+				// and cannot disagree about where night begins.
+				cloudLight = saturate(max(cloudLight, nightMask * _CloudNightFloor));
+
+				// Which light it is, separately: the sun's colour by day, moonlight
+				// by night. Crossfaded on the same nightMask, so the deck changes
+				// hue across the terminator instead of stepping.
+				half3 deckLight = lerp(sunColour, _CloudNightColor.rgb, nightMask);
 				
 				// Specular. Read as data like every other map in this shader: G is the
 				// gloss mask, scaled by _CloudSmoothness. The shipped cloud specular maps
@@ -613,7 +664,7 @@ Shader "SpaceUnity/PlanetStandard" {
 				half3 cloudHalf = normalize(mainLight.direction + viewDirWS);
 				half cloudSpec = pow(saturate(dot(cloudNormalWS, cloudHalf)),
 					                      exp2(2.0 + 10.0 * cloudGloss)) * cloudGloss;
-				half3 cloudColour = cloudTex.rgb * (sunColour * _CloudBrightness * cloudLight)
+				half3 cloudColour = cloudTex.rgb * (deckLight * _CloudBrightness * cloudLight)
 					                  + sunColour * cloudSpec;
 
 				SurfaceData surfaceData = (SurfaceData)0;
