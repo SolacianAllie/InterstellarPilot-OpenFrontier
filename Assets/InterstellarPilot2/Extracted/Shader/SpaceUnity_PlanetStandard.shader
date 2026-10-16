@@ -2,11 +2,29 @@ Shader "SpaceUnity/PlanetStandard" {
 	Properties {
 		_MainTex ("_MainTex", 2D) = "black" {}
 		_Normals ("_Normals", 2D) = "black" {}
-		_Lights ("_Lights", 2D) = "black" {}
 		_SpecMap ("_SpecMap", 2D) = "black" {}
+		// City lights: an orthographic night-lights plate. Visible on the night
+		// side only, and off the water.
+		_Lights ("_Lights", 2D) = "black" {}
 		_LightScale ("_LightScale", Float) = 1
 		_Emission ("_Emission", 2D) = "black" {}
 		_EmissionScale ("_EmissionScale", Float) = 1
+		// _AlbedoDebug returns the RAW _MainTex sample, untouched and before any
+		// lighting, cloud, haze or fog. One number settles "is the colour missing
+		// in the texture, or is the shader taking it away":
+		//   0  normal render
+		//   1  the raw albedo texture, full stop
+		//   2  after UniversalFragmentPBR, before the cloud deck
+		//   3  after the cloud deck, before the aerial-perspective lerp
+		//   4  the finished pixel
+		//
+		// The raw plate was confirmed good, so this walks the pipeline forward
+		// one stage at a time and the first stage that loses the colour names
+		// the term that took it.
+		//
+		// Delete this property and the one-line branch in frag() when the cause
+		// is known. Nothing else depends on it.
+		_AlbedoDebug ("DEBUG Surface Bisect", Range(0, 4)) = 0
 		[Header(AerialPerspective)]
 		// Deliberately the SAME property names as the atmosphere shell
 		// (OpenFrontier/Planet Atmosphere): _AtmoColor and _SunRimColor.
@@ -35,6 +53,27 @@ Shader "SpaceUnity/PlanetStandard" {
 		[Header(SpecMap)]
 		_WaterFloor ("Water Floor", Range(0, 1)) = 0.32
 		_WaterRange ("Water Range", Range(0.02, 1)) = 0.2
+		// Where CITY LIGHTS may appear. A second gate on the same spec map, on
+		// the G channel, with its OWN threshold.
+		//
+		// Not _WaterFloor, because that gate does not close. Measured on
+		// alpine_02_specular.png against night_lights.png, as the share of
+		// city-light energy surviving over water (spec G > 0.4):
+		//
+		//   _WaterFloor 0.32 / _WaterRange 0.20   0.1110  <- 11% still leaks
+		//   _CityLightFloor 0.25 / _CityLightRange 0.10  0.0000  <- none
+		//
+		// The reason is the arithmetic: waterMask reaches 1.0 only at spec G 0.52,
+		// and the water in this plate tops out at 0.518 -- so the ocean mask never
+		// fully closes and a strip of lights always survives on it.
+		//
+		// G rather than A on purpose. They are the same channel at correlation
+		// 0.9937, but this plate's Standalone and Android imports are both at
+		// textureCompression 1, and DXT1/BC1 stores no alpha, so .a reads back
+		// as 1.0 everywhere. G cannot be stripped that way, and it is the channel
+		// waterMask already uses, so there is one water channel, not two.
+		_CityLightFloor ("City Light Floor", Range(0, 1)) = 0.25
+		_CityLightRange ("City Light Range", Range(0.02, 1)) = 0.1
 		_WaterSmoothness ("Water Smoothness", Range(0, 1)) = 0.92
 		_LandSmoothness ("Land Smoothness", Range(0, 1)) = 0.12
 		_LandDetailSmoothness ("Land Detail Smoothness", Range(0, 1)) = 0.3
@@ -65,6 +104,34 @@ Shader "SpaceUnity/PlanetStandard" {
 		// authored shadows saturate to solid black rather than going negative
 		// -- see the saturate in the frag.
 		_CloudShadowStrength ("Cloud Shadow Strength", Range(0, 2)) = 1.5
+		// How much of the EMISSION survives the cloud deck above it. 1 is fully
+		// clear, 0 is fully blocked.
+		//
+		// This is a separate dial from _CloudShadowStrength on purpose. That one
+		// is applied to the LIT term only, so that the terrain goes dark under a
+		// cloud while city lights and magma keep burning through it -- right for
+		// the surface being shadowed, and wrong for the emission, which sits
+		// UNDER the deck and has to pass through it.
+		//
+		// At zero coverage this is exactly 1.0, so a planet with no cloud is
+		// untouched by this term.
+		//
+		// It is SQUARED, which is what makes it visible. Straight lerp at 0.3 was
+		// barely readable: under cloud the eye sees a mix of the dimmed lights and
+		// the deck's own bright colour, so dimming the lights moves that mix
+		// toward something already bright and the change compresses.
+		//
+		// Squaring puts the extra bite where coverage is highest, which is exactly
+		// where the eye is looking for it:
+		//
+		//   1.0 clear      1.000    nothing under any cloud
+		//   0.5 half       0.500    half covered is half as bright
+		//   0.5 full       0.250    fully covered is a quarter -- a 4x cut
+		//
+		// At 0.3 squared it is 0.09 at full cloud, which is too much: the lights
+		// vanish under the deck and the map reads as having no cities at all in
+		// the overcast regions.
+		_CloudEmissionThrough ("Cloud Emission Through", Range(0, 1)) = 0.5
 		// Pan and drift are a UV offset added before the parallax term, so all
 		// four cloud maps move together. Drift is UV per second off _Time.
 		// Cloud altitude in PLANET RADII, for projecting the shadow. A cloud at
@@ -113,8 +180,9 @@ Shader "SpaceUnity/PlanetStandard" {
 
 			TEXTURE2D(_MainTex);    SAMPLER(sampler_MainTex);
 			TEXTURE2D(_Normals);    SAMPLER(sampler_Normals);
-			TEXTURE2D(_Lights);     SAMPLER(sampler_Lights);
+			
 			TEXTURE2D(_SpecMap);    SAMPLER(sampler_SpecMap);
+			TEXTURE2D(_Lights);     SAMPLER(sampler_Lights);
 			TEXTURE2D(_Clouds);     SAMPLER(sampler_Clouds);
 			TEXTURE2D(_CloudShadows); SAMPLER(sampler_CloudShadows);
 			TEXTURE2D(_CloudNormals); SAMPLER(sampler_CloudNormals);
@@ -125,6 +193,7 @@ Shader "SpaceUnity/PlanetStandard" {
 				float4 _MainTex_ST;
 				float _LightScale;
 				float _EmissionScale;
+				float _AlbedoDebug;
 				float4 _AtmoColor;
 				float4 _SunRimColor;
 				float4 _SunRimDeep;
@@ -135,13 +204,11 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _HazeSunView;
 				float _WaterFloor;
 				float _WaterRange;
+				float _CityLightFloor;
+				float _CityLightRange;
 				float _WaterSmoothness;
 				float _LandSmoothness;
 				float _LandDetailSmoothness;
-				float4 _Clouds_ST;
-				float4 _CloudShadows_ST;
-				float4 _CloudNormals_ST;
-				float4 _CloudSpecular_ST;
 				float _CloudCoverage;
 				float _CloudSharpness;
 				float _CloudBrightness;
@@ -151,16 +218,20 @@ Shader "SpaceUnity/PlanetStandard" {
 				float _CloudSmoothness;
 				float _CloudShadowSharpness;
 				float _CloudShadowStrength;
-				float4 _CloudPan;
+				float _CloudEmissionThrough;
 				float _CloudShadowHeight;
+				float4 _CloudPan;
 				float4 _CloudDrift;
 				float4 _TwilightColor;
 				float _TwilightStrength;
 				float _TwilightDim;
 				float _TwilightSharpness;
 				float _TwilightHaze;
+				float4 _Clouds_ST;
+				float4 _CloudShadows_ST;
+				float4 _CloudNormals_ST;
+				float4 _CloudSpecular_ST;
 			CBUFFER_END
-
 			struct Attributes {
 				float4 positionOS : POSITION;
 				float3 normalOS : NORMAL;
@@ -191,11 +262,23 @@ Shader "SpaceUnity/PlanetStandard" {
 			half4 frag(Varyings input) : SV_Target
 			{
 				half4 albedoTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.uv);
+
+				// Returned here, before the lighting, so what is on screen is the
+				// texture and nothing else. Grey here means the plate or its
+				// import; coloured here and grey in the render means the shader
+				// is taking the colour away.
+				// Bounded at BOTH ends, and the upper bound is the point: this used
+				// to be written as > 0.5 alone, which matched 2, 3 and 4 as well,
+				// so every stage of the bisect below returned the raw albedo and
+				// they all looked identical to stage 1. The later branches were
+				// unreachable and reported nothing at all.
+				if (_AlbedoDebug > 0.5 && _AlbedoDebug < 1.5)
+					return half4(albedoTex.rgb, 1.0);
 				half3 normalTS = UnpackNormal(SAMPLE_TEXTURE2D(_Normals, sampler_Normals, input.uv));
 				half3 lightsTex = SAMPLE_TEXTURE2D(_Lights, sampler_Lights, input.uv).rgb;
-				half3 emissionTex = SAMPLE_TEXTURE2D(_Emission, sampler_Emission, input.uv).rgb;
+				half4 emissionTex = SAMPLE_TEXTURE2D(_Emission, sampler_Emission, input.uv);
 				// Sampled up here rather than down with the SurfaceData, because the
-				// city lights need to know where the water is -- see nightMask.
+				// water placement needs to be known before the smoothness block.
 				// Defaults to black, and a black spec map gives waterMask 0 and
 				// landMask 0 -- matte terrain, the safe reading of a missing map
 				// rather than a fully mirrored planet.
@@ -226,7 +309,23 @@ Shader "SpaceUnity/PlanetStandard" {
 				// normal-mapped normal: whether a place is on the night side, and
 				// whether it is under water, are both properties of the sphere.
 				float geoNdL = dot(geoNormalWS, mainLight.direction);
+
+				// Night side gate for the city lights, on the GEOMETRIC normal and
+				// never the normal-mapped one: a settlement is not unlit because a
+				// hill happens to be in the way. Measured earlier, a bump taking the
+				// map-based ndl from -0.60 to +0.15 took that mask from 1.000 to 0.000
+				// and punched the lights a hole exactly where the relief was steepest.
+				float nightMask = saturate(-geoNdL * 2.0);
+
 				float waterMask = saturate((specTex.g - _WaterFloor) * rcp(max(1e-3, _WaterRange)));
+
+				// The city-lights gate. Separate from waterMask above and measured
+				// in the property block: waterMask leaves 11% of the city's light
+				// energy sitting on the ocean, this leaves none.
+				float cityLightAvoid = saturate((specTex.g - _CityLightFloor)
+				                               * rcp(max(1e-3, _CityLightRange)));
+
+
 				float ndl = dot(normalWS, mainLight.direction);
 
 				// Twilight -- the light itself reddening, which is what a
@@ -298,40 +397,20 @@ Shader "SpaceUnity/PlanetStandard" {
 				              * lerp(1.0, _TwilightDim, twilight);
 				half3 sunColour = mainLight.color * sunTint;
 
-				// Two independent emitters, and they are deliberately NOT the same:
-//
-//   _Lights   - city lights. Only visible on the night side, so they
-//               read as settlements lit by their own power rather than
-//               as part of the lit surface.
-//   _Emission - anything glowing on its own terms (lava, magma, glowing
-//               crystal, running lights). Emits all the way round,
-//               because it does not come from the sun. Keep this one
-//               masked by hand if a feature should only show on the day
-//               side - baking a small negative into the albedo is not a
-//               substitute, and doing the mask here keeps it free.
-//
-// Both are plain maps rather than HDR keywords: at planet scale the
-// glow has to survive being minified into a few pixels, and a keyword
-// swap cannot be authored per feature.
-				// Two fixes.
+				// _Emission only: anything glowing on its own terms -- lava, magma,
+				// glowing crystal. It emits all the way round because it does not
+				// come from the sun, so nothing gates it, and its alpha is the
+				// intensity with _EmissionScale as the gain above it.
 				//
-				// 1. Basis. This was saturate(-ndl * 2) on the NORMAL-MAPPED ndl, so
-				//    a hill facing the sun on the night side drove ndl positive and
-				//    the city lights punched a hole exactly where the terrain relief
-				//    is steepest. Measured: a bump taking the map ndl from -0.60 to
-				//    +0.15 took the mask from 1.000 to 0.000. A city is not in
-				//    shadow because a mountain is. Same failure mode as the haze
-				//    leak -- a property of the sphere read off relief.
-				float nightMask = saturate(-geoNdL * 2.0);
-				//
-				// 2. Water. City-light maps of this kind are orthographic night
-				//    lights plates and they carry light out over open water -- the
-				//    street grids bleed well past every coastline. The spec map
-				//    already knows where the water is, so that gates them.
-				//    emissionTex is deliberately NOT gated: magma and glowing crystal
-				//    are meant to sit anywhere, including offshore.
-				half3 emission = lightsTex * _LightScale * nightMask * (1.0 - waterMask)
-							   + emissionTex * _EmissionScale;
+				// There are no CITY LIGHTS here. That system was removed wholesale
+				// to start again; nothing of it remains, and the _Lights plate is
+				// City lights come from the _Lights plate, only on the night side and
+				// never over water, because these plates are orthographic night lights
+				// and their street grids bleed well past every coastline.
+				half3 emission = lightsTex * _LightScale * nightMask
+				                              * (1.0 - cityLightAvoid)
+				               + emissionTex.rgb * emissionTex.a * _EmissionScale;
+							   + emissionTex.rgb * emissionTex.a * _EmissionScale;
 
 
 				// Cloud layer. The art convention in *_clouds_diffuse.png is
@@ -465,7 +544,16 @@ Shader "SpaceUnity/PlanetStandard" {
 				// #pragma multi_compile _ _SPECULAR_SETUP and the keyword set
 				// on the material, which also changes how diffuse is derived.
 				surfaceData.normalTS = normalTS;
-				surfaceData.emission = emission;
+				// THE EMISSION IS UNDER THE DECK, so it is occluded by it. The
+				// deck composite further down is untouched and still HEAD's; this
+				// only scales what reaches the camera through the cloud in between.
+				//
+				// lerp is exactly 1.0 at zero coverage, so an unclouded planet is
+				// bit-identical to having no deck at all.
+				// Square, so the cut is concentrated under the thickest cloud --
+				// see the property block for why a straight lerp read as no change.
+				float throughLerp = lerp(1.0, _CloudEmissionThrough, cloudCov);
+				surfaceData.emission = emission * throughLerp * throughLerp;
 				surfaceData.occlusion = 1.0;
 				surfaceData.alpha = 1.0;
 				surfaceData.clearCoatMask = 0.0;
@@ -515,6 +603,7 @@ Shader "SpaceUnity/PlanetStandard" {
 					1.0 - saturate(shadowTex.a * _CloudShadowSharpness)
 					        * _CloudShadowStrength);
 				color.rgb = emissionTerm + max(litTerm, 0.0) * cloudShadow;
+				half3 afterLit = color.rgb;          // bisect capture
 
 				// The deck itself. Clouds are a high-albedo layer sitting in the
 				// sky, so they take the sun's colour and are lit with a wrapped
@@ -544,6 +633,7 @@ Shader "SpaceUnity/PlanetStandard" {
 				half3 cloudColour = cloudTex.rgb * (sunColour * _CloudBrightness * cloudLight)
 					                  + sunColour * cloudSpec;
 				color.rgb = lerp(color.rgb, cloudColour, cloudCov);
+				half3 afterDeck = color.rgb;         // bisect capture
 
 				// Aerial perspective -- the other half of the atmosphere.
 				//
@@ -639,6 +729,17 @@ Shader "SpaceUnity/PlanetStandard" {
 					* (_HazeStrength + _HazeSunStrength * hazeSun)
 					+ twilight * _TwilightHaze * twilightLit);
 				color.rgb = lerp(color.rgb, hazeTint, hazeAmt);
+
+
+
+				half3 afterHaze = color.rgb;         // bisect capture
+
+				if (_AlbedoDebug > 1.5)
+				{
+					if (_AlbedoDebug < 2.5) return half4(afterLit, 1.0);
+					if (_AlbedoDebug < 3.5) return half4(afterDeck, 1.0);
+					return half4(afterHaze, 1.0);
+				}
 
 				color.rgb = MixFog(color.rgb, inputData.fogCoord);
 				return color;
