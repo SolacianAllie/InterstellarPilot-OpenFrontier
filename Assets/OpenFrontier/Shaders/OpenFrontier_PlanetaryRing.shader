@@ -113,17 +113,6 @@ Shader "OpenFrontier/PlanetaryRing"
 		// A fixed softness instead reads as a stencil cut with scissors.
 		_PlanetShadowSoftness ("Shadow Penumbra Tangent", Float) = 0.005
 
-		// 0 final | 1 dust albedo | 2 magenta | 3 shadow term as greyscale
-		// 4 light direction in object space | 5 sunward/anti-sun split
-		//
-		// 3 and 4 exist because the shadow has been judged wrong twice from
-		// a screenshot. Stage 3 is the shadow term alone: greyscale shows
-		// instantly whether the occluded region is a BAND or a HALF, which
-		// is the _PlanetRadius question. Stage 4 paints the light direction
-		// so it can be compared against the planet's own lit side, which is
-		// what settles whether the guard is inverted -- a judgement that has
-		// to be made by eye, and the eye is not reliable on a screenshot.
-		_AlbedoDebug ("Albedo Debug", Range(0, 5)) = 0
 		[Enum(Off, 0, Back, 1, Front, 2)] _Cull ("Culling", Float) = 0
 	}
 
@@ -177,7 +166,6 @@ Shader "OpenFrontier/PlanetaryRing"
 				float _PlanetRadius;
 				float _ShadowStrength;
 				float _PlanetShadowSoftness;
-				float _AlbedoDebug;
 				float _Cull;
 			CBUFFER_END
 
@@ -267,8 +255,11 @@ Shader "OpenFrontier/PlanetaryRing"
 				// it flanks the axis instead of sitting under the planet. The
 				// result reads as a huge band of light with a dark stripe
 				// through it, which looks like a sign error in axial rather
-				// than what it is. Found by rendering the term alone at
-				// _AlbedoDebug 3, which is the reason that stage exists.
+				// than what it is. What finally caught it was printing this
+				// one function's return value on its own -- worth remembering
+				// that an inverted test here is invisible to every other kind
+				// of check, because both ends of a smoothstep still reach 0
+				// and 1 and only which end is where differs.
 				return smoothstep(_PlanetRadius, _PlanetRadius + soft, perp);
 			}
 
@@ -285,9 +276,10 @@ Shader "OpenFrontier/PlanetaryRing"
 				// spent on a guaranteed 1.0.
 				Light mainLight = GetMainLight();
 
-				// Computed before the debug returns below so the shadow stages
-				// can show it. TransformWorldToObjectDir uses a plain
-				// normalize(), so a zero light direction would give NaN, and
+				// Hoisted above the lighting so the shadow and the transmission
+				// share one fetch and one guard rather than repeating both.
+				// TransformWorldToObjectDir uses a plain normalize(), so a zero
+				// light direction would give NaN, and
 				// NaN multiplied into a black unlit result is still NaN. URP
 				// documents _MainLightPosition as defaulting to (0,0,1) when no
 				// main light is visible, so it should never be zero -- but
@@ -296,35 +288,6 @@ Shader "OpenFrontier/PlanetaryRing"
 				half3 lightDirOS = (lightLen > 1e-5)
 					? TransformWorldToObjectDir(mainLight.direction, true)
 					: half3(0, 0, 1);
-
-				// Staged bisect. Returned BEFORE the lighting with alpha 1, so
-				// what is on screen is the value under test and nothing else.
-				// Bounded at BOTH ends: written as `> 0` alone every stage
-				// matches, they all look identical to stage 1, and the later
-				// ones become unreachable and report nothing.
-				if (_AlbedoDebug > 0.5 && _AlbedoDebug < 1.5)
-					return half4(dustTex.rgb, 1.0);
-				// Stage 3: the shadow term alone. White = lit, black = the
-				// planet is in the way. If this shows a HALF rather than a
-				// BAND, _PlanetRadius is simply larger than the ring.
-				if (_AlbedoDebug > 2.5 && _AlbedoDebug < 3.5)
-					return half4(PlanetShadow(v.positionOS, lightDirOS, lightLen).xxx, 1.0);
-				// Stage 4: the light direction, remapped from -1..1 to 0..1 so
-				// it is visible at all. Compare against the planet's lit side.
-				if (_AlbedoDebug > 3.5 && _AlbedoDebug < 4.5)
-					return half4(lightDirOS * 0.5 + 0.5, 1.0);
-				// Stage 5: red = sunward, blue = anti-sun. If the blue half
-				// matches the planet's own dark side, the guard is correct and
-				// whatever else is wrong is not a sign error.
-				//
-				// Bounded above like every other stage. Left as a bare `> 4.5`
-				// it would swallow the magenta stage too, so 5 and 6 would
-				// print the same thing and 6 would stop reporting at all.
-				if (_AlbedoDebug > 4.5 && _AlbedoDebug < 5.5)
-					return half4(saturate(dot(v.positionOS, lightDirOS) * 0.01),
-						0.0, 1.0, 1.0);
-				if (_AlbedoDebug > 1.5)
-					return half4(1.0, 0.0, 1.0, 1.0);   // magenta: reached the end
 
 				// Flip the geometric normal on back faces. This is the other
 				// half of "double sided": Cull Off draws the far face, and
@@ -359,9 +322,6 @@ Shader "OpenFrontier/PlanetaryRing"
 				inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(v.positionCS);
 				inputData.shadowMask = half4(1, 1, 1, 1);
 
-				// mainLight, lightLen and lightDirOS are all computed above the
-				// debug returns, so the shadow reuses them rather than repeating
-				// the fetch and the guard.
 				half4 color = UniversalFragmentPBR(inputData, surfaceData);
 
 				// ---- planet shadow ----
