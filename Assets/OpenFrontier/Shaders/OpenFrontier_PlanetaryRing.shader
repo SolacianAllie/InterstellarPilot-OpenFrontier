@@ -1,4 +1,4 @@
-Shader "SpaceUnity/PlanetaryRing"
+Shader "OpenFrontier/PlanetaryRing"
 {
 	// A flat annulus of ring dust with rocks scattered through it, blended on
 	// one mesh. Built to the conventions of SpaceUnity/PlanetStandard: URP
@@ -179,9 +179,8 @@ Shader "SpaceUnity/PlanetaryRing"
 				float3 positionWS : TEXCOORD1;
 				half3 normalWS : TEXCOORD2;
 				half4 tangentWS : TEXCOORD3;
-				half fogCoord : TEXCOORD4;
 				half4 color : COLOR;
-				half facing : FRONT_FACE_SEMANTIC;
+				FRONT_FACE_TYPE facing : FRONT_FACE_SEMANTIC;
 			};
 
 			Varyings vert(Attributes input)
@@ -197,8 +196,7 @@ Shader "SpaceUnity/PlanetaryRing"
 				output.normalWS = normInputs.normalWS;
 				output.tangentWS = half4(normInputs.tangentWS, input.tangentOS.w);
 				output.color = input.color;
-				output.fogCoord = ComputeFogFactor(posInputs.positionCS.z);
-				output.facing = IS_FRONT_VFACE(input.positionCS, 1.0);
+				output.facing = IS_FRONT_VFACE(input.positionCS, 1.0, -1.0);
 
 				// The RAW uv, not TRANSFORM_TEX'd: each texture carries its own
 				// _ST so the dust and the rocks can tile independently while
@@ -307,11 +305,9 @@ Shader "SpaceUnity/PlanetaryRing"
 				inputData.positionWS = input.positionWS;
 				inputData.normalWS = normalWS;
 				inputData.viewDirectionWS =
-					SafeNormalize(GetWorldSpaceViewDir(input.positionWS));
+					GetWorldSpaceNormalizeViewDir(input.positionWS);
 				inputData.shadowCoord = TransformWorldToShadowCoord(input.positionWS);
-				inputData.fogCoord = input.fogCoord;
 				inputData.vertexLighting = half3(0, 0, 0);
-				inputData.bakedGI = SampleSH(normalWS);
 				inputData.normalizedScreenSpaceUV =
 					GetNormalizedScreenSpaceUV(input.positionCS);
 				inputData.shadowMask = half4(1, 1, 1, 1);
