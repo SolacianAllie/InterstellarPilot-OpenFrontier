@@ -4,35 +4,6 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_SunRimColor ("Sun Rim Color", Color) = (1,0.62,0.30,1)
 		_SunRimDeep ("Sun Rim Deep Color", Color) = (1,0.30,0.12,1)
 		_SunExtinction ("Sun Extinction", Range(0, 1.5)) = 0.25
-		// A SECOND extinction, for the eclipse path alone.
-		//
-		// horizonPath and airMass are different quantities and lumping them
-		// under one coefficient cost the twilight band. Raising
-		// _SunExtinction to retract the rim also dims airMass, which is
-		// the same sunlight lighting the terminator band -- measured, that
-		// band lost 43 percent at the terminator. Split, the band is
-		// bit-identical, because horizonPath is zero side-on.
-		// 0.45, not 0.9. The span no longer depends on this at all --
-		// measured, 23.0 degrees at sun 12 off axis for every value from
-		// 0.9 down to 0.18, because the narrowing is the lobe's job and
-		// this is a flat scale on top of it. So it is purely a brightness
-		// dial now and can be set by how bright the crescent has to read
-		// instead of by how wide it is. At 0.9 the crest at sun 12 off axis
-		// measured luminance 0.021, which after the 0.4 output scale is
-		// effectively black -- the 'invisible' in the report. 0.45 gives 5x
-		// that there and only 1.5x at sun 31, so it lifts the near-eclipse
-		// crescent far more than the geometries already tuned.
-		// 0.22, not 0.45. The rim at sun 12 off axis was too dim to read as
-		// a rim: measured crest luminance 0.11 against a day-side 0.95,
-		// which after the 0.4 output scale is near black. The span is set
-		// by the lobe and does not move with this, so it is a pure
-		// brightness dial now. It still fades out -- horizonPath is
-		// 1/sin(alpha) - 1, so:
-		//     sun 20 off axis  transmit 0.66
-		//     sun 12 off axis  transmit 0.43
-		//     sun  6 off axis  transmit 0.15
-		//     sun  2 off axis  transmit 0.002
-		_SunEclipseExtinction ("Sun Eclipse Extinction", Range(0, 4)) = 0.22
 		_SunReddening ("Sun Reddening", Range(0.1, 2)) = 0.4
 		_Size ("Size", Float) = 0.75
 		_Falloff ("Falloff", Float) = 2
@@ -40,16 +11,9 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_NightGlow ("Night Glow", Range(0, 0.3)) = 0.03
 		// How far round past the terminator the air still glows, as cos(angle
 		// from the sun's screen bearing). 0.5 is 30 degrees of limb.
-		// How far past the terminator the air still glows, as cos(angle from
-		// the sun's screen bearing). 0.3 is about 17 degrees of limb.
-		// The dark-side reach of the terminator wedge, in cosine units. 0.3
-		// was dayAir's soft edge, which put the band 17.5 degrees past the
-		// terminator; 0.45 is 26.7 degrees. _TwilightDay is the day side of
-		// the same wedge and is a separate dial because the wedge really
-		// is lopsided -- a twilight glow reaches further into the dark than
-		// it reaches back into the day.
-		_TwilightReach ("Twilight Reach", Range(0, 0.9)) = 0.45
-		_TwilightDay ("Twilight Day", Range(0, 0.9)) = 0.45
+		// How far past the terminator the air still glows, as a sine of the
+		// sun's altitude. 0.45 is about 26.7 degrees; 0.2 is 11.5.
+		_TwilightReach ("Twilight Reach", Range(0, 0.9)) = 0.3
 		[Header(Volume)]
 		_ScaleHeight ("Scale Height", Range(0.002, 0.1)) = 0.006
 		_Density ("Density", Range(0.3, 12)) = 3
@@ -57,19 +21,6 @@ Shader "OpenFrontier/Planet Atmosphere" {
 		_AtmoGlow ("Atmosphere Glow", Range(0, 1.5)) = 0.4
 		_SunBleed ("Sun Bleed", Range(0, 1)) = 1
 		_SunBleedPower ("Sun Bleed Power", Range(1, 16)) = 3
-		// Added to the exponent as the sun goes behind the planet, which
-		// pulls the arc's two ends together. 0 disables it.
-		_SunBleedTighten ("Sun Bleed Tighten", Range(0, 64)) = 28
-		// Power applied to how far the sun is behind, so the tightening
-		// concentrates near alignment instead of starting at the limb.
-		// 8, not 4. Shape is how sharply the crest lobe concentrates near
-		// alignment, and at 4 the tightening was well advanced by 30 degrees
-		// off axis -- the close-up rim, sun just past the limb, was already
-		// down to a third of its width. Measured rim span at sun 65 off axis:
-		// 73 degrees at shape 4, 99 at shape 8. At sun 12 the two are within
-		// a degree of each other (23.0 vs 24.0), so this buys the close-up
-		// case back without giving anything up at the eclipse.
-		_SunBleedShape ("Sun Bleed Shape", Range(1, 12)) = 8
 		_SunRimBoost ("Sun Rim Boost", Range(0, 2)) = 1
 		[Header(ForwardScatter)]
 		_ForwardBias ("Forward Bias", Range(-1, 1)) = 1
@@ -93,20 +44,16 @@ Shader "OpenFrontier/Planet Atmosphere" {
 			fixed4 _SunRimColor;
 			fixed4 _SunRimDeep;
 			float _SunExtinction;
-			float _SunEclipseExtinction;
 			float _SunReddening;
 			float _Size;
 			float _Falloff;
 			float _Transparency;
 			float _NightGlow;
 			float _TwilightReach;
-			float _TwilightDay;
 			float _ScaleHeight;
 			float _Density;
 			float _SunBleed;
 			float _SunBleedPower;
-			float _SunBleedTighten;
-			float _SunBleedShape;
 			float _SunRimBoost;
 			float _AtmoGlow;
 			float _ForwardBias;
@@ -314,36 +261,13 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// smoothstep(-0.5, 0.05, bearing) returned 0.977 to 1.000 across the
 				// WHOLE limb -- it never switched off and lit the entire planet.
 				//
-				// cosSun is ndl divided by sunLen, which strips the sunLen scaling
-				// out of it and leaves the SIGNED cosine of the angle between this
-				// limb sample and the sun's screen bearing. At the silhouette n is
-				// perpendicular to the view axis, so ndl = dot(n, sunPerp) and
-				// |ndl| <= sunLen by construction -- measured max ratio 1.000000 at
-				// every sunLen, so cosSun is bounded in [-1, 1] and safe to window.
+				// ndl = dot(n, l) is the only signed quantity in this block, because
+				// ndl = sunLen * cos(theta) with theta signed. Any window that has to
+				// reach past the terminator has to be expressed in it.
 				//
-				// This is the same quantity as bearing, MINUS the saturate. That
-				// distinction is the whole point and it has already been got wrong
-				// once here:
-				//
-				//     float bearing = saturate(dot(nPerp, sunPerp) / (|nPerp| * sunLen));
-				//
-				// is |cos|, unsigned, and cannot express a window with a negative
-				// bound at all -- any such bound is unreachable and dayAir never
-				// switches off.
-				//
-				// Windowing on raw ndl instead is signed but carries sunLen with
-				// it, so the band changes width as the camera moves. It reached
-				// zero at cos(theta) = -reach/sunLen, and as the sun swings toward
-				// the view axis that threshold passes -1 and becomes unreachable:
-				//
-				//   sun 60 deg off axis   half-width 110 deg
-				//   sun 30 deg off axis   half-width 127 deg
-				//   sun 15 deg off axis   whole limb, unreachable
-				//
-				// which is the band widening toward eclipse. cosSun holds it at
-				// 107.5 deg at every sun position.
-				float cosSun = ndl * rcp(max(0.02, sunLen));
-				float dayAir = smoothstep(-_TwilightReach, 0.05, cosSun);
+				// _TwilightReach is how far past the terminator, as a sine of the
+				// sun's altitude. 0.45 is about 26.7 degrees.
+				float dayAir = smoothstep(-_TwilightReach, 0.05, ndl);
 				// BRIGHTNESS follows the sun's screen bearing -- 1 where this limb
 				// point faces the sun most directly.
 				//
@@ -416,38 +340,8 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// positive until the very last moment, so the cyan air glow summed
 				// with the orange arc and desaturated to white -- the white being a
 				// tonemap artifact of that brightness, not of any hue in here.
-				//
-				// This is the term that retracts the rim: zero at the sun's screen
-				// bearing, growing without bound as the sun swings behind. Bounded
-				// by the max(0.02) above rather than by a cap of its own, which is
-				// what stops the divide reaching infinity at exact overlap.
 				float horizonPath = rcp(max(0.02, sunLen)) - 1.0;
-				float transmit = exp(-airMass * _SunExtinction
-				                  - horizonPath * _SunEclipseExtinction);
-
-				// The HUE needs the absolute path too, and this is where that used
-				// to go missing.
-				//
-				// airMass above is air mass RELATIVE to the crest, so it is zero
-				// at the crest BY CONSTRUCTION. The comment on it says outright
-				// that it "says nothing about how much light is left" -- true, and
-				// then both sunset and airColor were built from it alone. So the
-				// rim's hue was computed as if the sunlight had crossed nothing at
-				// the brightest point on the planet.
-				//
-				// Measured, sun 12 degrees off axis: horizonPath 3.81, so the crest
-				// is behind nearly four air masses and should be deep red, while
-				// airMass there read 0 and the rim came out cyan.
-				//
-				// horizonPath is exactly that missing term -- it is 1/sunLen - 1,
-				// the air mass AT the crest, and every other point on the limb has
-				// more. Added in the same _SunReddening units the rest of the ramp
-				// is in, so the rim warms from orange to deep red as the sun swings
-				// behind: +0.06 at 60 degrees off axis, +0.38 at 31, fully
-				// saturated at 12.
-				//
-				// horizonPath is zero side-on, so the day side is bit-identical.
-				float hueMass = saturate(airMass + horizonPath * _SunReddening);
+				float transmit = exp(-(airMass + horizonPath) * _SunExtinction);
 
 				// Whether the arc shows at all.
 				//
@@ -468,46 +362,9 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// glow is on the night side of the terminator by definition, so a
 				// gate that reaches zero below ndl = -0.2 deletes the entire
 				// night-side rim -- which is the case most of the references are.
-				// The gate that matters is sunBehind above.
-				//
-				// The lobe basis is cosSun, the SIGNED cosine, not bearing.
-				//
-				// bearing is saturate(...), so it is |cos| -- which is 1 at theta 0
-				// AND 1 at theta 180. pow(bearing, P) was therefore TWO lobes of
-				// identical brightness, one on the sun's bearing and one directly
-				// opposite it. dayAir is 0 on the night side so the air term
-				// cannot mask it: the core was painting a full-strength arc on the
-				// NIGHT limb. Measured, identical to three decimal places either
-				// side of the planet.
-				//
-				// cosSun already carries the signed value (it is ndl / sunLen, and
-				// at the silhouette ndl = dot(n, sunPerp)), so this is a change of
-				// basis and not a new quantity. bearing stays as it is: airMass
-				// genuinely needs |cos|, because there are TWO terminator crossings
-				// and both have to redden.
-				//
-				// The exponent grows as the sun goes behind, so the arc's two ends
-				// walk in toward the sun's bearing:
-				//
-				//     P   half-width
-				//     3       37 deg
-				//    12       19 deg
-				//    31       12 deg
-				//
-				// _SunBleedShape raises it to a power so the tightening
-				// concentrates near alignment. Linear in dot(l,v) it began the
-				// instant the sun passed the limb and had collapsed to a third of
-				// its width by 30 degrees, which reads as the crescent snapping
-				// shut rather than closing. behind^4 leaves 60 degrees untouched,
-				// halves it by 45, and closes it by 20.
-				//
-				// Two muls and one pow on top of a pow that was ALREADY runtime --
-				// _SunBleedPower is a uniform, so the compiler cannot fold it
-				// either way.
-				float behind = saturate(-dot(l, v));
-				float tighten = pow(behind, _SunBleedShape) * _SunBleedTighten;
-				float lobe = saturate(cosSun);
-				float arc = pow(max(lobe, 1e-4), _SunBleedPower + tighten)
+				// The gate that matters is sunBehind above. bearing already keeps
+				// the arc off the unlit limb, since it falls to zero there anyway.
+				float arc = pow(bearing, _SunBleedPower)
 				          * sunBehind * _SunBleed * transmit;
 
 				// The general air along the lit limb, kept deliberately
@@ -572,7 +429,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// the air's cyan made the far end of the rim go grey-blue, because
 				// cyan has a high green and blue to fall back to. The references
 				// show it staying warm as it dims.
-				fixed3 sunset = lerp(_SunRimColor.rgb, _SunRimDeep.rgb, hueMass);
+				fixed3 sunset = lerp(_SunRimColor.rgb, _SunRimDeep.rgb, airMass);
 
 				// The air's own colour, reddened by the SAME air mass. This is the
 				// term that decides what the rim looks like where the arc has faded,
@@ -580,7 +437,7 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// came out blue exactly where the sun was lowest.
 				// Two stages, matching the surface shader's hazeTint for the same
 				// reason: one lerp from cyan to orange goes through grey.
-				half3 warm = saturate(hueMass * sunBehind);
+				half3 warm = saturate(airMass * sunBehind);
 				fixed3 airColor = lerp(lerp(_AtmoColor.rgb, _SunRimColor.rgb, warm),
 				                      _SunRimDeep.rgb, warm * warm);
 
@@ -597,73 +454,10 @@ Shader "OpenFrontier/Planet Atmosphere" {
 				// It is not a sunset, and nothing about it has crossed a
 				// terminator, so it takes the air's own colour instead:
 				// R/B 8.3 red -> 0.3 cyan on the night limb.
-				//
-				// It is also now gated by (1 - dayAir). It had no gate at all --
-				// not dayAir, not limb -- so it was being paid on the sunlit limb
-				// as well as the unlit one, and being CYAN that cancelled the
-				// sunset colour directly rather than merely adding to it.
-				// Measured at the crest with the sun 12 degrees off axis it
-				// was 42% of the total, and the whole limb came out with R, G
-				// and B within 13% of each other -- grey. It is meant to be the
-				// floor UNDER the unlit limb, and airglow is not visible
-				// against a sunlit sky anyway, so fading it in as the terminator
-				// crosses is both the role it was written for and the honest one.
-				// The SAME lobe, as a multiplier on the air term.
-				//
-				// This was the term actually painting the full-half line, and
-				// _SunBleedTighten never touched it. dayAir is a window on cosSun
-				// with no bearing dependence at all -- smoothstep(-0.3, 0.05, ...)
-				// is 1 for every theta below 87 degrees -- so it filled the entire
-				// gap between the crest and the terminator band and held the
-				// visible span at 180 degrees at EVERY sun position, side-on to
-				// alignment. Measured, the air term was 10x to 100x the core
-				// everywhere past 40 degrees off the bearing.
-				//
-				// The exponent is `tighten` ALONE, with no _SunBleedPower base: at
-				// behind 0 that is pow(x, 0) = 1 exactly, so the day side is
-				// bit-identical.
-				//
-				// The TERMINATOR WEDGE is a different phenomenon at a different
-				// place, and gating it by this lobe was a mistake made one commit
-				// ago. The wedge sits where the terminator crosses the visible
-				// limb -- theta 90 from the sun's bearing -- and cos(90) is 0, so
-				// pow(lobe, tighten) is ZERO there at every sun position except
-				// exactly side-on, where pow(0, 0) is undefined. The lobe was
-				// meant to confine the forward-scattered crest and it removed the
-				// twilight band instead:
-				//
-				//     theta    60      75      87      90      97     107
-				//     limb  0.547  0.309  0.077  0.000  0.160  0.343
-				//
-				// which is the whole of dayAir's soft edge -- i.e. all of the
-				// twilight band -- attenuated to nothing.
-				//
-				// So the wedge gets its own window, peaking ON the terminator
-				// rather than being the lit/unlit half-plane, and reaching further
-				// into the dark than back into the day. _TwilightReach is the dark
-				// side and _TwilightDay the day side; they coincide at cosSun 0, so
-				// the wedge is continuous through the terminator.
-				//
-				// It retracts FASTER than the crest, on (1 - behind^3), because it
-				// is the longer path: light reaching the terminator has grazed
-				// the atmosphere, while the crest is the sun's own bearing. Left at
-				// parity it would light the dark side at eclipse, which is exactly
-				// what the crest's lobe exists to prevent. Measured survival:
-				//
-				//     behind  0.42  0.71  0.86  0.94  0.98   1.00
-				//     wedge   0.93  0.65  0.37  0.17  0.065  0.00
-				//
-				// max(lobe, 1e-4) rather than lobe, so pow is never asked for
-				// pow(0, 0) at exactly side-on.
-				float wedge = saturate(1.0 + cosSun * rcp(max(1e-3, _TwilightReach)))
-				            * saturate(1.0 - cosSun * rcp(max(1e-3, _TwilightDay)))
-				            * (1.0 - behind * behind * behind);
-				float limb = saturate(pow(max(lobe, 1e-4), tighten) + wedge);
 				fixed3 tint = lerp(airColor, sunset, saturate(arc))
-				            * density * (limb * dayAir * _AtmoGlow * transmit)
+				            * density * (dayAir * _AtmoGlow * transmit)
 				            * lightCol
-				          + _AtmoColor.rgb
-				            * (density * _NightGlow * (1.0 - dayAir) * lightCol);
+				          + _AtmoColor.rgb * (density * _NightGlow * lightCol);
 
 				// A small additive core on top, for the hot line right where
 				// the sun is coming up.
