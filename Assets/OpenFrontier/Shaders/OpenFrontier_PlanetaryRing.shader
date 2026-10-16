@@ -4,12 +4,16 @@ Shader "OpenFrontier/PlanetaryRing"
 	//
 	// STRIPPED BACK ON PURPOSE
 	//
-	// This is the floor: one texture, one light, one shadow. The volumetric
-	// scatter, the Henyey-Greenstein lobe, the rim, the wrapped diffuse, the
+	// This is the floor: one texture, one light, one shadow, one transmit
+	// term. The Henyey-Greenstein lobe, the rim, the wrapped diffuse, the
 	// grazing-angle alpha falloff, the normal map, the spec map, the band
-	// edge fade and the second UV channel are all gone. They were not cheap
-	// and they were not all pulling their weight, and a look cannot be
-	// tuned while six other effects are arguing with it.
+	// edge fade, the second UV channel and the constant ambient are all gone.
+	// They were not cheap and they were not all pulling their weight, and a
+	// look cannot be tuned while six other effects are arguing with it.
+	//
+	// The one that came back is transmission, because it is not a cosmetic
+	// effect but the actual lighting of a translucent sheet. See the note on
+	// _TransmitStrength.
 	//
 	// "Double sided" is the whole geometry story: Cull Off, and the normal
 	// flipped on back faces. A ring is viewed from above and from below, and
@@ -42,10 +46,31 @@ Shader "OpenFrontier/PlanetaryRing"
 		[MainTexture] _DustAlbedo ("Dust Albedo (RGB, A = density)", 2D) = "black" {}
 		[HDR] _DustColor ("Dust Tint", Color) = (1, 1, 1, 1)
 		_DustSmoothness ("Dust Smoothness", Range(0, 1)) = 0.08
-		// Stands in for ambient light. URP's bakedGI is zero for a
-		// procedural object with no lightmaps, so without this the unlit side
-		// of the ring is pure black.
-		[HDR] _DustAmbient ("Dust Ambient", Color) = (0.04, 0.04, 0.05, 1)
+
+		// ---- light through the dust ----
+		// There is no ambient term. A constant ambient is the usual way to keep
+		// the unlit side off pure black, and it is a lie: it is the same on
+		// every surface regardless of what is lighting it, so it cannot darken
+		// where the planet's shadow falls and it does not move when the sun
+		// does.
+		//
+		// This is what replaces it. Light entering the sunlit face of a thin
+		// sheet scatters through the dust and leaves the far face, so the side
+		// you are looking at glows when the sun is on the other side of it.
+		// The glow therefore tracks the sun for free -- it swings round as the
+		// light does, and it is genuinely absent where the planet is in the way.
+		_TransmitStrength ("Light Through Dust", Range(0, 4)) = 0.8
+		// How tightly the glow is confined to looking straight through. Low is
+		// a broad wash either side of the sun; high is a bright core only when
+		// the sun is nearly behind the dust from here.
+		_TransmitPower ("Transmit Tightness", Range(0.5, 16)) = 4
+		// The tint the light picks up on the way through. Dust is not clear, so
+		// it does not pass light through unchanged.
+		[HDR] _TransmitColor ("Transmitted Colour", Color) = (1, 0.93, 0.82, 1)
+		// How much the dust's own density attenuates it. Thick dust blocks its
+		// own glow, which is why the sparse regions shine through and the dense
+		// ones do not. Reads the texture's alpha, which is already sampled.
+		_TransmitDensity ("Density Attenuation", Range(0, 1)) = 1
 
 		// ---- planet shadow ----
 		// A shadow map cannot reach this ring: the project's shadow distance
@@ -144,7 +169,10 @@ Shader "OpenFrontier/PlanetaryRing"
 			CBUFFER_START(UnityPerMaterial)
 				float4 _DustAlbedo_ST;
 				float4 _DustColor;
-				float4 _DustAmbient;
+				float4 _TransmitColor;
+				float _TransmitStrength;
+				float _TransmitPower;
+				float _TransmitDensity;
 				float _DustSmoothness;
 				float _PlanetRadius;
 				float _ShadowStrength;
@@ -315,14 +343,17 @@ Shader "OpenFrontier/PlanetaryRing"
 				inputData.normalWS = geoNormalWS;
 				inputData.viewDirectionWS = GetWorldSpaceNormalizeViewDir(v.positionWS);
 				inputData.shadowCoord = TransformWorldToShadowCoord(v.positionWS);
-				// Deliberately NOT _DustAmbient here. UniversalFragmentPBR
-				// folds bakedGI in as the GI term, so it arrives already
-				// summed with the direct light in color.rgb -- and the planet
-				// shadow below multiplies color.rgb. Leaving ambient in there
-				// therefore multiplied it by zero and made the shadowed side
-				// pure black, which is not a shadow, it is a hole. The planet
-				// blocks the star; it does not block the rest of the sky.
-				// It is added after the shadow instead.
+				// Zeroed deliberately. UniversalFragmentPBR folds bakedGI in as
+				// the GI term, so it arrives already summed with the direct
+				// light in color.rgb -- and the planet shadow multiplies
+				// color.rgb. Anything left in there is multiplied by the shadow
+				// along with the sun, which is how an earlier version turned the
+				// shadowed half of the ring into a hole rather than a shadow.
+				//
+				// There is nothing to put here now in any case: the unlit side is
+				// lit by light passing through the dust from the far face, which
+				// is added after the shadow and is a real dependency on where
+				// the sun is, rather than a constant.
 				inputData.bakedGI = half3(0, 0, 0);
 				inputData.vertexLighting = half3(0, 0, 0);
 				inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(v.positionCS);
@@ -339,18 +370,39 @@ Shader "OpenFrontier/PlanetaryRing"
 				// no lightmaps it is ignored entirely -- a hook that silently
 				// does nothing. shadowCoord cannot be used either, since the
 				// map does not reach here.
+				half shadow = 1.0;
 				if (_PlanetRadius > 0.0 && lightLen > 1e-5)
 				{
-					color.rgb *= lerp(1.0,
+					shadow = lerp(1.0,
 						PlanetShadow(v.positionOS, lightDirOS, lightLen),
 						_ShadowStrength);
 				}
+				color.rgb *= shadow;
 
-				// Ambient, added AFTER the shadow so the shadowed side stays a
-				// dark ring rather than a hole in one. URP's bakedGI is zero
-				// here, so with no additional lights nothing else would put
-				// anything in the unlit half.
-				color.rgb += _DustAmbient.rgb;
+				// ---- light that came through the dust ----
+				// dot(viewDir, -lightDir) is the angle between the direction
+				// the light is travelling and the direction to the camera, so
+				// it peaks exactly when the sun is on the far side of the sheet
+				// from the viewer: looking INTO the sun through the dust. That
+				// is the whole effect -- the unlit face glows because the dust
+				// is in the way, not because a constant was added to it.
+				//
+				// Multiplied by the same shadow as the direct term, and that is
+				// not tidiness: if the planet is between this patch of ring and
+				// the star then no light enters the dust here either, so there
+				// is nothing to scatter through. A glow that survived the
+				// planet's shadow would be visibly wrong.
+				half3 viewDir = inputData.viewDirectionWS;
+				half transmit = pow(saturate(dot(viewDir, -mainLight.direction)),
+					_TransmitPower);
+				// Dense dust blocks its own glow. A lerp rather than exp(): the
+				// falloff is not measured to justify a transcendental on a
+				// mobile target, and this reads the same.
+				half transmitAmount = transmit * _TransmitStrength
+					* lerp(1.0, 1.0 - saturate(dustTex.a), _TransmitDensity);
+
+				color.rgb += mainLight.color * _TransmitColor.rgb
+					* transmitAmount * shadow;
 
 				// Coverage.
 				color.a = saturate(dustTex.a);
