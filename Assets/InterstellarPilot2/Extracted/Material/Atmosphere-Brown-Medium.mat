@@ -37,7 +37,7 @@ Material:
     - _ScaleHeight: 0.012
     - _Size: 0.75
     - _SunBleed: 1
-    - _SunBleedPower: 1.3
+    - _SunBleedPower: 3
     - _SunRimBoost: 0.5
     - _SunRimPower: 2
     - _TerminatorFalloff: 4
