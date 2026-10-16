@@ -72,6 +72,26 @@ Shader "OpenFrontier/PlanetaryRing"
 		// ones do not. Reads the texture's alpha, which is already sampled.
 		_TransmitDensity ("Density Attenuation", Range(0, 1)) = 1
 
+		// ---- edge-on brightening ----
+		// How much brighter the ring is when the sun sits IN its plane.
+		// 1 is off; 4 is a strong lift.
+		//
+		// A flat sheet lit edge-on has no surface facing the sun at all, so
+		// N.L collapses to zero and the ring goes black -- which is wrong,
+		// because it is a field of dust rather than a solid plate. What
+		// actually happens is that light entering edge-on travels a long way
+		// through the sheet before leaving, so it meets far more particles and
+		// scatters more. The surface term shrinks as the light path through
+		// the volume grows. This is why Saturn's rings stay bright as the sun
+		// approaches their plane, and it is the single most recognisable thing
+		// about how rings look.
+		//
+		// Self-shadowing across the sheet is what stops it diverging as the
+		// angle goes fully edge-on -- the far side of the belt shades the near
+		// side. This does not model that, so the boost is bounded rather than
+		// a 1/|N.L| that would blow up at the limit.
+		_EdgeOnBrightness ("Edge-On Brightness", Range(1, 8)) = 3
+
 		// ---- planet shadow ----
 		// A shadow map cannot reach this ring: the project's shadow distance
 		// is 3000 units over 4 cascades, and a ring that reads as a ring is
@@ -162,6 +182,7 @@ Shader "OpenFrontier/PlanetaryRing"
 				float _TransmitStrength;
 				float _TransmitPower;
 				float _TransmitDensity;
+				float _EdgeOnBrightness;
 				float _DustSmoothness;
 				float _PlanetRadius;
 				float _ShadowStrength;
@@ -363,6 +384,30 @@ Shader "OpenFrontier/PlanetaryRing"
 
 				color.rgb += mainLight.color * _TransmitColor.rgb
 					* transmitAmount * shadow;
+
+				// ---- edge-on scattering ----
+				// saturate(ndl), not abs(ndl): this is the sunward face's term.
+				// The far face is already handled by transmission above, and
+				// letting both fire would count the same light twice.
+				half ndl = dot(geoNormalWS, mainLight.direction);
+				// Exactly 0 at normal incidence, where the direct term already
+				// does the work, and exactly _EdgeOnBrightness-1 edge-on. A plain
+				// linear ramp rather than the 1/|N.L| the geometry suggests,
+				// which diverges at the limit -- real self-shadowing across the
+				// belt is what stops that in reality, and this bounds it
+				// instead. One multiply, no division, both ends exact.
+				half edgeOn = (1.0 - saturate(ndl)) * (_EdgeOnBrightness - 1.0);
+				// Tinted by the dust albedo, because this is light scattering
+				// off the same particles the direct term reflects off, and
+				// scaled by density so the sparse regions do not brighten as
+				// much as the dense ones. The same alpha already sampled for
+				// transmission, so this costs nothing.
+				//
+				// Note the alpha runs 0 to about 0.37 on this project's dust
+				// texture, which caps how bright this can get; if the ring is
+				// still dim edge-on, _EdgeOnBrightness has to make up for it.
+				color.rgb += mainLight.color * _DustColor.rgb * dustTex.rgb
+					* edgeOn * saturate(dustTex.a) * shadow;
 
 				// Coverage.
 				color.a = saturate(dustTex.a);
