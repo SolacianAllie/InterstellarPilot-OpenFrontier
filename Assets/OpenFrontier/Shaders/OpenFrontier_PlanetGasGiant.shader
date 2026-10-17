@@ -12,108 +12,31 @@ Shader "OpenFrontier/PlanetGasGiant"
 	// shadows. A gas giant has none of those. A flag would leave every one of
 	// them sampled, branched around and paid for.
 	//
-	// THE BANDS DRIFT, AND THE DRIFT TABLE IS THE "NORMAL" MAP
+	// WHAT THIS SHADER IS
 	//
-	// The *_normal.png that ships with the gas giants is not a normal map.
-	// Measured on the four of them against the terrain set:
+	// A banded albedo and the atmosphere. That is the whole of it: one texture
+	// sample for _MainTex, UniversalFragmentPBR over it, and the aerial
+	// perspective and twilight block below.
 	//
-	//     texture                            red between-band   within
-	//     gas_giant_01_normal                      56.5          7.2
-	//     gas_giant_06_normal                      73.2          2.4
-	//     dwarf_gas_giant_01_normal                59.0          4.2
-	//     cloudless_gas_giant_01_normal            22.4          2.1
-	//     alpine_01_normal                          0.5          5.6
-	//     barren_01_normal                          1.1          1.6
+	// It was more than that for a while. The gas giants ship a *_normal.png
+	// that is not a normal map -- red is one value per latitude band, 96.7% of
+	// its variance is between rows, and it straddles zero when remapped, which
+	// is differential rotation -- and green is a height field. Both were built
+	// out: the bands drifted, and green became a tangent-space normal.
 	//
-	// Red's between-band variance is 3x to 30x its within-band variance, so
-	// it holds ONE number per latitude band, constant across it. The terrain
-	// maps have the ratio inverted, below 1, which is what a genuine
-	// normal map looks like. Green is flat in all of them (0.7 to 1.7).
+	// The drift is gone because it could not be rendered, not because the data
+	// was wrong. R holds one number per band, so applying it means translating
+	// the albedo by a STEP function of latitude, and the two halves of that
+	// cannot both be had: the sample point moves far faster across the screen
+	// than the surface does, so it aliases; and blurring the field to stop that
+	// reconstructs a coarse grid, whose cells each shear the texture differently.
+	// The aliasing rate is the visible motion rate -- they are the same number,
+	// and no LOD, speed or amplitude separates them, because a planet this
+	// close never minifies and so never wanted the blur in the first place.
 	//
-	// And that is the tell: a surface banded by latitude has its height
-	// gradient in LATITUDE, which in a tangent-space normal map is the green
-	// channel. Green carries nothing here. Red carries everything, in the axis
-	// a banded planet should have none in.
-	//
-	// Remapped to -1..1 the per-band values straddle zero -- -0.81 to +0.40 on
-	// gas_giant_01 -- so some bands run one way and some the other. That is
-	// differential rotation, and it is the whole effect: each band slides
-	// along its own latitude at its own rate.
-	//
-	// The blue channel is 0 in EVERY planet normal map here, terrain included,
-	// because Unity's UnpackNormal takes the UnpackNormalMapRGorAG path, which
-	// rebuilds Z from red and green and ignores blue entirely. So the zero
-	// blue is the project's convention, not something special about gas
-	// giants, and it is not where the animation data lives. Alpha is 255 with
-	// about 1% of texels slightly under, scattered across every row: noise.
-	//
-	// WHY THE PLANET SPARKLES, AND WHAT _BandDriftLOD COSTS TO FIX IT
-	//
-	// The albedo sample's point moves much faster across the screen than the
-	// surface itself does, because the drift steps between adjacent bands: the
-	// mean step is 0.25 of a texture width, across a band that is about 7
-	// pixels tall on a 700px planet. The GPU picks a mip from the screen-space
-	// derivative, so where the sample point outruns the surface, the mip is far
-	// too sharp and the albedo's fine striations alias into speckle.
-	//
-	// That ratio is not adjustable. It is the drift's own spatial gradient, and
-	// it is the same whether the drift is fast or slow, strong or weak --
-	// scaling the whole field scales visible motion and aliasing together. Only
-	// FILTERING moves it, and there are exactly two places to filter, and they
-	// cost opposite things. Measured on this table, planet at 700px:
-	//
-	//   lod   field    rate vs surface rate   contrast left
-	//     0-2 512x256            ~205x             97-100%
-	//     3   64x32               155x              91%
-	//     4   32x16               109x              84%
-	//     5   16x8                 13.6x             24%
-	//     6   8x4                   4.4x             12%
-	//
-	//  - Blur the DRIFT (this dial): cheap, and the planet stays sharp, but the
-	//    47 bands collapse to a 4-8 step ramp. Most of the differential rotation
-	//    goes with them.
-	//  - Blur the ALBEDO instead: keeps every band, but the rate is ~200x the
-	//    surface rate, so the mip it needs is roughly 128 texels across the
-	//    whole planet. The bands dissolve into a smear.
-	//
-	// WHERE THE FILTERING GOES, AND WHY IT IS NOT HERE
-	//
-	// Mipping this table is the wrong place to filter, and a long stretch of
-	// these notes argued otherwise. It does reduce the aliasing, and it
-	// introduces something worse: the mip is a GRID, and reconstructing a grid
-	// with bilinear interpolation makes the offset continuous but not its
-	// DERIVATIVE. The derivative jumps at every knot, the knot spacing is the
-	// whole planet divided by the grid, and each cell between two knots is a
-	// differently-sheared patch of texture. On a 2048-wide table at LOD 6 the
-	// grid is 32x16, so the cells are about 22 screen pixels and plainly
-	// visible as rectangles with hard vertical and horizontal edges.
-	//
-	// That is not a tuning problem, it is what bilinear reconstruction of a
-	// coarse field does. Only lowering the resolution can hide it, and lowering
-	// the resolution is the thing that is destroying the effect.
-	//
-	// So this dial now defaults to 0 and the filtering moved to
-	// _AlbedoMaxTexelsPerPixel, where it belongs:
-	//
-	//   - the DRIFT field is sampled at full resolution, so it is smooth and
-	//     there are no cells and no derivative jumps;
-	//   - the ALBEDO is blurred only where the drift's true footprint demands
-	//     it, and the ceiling bounds that so a band edge cannot reach a mip
-	//     that degenerates.
-	//
-	// Band edges come out soft and the rest of the planet stays sharp, which is
-	// the correct division: seam softening on the texture that has the seam,
-	// not on the texture that defines it.
-	//
-	// _BandDriftSpeed = 0 is still a legitimate end state, not a failure.
-	//
-	// Note the consequence for the earlier mip reasoning in this shader: letting
-	// the sampler take its gradient from the drifting UV is not a fix, it is the
-	// OTHER half of this trade. At a band step that derivative is half a texture
-	// width in one pixel, so the mip jumps to the top of the chain and the
-	// planet goes bright and blurry there instead of sparkling. Taking the
-	// gradient from the undrifted UV keeps the mip sane and leaves the aliasing
-	// visible, which is the right way round: it is visible rather than wrong.
+	// Recorded here because the analysis was expensive and the conclusions are
+	// not recoverable from the stripped code: if band motion is wanted later,
+	// the data supports it and the technique does not.
 	//
 	// ATMOSPHERE
 	//
@@ -131,69 +54,9 @@ Shader "OpenFrontier/PlanetGasGiant"
 	Properties
 	{
 		_MainTex ("Banded Albedo", 2D) = "black" {}
-		// Named _Normals because the existing materials bind that slot, and
-		// because renaming it would break every gas giant material on disk.
-		// It is a drift table, not a normal map.
-		_Normals ("Band Drift Table (R = signed drift per band)", 2D) = "black" {}
-		_BandDriftSpeed ("Band Drift Speed", Range(-0.02, 0.02)) = 0.003
 
-		// How much blur the drifting albedo is allowed, as a footprint in
-		// texels per pixel. 1 is the surface rate, i.e. no extra blur at all.
-		// See the long note above: this is the dial that makes the drift
-		// renderable, and it is the one that was missing.
-		_AlbedoMaxTexelsPerPixel ("Albedo Blur Ceiling (texels/px)", Range(1, 64)) = 16
-
-		// Not a minification guard. At this camera distance the surface
-		// footprint is one to three texels per pixel and never asks for it.
-		// Its real job is the band SEAM: the drift is a step function, so either
-		// side of a boundary the albedo sample lands a long way apart, and this
-		// bounds how far apart that may get before it blurs instead. Seams come
-		// out soft, the sharp interior is untouched.
-
-		// G is a HEIGHT field for band relief, converted to a tangent-space
-		// normal here. The channel spans 0.282..0.690 and a one-texel step in
-		// it is 0.0064 on average and 0.125 at most, so the slope this can
-		// express is tiny and the dial has to be large to be seen at all: 6 puts
-		// the strongest wisp near 35 degrees and the average texel near 2.
-		_ReliefScale ("Band Relief (height -> normal)", Range(0, 16)) = 6
-
-		// How wide the height difference is allowed to reach, as a multiple of
-		// the pixel footprint. 1 is the textbook minimum; higher low-passes G
-		// harder and drops its finest structure. Measured against
-		// gas_giant_06_diffuse, which carries striations down to a texel or
-		// two, this is the dial between "soft relief" and "sparkle".
-		_ReliefFilter ("Relief Filter (x pixel footprint)", Range(0.5, 8)) = 2
-		// Mip level the drift table is read at, and the fix for the bands
-		// looking smeared with glowing edges.
-		//
-		// The drift steps between adjacent bands, so two fragments either side
-		// of a boundary are sampling the albedo at very different places in the
-		// texture -- 0.6 of its width apart after a minute at the old speed. The
-		// GPU picks a mip from the screen-space UV derivative, so a quad that
-		// straddles a boundary reports a derivative of half a texture width and
-		// selects the smallest mip. The table has 47 bands in 256 rows, about
-		// 5 rows each, so once the planet is more than a few hundred pixels
-		// across, MOST quads straddle a boundary and the whole planet goes
-		// blurry. The bright edges are a displaced band landing somewhere else
-		// in the albedo.
-		//
-		// Reading the table at a higher mip blurs the drift field itself, which
-		// turns the steps into a gradient, and a gradient has no boundary to
-		// straddle. Costs nothing -- same texture, same sampler, a lod bias.
-		// The table is 256 rows tall, so lod 3 is 32 rows: well under the 94
-		// rows that 47 bands would need to stay distinct.
-		_BandDriftLOD ("Band Drift Smoothing", Range(0, 6)) = 5
-
-		// Kept at 0 and, at this camera distance, correct to leave there. A
-		// planet seen this close never minifies: one pixel covers a fraction of
-		// a texel, so the true mip is always 0 and every LOD above it is a blur
-		// added to a surface already sharper than the screen.
-		//
-		// It is still a dial because a sector map or a distant flyby still
-		// exists, and at that range the drift table DOES need filtering. Raise
-		// it only there. Note what raising it costs: the mip is a grid, bilinear
-		// makes the offset continuous but not its derivative, and the cells
-		// between knots are each a differently-sheared patch -- see below.
+		// Dielectric roughness for the PBR pass. This is the one part of the
+		// old band machinery that was never about the bands.
 		_BandSmoothness ("Band Smoothness", Range(0, 1)) = 0.25
 
 		// ---- atmosphere, names fixed by PlanetStandard ----
@@ -216,9 +79,6 @@ Shader "OpenFrontier/PlanetGasGiant"
 		_TwilightDepth ("Twilight Night Depth", Range(0.01, 1)) = 0.25
 		_TwilightHaze ("Twilight Haze", Range(0, 1)) = 0.6
 
-		// 0 final | 1 albedo | 2 drifting albedo | 3 band drift | 4 the bound
-		// table raw | 5 the relief normal from G
-		_AlbedoDebug ("DEBUG Surface Bisect", Range(0, 5)) = 0
 	}
 
 	SubShader
@@ -253,30 +113,14 @@ Shader "OpenFrontier/PlanetGasGiant"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
 			TEXTURE2D(_MainTex);   SAMPLER(sampler_MainTex);
-			TEXTURE2D(_Normals);   SAMPLER(sampler_Normals);
 
 			CBUFFER_START(UnityPerMaterial)
 				float4 _MainTex_ST;
-				float4 _Normals_ST;
 
-				// Unity fills these in from the bound textures but does NOT emit the
-				// declaration for them, so they have to be written out here or every
-				// use is an undeclared identifier and the shader goes pink. Neither
-				// of the project's other planet shaders uses one, which is why this
-				// was missed until a shader finally asked for it. Neither URP nor
-				// core declare them either -- those only manage their own framebuffer
-				// textures. .xy is the texel step in UV, .zw the dimensions.
-				float4 _MainTex_TexelSize;
-				float4 _Normals_TexelSize;
 				float4 _AtmoColor;
 				float4 _SunRimColor;
 				float4 _SunRimDeep;
 				float4 _TwilightColor;
-				float _BandDriftSpeed;
-				float _BandDriftLOD;
-				float _AlbedoMaxTexelsPerPixel;
-				float _ReliefScale;
-				float _ReliefFilter;
 				float _BandSmoothness;
 				float _HazeStrength;
 				float _HazeSunStrength;
@@ -289,7 +133,6 @@ Shader "OpenFrontier/PlanetGasGiant"
 				float _TwilightSharpness;
 				float _TwilightDepth;
 				float _TwilightHaze;
-				float _AlbedoDebug;
 			CBUFFER_END
 
 			struct Attributes
@@ -306,7 +149,6 @@ Shader "OpenFrontier/PlanetGasGiant"
 				float2 uv : TEXCOORD0;
 				float3 positionWS : TEXCOORD1;
 				half3 normalWS : TEXCOORD2;
-				half4 tangentWS : TEXCOORD3;
 			};
 
 			// SV_IsFrontFace is INPUT only; declaring it in Varyings, which
@@ -328,275 +170,20 @@ Shader "OpenFrontier/PlanetGasGiant"
 				output.positionCS = posInputs.positionCS;
 				output.positionWS = posInputs.positionWS;
 				output.normalWS = normInputs.normalWS;
-				output.tangentWS = half4(normInputs.tangentWS, input.tangentOS.w);
 				output.uv = input.uv;
 				return output;
 			}
 
-			// The signed drift rate of the band this texel is in, remapped to
-			// -1..1.
-			//
-			// Sampled on the ALBEDO's uv, not its own _ST, so the table's bands
-			// land exactly on the albedo's bands. Giving the table its own
-			// tiling would silently slide one relative to the other and the
-			// drift would animate bands that are not the ones you can see.
-			//
-			// G IS A HEIGHT FIELD. B is identically zero and A is opaque, so the
-			// only other thing in this texture is G, and it is not a packed
-			// normal -- R and G differ in kind (R is 96.7% latitude-banded, G is
-			// 0.9%, so G varies with longitude) and it sits centred at 0.483 with
-			// a spread of 0.029, which is a height, not a tilt. Differentiating it
-			// is what makes a normal out of it.
-			//
-			// Three taps, not four: a central difference wants the neighbours both
-			// sides, and the forward difference this uses is wrong by half a texel
-			// on a field whose whole dynamic range is 0.4 across 5-row bands. One
-			// saved fetch on every pixel of every gas giant is worth that.
-			//
-			// Differenced in TEXTURE space with explicit texel offsets, never with
-			// ddx() of a sampled height. ddx is a screen-space quantity: near the
-			// poles a sphere's U compresses to nothing, so a screen-space gradient
-			// explodes there and collapses the relief flat exactly where the
-			// geometry is most foreshortened. Texel offsets are immune.
-			//
-			// Sampled at the UNDRIFTED uvT, deliberately. At bandUV the auto mip
-			// is chosen from the drifted coordinate, whose derivative is enormous
-			// at a band edge, so G would blur to a uniform grey and the relief
-			// would vanish at every boundary -- which is where it is most wanted.
-			half3 BandRelief(float2 uvT, half3 nWS, half3 tWS, half3 bWS)
-			{
-				// LOW-PASS BEFORE DIFFERENCING. This is the bug that made the
-				// planet sparkle, and it is the standard rule of bump mapping that
-				// was not applied: a one-texel difference IS a high-pass. It keeps
-				// precisely the finest detail the table has and discards the shape,
-				// so a soft field comes out as shading noise.
-				//
-				// It was invisible on gas_giant_01 because that table is 512 wide
-				// and one texel is already several pixels. gas_giant_06 is 2048
-				// wide, so the same one-texel difference is four times finer and
-				// lands well under a pixel -- which is why the same code is fine
-				// on one planet and speckled on another.
-				//
-				// The step is the pixel footprint measured in THIS table's texels,
-				// so it is resolution-independent -- a fixed step would filter a
-				// 512-wide table and a 2048-wide one by different amounts. It also
-				// means the relief fades as the planet recedes, which is what a
-				// bump map should do on its own and never did before.
-				float texelsPerPixel = max(length(ddx(uvT)), length(ddy(uvT)))
-					/ max(_Normals_TexelSize.x, _Normals_TexelSize.y);
-				float step = max(1.0, texelsPerPixel * _ReliefFilter);
-				float2 offset = _Normals_TexelSize.xy * step;
 
-				float h  = SAMPLE_TEXTURE2D(_Normals, sampler_Normals, uvT).g;
-				float hx = SAMPLE_TEXTURE2D(_Normals, sampler_Normals,
-					uvT + float2(offset.x, 0.0)).g;
-				float hy = SAMPLE_TEXTURE2D(_Normals, sampler_Normals,
-					uvT + float2(0.0, offset.y)).g;
-				half3 nTS = normalize(half3(
-					-(hx - h) * _ReliefScale,
-					-(hy - h) * _ReliefScale,
-					1.0));
-				return normalize(tWS * nTS.x + bWS * nTS.y + nWS * nTS.z);
-			}
-
-			// RECONSTRUCTED C1, WHICH IS WHAT MAKES THE LOD USABLE.
-			//
-			// The mip chain blurs the drift field correctly, and that is the only
-			// thing it does. It does not fix that bilinear reconstruction of a
-			// GRID is only C0: the VALUE is continuous across a knot but its
-			// DERIVATIVE jumps. That jump is a jump in ddx(bandUV), so the mip the
-			// albedo sampler picks changes discontinuously, and every cell between
-			// two knots renders sharper or softer than its neighbour. On a
-			// 2048-wide table at LOD 6 the knots sit 22 screen pixels apart, which
-			// is precisely the rectangular grid that appeared on the planet.
-			//
-			// Substituting a smoothstep for the bilinear weight makes the
-			// reconstruction C1. The derivative becomes continuous, the mip becomes
-			// continuous, and the cells go away -- so the field can be blurred for
-			// its anti-aliasing without paying for it in visible grid.
-			//
-			// That is the trade this shader kept getting wrong in BOTH directions:
-			// blur the field and see rectangles, keep it sharp and see aliasing.
-			// It was never either/or. The fix is the reconstruction, not the LOD.
-			//
-			// Four taps instead of one, on a table at most 2048 wide and usually
-			// 512. Worth it: this is the only place in the shader where
-			// reconstruction order costs anything, and it is buying the feature.
-			half BandDrift(float2 uvT)
-			{
-				float2 size = max(_Normals_TexelSize.zw * exp2(-_BandDriftLOD),
-					float2(1.0, 1.0));
-				float2 texel = 1.0 / size;
-				float2 p = uvT * size - 0.5;
-				float2 i = floor(p);
-				float2 f = p - i;
-				f = f * f * (3.0 - 2.0 * f);
-				float2 uv00 = (i + 0.5) * texel;
-				float2 uv10 = (i + float2(1.5, 0.5)) * texel;
-				float2 uv01 = (i + float2(0.5, 1.5)) * texel;
-				float2 uv11 = (i + float2(1.5, 1.5)) * texel;
-				half r00 = SAMPLE_TEXTURE2D_LOD(_Normals, sampler_Normals, uv00, _BandDriftLOD).r;
-				half r10 = SAMPLE_TEXTURE2D_LOD(_Normals, sampler_Normals, uv10, _BandDriftLOD).r;
-				half r01 = SAMPLE_TEXTURE2D_LOD(_Normals, sampler_Normals, uv01, _BandDriftLOD).r;
-				half r11 = SAMPLE_TEXTURE2D_LOD(_Normals, sampler_Normals, uv11, _BandDriftLOD).r;
-				half r = lerp(lerp(r00, r10, f.x), lerp(r01, r11, f.x), f.y);
-				return r * 2.0 - 1.0;
-			}
 
 			half4 frag(FragmentInput input) : SV_Target
 			{
 				Varyings v = input.interpolated;
 
 				float2 uvT = TRANSFORM_TEX(v.uv, _MainTex);
-				half drift = BandDrift(uvT);
 
-				// The slide is in TEXTURE space, applied after the tiling, so
-				// _BandDriftSpeed means the same number however the material is
-				// tiled. Doing it before TRANSFORM_TEX would scale the drift by
-				// the tiling too and the rate would change with it.
-				//
-				// LONGITUDE ONLY, and that is load-bearing rather than a
-				// simplification. The map (u,v) -> (u + f(v), v) has Jacobian
-				// [[1, f'], [0, 1]], whose determinant is 1: the texture is
-				// rigidly sheared and nothing can compress or fold.
-				//
-				// Adding a vertical term g(v) makes the determinant 1 + g', and
-				// g' carries the accumulated offset, so it grows with elapsed
-				// time without bound. Measured on this drift field at
-				// df/dv ~ 9.6 per unit V, the vertical axis came out stretched
-				// 1.3x at a minute, 6.8x at five, 18x at fifteen, and goes
-				// NEGATIVE -- a fold, which mirrors the texture -- if the shear
-				// dial is pushed. That stretching is what pulled the bands into
-				// converging diamonds.
-				//
-				// It bought nothing anyway. Differential rotation IS bands
-				// sliding at different rates along latitude, which is exactly
-				// what the U term alone does.
-				//
-				// The accumulated offset is wrapped PER BAND, at a whole texture
-				// width, rather than wrapping the clock.
-				//
-				// Wrapping the clock (fmod on _Time.y * speed) resets every band
-				// at the same instant but by DIFFERENT amounts, since their drift
-				// differs -- a visible tear, once per period. Wrapping each band's
-				// own offset instead makes every one step by exactly 1.0, and
-				// under Repeat a jump of one whole texture width lands on the
-				// identical texel. No tear, at any speed, for any drift.
-				//
-				// Wrap the OFFSET, not the phase before it. Folding the phase and
-				// then multiplying by drift a second time would step by `drift`
-				// widths, not one -- 0.8 for the strongest bands here, which is a
-				// tear in all but name. This shader had that bug for one commit.
-				float offset = drift * _Time.y * _BandDriftSpeed;
-				offset -= floor(offset);
-				float2 bandUV = uvT + float2(offset, 0.0);
+				half4 albedoTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvT);
 
-				// Sampled with gradients taken from the UN-drifted uv.
-				//
-				// A plain SAMPLE_TEXTURE2D derives its mip from ddx/ddy of the
-				// coordinate it is handed. Hand it bandUV and the drift steps go
-				// straight into that: either side of a band boundary the offset
-				// differs, the quad straddling it reports a derivative of order
-				// half a texture width, and the sampler selects the smallest mip
-				// there. The albedo is full of high-contrast striations, so a mip
-				// too low averages toward the mean and reads BRIGHTER than the
-				// sharp sample -- which is exactly the short bright dashes sitting
-				// on the band boundaries.
-				//
-				// The drift is a translation in U. A translation has no derivative,
-				// so the honest gradients are the ones the surface itself has,
-				// ddx(uvT)/ddy(uvT). Passing those is not a fudge to hide the step:
-				// it is the correct footprint, and the step stops distorting the
-				// LOD of a sample it does not change the density of.
-				//
-				// _BandDriftLOD still matters, for the other half of it. GRAD fixes
-				// the mip; it cannot make two pixels either side of a boundary agree
-				// on what texel to read, because they genuinely read different ones.
-				// That residual tear is what the smoothing dial is for.
-				float2 ddxUV = ddx(bandUV);
-				float2 ddyUV = ddy(bandUV);
-
-				// The TRUE gradient, capped.
-				//
-				// ddx(uvT) -- the surface's own footprint -- is wrong here, and
-				// badly so: the drift moves the sample point a long way faster
-				// than the surface does, so the mip is far too sharp and the
-				// albedo's fine striations alias into speckle.
-				//
-				// The true gradient fixes that and creates the opposite fault. The
-				// drift is a step function, so at a band edge it reports half a
-				// texture width inside one pixel, the mip jumps to the top of the
-				// chain, and that latitude reads as a bright blurry stripe. Left
-				// alone the two faults cancel by luck: noisy in the middle of the
-				// bands, striped at the edges. That is what every previous version
-				// of this shader was, and why fixing either one alone made it worse.
-				//
-				// The cap separates them. Take the real footprint -- so the drift
-				// is genuinely filtered, no speckle -- but bound it to what the
-				// planet is allowed to look like, so a step cannot reach a mip that
-				// degenerates, and blurs instead. Both faults need an unbounded
-				// term; one bound removes them together.
-				//
-				// Both vectors scale by the same factor, so the gradient's shape
-				// and the anisotropy between the axes are preserved and only the
-				// mip is bounded.
-				float footprint = max(length(ddxUV), length(ddyUV))
-					* max(_MainTex_TexelSize.z, _MainTex_TexelSize.w);
-
-				// Soft ceiling, not a threshold.
-				//
-				// footprint carries the drift's own gradient, and that gradient
-				// STEPS between bands. So footprint is a noisy per-pixel quantity,
-				// and testing it against a constant is a binary decision taken on
-				// noise, independently for every pixel: neighbours either side of
-				// the threshold get sharp and blurred respectively. That is a
-				// speckle generator in its own right, and it is why raising the
-				// ceiling did not simply make the planet smoother.
-				//
-				// A softplus in log space is the same ceiling with no edge in it:
-				// untouched well under, asymptotic to it well over, and smooth in
-				// between. log2/exp2 rather than a curve on the raw footprint,
-				// because the whole quantity lives in log space -- the mip IS
-				// log2(footprint) -- so saturating there is the linear operation.
-				float logf = log2(max(footprint, 1.0));
-				float cap = log2(_AlbedoMaxTexelsPerPixel);
-				float k = exp2((cap + log2(1.0 + exp2(logf - cap))) - logf);
-				ddxUV *= k;
-				ddyUV *= k;
-				half4 albedoTex = SAMPLE_TEXTURE2D_GRAD(_MainTex, sampler_MainTex,
-					bandUV, ddxUV, ddyUV);
-
-				if (_AlbedoDebug > 0.5 && _AlbedoDebug < 1.5)
-					return half4(albedoTex.rgb, 1.0);
-				// Stage 2 is the same sample with NO drift, so the two can be
-				// compared side by side and the motion attributed to the drift
-				// rather than to anything else that changed.
-				if (_AlbedoDebug > 1.5 && _AlbedoDebug < 2.5)
-					return half4(SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvT).rgb, 1.0);
-				// Stage 3 paints the drift itself: red = one way, blue = the
-				// other, and the bands read as horizontal stripes because that
-				// is what it is. If this shows structure other than bands, the
-				// table is not the per-band drift it was measured to be.
-				//
-				// Bounded above, unlike stage 4 below which is the catch-all --
-				// an unbounded final stage swallows whatever comes after it.
-				if (_AlbedoDebug > 2.5 && _AlbedoDebug < 3.5)
-					return half4(drift * 0.5 + 0.5, 1.0 - drift * 0.5 - 0.5, 0.0, 1.0);
-				// Stage 4 shows _Normals itself, raw, for every pixel. This is
-				// the one that answers "is the right texture even bound",
-				// which the drift view cannot: a rocky planet's normal map
-				// also has a strong red channel, it just varies in two axes
-				// instead of one, and warping the UV by THAT produces exactly
-				// the rectangular blocking rather than band motion. Horizontal
-				// stripes here means the gas giant table; a two-axis gradient
-				// means the wrong map; a flat colour means nothing is bound.
-				if (_AlbedoDebug > 3.5 && _AlbedoDebug < 4.5)
-					return SAMPLE_TEXTURE2D(_Normals, sampler_Normals, uvT);
-				// Stage 5 shows the normal built from G. Flat lavender means the
-				// channel is being read but is flat; visible wisps means the relief
-				// is real and only _ReliefScale decides how strong it looks.
-				if (_AlbedoDebug > 4.5)
-					return half4(BandRelief(uvT, half3(0, 0, 1), half3(1, 0, 0), half3(0, 1, 0)) * 0.5 + 0.5, 1.0);
 
 				// Two normals, deliberately.
 				//
@@ -612,13 +199,10 @@ Shader "OpenFrontier/PlanetGasGiant"
 				// this shader, so it is worth knowing it is here.
 				half3 geoNormalWS = normalize(v.normalWS);
 				half3 viewDirWS = GetWorldSpaceNormalizeViewDir(v.positionWS);
-				half3 tangentWS = normalize(v.tangentWS.xyz);
-				half3 bitangentWS = cross(geoNormalWS, tangentWS) * v.tangentWS.w;
-				half3 shadingNormalWS = BandRelief(uvT, geoNormalWS, tangentWS, bitangentWS);
 
 				InputData inputData = (InputData)0;
 				inputData.positionWS = v.positionWS;
-				inputData.normalWS = shadingNormalWS;
+				inputData.normalWS = geoNormalWS;
 				inputData.viewDirectionWS = viewDirWS;
 				inputData.shadowCoord = TransformWorldToShadowCoord(v.positionWS);
 				inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(v.positionCS);
