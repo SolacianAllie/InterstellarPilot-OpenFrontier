@@ -217,6 +217,16 @@ Shader "OpenFrontier/PlanetGasGiant"
 			CBUFFER_START(UnityPerMaterial)
 				float4 _MainTex_ST;
 				float4 _Normals_ST;
+
+				// Unity fills these in from the bound textures but does NOT emit the
+				// declaration for them, so they have to be written out here or every
+				// use is an undeclared identifier and the shader goes pink. Neither
+				// of the project's other planet shaders uses one, which is why this
+				// was missed until a shader finally asked for it. Neither URP nor
+				// core declare them either -- those only manage their own framebuffer
+				// textures. .xy is the texel step in UV, .zw the dimensions.
+				float4 _MainTex_TexelSize;
+				float4 _Normals_TexelSize;
 				float4 _AtmoColor;
 				float4 _SunRimColor;
 				float4 _SunRimDeep;
