@@ -126,6 +126,13 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// See the long note above: this is the dial that makes the drift
 		// renderable, and it is the one that was missing.
 		_AlbedoMaxTexelsPerPixel ("Albedo Blur Ceiling (texels/px)", Range(1, 64)) = 8
+
+		// G is a HEIGHT field for band relief, converted to a tangent-space
+		// normal here. The channel spans 0.282..0.690 and a one-texel step in
+		// it is 0.0064 on average and 0.125 at most, so the slope this can
+		// express is tiny and the dial has to be large to be seen at all: 6 puts
+		// the strongest wisp near 35 degrees and the average texel near 2.
+		_ReliefScale ("Band Relief (height -> normal)", Range(0, 16)) = 6
 		// Mip level the drift table is read at, and the fix for the bands
 		// looking smeared with glowing edges.
 		//
@@ -169,8 +176,8 @@ Shader "OpenFrontier/PlanetGasGiant"
 		_TwilightHaze ("Twilight Haze", Range(0, 1)) = 0.6
 
 		// 0 final | 1 albedo | 2 drifting albedo | 3 band drift | 4 the bound
-		// drift table, raw
-		_AlbedoDebug ("DEBUG Surface Bisect", Range(0, 4)) = 0
+		// table raw | 5 the relief normal from G
+		_AlbedoDebug ("DEBUG Surface Bisect", Range(0, 5)) = 0
 	}
 
 	SubShader
@@ -217,6 +224,7 @@ Shader "OpenFrontier/PlanetGasGiant"
 				float _BandDriftSpeed;
 				float _BandDriftLOD;
 				float _AlbedoMaxTexelsPerPixel;
+				float _ReliefScale;
 				float _BandSmoothness;
 				float _HazeStrength;
 				float _HazeSunStrength;
@@ -287,6 +295,43 @@ Shader "OpenFrontier/PlanetGasGiant"
 			// was what was driving the mip selection to the top of the chain
 			// and smearing the planet. An extra tap would not have fixed that:
 			// two samples of a step function still step.
+			// G IS A HEIGHT FIELD. B is identically zero and A is opaque, so the
+			// only other thing in this texture is G, and it is not a packed
+			// normal -- R and G differ in kind (R is 96.7% latitude-banded, G is
+			// 0.9%, so G varies with longitude) and it sits centred at 0.483 with
+			// a spread of 0.029, which is a height, not a tilt. Differentiating it
+			// is what makes a normal out of it.
+			//
+			// Three taps, not four: a central difference wants the neighbours both
+			// sides, and the forward difference this uses is wrong by half a texel
+			// on a field whose whole dynamic range is 0.4 across 5-row bands. One
+			// saved fetch on every pixel of every gas giant is worth that.
+			//
+			// Differenced in TEXTURE space with explicit texel offsets, never with
+			// ddx() of a sampled height. ddx is a screen-space quantity: near the
+			// poles a sphere's U compresses to nothing, so a screen-space gradient
+			// explodes there and collapses the relief flat exactly where the
+			// geometry is most foreshortened. Texel offsets are immune.
+			//
+			// Sampled at the UNDRIFTED uvT, deliberately. At bandUV the auto mip
+			// is chosen from the drifted coordinate, whose derivative is enormous
+			// at a band edge, so G would blur to a uniform grey and the relief
+			// would vanish at every boundary -- which is where it is most wanted.
+			half3 BandRelief(float2 uvT, half3 nWS, half3 tWS, half3 bWS)
+			{
+				float2 texel = _Normals_TexelSize.xy;
+				float h  = SAMPLE_TEXTURE2D(_Normals, sampler_Normals, uvT).g;
+				float hx = SAMPLE_TEXTURE2D(_Normals, sampler_Normals,
+					uvT + float2(texel.x, 0.0)).g;
+				float hy = SAMPLE_TEXTURE2D(_Normals, sampler_Normals,
+					uvT + float2(0.0, texel.y)).g;
+				half3 nTS = normalize(half3(
+					-(hx - h) * _ReliefScale,
+					-(hy - h) * _ReliefScale,
+					1.0));
+				return normalize(tWS * nTS.x + bWS * nTS.y + nWS * nTS.z);
+			}
+
 			half BandDrift(float2 uvT)
 			{
 				return SAMPLE_TEXTURE2D_LOD(_Normals, sampler_Normals, uvT,
@@ -425,21 +470,35 @@ Shader "OpenFrontier/PlanetGasGiant"
 				// the rectangular blocking rather than band motion. Horizontal
 				// stripes here means the gas giant table; a two-axis gradient
 				// means the wrong map; a flat colour means nothing is bound.
-				if (_AlbedoDebug > 3.5)
+				if (_AlbedoDebug > 3.5 && _AlbedoDebug < 4.5)
 					return SAMPLE_TEXTURE2D(_Normals, sampler_Normals, uvT);
+				// Stage 5 shows the normal built from G. Flat lavender means the
+				// channel is being read but is flat; visible wisps means the relief
+				// is real and only _ReliefScale decides how strong it looks.
+				if (_AlbedoDebug > 4.5)
+					return half4(BandRelief(uvT, half3(0, 0, 1), half3(1, 0, 0), half3(0, 1, 0)) * 0.5 + 0.5, 1.0);
 
-				// GEOMETRIC normal only. The band table is not a normal map, so
-				// there is nothing to perturb with, and the atmosphere below
-				// keys off the geometric normal regardless -- feeding a
-				// normal-mapped one in is what used to make haze appear on the
-				// night side and made the limb blotchy.
+				// Two normals, deliberately.
+				//
+				// geoNormalWS is the sphere's own and stays geometric. The
+				// atmosphere below keys off it regardless of relief, because
+				// feeding a perturbed one in is what used to make haze appear on
+				// the night side and made the limb blotchy -- the terminator has
+				// to be where the GEOMETRY puts it or the sunset lands in the
+				// wrong place.
+				//
+				// shadingNormalWS adds the relief built from G, and only that one
+				// goes to the lighting. This is the first normal-mapped lighting in
+				// this shader, so it is worth knowing it is here.
 				half3 geoNormalWS = normalize(v.normalWS);
 				half3 viewDirWS = GetWorldSpaceNormalizeViewDir(v.positionWS);
-				half3 bitangentWS = cross(geoNormalWS, v.tangentWS.xyz) * v.tangentWS.w;
+				half3 tangentWS = normalize(v.tangentWS.xyz);
+				half3 bitangentWS = cross(geoNormalWS, tangentWS) * v.tangentWS.w;
+				half3 shadingNormalWS = BandRelief(uvT, geoNormalWS, tangentWS, bitangentWS);
 
 				InputData inputData = (InputData)0;
 				inputData.positionWS = v.positionWS;
-				inputData.normalWS = geoNormalWS;
+				inputData.normalWS = shadingNormalWS;
 				inputData.viewDirectionWS = viewDirWS;
 				inputData.shadowCoord = TransformWorldToShadowCoord(v.positionWS);
 				inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(v.positionCS);
