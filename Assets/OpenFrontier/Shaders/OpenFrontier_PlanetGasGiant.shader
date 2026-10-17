@@ -76,18 +76,22 @@ Shader "OpenFrontier/Planet Gas Giant"
 	// one bad export.
 	//
 	// The honest reading is that this file is not usable as a normal map,
-	// so this shader does not sample it. Adding a bump here would mean
+	// and this shader does NOT use it as one. Adding a bump here would mean
 	// shipping lighting that is wrong in a way that is very hard to see
 	// and expensive to diagnose: normals pointing away from the camera
 	// read as a planet lit from behind, with a soft terminator in the
 	// wrong place, and it would disagree with the atmosphere shell's
 	// terminator, which is correct.
 	//
+	// But it IS read -- as DATA, not as directions. See THE DECK MOVES
+	// below for what its red channel is asked to do and why that ask is
+	// safe where lighting normals were not.
+	//
 	// A gas giant is also the one planet where this is nearly free. There
 	// is no terrain to bump: you are looking at the top of a fluid, so
 	// the bands belong in the albedo, not in the normal. MOBILE FIRST --
-	// that is one texture sample instead of two, and it costs nothing to
-	// look right.
+	// the file is one extra texture sample behind the deck, and it costs
+	// nothing for what it buys.
 	//
 	// THE BANDS ARE ALBEDO, AND THAT IS PHYSICAL
 	//
@@ -131,12 +135,56 @@ Shader "OpenFrontier/Planet Gas Giant"
 	// curve that stays bright across most of the disc and then falls,
 	// which is the observed shape.
 	//
+	// THE DECK MOVES
+	//
+	// A fluid surface that never moves reads as glass. The deck gets three
+	// kinds of motion, and all of them are the same displacement applied to
+	// the ALBEDO's U coordinate before it is sampled -- never to the mesh:
+	//
+	//   1. BAND OFFSET. Where red is high, the deck is pushed east; where
+	//      red is low, west. Belt-versus-zone shear, sourced from the
+	//      reference's own band structure, authored into the texture.
+	//   2. WOBBLE. The offset amount is modulated per latitude band by
+	//      sin(6 * v + t * speed), so adjacent belts oscillate out of
+	//      phase and the shear becomes liquid.
+	//   3. ZONAL JET. A small constant eastward creep with time.
+	//
+	// All three add into one float that offsets the deck's U. No C# needs
+	// to know any of this exists: animation is shader-time on _Time.y,
+	// which continues while the game is paused behind a PauseWhenShown
+	// screen -- deliberately, because a backdrop planet that keeps
+	// breathing while every gameplay sim is stopped is what a menu wants,
+	// and it costs no script work. Strictness check: _Time.y is unscaled,
+	// so a throttle of timeScale does not slow it; you will see that as
+	// the clouds crawling during pause. It is cosmetic, and it is the
+	// mobile answer: no CPU cost reachable from anywhere.
+	//
+	// ON PRECISION (wrote this down so it does not bite the next editor).
+	// The jet creeps per frame at ~1e-6 UV -- far below fp16 (half)'s ulp
+	// near 0.7, which is 0.0005. If the displacement is computed in half
+	// or assigned through a half-coordinate, the accumulated per-half
+	// quantisation (0.0005) is larger than the per-frame step (1e-6) and
+	// the jet freezes into texel-wide stair-steps. All pattern arithmetic
+	// leading to the sample coordinate therefore happens in float, and
+	// only the RESULT goes back to the sampler. The same reasoning makes
+	// _Time.y * speed float. This is a mobile GPU contract, not a style
+	// preference; mobile compilers promote to half aggressively.
+	//
+	// The deck's ALBEDO texture must wrap-tile in U for this to be safe:
+	// it does, at 1.1x interior noise (measured above). Wrap repeat is
+	// already the asset's import setting.
+	//
+	// The BANDS ARE ALBEDO section above still governs the look: contrast,
+	// terminator and limb all apply AFTER the deck displacement, so they
+	// survive the motion untouched.
+	//
 	// MOBILE FIRST
 	//
-	// One texture sample, no tangent attribute and no tangent
-	// interpolator, no shadow caster and no depth pass -- the mesh is a
-	// 2143-vertex sphere, and a planet is never close enough to the
-	// camera for self-shadowing to matter. No parallax, no rim, no
+	// Two texture samples, one extra channel read and about a dozen ALU
+	// operations over what a static planet needs; no tangent attribute
+	// and no tangent interpolator, no shadow caster and no depth pass --
+	// the mesh is a 2143-vertex sphere, and a planet is never close enough
+	// to the camera for self-shadowing to matter. No parallax, no rim, no
 	// Fresnel, no specular: all of those are per-pixel work on a surface
 	// that fills a large part of the screen, and none of them is what
 	// makes a gas giant look like a gas giant.
@@ -167,6 +215,23 @@ Shader "OpenFrontier/Planet Gas Giant"
 		// 1.0 is a pure contrast change that neither brightens nor
 		// darkens the planet overall.
 		_BandPivot ("Band Pivot", Range(0.1, 0.8)) = 0.42
+
+		// ---- band motion (the deck moves) ----
+		//
+		// The deck displaces from gas_giant_06_normal's RED channel, read
+		// as a reference value at each pixel, never as a lighting normal.
+		// _BandNeutral decides which red value reads as "no displacement",
+		// _BandSoftness dilutes the file's 88 quantisation levels and its
+		// hard row seams into that same remap, and the three remaining
+		// terms set how far it pushes, how much that push oscillates, and
+		// how fast the whole deck creeps.
+		[NoScaleOffset] _BandRef ("Band Reference (R: gas_giant_06_normal)", 2D) = "black" {}
+		_BandDispStrength ("Band Displacement", Range(0, 0.06)) = 0.012
+		_BandDispWobble ("Band Wobble", Range(0, 1)) = 0.5
+		_BandDispSpeed ("Band Wobble Speed", Range(0, 0.5)) = 0.04
+		_BandJetSpeed ("Zonal Jet", Range(0, 0.01)) = 0.0002
+		_BandSoftness ("Band Softness", Range(1, 8)) = 3
+		_BandNeutral ("Band Neutral", Range(0, 1)) = 0.6
 
 		// ---- the limb ----
 		// How much darker the planet gets toward its own edge.
@@ -232,9 +297,11 @@ Shader "OpenFrontier/Planet Gas Giant"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
 			TEXTURE2D(_Albedo);   SAMPLER(sampler_Albedo);
+			TEXTURE2D(_BandRef);  SAMPLER(sampler_BandRef);
 
 			// Every material property belongs here, textures included by way
 			// of their _ST, or the SRP Batcher drops to per-draw setup.
+			// _BandRef is [NoScaleOffset], so it declares no _ST.
 			CBUFFER_START(UnityPerMaterial)
 				float4 _Albedo_ST;
 				float4 _Tint;
@@ -245,6 +312,12 @@ Shader "OpenFrontier/Planet Gas Giant"
 				float _LimbDarkening;
 				float _LimbGlowStrength;
 				float _Ambient;
+				float _BandDispStrength;
+				float _BandDispWobble;
+				float _BandDispSpeed;
+				float _BandJetSpeed;
+				float _BandSoftness;
+				float _BandNeutral;
 			CBUFFER_END
 
 			struct Attributes
@@ -318,9 +391,34 @@ Shader "OpenFrontier/Planet Gas Giant"
 
 			half4 frag(Varyings input) : SV_Target
 			{
-				// The cloud deck. Sampled once; there is no normal map and
-				// no second fetch anywhere in this shader.
-				half3 albedo = SAMPLE_TEXTURE2D(_Albedo, sampler_Albedo, input.uv).rgb;
+				// ---- band motion ----
+				// The deck's own longitude offset comes from the band
+				// reference's RED channel sampled at the pixel's own
+				// latitude. Documented in THE DECK MOVES and in the
+				// properties block: the reference remap has one neutral
+				// red value (no push), a softness that dilutes the file's
+				// 88 quantisation levels and its hard row seams, push
+				// strength, a per-latitude wobble (making the shear
+				// liquid), and a zonal jet (creeping the whole deck
+				// eastward with time).
+				//
+				// Everything below that touches the sample coordinate is
+				// float for a reason: half's ulp near 0.7 is 5e-4, the
+				// same size as visible texel quantisation, and the jet
+				// creeps per frame at ~1e-6. Half here freezes the
+				// animation into stair steps. Do not half this.
+				float bandPhase = float(input.uv.y) * 6.0 + _Time.y * _BandDispSpeed;
+				half  bandHigh  = pow(SAMPLE_TEXTURE2D(_BandRef, sampler_BandRef, input.uv).r, (half)_BandSoftness);
+				half  bandOffset = bandHigh - (half)_BandNeutral;
+				half  wobble = 1.0h + (half)_BandDispWobble * (half)sin(bandPhase * 3.14159265f * 2.0f);
+				float deckU = float(input.uv.x)
+					+ (float)(bandOffset * ((half)_BandDispStrength * wobble))
+					- _BandJetSpeed * _Time.y;
+				float2 deckUV = float2(deckU, input.uv.y);
+
+				// The cloud deck. ONE deck sample plus the band reference
+				// above -- that is this shader's whole texture budget.
+				half3 albedo = SAMPLE_TEXTURE2D(_Albedo, sampler_Albedo, deckUV).rgb;
 
 				// Band contrast about a pivot, which is what separates the
 				// belts from the zones. Multiplicative about a pivot and

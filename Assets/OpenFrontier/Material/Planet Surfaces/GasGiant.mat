@@ -28,6 +28,10 @@ Material:
         m_Texture: {fileID: 2800000, guid: cadbd4c434c41164fbd770ea881999b8, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _BandRef:
+        m_Texture: {fileID: 2800000, guid: f157809cc5e9a8344bccdb89b5dfc5e6, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _BaseMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -123,7 +127,13 @@ Material:
     - _AlphaToMask: 0
     - _Ambient: 0.03
     - _BandContrast: 1.15
+    - _BandDispSpeed: 0.04
+    - _BandDispStrength: 0.012
+    - _BandDispWobble: 0.5
+    - _BandJetSpeed: 0.0002
+    - _BandNeutral: 0.6
     - _BandPivot: 0.42
+    - _BandSoftness: 3
     - _BandSmoothness: 0.25
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
