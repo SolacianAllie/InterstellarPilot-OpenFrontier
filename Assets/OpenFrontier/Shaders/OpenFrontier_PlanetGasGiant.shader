@@ -542,12 +542,27 @@ Shader "OpenFrontier/PlanetGasGiant"
 				// mip is bounded.
 				float footprint = max(length(ddxUV), length(ddyUV))
 					* max(_MainTex_TexelSize.z, _MainTex_TexelSize.w);
-				if (footprint > _AlbedoMaxTexelsPerPixel)
-				{
-					float k = _AlbedoMaxTexelsPerPixel / footprint;
-					ddxUV *= k;
-					ddyUV *= k;
-				}
+
+				// Soft ceiling, not a threshold.
+				//
+				// footprint carries the drift's own gradient, and that gradient
+				// STEPS between bands. So footprint is a noisy per-pixel quantity,
+				// and testing it against a constant is a binary decision taken on
+				// noise, independently for every pixel: neighbours either side of
+				// the threshold get sharp and blurred respectively. That is a
+				// speckle generator in its own right, and it is why raising the
+				// ceiling did not simply make the planet smoother.
+				//
+				// A softplus in log space is the same ceiling with no edge in it:
+				// untouched well under, asymptotic to it well over, and smooth in
+				// between. log2/exp2 rather than a curve on the raw footprint,
+				// because the whole quantity lives in log space -- the mip IS
+				// log2(footprint) -- so saturating there is the linear operation.
+				float logf = log2(max(footprint, 1.0));
+				float cap = log2(_AlbedoMaxTexelsPerPixel);
+				float k = exp2((cap + log2(1.0 + exp2(logf - cap))) - logf);
+				ddxUV *= k;
+				ddyUV *= k;
 				half4 albedoTex = SAMPLE_TEXTURE2D_GRAD(_MainTex, sampler_MainTex,
 					bandUV, ddxUV, ddyUV);
 
