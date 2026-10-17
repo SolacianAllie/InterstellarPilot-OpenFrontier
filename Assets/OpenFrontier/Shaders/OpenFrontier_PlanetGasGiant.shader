@@ -1,84 +1,175 @@
 Shader "OpenFrontier/PlanetGasGiant"
 {
-	// A gas giant: banded albedo with differential band drift, and the same
-	// atmosphere the rocky planet shader has.
+	// A gas giant: a banded atmosphere lit by one distant star.
 	//
-	// WHY A SEPARATE SHADER RATHER THAN PlanetStandard WITH A FLAG
+	// FROM SCRATCH, from two textures only --
+	// gas_giant_06_diffuse and gas_giant_06_normal. Nothing here descends
+	// from the earlier OpenFrontier/PlanetGasGiant, and none of its
+	// features are carried over.
 	//
-	// PlanetStandard spends most of its per-pixel budget on things a gas giant
-	// does not have: a spec map split into land and water masks, city lights
-	// with a growth threshold, a land-detail normal, an emission map, and a
-	// separate cloud deck with its own normals, specular and projected
-	// shadows. A gas giant has none of those. A flag would leave every one of
-	// them sampled, branched around and paid for.
+	// WHAT THE TWO TEXTURES ACTUALLY ARE
 	//
-	// WHAT THIS SHADER IS
+	// The diffuse is good. 2048x1024, a real Jupiter-like belt-and-zone
+	// albedo in equirectangular layout: dark brown belts, cream zones,
+	// turbulent shear along the boundaries, a couple of oval storms, and
+	// a near-uniform grey at both poles. It tiles in U almost perfectly --
+	// column 0 against column -1 differs by 0.0067 against an interior
+	// step of 0.0059, so it is 1.1x the background noise rather than a
+	// seam. Its alpha is a flat 1.0 everywhere and carries nothing, which
+	// is worth knowing because the .meta has alphaIsTransparency: 1.
 	//
-	// A banded albedo and the atmosphere. That is the whole of it: one texture
-	// sample for _MainTex, UniversalFragmentPBR over it, and the aerial
-	// perspective and twilight block below.
+	// The normal map is not a normal map. This is measured, not guessed,
+	// and it is why there is no bump in this shader:
 	//
-	// It was more than that for a while. The gas giants ship a *_normal.png
-	// that is not a normal map -- red is one value per latitude band, 96.7% of
-	// its variance is between rows, and it straddles zero when remapped, which
-	// is differential rotation -- and green is a height field. Both were built
-	// out: the bands drifted, and green became a tangent-space normal.
+	//   - Its blue channel is 0. The mean is 0.0002 and the 99th
+	//     percentile is 0. Only 0.34% of texels have any blue in them at
+	//     all. A tangent-space normal map stores Z, and Z must be near 1
+	//     for a surface facing the viewer; decoding 0 gives Z = -1, so
+	//     every normal in the image points AWAY from the camera.
+	//   - Decoded, the mean vector length is 1.176, not 1.0. A normal map
+	//     is unit length by construction, so these are not normals.
+	//   - It is not derived from the diffuse either. Correlation of its
+	//     red channel against the gradient of the diffuse's luminance is
+	//     -0.075, and green against the same is 0.020. A normal map
+	//     authored alongside its albedo would track it.
+	//   - It is heavily quantised: 88 distinct 8-bit levels in red and
+	//     green, 9 in blue. Individual rows hold as few as 13 distinct
+	//     values.
+	//   - It has hard horizontal seams. Red's row-mean jumps hard at rows
+	//     183, 325-329, 695 and 837-841, where the median step is 0.0048
+	//     and the worst is 0.0758.
 	//
-	// The drift is gone because it could not be rendered, not because the data
-	// was wrong. R holds one number per band, so applying it means translating
-	// the albedo by a STEP function of latitude, and the two halves of that
-	// cannot both be had: the sample point moves far faster across the screen
-	// than the surface does, so it aliases; and blurring the field to stop that
-	// reconstructs a coarse grid, whose cells each shear the texture differently.
-	// The aliasing rate is the visible motion rate -- they are the same number,
-	// and no LOD, speed or amplitude separates them, because a planet this
-	// close never minifies and so never wanted the blur in the first place.
+	// Visually it is orange and green stripes. Its green channel is
+	// recognisably a crater field, which belongs to a rocky body, not to
+	// a planet made of cloud. The whole gas-giant set is affected --
+	// gas_giant_01_normal has a single distinct blue level, i.e. a
+	// constant zero -- so this is a property of the source set and not of
+	// one bad export.
 	//
-	// Recorded here because the analysis was expensive and the conclusions are
-	// not recoverable from the stripped code: if band motion is wanted later,
-	// the data supports it and the technique does not.
+	// The honest reading is that this file is not usable as a normal map,
+	// so this shader does not sample it. Adding a bump here would mean
+	// shipping lighting that is wrong in a way that is very hard to see
+	// and expensive to diagnose: normals pointing away from the camera
+	// read as a planet lit from behind, with a soft terminator in the
+	// wrong place, and it would disagree with the atmosphere shell's
+	// terminator, which is correct.
 	//
-	// ATMOSPHERE
+	// A gas giant is also the one planet where this is nearly free. There
+	// is no terrain to bump: you are looking at the top of a fluid, so
+	// the bands belong in the albedo, not in the normal. MOBILE FIRST --
+	// that is one texture sample instead of two, and it costs nothing to
+	// look right.
 	//
-	// The aerial-perspective and twilight block is carried across from
-	// PlanetStandard essentially intact, and the property NAMES are identical
-	// on purpose: the atmosphere shell (OpenFrontier/PlanetAtmosphere) reads
-	// _AtmoColor and _SunRimColor from the same material, so the inside and
-	// outside halves of the atmosphere cannot disagree about where the sunset
-	// is. Renaming anything here would split that in half again.
+	// THE BANDS ARE ALBEDO, AND THAT IS PHYSICAL
 	//
-	// There is no cloud deck. On a gas giant the bands ARE the cloud; adding a
-	// separate deck above them would double the atmosphere and put the storms
-	// in the wrong place.
+	// Jupiter's belts and zones are colour differences in the cloud deck:
+	// ammonia cirrus and ammonium hydrosulfide at different altitudes,
+	// seen from above. They emit no light of their own. So the bands are
+	// multiplied by the lighting and they vanish at the terminator. This
+	// shader does that, which is most of why it reads as a gas giant.
+	//
+	// WHICH WAY IS THE SUN
+	//
+	// Read through GetMainLight(), not from a global. SunBillboard.cs
+	// writes _SunDirectionWorld, and that write is only reached when both
+	// WorldCamera.Resolve() and cachedLight succeed -- on every other
+	// frame the global keeps whatever it last held, which is not this
+	// scene's light. This project has already been bitten by exactly that:
+	// the planet atmosphere shader stopped reading it, because its rim
+	// wrapped right around the planet while the surface was correctly in
+	// shadow. _MainLightPosition is the same vector GetMainLight() hands
+	// out as .direction, so reading it through there makes the planet's
+	// terminator and the atmosphere shell's terminator the same line by
+	// construction rather than two systems each guessing. See
+	// OpenFrontier_PlanetAtmosphere.shader.
+	//
+	// THE TERMINATOR IS NOT A HARD EDGE
+	//
+	// Saturn's limb goes dark abruptly -- an actual photosphere in
+	// silhouette, and you can see the rings' shadow on the cloud tops.
+	// Jupiter does not. Its terminator is soft over several degrees,
+	// because there is a deep atmosphere and light entering the limb
+	// scatters many times before it reaches cloud level and scatters again
+	// on the way out. So this wraps the diffuse, and the wrap amount is a
+	// property rather than a constant, because it is the difference
+	// between the two gas giants a player is most likely to see.
+	//
+	// Wrapping is what you get for free when the terminator is soft, so
+	// this is not a fudge on top of one. For an atmosphere of optical
+	// depth tau lit without absorption, the surface brightness falls off
+	// roughly as exp(-tau / mu) in the sun's direction, and mu -> 0 at
+	// the limb. Normalising so the sub-solar point stays at 1 gives a
+	// curve that stays bright across most of the disc and then falls,
+	// which is the observed shape.
+	//
+	// MOBILE FIRST
+	//
+	// One texture sample, no tangent attribute and no tangent
+	// interpolator, no shadow caster and no depth pass -- the mesh is a
+	// 2143-vertex sphere, and a planet is never close enough to the
+	// camera for self-shadowing to matter. No parallax, no rim, no
+	// Fresnel, no specular: all of those are per-pixel work on a surface
+	// that fills a large part of the screen, and none of them is what
+	// makes a gas giant look like a gas giant.
 
 	Properties
 	{
-		_MainTex ("Banded Albedo", 2D) = "black" {}
+		[MainTexture] _Albedo ("Cloud Deck (RGB)", 2D) = "white" {}
+		[HDR] _Tint ("Band Tint", Color) = (1, 1, 1, 1)
 
-		// Dielectric roughness for the PBR pass. This is the one part of the
-		// old band machinery that was never about the bands.
-		_BandSmoothness ("Band Smoothness", Range(0, 1)) = 0.25
+		// ---- light ----
+		// How far past the terminator light still reaches. 0 is a hard
+		// edge (a body with a visible surface, Saturn's look); higher is
+		// softer and further around the limb.
+		//
+		// The value is in units of N.L, so it runs 0 to 1 and the full
+		// range covers "terminator in one pixel" to "glow wraps half way
+		// round the planet". Above about 0.5 it starts to look lit where
+		// it should be night.
+		_TerminatorSoftness ("Terminator Softness", Range(0, 1)) = 0.22
+		// Remap the diffuse itself. The texture is an albedo map and
+		// nothing about it is normalised: measured over the whole image
+		// it runs 0.06 to 0.75 per channel with a mean near 0.42, so the
+		// belts are dark and the zones are mid rather than the zones
+		// being white. Raising contrast here separates the belts from
+		// the zones without re-authoring the texture.
+		_BandContrast ("Band Contrast", Range(0.5, 4)) = 1.15
+		// Where the contrast pivots. 0.42 is the texture's own mean, so
+		// 1.0 is a pure contrast change that neither brightens nor
+		// darkens the planet overall.
+		_BandPivot ("Band Pivot", Range(0.1, 0.8)) = 0.42
 
-		// ---- atmosphere, names fixed by PlanetStandard ----
-		[Header(AerialPerspective)]
-		_AtmoColor ("Atmosphere Color", Color) = (0.35, 0.78, 1, 1)
-		_SunRimColor ("Sun Rim Color", Color) = (1, 0.62, 0.30, 1)
-		_SunRimDeep ("Sun Rim Deep Color", Color) = (1, 0.30, 0.12, 1)
-		_HazeStrength ("Haze Strength", Range(0, 1)) = 0.6
-		_HazeSunStrength ("Haze Sun Strength", Range(0, 2)) = 0.8
-		_HazeFalloff ("Haze Falloff", Range(0.5, 8)) = 2.5
-		_HazeSunPower ("Haze Sun Power", Range(0.5, 6)) = 1.3
-		_HazeSunAngle ("Haze Sun Angle", Range(0, 180)) = 45
-		_HazeSunSpread ("Haze Sun Spread", Range(1, 180)) = 35
+		// ---- the limb ----
+		// How much darker the planet gets toward its own edge.
+		//
+		// Real limb darkening: a deep atmosphere is optically thicker
+		// along a grazing path, so less light comes back out. On a
+		// planet this size you see it as the disc having a soft dark
+		// ring inside the edge, which is most of what separates a gas
+		// giant from a painted ball.
+		//
+		// 1 is off. This multiplies the lit colour only, so it cannot
+		// brighten anything.
+		_LimbDarkening ("Limb Darkening", Range(1, 4)) = 1.6
+		// The faint warm glow just inside the lit edge, where sunlight
+		// passes through a lot of atmosphere and comes back scattered.
+		// Kept small and tinted with the star rather than added flat,
+		// so it follows the sun and cannot survive on the night side.
+		[HDR] _LimbGlowColor ("Limb Glow Colour", Color) = (1, 0.82, 0.6, 1)
+		_LimbGlowStrength ("Limb Glow Strength", Range(0, 2)) = 0.35
 
-		[Header(Twilight)]
-		_TwilightColor ("Twilight Color", Color) = (1.0, 0.62, 0.30, 1)
-		_TwilightStrength ("Twilight Strength", Range(0, 1)) = 0.55
-		_TwilightDim ("Twilight Dimming", Range(0, 1)) = 0.3
-		_TwilightSharpness ("Twilight Sharpness", Range(0.01, 1)) = 0.13
-		_TwilightDepth ("Twilight Night Depth", Range(0.01, 1)) = 0.25
-		_TwilightHaze ("Twilight Haze", Range(0, 1)) = 0.6
-
+		// ---- what is behind it ----
+		// Starlight, and nothing else. There is no ambient probe on a
+		// planet in open space, so the night side has to be lifted by
+		// hand or it is a black hole in the middle of the sector map.
+		//
+		// Deliberately NOT a tinted ambient: a constant of any colour is
+		// the same on every surface whatever is lighting it, so it cannot
+		// darken where the planet's shadow falls and it does not move
+		// when the sun does. This is neutral, and small. See the note on
+		// the ring shader's _TransmitStrength for the same argument
+		// about the unlit side of a planet.
+		_Ambient ("Starlight", Range(0, 0.5)) = 0.03
 	}
 
 	SubShader
@@ -95,6 +186,10 @@ Shader "OpenFrontier/PlanetGasGiant"
 			Name "ForwardLit"
 			Tags { "LightMode" = "UniversalForward" }
 
+			// The planet is a solid body and the sky is behind it, so this
+			// is an opaque pass writing depth. Cull Back: a sphere is
+			// only ever seen from outside, and drawing the far side first
+			// would be overdraw for nothing.
 			ZWrite On
 			ZTest LEqual
 			Cull Back
@@ -103,197 +198,195 @@ Shader "OpenFrontier/PlanetGasGiant"
 			#pragma target 3.0
 			#pragma vertex vert
 			#pragma fragment frag
-			// Deliberately NO multi_compile_fog and NO MixFog. The bound URP
-			// asset carries no fog settings and no shader in this project ever
-			// assigns inputData.fogCoord, so PlanetStandard's MixFog reads a
-			// zeroed field and does nothing. Copying it would pay for a fog
-			// variant on every planet pixel to reproduce dead code.
 
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
-			TEXTURE2D(_MainTex);   SAMPLER(sampler_MainTex);
+			TEXTURE2D(_Albedo);   SAMPLER(sampler_Albedo);
 
+			// Every material property belongs here, textures included by way
+			// of their _ST, or the SRP Batcher drops to per-draw setup.
 			CBUFFER_START(UnityPerMaterial)
-				float4 _MainTex_ST;
-
-				float4 _AtmoColor;
-				float4 _SunRimColor;
-				float4 _SunRimDeep;
-				float4 _TwilightColor;
-				float _BandSmoothness;
-				float _HazeStrength;
-				float _HazeSunStrength;
-				float _HazeFalloff;
-				float _HazeSunPower;
-				float _HazeSunAngle;
-				float _HazeSunSpread;
-				float _TwilightStrength;
-				float _TwilightDim;
-				float _TwilightSharpness;
-				float _TwilightDepth;
-				float _TwilightHaze;
+				float4 _Albedo_ST;
+				float4 _Tint;
+				float4 _LimbGlowColor;
+				float _TerminatorSoftness;
+				float _BandContrast;
+				float _BandPivot;
+				float _LimbDarkening;
+				float _LimbGlowStrength;
+				float _Ambient;
 			CBUFFER_END
 
 			struct Attributes
 			{
 				float4 positionOS : POSITION;
 				float3 normalOS : NORMAL;
-				float4 tangentOS : TANGENT;
 				float2 uv : TEXCOORD0;
+				// No TANGENT. There is no normal map (see the header), so
+				// nothing needs a tangent frame, and carrying one costs an
+				// attribute and an interpolator for nothing.
 			};
 
 			struct Varyings
 			{
 				float4 positionCS : SV_POSITION;
-				float2 uv : TEXCOORD0;
+				float3 normalWS : TEXCOORD0;
 				float3 positionWS : TEXCOORD1;
-				half3 normalWS : TEXCOORD2;
-			};
-
-			// SV_IsFrontFace is INPUT only; declaring it in Varyings, which
-			// vert() writes, is an illegal output semantic on Vulkan.
-			struct FragmentInput
-			{
-				Varyings interpolated;
-				FRONT_FACE_TYPE facing : FRONT_FACE_SEMANTIC;
+				half2 uv : TEXCOORD2;
 			};
 
 			Varyings vert(Attributes input)
 			{
-				Varyings output = (Varyings)0;
-				VertexPositionInputs posInputs =
-					GetVertexPositionInputs(input.positionOS.xyz);
-				VertexNormalInputs normInputs =
-					GetVertexNormalInputs(input.normalOS, input.tangentOS);
+				Varyings output;
+				VertexPositionInputs positionInputs = GetVertexPositionInputs(input.positionOS.xyz);
+				VertexNormalInputs normalInputs = GetVertexNormalInputs(input.normalOS);
 
-				output.positionCS = posInputs.positionCS;
-				output.positionWS = posInputs.positionWS;
-				output.normalWS = normInputs.normalWS;
-				output.uv = input.uv;
+				output.positionCS = positionInputs.positionCS;
+				output.normalWS = normalInputs.normalWS;
+				output.positionWS = positionInputs.positionWS;
+				output.uv = TRANSFORM_TEX(input.uv, _Albedo);
 				return output;
 			}
 
-
-
-			half4 frag(FragmentInput input) : SV_Target
+			// The lit part of the atmosphere, as a fraction of full.
+			//
+			// Wrapped rather than clipped: saturate((N.L + w) / (1 + w)).
+			// At w = 0 this is exactly saturate(N.L), the ordinary
+			// Lambert term. As w rises the lit region extends past the
+			// geometric terminator and the edge of the disc softens, which
+			// is the shape a deep atmosphere actually produces.
+			//
+			// Divide rather than subtract so the sub-solar point stays at
+			// exactly 1 for every w. Subtracting w instead would darken
+			// the whole planet as the terminator softened, which reads as
+			// the sun dimming rather than as the shadow spreading.
+			half WrapDiffuse(half ndotl, half softness)
 			{
-				Varyings v = input.interpolated;
+				return saturate((ndotl + softness) / (1.0h + softness));
+			}
 
-				float2 uvT = TRANSFORM_TEX(v.uv, _MainTex);
+			// Limb darkening, as a multiplier on 1 at the sub-solar point.
+			//
+			// N.V is 1 dead centre and 0 at the silhouette, so the term
+			// that grows toward the edge is (1 - N.V). It is used with a
+			// zero at the centre: _LimbDarkening is 1 for "off", and the
+			// result is 1 at ndotv = 1 for every value of it, so this can
+			// only ever darken and never brightens or lifts the whole
+			// disc.
+			//
+			// Saturating rather than driving to zero at the very edge is
+			// deliberate. A planet's atmosphere is optically THICKEST at
+			// the silhouette, so the last few degrees before the edge
+			// should be the brightest part of the limb, not the darkest;
+			// the glow term below sits in that same few degrees. Letting
+			// the darkening run all the way to zero fights it and the two
+			// cancel at the edge, which is where the eye looks.
+			half EvaluateLimbShade(half ndotv, half strength)
+			{
+				return 1.0h / (1.0h + (strength - 1.0h) * (1.0h - ndotv));
+			}
 
-				half4 albedoTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uvT);
+			half4 frag(Varyings input) : SV_Target
+			{
+				// The cloud deck. Sampled once; there is no normal map and
+				// no second fetch anywhere in this shader.
+				half3 albedo = SAMPLE_TEXTURE2D(_Albedo, sampler_Albedo, input.uv).rgb;
 
+				// Band contrast about a pivot, which is what separates the
+				// belts from the zones. Multiplicative about a pivot and
+				// not an additive lift, so a dark belt stays dark.
+				albedo = (albedo - _BandPivot) * _BandContrast + _BandPivot;
 
-				// Two normals, deliberately.
-				//
-				// geoNormalWS is the sphere's own and stays geometric. The
-				// atmosphere below keys off it regardless of relief, because
-				// feeding a perturbed one in is what used to make haze appear on
-				// the night side and made the limb blotchy -- the terminator has
-				// to be where the GEOMETRY puts it or the sunset lands in the
-				// wrong place.
-				//
-				// shadingNormalWS adds the relief built from G, and only that one
-				// goes to the lighting. This is the first normal-mapped lighting in
-				// this shader, so it is worth knowing it is here.
-				half3 geoNormalWS = normalize(v.normalWS);
-				half3 viewDirWS = GetWorldSpaceNormalizeViewDir(v.positionWS);
+				albedo *= _Tint.rgb;
 
-				InputData inputData = (InputData)0;
-				inputData.positionWS = v.positionWS;
-				inputData.normalWS = geoNormalWS;
-				inputData.viewDirectionWS = viewDirWS;
-				inputData.shadowCoord = TransformWorldToShadowCoord(v.positionWS);
-				inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(v.positionCS);
-				inputData.shadowMask = half4(1, 1, 1, 1);
+				// This is a sphere, so the interpolated normal is unit
+				// length apart from float error -- normalise it anyway
+				// rather than trust it, because the whole terminator hangs
+				// off this and a mesh that ever ships a scaled or unnormal
+				// stream would move it.
+				half3 N = normalize(input.normalWS);
+				half3 V = normalize(GetCameraPositionWS() - input.positionWS);
 
+				// Through GetMainLight(), deliberately. See WHICH WAY IS THE
+				// SUN in the header -- _SunDirectionWorld is stale on every
+				// frame the sun billboard's write is not reached.
 				Light mainLight = GetMainLight();
+				half3 L = normalize(mainLight.direction);
+				half ndotl = dot(N, L);
+				half ndotv = saturate(dot(N, V));
 
-				float geoNdL = dot(geoNormalWS, mainLight.direction);
-				float cosZ = geoNdL;
-				// Airmass through an exponential atmosphere goes as 1/cos of the
-				// angle to the normal: 1 looking straight down, unbounded at the
-				// limb. The 0.06 floor keeps it finite there.
-				float airMass = rcp(max(0.06, cosZ));
-				float twilight = saturate((airMass - 1.0) * _TwilightSharpness);
-				// How far PAST the terminator the twilight band reaches. Without
-				// this the band wraps right around the night side, which is not
-				// twilight, it is daylight.
-				twilight *= 1.0 - saturate(-cosZ * rcp(max(1e-3, _TwilightDepth)));
-				half3 sunTint = lerp(half3(1, 1, 1), _TwilightColor.rgb,
-					saturate(twilight * _TwilightStrength))
-				              * lerp(1.0, _TwilightDim, twilight);
-				half3 sunColour = mainLight.color * sunTint;
+				// ---- the terminator ----
+				half diffuseTerm = WrapDiffuse(ndotl, (half)_TerminatorSoftness);
+				// Shadows: the main light's shadow attenuation. A planet
+				// this size is not going to shadow-map itself usefully, but
+				// a ring or a moon between it and the sun can cast into
+				// this, and the term is free because GetMainLight() has
+				// already fetched it.
+				diffuseTerm *= mainLight.shadowAttenuation;
 
-				SurfaceData surfaceData = (SurfaceData)0;
-				surfaceData.albedo = albedoTex.rgb;
-				surfaceData.metallic = 0.0;
-				surfaceData.smoothness = _BandSmoothness;
-				// UniversalFragmentPBR never reads normalTS -- InitializeBRDFData
-				// takes only albedo, metallic, specular, smoothness and alpha --
-				// and there is no normal map here anyway.
-				surfaceData.normalTS = half3(0, 0, 1);
-				surfaceData.occlusion = 1.0;
-				surfaceData.alpha = 1.0;
-				surfaceData.clearCoatMask = 0.0;
-				surfaceData.clearCoatSmoothness = 0.0;
+				// No second lit-side gate here, and that is deliberate.
+				// The obvious one to reach for is
+				// smoothstep(-_TerminatorSoftness, _TerminatorSoftness,
+				// ndotl), and it is wrong twice over:
+				//
+				//   - At softness 0 -- a legal value of the slider, and the
+				//     one that gives a hard terminator -- its two edges are
+				//     equal and smoothstep divides by (edge1 - edge0). That
+				//     is a divide by zero, undefined on the hardware, and a
+				//     divide per pixel on a surface that can cover most of
+				//     the screen.
+				//   - Replacing it with saturate(ndotl) trades that for a
+				//     subtler bug: it is 0 for every N.L below zero, which
+				//     is exactly where the wrap is still contributing, so it
+				//     cancels the terminator softening completely and the
+				//     slider silently does nothing.
+				//
+				// The wrap is already the gate, on its own: it reaches zero
+				// at N.L = -softness and is clamped there, so no part of
+				// the night side is ever lit. What survives is a thin arc
+				// from -softness to 0, which is forward-scattered twilight
+				// just past the geometric terminator -- the thing you see on
+				// a real gas giant, and the reason the rim below does not
+				// need gating of its own.
 
-				half4 color = UniversalFragmentPBR(inputData, surfaceData);
+				// ---- the limb ----
+				// Darker toward the edge, on the lit side only, because
+				// the light leaving at a grazing angle came through more
+				// atmosphere. LimbShade is 1 at the sub-solar point for
+				// every _LimbDarkening, so this is a pure darkening.
+				half limbShade = EvaluateLimbShade(ndotv, (half)_LimbDarkening);
 
-				// Twilight rides on the lit term, which is exactly why it is
-				// applied here rather than by tinting mainLight: the light
-				// URP hands UniversalFragmentPBR is fetched inside it and never
-				// passed in, so the only separable place is the result.
-				color.rgb *= sunTint;
+				half3 color = albedo * mainLight.color * diffuseTerm * limbShade;
 
-				// ---- aerial perspective ----
-				// The atmosphere shell only ever draws OUTSIDE the silhouette,
-				// so the air stops dead at the planet's edge and the atmosphere
-				// reads as a sticker. This is the inside half: the view ray
-				// crosses a lot of air near the limb and that air scatters
-				// light back over the surface. A lerp toward a tint, so the
-				// bands stay visible underneath.
-				float mu = saturate(dot(geoNormalWS, viewDirWS));  // 1 face-on, 0 at the limb
-				float grazing = pow(saturate(1.0 - mu), _HazeFalloff);
+				// The glow band just inside the lit edge. Tinted with the
+				// star rather than added flat, so it takes the star's
+				// colour, and gated by diffuseTerm so it cannot appear
+				// where the planet is in shadow.
+				//
+				// Concentrated at the edge by (1 - N.V)^3: N.V is 1 at the
+				// centre and 0 at the limb, so this is 0 across most of the
+				// disc and rises only in the last few degrees before the
+				// silhouette. Cubed because the effect is a thin shell, and
+				// a square would put a visible ring a few pixels wide
+				// inside the edge.
+				half rim = pow(1.0h - ndotv, 3.0h);
+				color += _LimbGlowColor.rgb * mainLight.color * rim * diffuseTerm * _LimbGlowStrength;
 
-				// Judged on the sphere's own terminator, so haze cannot leak
-				// onto the night side.
-				float hazeLit = smoothstep(0.0, 0.35, geoNdL);
-				// ...but the twilight band sits ON the terminator rather than on
-				// the daylit side of it, so it gets a window that straddles it.
-				float twilightLit = smoothstep(-0.15, 0.10, geoNdL);
+				// Starlight, last and smallest. Neutral and constant, and
+				// only because there is no ambient probe out here; see the
+				// note on _Ambient in the properties for why it is not a
+				// tinted constant.
+				color += albedo * _Ambient;
 
-				float lowSun = pow(saturate(1.0 - geoNdL), _HazeSunPower);
-				// Angle between the sun and the view ray in degrees: 0 is
-				// looking straight into the sun, 90 is the sun square across the
-				// view, 180 is the night side. One acos per pixel, which is
-				// noise beside UniversalFragmentPBR's few hundred instructions.
-				float sunAngle = degrees(acos(saturate(dot(mainLight.direction, viewDirWS))));
-				float lowForUs = saturate((sunAngle - _HazeSunAngle)
-				                         * rcp(max(1.0, _HazeSunSpread)));
-				float hazeSun = saturate(lowSun * lowForUs);
-
-				// TWO stages, not one. A single lerp from the air's cyan to the
-				// rim's orange passes through grey, and the twilight zone then
-				// cannot look orange however far _TwilightHaze is pushed,
-				// because it would be lerping toward a colour with no chroma
-				// left in it. Routing through the deep sunset colour keeps the
-				// chroma up at every step. Squared on the second stage, since
-				// the deep end is only reached right at the terminator.
-				half3 hazeTint = lerp(lerp(_AtmoColor.rgb, _SunRimColor.rgb, saturate(hazeSun)),
-				                      _SunRimDeep.rgb, saturate(hazeSun * hazeSun));
-				// The band term as well as the limb term, so the blue visibly
-				// bends to red across the terminator instead of only at the
-				// silhouette.
-				float hazeAmt = saturate(grazing * hazeLit
-					* (_HazeStrength + _HazeSunStrength * hazeSun)
-					+ twilight * _TwilightHaze * twilightLit);
-				color.rgb = lerp(color.rgb, hazeTint, hazeAmt);
-
-				return color;
+				// The texture's alpha is a flat 1.0 across all 2048x1024
+				// texels and carries no data, so this pass is opaque and
+				// does not read it.
+				return half4(color, 1.0h);
 			}
 			ENDHLSL
 		}
+		EndPass
 	}
+	EndSubShader
 }
