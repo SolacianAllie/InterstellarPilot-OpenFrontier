@@ -1,4 +1,4 @@
-Shader "OpenFrontier/PlanetaryRing"
+Shader "OpenFrontier/Planetary Ring"
 {
 	// A ring of dust, seen from both faces.
 	//

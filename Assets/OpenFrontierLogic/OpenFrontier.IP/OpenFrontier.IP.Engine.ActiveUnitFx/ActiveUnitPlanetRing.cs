@@ -54,7 +54,12 @@ namespace OpenFrontier.IP.Engine.ActiveUnitFx
 		// consumer. A local generator seeded from the unit touches nothing.
 		public bool RandomiseOnAwake = true;
 
-		private const string RingShaderName = "OpenFrontier/PlanetaryRing";
+		// The RING shader's declared name, matched against material.shader.name.
+		// Must be kept byte-for-byte with the Shader "..." line in
+		// OpenFrontier_PlanetaryRing.shader -- a mismatch does not error, it
+		// just stops this finding its own renderer. Named with spaces so it
+		// is findable in the shader picker.
+		private const string RingShaderName = "OpenFrontier/Planetary Ring";
 
 		private static readonly int DustStId = Shader.PropertyToID("_DustAlbedo_ST");
 

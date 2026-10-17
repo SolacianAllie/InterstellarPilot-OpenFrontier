@@ -1,6 +1,35 @@
-Shader "OpenFrontier/PlanetGasGiant"
+Shader "OpenFrontier/Planet Gas Giant"
 {
 	// A gas giant: a banded atmosphere lit by one distant star.
+	//
+	// SHADER NAME -- SPACES ON PURPOSE
+	//
+	// This is "OpenFrontier/Planet Gas Giant" rather than
+	// "OpenFrontier/PlanetGasGiant", and that is a findability decision,
+	// not a style one. Unity's shader picker searches the DECLARED name,
+	// not the filename and not the folder, so a user looking for a gas
+	// giant types "gas giant" with a space. Against the run-together name
+	// that search matches nothing, and the shader reads as absent even
+	// though it is right there in Assets/OpenFrontier/Shaders/.
+	//
+	// So every planet shader is declared with spaced words and grouped
+	// under OpenFrontier/:
+	//
+	//   OpenFrontier/Planet Gas Giant    (this file)
+	//   OpenFrontier/Planet Surface      (SpaceUnity_PlanetStandard.shader)
+	//   OpenFrontier/Planet Atmosphere
+	//   OpenFrontier/Planetary Ring
+	//
+	// Two of them used to be SpaceUnity/... , which is the original game's
+	// namespace, not ours. The FILENAMES were left alone -- renaming those
+	// would orphan the GUIDs and is not needed to be findable.
+	//
+	// ONE WARNING. ActiveUnitPlanet.cs and ActiveUnitPlanetRing.cs match
+	// the RING shader by material.shader.name against a hardcoded string.
+	// Renaming a shader that is matched that way does not error: the
+	// comparison just stops matching, and the effect vanishes silently. If
+	// you rename one of these four, grep for its old name in
+	// OpenFrontierLogic/ before you assume you are done.
 	//
 	// FROM SCRATCH, from two textures only --
 	// gas_giant_06_diffuse and gas_giant_06_normal. Nothing here descends

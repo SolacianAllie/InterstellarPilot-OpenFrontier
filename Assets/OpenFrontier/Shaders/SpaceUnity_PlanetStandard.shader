@@ -1,4 +1,4 @@
-Shader "SpaceUnity/PlanetStandard" {
+Shader "OpenFrontier/Planet Surface" {
 	Properties {
 		_MainTex ("_MainTex", 2D) = "black" {}
 		_Normals ("_Normals", 2D) = "black" {}

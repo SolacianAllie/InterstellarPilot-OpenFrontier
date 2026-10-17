@@ -56,7 +56,16 @@ namespace OpenFrontier.IP.Engine.Core.Units.ActiveUnits
 
 		private static readonly int RingSeedId = Shader.PropertyToID("_RingSeed");
 
-		private const string RingShaderName = "OpenFrontier/PlanetaryRing";
+		// The RING shader's declared name, matched against material.shader.name
+		// in FindRingRenderer. Must be kept byte-for-byte with the Shader
+		// "..." line in OpenFrontier_PlanetaryRing.shader -- a mismatch here
+		// does not error, it just stops finding the ring, so a planet with a
+		// ring silently loses its shadow and its seeded dust.
+		//
+		// Named with spaces so it is findable by typing "ring" in the
+		// shader picker. See the note on the naming convention in
+		// OpenFrontier_PlanetGasGiant.shader.
+		private const string RingShaderName = "OpenFrontier/Planetary Ring";
 
 		// Cached because Renderer.GetPropertyBlock has no parameterless
 		// overload -- it fills a block you supply -- so a fresh one has to be
