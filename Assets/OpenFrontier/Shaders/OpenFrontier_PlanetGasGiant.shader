@@ -182,7 +182,7 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// straddle. Costs nothing -- same texture, same sampler, a lod bias.
 		// The table is 256 rows tall, so lod 3 is 32 rows: well under the 94
 		// rows that 47 bands would need to stay distinct.
-		_BandDriftLOD ("Band Drift Smoothing", Range(0, 6)) = 0
+		_BandDriftLOD ("Band Drift Smoothing", Range(0, 6)) = 5
 
 		// Kept at 0 and, at this camera distance, correct to leave there. A
 		// planet seen this close never minifies: one pixel covers a fraction of
@@ -341,12 +341,6 @@ Shader "OpenFrontier/PlanetGasGiant"
 			// tiling would silently slide one relative to the other and the
 			// drift would animate bands that are not the ones you can see.
 			//
-			// Smoothing is a MIP BIAS on the table, not an extra tap. Blurring
-			// the drift field turns the step between bands into a gradient, and
-			// a gradient has no boundary for a pixel quad to straddle -- which
-			// was what was driving the mip selection to the top of the chain
-			// and smearing the planet. An extra tap would not have fixed that:
-			// two samples of a step function still step.
 			// G IS A HEIGHT FIELD. B is identically zero and A is opaque, so the
 			// only other thing in this texture is G, and it is not a packed
 			// normal -- R and G differ in kind (R is 96.7% latitude-banded, G is
@@ -405,10 +399,48 @@ Shader "OpenFrontier/PlanetGasGiant"
 				return normalize(tWS * nTS.x + bWS * nTS.y + nWS * nTS.z);
 			}
 
+			// RECONSTRUCTED C1, WHICH IS WHAT MAKES THE LOD USABLE.
+			//
+			// The mip chain blurs the drift field correctly, and that is the only
+			// thing it does. It does not fix that bilinear reconstruction of a
+			// GRID is only C0: the VALUE is continuous across a knot but its
+			// DERIVATIVE jumps. That jump is a jump in ddx(bandUV), so the mip the
+			// albedo sampler picks changes discontinuously, and every cell between
+			// two knots renders sharper or softer than its neighbour. On a
+			// 2048-wide table at LOD 6 the knots sit 22 screen pixels apart, which
+			// is precisely the rectangular grid that appeared on the planet.
+			//
+			// Substituting a smoothstep for the bilinear weight makes the
+			// reconstruction C1. The derivative becomes continuous, the mip becomes
+			// continuous, and the cells go away -- so the field can be blurred for
+			// its anti-aliasing without paying for it in visible grid.
+			//
+			// That is the trade this shader kept getting wrong in BOTH directions:
+			// blur the field and see rectangles, keep it sharp and see aliasing.
+			// It was never either/or. The fix is the reconstruction, not the LOD.
+			//
+			// Four taps instead of one, on a table at most 2048 wide and usually
+			// 512. Worth it: this is the only place in the shader where
+			// reconstruction order costs anything, and it is buying the feature.
 			half BandDrift(float2 uvT)
 			{
-				return SAMPLE_TEXTURE2D_LOD(_Normals, sampler_Normals, uvT,
-					_BandDriftLOD).r * 2.0 - 1.0;
+				float2 size = max(_Normals_TexelSize.zw * exp2(-_BandDriftLOD),
+					float2(1.0, 1.0));
+				float2 texel = 1.0 / size;
+				float2 p = uvT * size - 0.5;
+				float2 i = floor(p);
+				float2 f = p - i;
+				f = f * f * (3.0 - 2.0 * f);
+				float2 uv00 = (i + 0.5) * texel;
+				float2 uv10 = (i + float2(1.5, 0.5)) * texel;
+				float2 uv01 = (i + float2(0.5, 1.5)) * texel;
+				float2 uv11 = (i + float2(1.5, 1.5)) * texel;
+				half r00 = SAMPLE_TEXTURE2D_LOD(_Normals, sampler_Normals, uv00, _BandDriftLOD).r;
+				half r10 = SAMPLE_TEXTURE2D_LOD(_Normals, sampler_Normals, uv10, _BandDriftLOD).r;
+				half r01 = SAMPLE_TEXTURE2D_LOD(_Normals, sampler_Normals, uv01, _BandDriftLOD).r;
+				half r11 = SAMPLE_TEXTURE2D_LOD(_Normals, sampler_Normals, uv11, _BandDriftLOD).r;
+				half r = lerp(lerp(r00, r10, f.x), lerp(r01, r11, f.x), f.y);
+				return r * 2.0 - 1.0;
 			}
 
 			half4 frag(FragmentInput input) : SV_Target
