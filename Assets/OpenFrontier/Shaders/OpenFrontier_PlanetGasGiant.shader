@@ -76,20 +76,36 @@ Shader "OpenFrontier/PlanetGasGiant"
 	//    surface rate, so the mip it needs is roughly 128 texels across the
 	//    whole planet. The bands dissolve into a smear.
 	//
-	// There is no third option. This dial defaults to 6, the cleanest setting
-	// the texture allows: the field is a 4-8 step ramp, so the drift reads as a
-	// smooth multi-zone shear and 12% of the band-to-band contrast survives.
+	// WHERE THE FILTERING GOES, AND WHY IT IS NOT HERE
 	//
-	// Which is the real shape of this feature. It cannot deliver 47 bands at
-	// 47 speeds, because the ratio above is locked to the visible motion rate --
-	// the spatial rate of the sample point IS the temporal drift rate, so
-	// slowing the drift down does not hide the artifact, it freezes it into a
-	// fixed pattern that reads as dirt on the planet. What it can deliver is a
-	// shear profile whose curve and reversals come from those 47 bands, which
-	// is what a real gas giant looks like and what this dial is actually for.
+	// Mipping this table is the wrong place to filter, and a long stretch of
+	// these notes argued otherwise. It does reduce the aliasing, and it
+	// introduces something worse: the mip is a GRID, and reconstructing a grid
+	// with bilinear interpolation makes the offset continuous but not its
+	// DERIVATIVE. The derivative jumps at every knot, the knot spacing is the
+	// whole planet divided by the grid, and each cell between two knots is a
+	// differently-sheared patch of texture. On a 2048-wide table at LOD 6 the
+	// grid is 32x16, so the cells are about 22 screen pixels and plainly
+	// visible as rectangles with hard vertical and horizontal edges.
 	//
-	// _BandDriftSpeed = 0 is a legitimate end state, not a failure: a gas giant
-	// whose bands do not drift costs nothing visible on this planet size.
+	// That is not a tuning problem, it is what bilinear reconstruction of a
+	// coarse field does. Only lowering the resolution can hide it, and lowering
+	// the resolution is the thing that is destroying the effect.
+	//
+	// So this dial now defaults to 0 and the filtering moved to
+	// _AlbedoMaxTexelsPerPixel, where it belongs:
+	//
+	//   - the DRIFT field is sampled at full resolution, so it is smooth and
+	//     there are no cells and no derivative jumps;
+	//   - the ALBEDO is blurred only where the drift's true footprint demands
+	//     it, and the ceiling bounds that so a band edge cannot reach a mip
+	//     that degenerates.
+	//
+	// Band edges come out soft and the rest of the planet stays sharp, which is
+	// the correct division: seam softening on the texture that has the seam,
+	// not on the texture that defines it.
+	//
+	// _BandDriftSpeed = 0 is still a legitimate end state, not a failure.
 	//
 	// Note the consequence for the earlier mip reasoning in this shader: letting
 	// the sampler take its gradient from the drifting UV is not a fix, it is the
@@ -125,7 +141,7 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// texels per pixel. 1 is the surface rate, i.e. no extra blur at all.
 		// See the long note above: this is the dial that makes the drift
 		// renderable, and it is the one that was missing.
-		_AlbedoMaxTexelsPerPixel ("Albedo Blur Ceiling (texels/px)", Range(1, 64)) = 8
+		_AlbedoMaxTexelsPerPixel ("Albedo Blur Ceiling (texels/px)", Range(1, 64)) = 16
 
 		// G is a HEIGHT field for band relief, converted to a tangent-space
 		// normal here. The channel spans 0.282..0.690 and a one-texel step in
@@ -159,7 +175,7 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// straddle. Costs nothing -- same texture, same sampler, a lod bias.
 		// The table is 256 rows tall, so lod 3 is 32 rows: well under the 94
 		// rows that 47 bands would need to stay distinct.
-		_BandDriftLOD ("Band Drift Smoothing", Range(0, 6)) = 6
+		_BandDriftLOD ("Band Drift Smoothing", Range(0, 6)) = 0
 		_BandSmoothness ("Band Smoothness", Range(0, 1)) = 0.25
 
 		// ---- atmosphere, names fixed by PlanetStandard ----
