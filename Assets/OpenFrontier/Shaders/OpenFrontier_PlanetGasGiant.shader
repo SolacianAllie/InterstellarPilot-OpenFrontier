@@ -82,7 +82,7 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// because renaming it would break every gas giant material on disk.
 		// It is a drift table, not a normal map.
 		_Normals ("Band Drift Table (R = signed drift per band)", 2D) = "black" {}
-		_BandDriftSpeed ("Band Drift Speed", Range(-0.1, 0.1)) = 0.004
+		_BandDriftSpeed ("Band Drift Speed", Range(-0.02, 0.02)) = 0.003
 		// Mip level the drift table is read at, and the fix for the bands
 		// looking smeared with glowing edges.
 		//
@@ -102,7 +102,7 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// straddle. Costs nothing -- same texture, same sampler, a lod bias.
 		// The table is 256 rows tall, so lod 3 is 32 rows: well under the 94
 		// rows that 47 bands would need to stay distinct.
-		_BandDriftLOD ("Band Drift Smoothing", Range(0, 6)) = 3
+		_BandDriftLOD ("Band Drift Smoothing", Range(0, 3)) = 1
 		_BandSmoothness ("Band Smoothness", Range(0, 1)) = 0.25
 
 		// ---- atmosphere, names fixed by PlanetStandard ----
@@ -279,18 +279,23 @@ Shader "OpenFrontier/PlanetGasGiant"
 				// sliding at different rates along latitude, which is exactly
 				// what the U term alone does.
 				//
-				// fmod bounds the accumulated offset to one texture width.
-				// Without it the offset grows with _Time.y forever -- an editor
-				// session puts that in the thousands -- and an offset of tens
-				// of texture widths wrecks mip selection and then runs the
-				// sampler into float precision limits, which is where the
-				// rectangular blocking and stair-stepped edges come from.
+				// The accumulated offset is wrapped PER BAND, at a whole texture
+				// width, rather than wrapping the clock.
 				//
-				// The reset costs one frame of tear once per period, and the
-				// bands do not all jump by the same amount, so it is brief but
-				// real. fmod is the right trade against unbounded damage.
-				float driftT = fmod(_Time.y * _BandDriftSpeed, 1.0);
-				float2 bandUV = uvT + float2(drift * driftT, 0.0);
+				// Wrapping the clock (fmod on _Time.y * speed) resets every band
+				// at the same instant but by DIFFERENT amounts, since their drift
+				// differs -- a visible tear, once per period. Wrapping each band's
+				// own offset instead makes every one step by exactly 1.0, and
+				// under Repeat a jump of one whole texture width lands on the
+				// identical texel. No tear, at any speed, for any drift.
+				//
+				// Wrap the OFFSET, not the phase before it. Folding the phase and
+				// then multiplying by drift a second time would step by `drift`
+				// widths, not one -- 0.8 for the strongest bands here, which is a
+				// tear in all but name. This shader had that bug for one commit.
+				float offset = drift * _Time.y * _BandDriftSpeed;
+				offset -= floor(offset);
+				float2 bandUV = uvT + float2(offset, 0.0);
 
 				half4 albedoTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, bandUV);
 
