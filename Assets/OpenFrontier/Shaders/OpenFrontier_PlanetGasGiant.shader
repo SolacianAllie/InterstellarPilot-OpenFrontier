@@ -47,20 +47,46 @@ Shader "OpenFrontier/PlanetGasGiant"
 	// giants, and it is not where the animation data lives. Alpha is 255 with
 	// about 1% of texels slightly under, scattered across every row: noise.
 	//
-	// WHY THE BANDS TEAR, AND HOW _BandDriftLOD FIXES IT
+	// WHY THE PLANET SPARKLES, AND WHAT _BandDriftLOD COSTS TO FIX IT
 	//
-	// The drift steps between adjacent bands, so the texture is offset by two
-	// different amounts either side of a boundary. Left alone that is not just
-	// a visible tear: the GPU picks a mip from the screen-space UV derivative,
-	// and a quad straddling a boundary reports a derivative of half a texture
-	// width, which selects the smallest mip. The table has 47 bands in 256
-	// rows, about 5 each, so once the planet is more than a few hundred pixels
-	// across most quads straddle a boundary and the whole planet goes blurry.
+	// The albedo sample's point moves much faster across the screen than the
+	// surface itself does, because the drift steps between adjacent bands: the
+	// mean step is 0.25 of a texture width, across a band that is about 7
+	// pixels tall on a 700px planet. The GPU picks a mip from the screen-space
+	// derivative, so where the sample point outruns the surface, the mip is far
+	// too sharp and the albedo's fine striations alias into speckle.
 	//
-	// An extra tap cannot fix that -- two samples of a step function still
-	// step. What fixes it is blurring the drift FIELD, so the steps become a
-	// gradient and there is no boundary left to straddle, which is a mip bias
-	// on the table rather than a second fetch.
+	// That ratio is not adjustable. It is the drift's own spatial gradient, and
+	// it is the same whether the drift is fast or slow, strong or weak --
+	// scaling the whole field scales visible motion and aliasing together. Only
+	// FILTERING moves it, and there are exactly two places to filter, and they
+	// cost opposite things. Measured on this table, planet at 700px:
+	//
+	//   lod   field    rate vs surface rate   contrast left
+	//     0-2 512x256            ~205x             97-100%
+	//     3   64x32               155x              91%
+	//     4   32x16               109x              84%
+	//     5   16x8                 13.6x             24%
+	//     6   8x4                   4.4x             12%
+	//
+	//  - Blur the DRIFT (this dial): cheap, and the planet stays sharp, but the
+	//    47 bands collapse to a 4-8 step ramp. Most of the differential rotation
+	//    goes with them.
+	//  - Blur the ALBEDO instead: keeps every band, but the rate is ~200x the
+	//    surface rate, so the mip it needs is roughly 128 texels across the
+	//    whole planet. The bands dissolve into a smear.
+	//
+	// There is no third option. This dial defaults to 5, the knee: the first
+	// setting where the rate drops near the surface rate at all, at the cost of
+	// most of the band-to-band contrast. 6 is cleaner still and flatter.
+	//
+	// Note the consequence for the earlier mip reasoning in this shader: letting
+	// the sampler take its gradient from the drifting UV is not a fix, it is the
+	// OTHER half of this trade. At a band step that derivative is half a texture
+	// width in one pixel, so the mip jumps to the top of the chain and the
+	// planet goes bright and blurry there instead of sparkling. Taking the
+	// gradient from the undrifted UV keeps the mip sane and leaves the aliasing
+	// visible, which is the right way round: it is visible rather than wrong.
 	//
 	// ATMOSPHERE
 	//
@@ -102,7 +128,7 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// straddle. Costs nothing -- same texture, same sampler, a lod bias.
 		// The table is 256 rows tall, so lod 3 is 32 rows: well under the 94
 		// rows that 47 bands would need to stay distinct.
-		_BandDriftLOD ("Band Drift Smoothing", Range(0, 3)) = 1
+		_BandDriftLOD ("Band Drift Smoothing", Range(0, 6)) = 5
 		_BandSmoothness ("Band Smoothness", Range(0, 1)) = 0.25
 
 		// ---- atmosphere, names fixed by PlanetStandard ----
