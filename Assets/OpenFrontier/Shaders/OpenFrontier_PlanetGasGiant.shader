@@ -415,7 +415,5 @@ Shader "OpenFrontier/Planet Gas Giant"
 			}
 			ENDHLSL
 		}
-		EndPass
 	}
-	EndSubShader
 }
