@@ -143,6 +143,13 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// renderable, and it is the one that was missing.
 		_AlbedoMaxTexelsPerPixel ("Albedo Blur Ceiling (texels/px)", Range(1, 64)) = 16
 
+		// Not a minification guard. At this camera distance the surface
+		// footprint is one to three texels per pixel and never asks for it.
+		// Its real job is the band SEAM: the drift is a step function, so either
+		// side of a boundary the albedo sample lands a long way apart, and this
+		// bounds how far apart that may get before it blurs instead. Seams come
+		// out soft, the sharp interior is untouched.
+
 		// G is a HEIGHT field for band relief, converted to a tangent-space
 		// normal here. The channel spans 0.282..0.690 and a one-texel step in
 		// it is 0.0064 on average and 0.125 at most, so the slope this can
@@ -176,6 +183,17 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// The table is 256 rows tall, so lod 3 is 32 rows: well under the 94
 		// rows that 47 bands would need to stay distinct.
 		_BandDriftLOD ("Band Drift Smoothing", Range(0, 6)) = 0
+
+		// Kept at 0 and, at this camera distance, correct to leave there. A
+		// planet seen this close never minifies: one pixel covers a fraction of
+		// a texel, so the true mip is always 0 and every LOD above it is a blur
+		// added to a surface already sharper than the screen.
+		//
+		// It is still a dial because a sector map or a distant flyby still
+		// exists, and at that range the drift table DOES need filtering. Raise
+		// it only there. Note what raising it costs: the mip is a grid, bilinear
+		// makes the offset continuous but not its derivative, and the cells
+		// between knots are each a differently-sheared patch -- see below.
 		_BandSmoothness ("Band Smoothness", Range(0, 1)) = 0.25
 
 		// ---- atmosphere, names fixed by PlanetStandard ----
