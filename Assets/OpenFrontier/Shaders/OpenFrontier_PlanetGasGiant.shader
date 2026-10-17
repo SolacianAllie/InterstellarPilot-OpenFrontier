@@ -76,9 +76,20 @@ Shader "OpenFrontier/PlanetGasGiant"
 	//    surface rate, so the mip it needs is roughly 128 texels across the
 	//    whole planet. The bands dissolve into a smear.
 	//
-	// There is no third option. This dial defaults to 5, the knee: the first
-	// setting where the rate drops near the surface rate at all, at the cost of
-	// most of the band-to-band contrast. 6 is cleaner still and flatter.
+	// There is no third option. This dial defaults to 6, the cleanest setting
+	// the texture allows: the field is a 4-8 step ramp, so the drift reads as a
+	// smooth multi-zone shear and 12% of the band-to-band contrast survives.
+	//
+	// Which is the real shape of this feature. It cannot deliver 47 bands at
+	// 47 speeds, because the ratio above is locked to the visible motion rate --
+	// the spatial rate of the sample point IS the temporal drift rate, so
+	// slowing the drift down does not hide the artifact, it freezes it into a
+	// fixed pattern that reads as dirt on the planet. What it can deliver is a
+	// shear profile whose curve and reversals come from those 47 bands, which
+	// is what a real gas giant looks like and what this dial is actually for.
+	//
+	// _BandDriftSpeed = 0 is a legitimate end state, not a failure: a gas giant
+	// whose bands do not drift costs nothing visible on this planet size.
 	//
 	// Note the consequence for the earlier mip reasoning in this shader: letting
 	// the sampler take its gradient from the drifting UV is not a fix, it is the
@@ -128,7 +139,7 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// straddle. Costs nothing -- same texture, same sampler, a lod bias.
 		// The table is 256 rows tall, so lod 3 is 32 rows: well under the 94
 		// rows that 47 bands would need to stay distinct.
-		_BandDriftLOD ("Band Drift Smoothing", Range(0, 6)) = 5
+		_BandDriftLOD ("Band Drift Smoothing", Range(0, 6)) = 6
 		_BandSmoothness ("Band Smoothness", Range(0, 1)) = 0.25
 
 		// ---- atmosphere, names fixed by PlanetStandard ----
