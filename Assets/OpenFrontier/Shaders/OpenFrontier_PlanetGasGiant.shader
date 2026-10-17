@@ -297,7 +297,30 @@ Shader "OpenFrontier/PlanetGasGiant"
 				offset -= floor(offset);
 				float2 bandUV = uvT + float2(offset, 0.0);
 
-				half4 albedoTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, bandUV);
+				// Sampled with gradients taken from the UN-drifted uv.
+				//
+				// A plain SAMPLE_TEXTURE2D derives its mip from ddx/ddy of the
+				// coordinate it is handed. Hand it bandUV and the drift steps go
+				// straight into that: either side of a band boundary the offset
+				// differs, the quad straddling it reports a derivative of order
+				// half a texture width, and the sampler selects the smallest mip
+				// there. The albedo is full of high-contrast striations, so a mip
+				// too low averages toward the mean and reads BRIGHTER than the
+				// sharp sample -- which is exactly the short bright dashes sitting
+				// on the band boundaries.
+				//
+				// The drift is a translation in U. A translation has no derivative,
+				// so the honest gradients are the ones the surface itself has,
+				// ddx(uvT)/ddy(uvT). Passing those is not a fudge to hide the step:
+				// it is the correct footprint, and the step stops distorting the
+				// LOD of a sample it does not change the density of.
+				//
+				// _BandDriftLOD still matters, for the other half of it. GRAD fixes
+				// the mip; it cannot make two pixels either side of a boundary agree
+				// on what texel to read, because they genuinely read different ones.
+				// That residual tear is what the smoothing dial is for.
+				half4 albedoTex = SAMPLE_TEXTURE2D_GRAD(_MainTex, sampler_MainTex,
+					bandUV, ddx(uvT), ddy(uvT));
 
 				if (_AlbedoDebug > 0.5 && _AlbedoDebug < 1.5)
 					return half4(albedoTex.rgb, 1.0);
