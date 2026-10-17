@@ -61,7 +61,26 @@ namespace OpenFrontier.IP.Engine.Core.Units.ActiveUnits
 		// Cached because Renderer.GetPropertyBlock has no parameterless
 		// overload -- it fills a block you supply -- so a fresh one has to be
 		// passed each time. Reused so the two calls at spawn do not allocate.
-		private readonly MaterialPropertyBlock ringBlock = new MaterialPropertyBlock();
+		//
+		// LAZY, and not readonly, and that is the whole point of it.
+		// MaterialPropertyBlock's constructor calls the native CreateImpl,
+		// and a MonoBehaviour field initializer runs during serialization --
+		// which Unity forbids -- so building it in the initializer throws
+		// "CreateImpl is not allowed to be called from a MonoBehaviour
+		// constructor (or instance field initializer), call it in Awake or
+		// Start instead". The constructor throws, so the COMPONENT never
+		// finishes constructing and every field on it, not just this one,
+		// is left as Unity's null default.
+		//
+		// It is not hypothetical and it is not specific to the ring work:
+		// this threw on import of ActiveUnitPlanetJupitersCousin, because
+		// the asset indexer constructs the component while indexing the
+		// prefab, before any Awake could run.
+		//
+		// Created on first use instead. ApplyRingProperties is the only
+		// reader and it returns early when there is no ring, so a planet
+		// with no ring never allocates one at all.
+		private MaterialPropertyBlock ringBlock;
 
 		private void Awake()
 		{
@@ -113,6 +132,13 @@ namespace OpenFrontier.IP.Engine.Core.Units.ActiveUnits
 			}
 
 			float radius = ResolvePlanetRadius(renderer);
+
+			// Built here rather than in a field initializer -- see the note on
+			// ringBlock. Awake is the earliest this can run without throwing.
+			if (ringBlock == null)
+			{
+				ringBlock = new MaterialPropertyBlock();
+			}
 
 			// Read into the existing block rather than setting a fresh one.
 			// A fresh block would wipe anything else driving this renderer, and

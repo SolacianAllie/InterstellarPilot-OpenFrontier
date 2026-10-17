@@ -58,7 +58,18 @@ namespace OpenFrontier.IP.Engine.ActiveUnitFx
 
 		private static readonly int DustStId = Shader.PropertyToID("_DustAlbedo_ST");
 
-		private readonly MaterialPropertyBlock ringBlock = new MaterialPropertyBlock();
+		// Lazy, and not readonly, because MaterialPropertyBlock's constructor
+		// calls the native CreateImpl and a MonoBehaviour field initializer
+		// runs during serialization, which Unity forbids -- it throws
+		// "CreateImpl is not allowed to be called from a MonoBehaviour
+		// constructor (or instance field initializer)". The constructor
+		// throws, so the component never finishes constructing.
+		//
+		// The identical bug in ActiveUnitPlanet was thrown on import of
+		// ActiveUnitPlanetJupitersCousin, since the asset indexer builds
+		// components while indexing a prefab, before any Awake could run.
+		// See the note on ringBlock there.
+		private MaterialPropertyBlock ringBlock;
 
 		private void Awake()
 		{
@@ -100,6 +111,12 @@ namespace OpenFrontier.IP.Engine.ActiveUnitFx
 			scale.y = Mathf.Lerp(MinRadialTiling, MaxRadialTiling, (float)random.NextDouble());
 			// X of the offset is the pan, the angular slide.
 			offset.x = Mathf.Lerp(MinPan, MaxPan, (float)random.NextDouble());
+
+			// Built on first use, not in a field initializer -- see ringBlock.
+			if (ringBlock == null)
+			{
+				ringBlock = new MaterialPropertyBlock();
+			}
 
 			// Read-modify-write. Setting a fresh block would wipe whatever
 			// ActiveUnitPlanet wrote to this renderer -- the planet shadow radius
