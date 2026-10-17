@@ -120,6 +120,12 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// It is a drift table, not a normal map.
 		_Normals ("Band Drift Table (R = signed drift per band)", 2D) = "black" {}
 		_BandDriftSpeed ("Band Drift Speed", Range(-0.02, 0.02)) = 0.003
+
+		// How much blur the drifting albedo is allowed, as a footprint in
+		// texels per pixel. 1 is the surface rate, i.e. no extra blur at all.
+		// See the long note above: this is the dial that makes the drift
+		// renderable, and it is the one that was missing.
+		_AlbedoMaxTexelsPerPixel ("Albedo Blur Ceiling (texels/px)", Range(1, 64)) = 8
 		// Mip level the drift table is read at, and the fix for the bands
 		// looking smeared with glowing edges.
 		//
@@ -210,6 +216,7 @@ Shader "OpenFrontier/PlanetGasGiant"
 				float4 _TwilightColor;
 				float _BandDriftSpeed;
 				float _BandDriftLOD;
+				float _AlbedoMaxTexelsPerPixel;
 				float _BandSmoothness;
 				float _HazeStrength;
 				float _HazeSunStrength;
@@ -356,8 +363,43 @@ Shader "OpenFrontier/PlanetGasGiant"
 				// the mip; it cannot make two pixels either side of a boundary agree
 				// on what texel to read, because they genuinely read different ones.
 				// That residual tear is what the smoothing dial is for.
+				float2 ddxUV = ddx(bandUV);
+				float2 ddyUV = ddy(bandUV);
+
+				// The TRUE gradient, capped.
+				//
+				// ddx(uvT) -- the surface's own footprint -- is wrong here, and
+				// badly so: the drift moves the sample point a long way faster
+				// than the surface does, so the mip is far too sharp and the
+				// albedo's fine striations alias into speckle.
+				//
+				// The true gradient fixes that and creates the opposite fault. The
+				// drift is a step function, so at a band edge it reports half a
+				// texture width inside one pixel, the mip jumps to the top of the
+				// chain, and that latitude reads as a bright blurry stripe. Left
+				// alone the two faults cancel by luck: noisy in the middle of the
+				// bands, striped at the edges. That is what every previous version
+				// of this shader was, and why fixing either one alone made it worse.
+				//
+				// The cap separates them. Take the real footprint -- so the drift
+				// is genuinely filtered, no speckle -- but bound it to what the
+				// planet is allowed to look like, so a step cannot reach a mip that
+				// degenerates, and blurs instead. Both faults need an unbounded
+				// term; one bound removes them together.
+				//
+				// Both vectors scale by the same factor, so the gradient's shape
+				// and the anisotropy between the axes are preserved and only the
+				// mip is bounded.
+				float footprint = max(length(ddxUV), length(ddyUV))
+					* max(_MainTex_TexelSize.z, _MainTex_TexelSize.w);
+				if (footprint > _AlbedoMaxTexelsPerPixel)
+				{
+					float k = _AlbedoMaxTexelsPerPixel / footprint;
+					ddxUV *= k;
+					ddyUV *= k;
+				}
 				half4 albedoTex = SAMPLE_TEXTURE2D_GRAD(_MainTex, sampler_MainTex,
-					bandUV, ddx(uvT), ddy(uvT));
+					bandUV, ddxUV, ddyUV);
 
 				if (_AlbedoDebug > 0.5 && _AlbedoDebug < 1.5)
 					return half4(albedoTex.rgb, 1.0);
