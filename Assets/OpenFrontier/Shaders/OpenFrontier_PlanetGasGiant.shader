@@ -77,8 +77,27 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// because renaming it would break every gas giant material on disk.
 		// It is a drift table, not a normal map.
 		_Normals ("Band Drift Table (R = signed drift per band)", 2D) = "black" {}
-		_BandDriftSpeed ("Band Drift Speed", Range(-0.1, 0.1)) = 0.01
-		_BandSmoothing ("Band Edge Smoothing", Range(0, 1)) = 0.4
+		_BandDriftSpeed ("Band Drift Speed", Range(-0.1, 0.1)) = 0.004
+		// Mip level the drift table is read at, and the fix for the bands
+		// looking smeared with glowing edges.
+		//
+		// The drift steps between adjacent bands, so two fragments either side
+		// of a boundary are sampling the albedo at very different places in the
+		// texture -- 0.6 of its width apart after a minute at the old speed. The
+		// GPU picks a mip from the screen-space UV derivative, so a quad that
+		// straddles a boundary reports a derivative of half a texture width and
+		// selects the smallest mip. The table has 47 bands in 256 rows, about
+		// 5 rows each, so once the planet is more than a few hundred pixels
+		// across, MOST quads straddle a boundary and the whole planet goes
+		// blurry. The bright edges are a displaced band landing somewhere else
+		// in the albedo.
+		//
+		// Reading the table at a higher mip blurs the drift field itself, which
+		// turns the steps into a gradient, and a gradient has no boundary to
+		// straddle. Costs nothing -- same texture, same sampler, a lod bias.
+		// The table is 256 rows tall, so lod 3 is 32 rows: well under the 94
+		// rows that 47 bands would need to stay distinct.
+		_BandDriftLOD ("Band Drift Smoothing", Range(0, 6)) = 3
 		// Vertical shear on top of the along-band slide. Real jets lean, and
 		// without this the bands move like sliding rings on a turntable.
 		_BandShear ("Band Shear", Range(0, 1)) = 0.3
@@ -150,7 +169,7 @@ Shader "OpenFrontier/PlanetGasGiant"
 				float4 _SunRimDeep;
 				float4 _TwilightColor;
 				float _BandDriftSpeed;
-				float _BandSmoothing;
+				float _BandDriftLOD;
 				float _BandShear;
 				float _BandSmoothness;
 				float _HazeStrength;
@@ -216,19 +235,16 @@ Shader "OpenFrontier/PlanetGasGiant"
 			// tiling would silently slide one relative to the other and the
 			// drift would animate bands that are not the ones you can see.
 			//
-			// Smoothing averages either side of the band edge, which is what
-			// stops the offset from tearing. The second fetch is behind a
-			// uniform branch so _BandSmoothing = 0 costs one sample, not two.
+			// Smoothing is a MIP BIAS on the table, not an extra tap. Blurring
+			// the drift field turns the step between bands into a gradient, and
+			// a gradient has no boundary for a pixel quad to straddle -- which
+			// was what was driving the mip selection to the top of the chain
+			// and smearing the planet. An extra tap would not have fixed that:
+			// two samples of a step function still step.
 			half BandDrift(float2 uvT)
 			{
-				half d0 = SAMPLE_TEXTURE2D(_Normals, sampler_Normals, uvT).r;
-				if (_BandSmoothing > 0.001)
-				{
-					half d1 = SAMPLE_TEXTURE2D(_Normals, sampler_Normals,
-						uvT + float2(0.0, _BandSmoothing * 0.01)).r;
-					d0 = (d0 + d1) * 0.5;
-				}
-				return d0 * 2.0 - 1.0;
+				return SAMPLE_TEXTURE2D_LOD(_Normals, sampler_Normals, uvT,
+					_BandDriftLOD).r * 2.0 - 1.0;
 			}
 
 			half4 frag(FragmentInput input) : SV_Target
