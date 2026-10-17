@@ -133,6 +133,13 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// express is tiny and the dial has to be large to be seen at all: 6 puts
 		// the strongest wisp near 35 degrees and the average texel near 2.
 		_ReliefScale ("Band Relief (height -> normal)", Range(0, 16)) = 6
+
+		// How wide the height difference is allowed to reach, as a multiple of
+		// the pixel footprint. 1 is the textbook minimum; higher low-passes G
+		// harder and drops its finest structure. Measured against
+		// gas_giant_06_diffuse, which carries striations down to a texel or
+		// two, this is the dial between "soft relief" and "sparkle".
+		_ReliefFilter ("Relief Filter (x pixel footprint)", Range(0.5, 8)) = 2
 		// Mip level the drift table is read at, and the fix for the bands
 		// looking smeared with glowing edges.
 		//
@@ -235,6 +242,7 @@ Shader "OpenFrontier/PlanetGasGiant"
 				float _BandDriftLOD;
 				float _AlbedoMaxTexelsPerPixel;
 				float _ReliefScale;
+				float _ReliefFilter;
 				float _BandSmoothness;
 				float _HazeStrength;
 				float _HazeSunStrength;
@@ -329,12 +337,33 @@ Shader "OpenFrontier/PlanetGasGiant"
 			// would vanish at every boundary -- which is where it is most wanted.
 			half3 BandRelief(float2 uvT, half3 nWS, half3 tWS, half3 bWS)
 			{
-				float2 texel = _Normals_TexelSize.xy;
+				// LOW-PASS BEFORE DIFFERENCING. This is the bug that made the
+				// planet sparkle, and it is the standard rule of bump mapping that
+				// was not applied: a one-texel difference IS a high-pass. It keeps
+				// precisely the finest detail the table has and discards the shape,
+				// so a soft field comes out as shading noise.
+				//
+				// It was invisible on gas_giant_01 because that table is 512 wide
+				// and one texel is already several pixels. gas_giant_06 is 2048
+				// wide, so the same one-texel difference is four times finer and
+				// lands well under a pixel -- which is why the same code is fine
+				// on one planet and speckled on another.
+				//
+				// The step is the pixel footprint measured in THIS table's texels,
+				// so it is resolution-independent -- a fixed step would filter a
+				// 512-wide table and a 2048-wide one by different amounts. It also
+				// means the relief fades as the planet recedes, which is what a
+				// bump map should do on its own and never did before.
+				float texelsPerPixel = max(length(ddx(uvT)), length(ddy(uvT)))
+					/ max(_Normals_TexelSize.x, _Normals_TexelSize.y);
+				float step = max(1.0, texelsPerPixel * _ReliefFilter);
+				float2 offset = _Normals_TexelSize.xy * step;
+
 				float h  = SAMPLE_TEXTURE2D(_Normals, sampler_Normals, uvT).g;
 				float hx = SAMPLE_TEXTURE2D(_Normals, sampler_Normals,
-					uvT + float2(texel.x, 0.0)).g;
+					uvT + float2(offset.x, 0.0)).g;
 				float hy = SAMPLE_TEXTURE2D(_Normals, sampler_Normals,
-					uvT + float2(0.0, texel.y)).g;
+					uvT + float2(0.0, offset.y)).g;
 				half3 nTS = normalize(half3(
 					-(hx - h) * _ReliefScale,
 					-(hy - h) * _ReliefScale,
