@@ -129,7 +129,6 @@ Material:
     - _BandContrast: 1.15
     - _BandDispSpeed: 0.04
     - _BandDispStrength: 0.012
-    - _BandDispWobble: 0.5
     - _BandJetSpeed: 0.0002
     - _BandNeutral: 0.6
     - _BandPivot: 0.42

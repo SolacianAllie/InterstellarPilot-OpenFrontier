@@ -144,9 +144,17 @@ Shader "OpenFrontier/Planet Gas Giant"
 	//   1. BAND OFFSET. Where red is high, the deck is pushed east; where
 	//      red is low, west. Belt-versus-zone shear, sourced from the
 	//      reference's own band structure, authored into the texture.
-	//   2. WOBBLE. The offset amount is modulated per latitude band by
-	//      sin(6 * v + t * speed), so adjacent belts oscillate out of
-	//      phase and the shear becomes liquid.
+	//   2. STREAM. The offset amount ramps monotonically west to east over
+	//      time and wraps, and the wrap is hidden by a two-phase cross-
+	//      fade: two deck samples, each ramping at its own phase half a
+	//      cycle apart, blended with triangle weights that are exactly
+	//      zero when that phase snaps. The deck therefore streams ONE
+	//      direction forever -- no back-and-forth, no snapping, and the
+	//      offsets stay bounded within +/-_BandDispStrength per cycle, so
+	//      an overnight session cannot tear the deck apart. Flow map's
+	//      standard tax: the two deck copies stay exactly one ramp-span
+	//      apart wherever red sits away from neutral, which reads as a
+	//      faint motion-trail of width up to ~_BandDispStrength.
 	//   3. ZONAL JET. A small constant eastward creep with time.
 	//
 	// All three add into one float that offsets the deck's U. No C# needs
@@ -180,9 +188,11 @@ Shader "OpenFrontier/Planet Gas Giant"
 	//
 	// MOBILE FIRST
 	//
-	// Two texture samples, one extra channel read and about a dozen ALU
-	// operations over what a static planet needs; no tangent attribute
-	// and no tangent interpolator, no shadow caster and no depth pass --
+	// Three texture samples -- the second deck phase and one extra
+	// channel read are the deck motion's whole cost -- and about two
+	// dozen ALU operations over what a static planet needs; no tangent
+	// attribute and no tangent interpolator, no shadow caster and no
+	// depth pass --
 	// the mesh is a 2143-vertex sphere, and a planet is never close enough
 	// to the camera for self-shadowing to matter. No parallax, no rim, no
 	// Fresnel, no specular: all of those are per-pixel work on a surface
@@ -222,13 +232,17 @@ Shader "OpenFrontier/Planet Gas Giant"
 		// as a reference value at each pixel, never as a lighting normal.
 		// _BandNeutral decides which red value reads as "no displacement",
 		// _BandSoftness dilutes the file's 88 quantisation levels and its
-		// hard row seams into that same remap, and the three remaining
-		// terms set how far it pushes, how much that push oscillates, and
-		// how fast the whole deck creeps.
+		// hard row seams into that same remap, and the remaining sliders
+		// set how far the deck shifts per cycle (_BandDispStrength), how
+		// fast those cycles run so the shear streams continuously in one
+		// direction rather than wobbling back and forth (_BandDispSpeed),
+		// and how fast the whole deck creeps east regardless (_BandJetSpeed).
+		// _BandDispSpeed is CYCLES PER SECOND: one cycle slides a band
+		// 2 * _BandDispStrength from west to east, so the visible speed
+		// of a band scales with both sliders and with its own red value.
 		[NoScaleOffset] _BandRef ("Band Reference (R: gas_giant_06_normal)", 2D) = "black" {}
 		_BandDispStrength ("Band Displacement", Range(0, 0.06)) = 0.012
-		_BandDispWobble ("Band Wobble", Range(0, 1)) = 0.5
-		_BandDispSpeed ("Band Wobble Speed", Range(0, 0.5)) = 0.04
+		_BandDispSpeed ("Band Stream Speed", Range(0, 0.5)) = 0.04
 		_BandJetSpeed ("Zonal Jet", Range(0, 0.01)) = 0.0002
 		_BandSoftness ("Band Softness", Range(1, 8)) = 3
 		_BandNeutral ("Band Neutral", Range(0, 1)) = 0.6
@@ -313,7 +327,6 @@ Shader "OpenFrontier/Planet Gas Giant"
 				float _LimbGlowStrength;
 				float _Ambient;
 				float _BandDispStrength;
-				float _BandDispWobble;
 				float _BandDispSpeed;
 				float _BandJetSpeed;
 				float _BandSoftness;
@@ -391,34 +404,51 @@ Shader "OpenFrontier/Planet Gas Giant"
 
 			half4 frag(Varyings input) : SV_Target
 			{
-				// ---- band motion ----
-				// The deck's own longitude offset comes from the band
+				// ---- band motion (continuous stream) ----
+				// The deck's longitude offset comes from the band
 				// reference's RED channel sampled at the pixel's own
-				// latitude. Documented in THE DECK MOVES and in the
-				// properties block: the reference remap has one neutral
-				// red value (no push), a softness that dilutes the file's
-				// 88 quantisation levels and its hard row seams, push
-				// strength, a per-latitude wobble (making the shear
-				// liquid), and a zonal jet (creeping the whole deck
-				// eastward with time).
+				// latitude, and that offset then STREAMS: it ramps
+				// monotonically one direction over a bounded cycle and
+				// wraps. The wrap is hidden by a two-phase cross-fade --
+				// two samples of the deck, each at its own phase half a
+				// cycle apart, blended by triangle weights that are
+				// exactly zero for whichever phase is snapping. Per band
+				// this reads as constant one-way motion with no
+				// back-and-forth, and bands whose red value differs
+				// stream at different rates -- differential shear
+				// without any per-cycle bounce. Documented in THE DECK
+				// MOVES and in the properties block.
 				//
-				// Everything below that touches the sample coordinate is
-				// float for a reason: half's ulp near 0.7 is 5e-4, the
-				// same size as visible texel quantisation, and the jet
-				// creeps per frame at ~1e-6. Half here freezes the
-				// animation into stair steps. Do not half this.
-				float bandPhase = float(input.uv.y) * 6.0 + _Time.y * _BandDispSpeed;
-				half  bandHigh  = pow(SAMPLE_TEXTURE2D(_BandRef, sampler_BandRef, input.uv).r, (half)_BandSoftness);
-				half  bandOffset = bandHigh - (half)_BandNeutral;
-				half  wobble = 1.0h + (half)_BandDispWobble * (half)sin(bandPhase * 3.14159265f * 2.0f);
-				float deckU = float(input.uv.x)
-					+ (float)(bandOffset * ((half)_BandDispStrength * wobble))
-					- _BandJetSpeed * _Time.y;
-				float2 deckUV = float2(deckU, input.uv.y);
+				// Triangle weight, not smoothstep: a weight must be
+				// EXACTLY zero at its phase's snap (p = 0 or 1) or the
+				// snap shows as a one-texel flicker every cycle.
+				// 1 - |2p - 1| hits 0 at both ends and 1 mid-cycle; the
+				// other phase's weight is 1 - weightA exactly, because
+				// the two ramps are always exactly one span apart.
+				//
+				// Everything on the sample-coordinate path is float for a
+				// reason: half's ulp near 0.7 is 5e-4, the same size as
+				// visible texel quantisation, and the jet creeps per
+				// frame at ~1e-6. Half here freezes the animation into
+				// stair steps. Do not half this. See ON PRECISION.
+				float bandPhase = _Time.y * _BandDispSpeed;
+				float phaseA = frac(bandPhase);
+				float phaseB = frac(bandPhase + 0.5);
+				float rampA = 2.0 * phaseA - 1.0;   // -1 .. +1, monotonic in time
+				float rampB = 2.0 * phaseB - 1.0;
+				float weightA = 1.0 - abs(rampA);   // deckB's weight is 1 - weightA
+				half  bandField  = pow(SAMPLE_TEXTURE2D(_BandRef, sampler_BandRef, input.uv).r, (half)_BandSoftness);
+				half  bandOffset = bandField - (half)_BandNeutral;
+				half  bandAmp    = bandOffset * (half)_BandDispStrength;
+				float jetOffset  = -_BandJetSpeed * _Time.y;
+				float deckUA = float(input.uv.x) + (float)bandAmp * rampA + jetOffset;
+				float deckUB = float(input.uv.x) + (float)bandAmp * rampB + jetOffset;
 
-				// The cloud deck. ONE deck sample plus the band reference
+				// The cloud deck. TWO deck samples plus the band reference
 				// above -- that is this shader's whole texture budget.
-				half3 albedo = SAMPLE_TEXTURE2D(_Albedo, sampler_Albedo, deckUV).rgb;
+				half3 deckA = SAMPLE_TEXTURE2D(_Albedo, sampler_Albedo, float2(deckUA, input.uv.y)).rgb;
+				half3 deckB = SAMPLE_TEXTURE2D(_Albedo, sampler_Albedo, float2(deckUB, input.uv.y)).rgb;
+				half3 albedo = lerp(deckB, deckA, (half)weightA);
 
 				// Band contrast about a pivot, which is what separates the
 				// belts from the zones. Multiplicative about a pivot and
