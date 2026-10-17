@@ -125,8 +125,9 @@ Shader "OpenFrontier/PlanetGasGiant"
 		_TwilightDepth ("Twilight Night Depth", Range(0.01, 1)) = 0.25
 		_TwilightHaze ("Twilight Haze", Range(0, 1)) = 0.6
 
-		// 0 final | 1 albedo | 2 drifting albedo | 3 band drift
-		_AlbedoDebug ("DEBUG Surface Bisect", Range(0, 3)) = 0
+		// 0 final | 1 albedo | 2 drifting albedo | 3 band drift | 4 the bound
+		// drift table, raw
+		_AlbedoDebug ("DEBUG Surface Bisect", Range(0, 4)) = 0
 	}
 
 	SubShader
@@ -277,8 +278,19 @@ Shader "OpenFrontier/PlanetGasGiant"
 				// It bought nothing anyway. Differential rotation IS bands
 				// sliding at different rates along latitude, which is exactly
 				// what the U term alone does.
-				float2 bandUV = uvT
-					+ float2(drift * _Time.y * _BandDriftSpeed, 0.0);
+				//
+				// fmod bounds the accumulated offset to one texture width.
+				// Without it the offset grows with _Time.y forever -- an editor
+				// session puts that in the thousands -- and an offset of tens
+				// of texture widths wrecks mip selection and then runs the
+				// sampler into float precision limits, which is where the
+				// rectangular blocking and stair-stepped edges come from.
+				//
+				// The reset costs one frame of tear once per period, and the
+				// bands do not all jump by the same amount, so it is brief but
+				// real. fmod is the right trade against unbounded damage.
+				float driftT = fmod(_Time.y * _BandDriftSpeed, 1.0);
+				float2 bandUV = uvT + float2(drift * driftT, 0.0);
 
 				half4 albedoTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, bandUV);
 
@@ -293,8 +305,21 @@ Shader "OpenFrontier/PlanetGasGiant"
 				// other, and the bands read as horizontal stripes because that
 				// is what it is. If this shows structure other than bands, the
 				// table is not the per-band drift it was measured to be.
-				if (_AlbedoDebug > 2.5)
+				//
+				// Bounded above, unlike stage 4 below which is the catch-all --
+				// an unbounded final stage swallows whatever comes after it.
+				if (_AlbedoDebug > 2.5 && _AlbedoDebug < 3.5)
 					return half4(drift * 0.5 + 0.5, 1.0 - drift * 0.5 - 0.5, 0.0, 1.0);
+				// Stage 4 shows _Normals itself, raw, for every pixel. This is
+				// the one that answers "is the right texture even bound",
+				// which the drift view cannot: a rocky planet's normal map
+				// also has a strong red channel, it just varies in two axes
+				// instead of one, and warping the UV by THAT produces exactly
+				// the rectangular blocking rather than band motion. Horizontal
+				// stripes here means the gas giant table; a two-axis gradient
+				// means the wrong map; a flat colour means nothing is bound.
+				if (_AlbedoDebug > 3.5)
+					return SAMPLE_TEXTURE2D(_Normals, sampler_Normals, uvT);
 
 				// GEOMETRIC normal only. The band table is not a normal map, so
 				// there is nothing to perturb with, and the atmosphere below
