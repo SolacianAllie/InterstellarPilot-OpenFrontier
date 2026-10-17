@@ -47,15 +47,20 @@ Shader "OpenFrontier/PlanetGasGiant"
 	// giants, and it is not where the animation data lives. Alpha is 255 with
 	// about 1% of texels slightly under, scattered across every row: noise.
 	//
-	// WHY THE BANDS TEAR AT THEIR EDGES, AND WHAT SMOOTHS IT
+	// WHY THE BANDS TEAR, AND HOW _BandDriftLOD FIXES IT
 	//
 	// The drift steps between adjacent bands, so the texture is offset by two
-	// different amounts on the two sides of a boundary and the content jumps
-	// there. _BandSmoothing softens it by averaging the table either side of
-	// the band edge. Real zonal flow shears gradually across a band and only
-	// steps at the jet boundary, so a little smoothing is closer to the truth
-	// than none -- but a large value smears the difference between adjacent
-	// bands, which is the part that was worth having.
+	// different amounts either side of a boundary. Left alone that is not just
+	// a visible tear: the GPU picks a mip from the screen-space UV derivative,
+	// and a quad straddling a boundary reports a derivative of half a texture
+	// width, which selects the smallest mip. The table has 47 bands in 256
+	// rows, about 5 each, so once the planet is more than a few hundred pixels
+	// across most quads straddle a boundary and the whole planet goes blurry.
+	//
+	// An extra tap cannot fix that -- two samples of a step function still
+	// step. What fixes it is blurring the drift FIELD, so the steps become a
+	// gradient and there is no boundary left to straddle, which is a mip bias
+	// on the table rather than a second fetch.
 	//
 	// ATMOSPHERE
 	//
@@ -98,9 +103,6 @@ Shader "OpenFrontier/PlanetGasGiant"
 		// The table is 256 rows tall, so lod 3 is 32 rows: well under the 94
 		// rows that 47 bands would need to stay distinct.
 		_BandDriftLOD ("Band Drift Smoothing", Range(0, 6)) = 3
-		// Vertical shear on top of the along-band slide. Real jets lean, and
-		// without this the bands move like sliding rings on a turntable.
-		_BandShear ("Band Shear", Range(0, 1)) = 0.3
 		_BandSmoothness ("Band Smoothness", Range(0, 1)) = 0.25
 
 		// ---- atmosphere, names fixed by PlanetStandard ----
@@ -170,7 +172,6 @@ Shader "OpenFrontier/PlanetGasGiant"
 				float4 _TwilightColor;
 				float _BandDriftSpeed;
 				float _BandDriftLOD;
-				float _BandShear;
 				float _BandSmoothness;
 				float _HazeStrength;
 				float _HazeSunStrength;
@@ -258,13 +259,26 @@ Shader "OpenFrontier/PlanetGasGiant"
 				// _BandDriftSpeed means the same number however the material is
 				// tiled. Doing it before TRANSFORM_TEX would scale the drift by
 				// the tiling too and the rate would change with it.
-				float2 bandUV = uvT + float2(
-					drift * _Time.y * _BandDriftSpeed,
-					// Shear leans the band vertically as it slides, so the flow
-					// is not a set of rings turning like a turntable. Signed by
-					// the drift so a band sliding backwards leans the other way,
-					// which is what keeps the two consistent at a jet boundary.
-					drift * _Time.y * _BandDriftSpeed * _BandShear * 0.5);
+				//
+				// LONGITUDE ONLY, and that is load-bearing rather than a
+				// simplification. The map (u,v) -> (u + f(v), v) has Jacobian
+				// [[1, f'], [0, 1]], whose determinant is 1: the texture is
+				// rigidly sheared and nothing can compress or fold.
+				//
+				// Adding a vertical term g(v) makes the determinant 1 + g', and
+				// g' carries the accumulated offset, so it grows with elapsed
+				// time without bound. Measured on this drift field at
+				// df/dv ~ 9.6 per unit V, the vertical axis came out stretched
+				// 1.3x at a minute, 6.8x at five, 18x at fifteen, and goes
+				// NEGATIVE -- a fold, which mirrors the texture -- if the shear
+				// dial is pushed. That stretching is what pulled the bands into
+				// converging diamonds.
+				//
+				// It bought nothing anyway. Differential rotation IS bands
+				// sliding at different rates along latitude, which is exactly
+				// what the U term alone does.
+				float2 bandUV = uvT
+					+ float2(drift * _Time.y * _BandDriftSpeed, 0.0);
 
 				half4 albedoTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, bandUV);
 
