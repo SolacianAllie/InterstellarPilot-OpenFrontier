@@ -164,6 +164,15 @@ namespace OpenFrontier
 
 			GameObject grabberObject = new GameObject("CloakBackdropCamera");
 			Camera grabber = grabberObject.AddComponent<Camera>();
+			// The driver component is not decoration - it carries every
+			// runtime behaviour of this system: the wants-loop that enables
+			// and aims the camera each frame, the ping-pong bookkeeping,
+			// the _CloakCopyPass render hooks, the superseded-rig parking
+			// and the deferred rig scan. A camera without it is inertia:
+			// enabled nowhere, aims nowhere, and every folding hull samples
+			// an empty buffer (v3.1 lost this attach in a rewrite and the
+			// result shipped as "the grey ship again"). Never drop it.
+			grabberObject.AddComponent<CloakBackdropCamera>();
 			// Parented under the main camera with a zero local transform:
 			// pose follows the main camera through every LateUpdate on the
 			// rig, without this component needing to know script order.
