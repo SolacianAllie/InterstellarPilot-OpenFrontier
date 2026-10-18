@@ -31,10 +31,12 @@ Shader "OpenFrontier/Ship Cloak"
 	//      construction-strobe inverse while a hull is being built.
 	//   _CloakFloor   0..1 -- how much hull material survives at amount 1.
 	//      This is the CLOAK VISIBILITY floor the video settings already
-	//      own: CloakMinAlphaForPlayer (0.3) for owned and allied ships,
-	//      CloakMinAlpha (0.07) for enemies, 0 during construction and
-	//      external fades. Same numbers the old shell alpha used; they are
-	//      not a new tuning surface.
+	//      own: CloakMinAlphaForPlayer for owned and allied ships,
+	//      CloakMinAlpha for enemies (both serialized on the
+	//      VideoSettings prefab), 0 during construction and external
+	//      fades. Same numbers the old shell alpha used; not a new
+	//      tuning surface. Full cloak currently ships at 0 = the fold
+	//      is completely invisible (the renderer parks at vis <= 0.003).
 	//
 	// The visible surface then trades itself for the bend:
 	//
