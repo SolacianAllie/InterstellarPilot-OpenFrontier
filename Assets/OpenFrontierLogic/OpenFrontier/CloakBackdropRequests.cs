@@ -4,10 +4,10 @@ namespace OpenFrontier
 {
 	/// <summary>
 	/// Open Frontier: process-wide counter of units whose cloak runtime
-	/// needs the backdrop snapshot (_CloakBackdropRT). ActiveUnit flips a
+	/// needs the backdrop copy (_CloakBackdropRT). ActiveUnit flips a
 	/// unit in when its cloak ramp first engages and out when it releases
-	/// (or the renderer is disabled/destroyed); CloakBackdropFeature reads
-	/// <see cref="Any"/> when it records and skips its blit entirely when
+	/// (or the renderer is disabled/destroyed); CloakBackdropCamera reads
+	/// <see cref="Any"/> each frame and disables its grab camera when
 	/// nobody wants one. Lives here (the OpenFrontier assembly) because
 	/// the Engine assembly references this one, never the reverse.
 	///
@@ -35,13 +35,21 @@ namespace OpenFrontier
 			requestCount += (wants ? 1 : -1);
 		}
 
-		/// <summary>Engine-side camera handover, called wherever the render camera is actually created.</summary>
+		/// <summary>
+		/// Engine-side camera handover, called wherever the render camera is
+		/// actually created. Also wires the previous-frame grabber onto it:
+		/// a child camera rendering the real scene into a fixed 256 px
+		/// ping-pong pair (the vfxmike-style opaque camo rebuild). Boring
+		/// engine tech on purpose -- the renderer-feature capture this
+		/// replaced left nothing in the frame debugger to debug.
+		/// </summary>
 		public static void ProvideCamera(Camera camera)
 		{
 			ProvidedCamera = camera;
+			CloakBackdropCamera.Ensure(camera);
 		}
 
-		/// <summary>True while at least one cloaking hull is asking for the snapshot.</summary>
+		/// <summary>True while at least one cloaking hull is asking for the copy.</summary>
 		public static bool Any => requestCount > 0;
 	}
 }

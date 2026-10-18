@@ -504,3 +504,14 @@ exit 198) — the user performs all editor actions.
   whole type (every `AddComponent` fails silently). Look them up lazily
   in Awake/OnEnable. The harness cannot catch this; check Editor.log for
   "is not allowed to be called from a MonoBehaviour constructor".
+- **A custom render feature can fail SILENTLY end to end: no pass in
+  the frame debugger, no warning, no exception.** The v2.2 cloak
+  backdrop capture (RenderGraph renderer feature) did exactly that for
+  a whole session. Beat it two ways from the first day: give the pass
+  one-line state-change diagnostics (editor-only), and when the
+  capture is a "previous frame"/ping-pong pattern anyway, prefer a
+  CHILD CAMERA over a render feature — an enabled `targetTexture`
+  camera always draws into its RT (boring tech that cannot go
+  invisible), and a disabled one costs nothing. The cloak grab now
+  ships as `OpenFrontier.CloakBackdropCamera`; the feature and its
+  installer are deleted.

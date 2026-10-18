@@ -49,104 +49,85 @@ Shader "OpenFrontier/Ship Cloak"
 	// same way for the player as the old alpha floors did.
 	//
 	// The bend comes from the hull's own normal map (panel detail warps
-	// the screen-UV of _CameraOpaqueTexture -- light following geometry,
+	// the screen-UV of the previous-frame copy -- light following geometry,
 	// no extra texture) plus a slow sin ripple. It scales with amount
 	// squared: the first tick of cloaking barely bends, full cloak is a
 	// standing smear. Owned ships additionally get the tell rim -- the
 	// silhouette painted in _CloakTellColor so a friendly ghost is
 	// findable in a standing formation.
 	//
-	// WHY THE HULL DRAWS IN THE TRANSPARENT PHASE (v2 -- measured bug)
+	// WHY THE HULL DRAWS OPAQUE IN GEOMETRY QUEUE (v3 -- the blog fold)
 	//
-	// v1 of this shader was opaque (Blend One Zero, Geometry queue) and
-	// went GREY in playtest: an opaque cloak hull renders BEFORE the
-	// opaque-texture copy, so the copy contains the ship itself, and the
-	// bent sample fed on its own previous output every frame -- the
-	// feedback diffused the hull into the frame's average colour. An
-	// opaque surface sampling a copy that includes itself can never look
-	// like the space behind it.
+	// v1 of this shader was opaque and went GREY: an opaque hull sampling
+	// a copy that contains its own CURRENT frame's pixels feeds on
+	// itself, and the recursion diffuses to the frame average. v2 fixed
+	// the mechanics but chose a transparent-phase hull with an
+	// opaque-queue prepass -- and lost a session to transparency sorting,
+	// alpha-share composites, and a capture feature that never recorded
+	// in the frame debugger with nothing in the log to chase.
 	//
-	// The fix is the phase, and it is measured, not invented: the old
-	// IP2 cloak materials (MaterialMagnusCloakedPirateBlack etc) live on
-	// queue 3000 with _ZWrite 0 and DepthOnly/SHADOWCASTER disabled --
-	// transparent-phase surfaces drawn AFTER the copy. Painting the hull
-	// there means:
+	// v3 copies the ORIGINAL, vfxmike's "Opaque Active Camouflage"
+	// (vfxmike.blogspot.com, 2018-06-07 -- the Ghost Recon Future
+	// Soldier fold): the copy is the PREVIOUS frame's finished image.
 	//
-	//   - the bent sample is a pre-transparent SNAPSHOT (opaques + sky +
-	//     the world's nebula layer; no ship, no transparents), so the
-	//     warp never feeds on itself;
-	//   - visibility is honest alpha while the hull is the subject:
-	//     Blend SrcAlpha OneMinusSrcAlpha, with the pixel alpha the
-	//     larger of the hull's surviving share and the lens share (see
-	//     _CloakBackdropRT) -- the bend stays readable through the ramp
-	//     and the friendly rim rides on what survives the floors;
-	//   - ZWrite Off colour, with the hull's self-occlusion carried by
-	//     the EarlyZ prepass pass below instead of a depth block: engine
-	//     flames and later transparents are unsilenced behind the ghost
-	//     outside the lens footprint, and inside it the lens leaves a
-	//     deliberate 15% slack so what is actually behind stays
-	//     readable. Additive sorted draws are handled by the transparent
-	//     queue's back-to-front sort; the hull still occludes OPAQUE
-	//     geometry via the depth test because the prepass writes into
-	//     the opaque phase's depth and the hull is its own depth-test
-	//     participant against them.
-	//   - ShadowCaster/DepthOnly clip from the first tick of cloak: the
-	//     same output the old material got by disabling those passes.
+	//   - Feedback still exists -- the copy contains the ship -- but its
+	//     pixels are the ship's own PREVIOUS BENT painting, which already
+	//     looks like the space behind it, so the feed converges to
+	//     background instead of to grey. GR:FS shipped exactly this and
+	//     it looked right.
+	//   - Opaque is the technique's point: the hull is SOLID and bends
+	//     the light in front of it. You never see through it. That kills
+	//     the transparent phase entirely (Blend One Zero, ZWrite On,
+	//     Geometry queue) and with it the EarlyZ self-occlusion prepass
+	//     -- the "always on at any floor" requirement is inherent now:
+	//     opaque geometry self-occludes at every settings floor by
+	//     construction, with nothing to toggle.
+	//   - The trade is a plain crossfade: rgb lerps from the hull's own
+	//     lit shading into the displaced copy at 1 - hullShare. The
+	//     _CloakFloor numbers keep their meaning -- "fraction of the hull
+	//     left standing at full cloak" -- without an alpha-share
+	//     composite to tune.
 	//
-	// _CloakBackdropRT
+	// One frame of lag in what bends is the technique's defining
+	// artifact (GR:FS had it too); at ship speeds it reads as purpose.
 	//
+	// _CloakBackdropRT -- the previous frame, from a camera, not a pass
 	//
-	// The bend needs the frame behind the ship. Stock URP's opaque-texture
-	// snapshot could not carry it: it is copied after opaques and the
-	// skybox, and this game's visible backdrop -- the nebula and sun
-	// quads -- is transparent-phase world content (queue 2999/3000,
-	// distance-sorted under the ships), so the stock copy held planets
-	// and black space and never the nebulae the player actually sees
-	// behind a hull. That, plus the alpha-share composite below, is why
-	// the distortion read as dead from day one.
+	// Stock URP's opaque texture could not carry it: the visible backdrop
+	// (nebula and sun quads, queue 2999/3000) is transparent-phase
+	// content and never reaches the stock copy. And the v2.2 renderer
+	// feature that redrew those quads into a mid-frame snapshot turned
+	// out to be a trap: its passes never recorded, silently. So the
+	// capture now is CloakBackdropCamera -- a child of the main camera
+	// rendering the REAL view (nebulae, sun, other ships, particles; the
+	// main camera's own culling mask, minus HUD) into a ping-pong pair
+	// of fixed 256-long-edge RTs and publishing whichever buffer holds
+	// the finished previous frame as the global. No render features,
+	// nothing to discover in pass ordering, no silent skips -- an
+	// enabled camera draws or the console says why. Details and cost:
+	// CloakBackdropCamera.cs.
 	//
-	// CloakBackdropFeature publishes the snapshot instead: at the same
-	// event stock URP copies to _CameraOpaqueTexture, it blits the camera
-	// colour into a small _CloakBackdropRT and re-draws the backdrop
-	// quads (nebulae, layer 0 queue 2999; the sun, layer 16) over it, so
-	// the warp displaces the backdrop the hull really stands against.
-	// The overlay uses the frame's own culling snapshot, not a scene
-	// walk, and the copy only runs while some cloaking hull wants it
-	// (the OpenFrontier counter ActiveUnit writes on state transitions).
-	// Cost when nobody cloaks: the feature returns before it records.
-	//
-	// Cameras without the game camera's snapshot (reflection probes,
-	// preview) sample whatever the global last held -- black at least
-	// once per view change. Accepted and documented: the game camera
-	// drives what the player sees, and probes are not cloak showcases.
+	// Cameras other than the game's (reflection probes, previews)
+	// sample whatever the global last held -- stale but populated, not
+	// black. Accepted and documented: the game camera drives what the
+	// player sees, and probes are not cloak showcases.
 	//
 	// SHADOWS / DEPTH
 	//
-	// ShadowCaster and DepthOnly clip on cloakAmount > 0.02: hulls cast no
-	// shadow and take no prepass slot from the first tick of cloaking on.
-	// That matches the old shell exactly (a fading hull had no shadows,
-	// the shell had no ShadowCaster pass), and a cloaked ship leaving a
-	// crisp shadow would betray it -- so the binary clip is the design,
-	// not an approximation. Until then an unclipped hull shadows 1:1 with
-	// its hull profile.
+	// ShadowCaster clips on cloakAmount > 0.02: hulls cast no shadow from
+	// the first tick of cloaking on. That matches the old shell exactly
+	// (the old cloak materials ran with the ShadowCaster pass disabled),
+	// and a cloaked ship leaving a crisp shadow would betray it -- so the
+	// binary clip is the design, not an approximation. Until then an
+	// unclipped hull shadows 1:1 with its hull profile.
 	//
-	// The FIRST pass (CloakSelfDepth) is the hull's self-occlusion
-	// prepass -- the EarlyZ pattern: ZWrite-style self-culling with no
-	// depth cost for anything transparency-shaped. v2's ZWrite Off
-	// colour pass tested the hull against nothing of its own, so the
-	// ship showed through itself wherever alpha < 1 (interior panels
-	// through the shell; the whole middle of the ramp, not just the
-	// start). It writes the hull's nearest depth before ForwardLit
-	// draws, so the colour z-test keeps the near shell and culls the
-	// hull's own interior -- while the transparent queue's back-to-front
-	// sort leaves behind-transparency untouched (farther transparents
-	// drew earlier, nearer ones pass the test). The prepass is ALWAYS ON
-	// by design: a vis threshold was tried and flickered the effect off
-	// in the last stretch of the ramp, exactly where the hull is a thin
-	// sliver and self-occlusion matters most, so the only gate left is
-	// the colour pass's own draw gate (renderers disabled below 0.003
-	// vis). Declared BEFORE ForwardLit on purpose; see the pass block
-	// for the order contract and the SRPDefaultUnlit citation.
+	// DepthOnly keeps the hull in the depth prepass UNCLIPPED (v3): the
+	// camo is a surface standing in the world, not a hole in it -- soft
+	// particles and every depth-driven effect occlude against the hull
+	// like against any hull, which the opaque fold IS. The v2.2
+	// CloakSelfDepth prepass (LightMode SRPDefaultUnlit) is GONE with
+	// the transparency: a ZWrite On opaque hull carries its own
+	// self-occlusion in the depth block, always, at every floor.
 	//
 	// No lightmap keywords, no _CLUSTER_LIGHT_LOOP (Forward renderer --
 	// the same documented Forward+ risk as the ship shader), no GBuffer,
@@ -203,8 +184,15 @@ Shader "OpenFrontier/Ship Cloak"
 		{
 			"RenderPipeline" = "UniversalPipeline"
 			"UniversalMaterialType" = "Lit"
-			"RenderType" = "Transparent"
-			"Queue" = "Transparent"
+			// v3: plain opaque geometry, exactly like Ship Surface. The
+			// camo hull depth-writes and z-sorts like the hull it swapped
+			// with; the self-occlusion v2 carried in a transparent-phase
+			// prepass is inherent now and has nothing to toggle. (The
+			// old IP2 cloak materials ran on queue 3000 with a custom
+			// render queue pin of -1, so this retarget of the shader is
+			// what actually moves the materials.)
+			"RenderType" = "Opaque"
+			"Queue" = "Geometry"
 			"IgnoreProjector" = "True"
 		}
 
@@ -243,120 +231,24 @@ Shader "OpenFrontier/Ship Cloak"
 		TEXTURE2D(_EmissionMap);      SAMPLER(sampler_EmissionMap);
 		TEXTURE2D(_DecalMap);         SAMPLER(sampler_DecalMap);
 
-		// The backdrop snapshot the renderer feature publishes (see the
-		// header). Not a material property: a global texture, exactly like
-		// _CameraOpaqueTexture always was.
+		// The previous-frame copy CloakBackdropCamera publishes (a global
+		// texture, exactly like _CameraOpaqueTexture always was; not a
+		// material property -- the grabber is engine state, not art state).
 		TEXTURE2D(_CloakBackdropRT);  SAMPLER(sampler_CloakBackdropRT);
 		ENDHLSL
-
-		Pass
-		{
-			// ---- self-occlusion prepass ----
-			//
-			// ZWrite Off in the colour pass (v2's whole point) means the hull
-			// no longer depth-tests against ITSELF: interior panels and
-			// turret geometry sit behind the near surface and paint the
-			// blend recipe twice, which reads as "parts of the ship showing
-			// through the ship" wherever alpha < 1, worst early in the ramp
-			// when the hull is still nearly opaque. This pass writes the
-			// hull's own nearest depth into the camera depth buffer first
-			// (declared BEFORE ForwardLit so it draws first), and the
-			// colour pass then z-tests against it: the near shell paints,
-			// deeper fragments fail LEqual and vanish.
-			//
-			// That leaves everything transparency-dependent intact by the
-			// transparent queue's back-to-front sort:
-			//   - farther transparents (engine flames behind the ghost) draw
-			//     BEFORE this renderer, so they are already in the frame;
-			//   - nearer transparents draw AFTER and are closer than the
-			//     written depth, so their LEqual test passes;
-			//   - the background shown through the hull never changes,
-			//     because the colour pass blends over what the frame
-			//     already holds.
-			//
-			// The pass is LightMode "SRPDefaultUnlit": URP's forward bucket
-			// renders that LightMode as an EXTRA pass alongside the first
-			// UniversalForward pass (URP ShaderLab Pass tags docs; the
-			// DrawObjectsPass priority list is exactly
-			// {SRPDefaultUnlit, UniversalForward, UniversalForwardOnly}).
-			// Cost: a transform-only draw over the hull per renderer, same
-			// order as ShadowCaster. Multi-pass breaks SRP batching for
-			// this material -- a per-draw uniform upload on cloak hulls,
-			// acceptable for a handful of ships.
-			Name "CloakSelfDepth"
-			Tags { "LightMode" = "SRPDefaultUnlit" }
-
-			ZWrite On
-			ZTest LEqual
-			ColorMask 0
-			Cull [_Cull]
-
-			HLSLPROGRAM
-			#pragma target 2.0
-
-			#pragma vertex ShipCloakSelfDepthVertex
-			#pragma fragment ShipCloakSelfDepthFragment
-
-			//--------------------------------------
-			// GPU Instancing (same ships as everywhere else)
-			#pragma multi_compile_instancing
-
-			struct SelfDepthAttributes
-			{
-				float4 positionOS   : POSITION;
-				UNITY_VERTEX_INPUT_INSTANCE_ID
-			};
-
-			struct SelfDepthVaryings
-			{
-				float4 positionCS   : SV_POSITION;
-				UNITY_VERTEX_INPUT_INSTANCE_ID
-				UNITY_VERTEX_OUTPUT_STEREO
-			};
-
-			SelfDepthVaryings ShipCloakSelfDepthVertex(SelfDepthAttributes input)
-			{
-				SelfDepthVaryings output = (SelfDepthVaryings)0;
-				UNITY_SETUP_INSTANCE_ID(input);
-				UNITY_TRANSFER_INSTANCE_ID(input, output);
-				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-				output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
-				return output;
-			}
-
-			half4 ShipCloakSelfDepthFragment(SelfDepthVaryings input) : SV_TARGET
-			{
-				UNITY_SETUP_INSTANCE_ID(input);
-				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-				// THE EARLYZ IS ALWAYS ON. A threshold swing near the settings
-				// floors flips the effect OFF exactly in the last stretch of
-				// the ramp -- the one place the visible hull is a thin sliver
-				// and self-occlusion matters most (the "toggles at almost
-				// 100%" report). The only gate that stays is the one the
-				// colour pass already enforces: these renderers are
-				// disabled below 0.003 vis, so mirroring that here means the
-				// hull depth-tests against itself whenever it is drawn, at
-				// every settings floor.
-				half vis = lerp(1.0h, saturate(_CloakFloor), saturate(_CloakAmount));
-				clip(vis - 0.003h);
-				return 0;
-			}
-			ENDHLSL
-		}
 
 		Pass
 		{
 			Name "ForwardLit"
 			Tags { "LightMode" = "UniversalForward" }
 
-			// Transparent-phase hull drawn AFTER the backdrop snapshot, so
-			// the bent sample is the space behind the ship and never the
-			// ship itself (the measured design of the v2 header). Straight
-			// alpha; the old shells used premultiply, which renders the
-			// same picture through One - this keeps alpha legible as a
-			// share.
-			Blend SrcAlpha OneMinusSrcAlpha
-			ZWrite Off
+			// Plain opaque, like the Ship Surface shader it is a drop-in
+			// of: no Blend line (defaults One Zero) and ZWrite On. The
+			// fold never blends over anything -- it IS the hull, replacing
+			// the surface's pixels, and it occludes what stands behind it
+			// by writing depth like any lit geometry. GR:FS did exactly
+			// this; nothing about the technique needs transparency.
+			ZWrite On
 			ZTest LEqual
 			Cull [_Cull]
 
@@ -552,11 +444,12 @@ Shader "OpenFrontier/Ship Cloak"
 
 				half4 color = UniversalFragmentPBR(inputData, surfaceData);
 				color.rgb = MixFog(color.rgb, inputData.fogCoord);
-				// Alpha 1 for the rest hull; the cloak branch replaces it
-				// with the lens semantics described below.
+				// Opaque hull, travelling alpha is meaningless under One
+				// Zero; set it anyway so every downstream reader sees a
+				// sane value.
 				color.a = 1.0h;
 
-				// ---- the cloak: bend the frame behind the hull, then release it ----
+				// ---- the cloak: bend the frame behind the hull ----
 				// Uniform-scalar branch: decloaked hulls pay nothing past the
 				// compare, the sampler stays bound but is never read.
 				half cloak = saturate(_CloakAmount);
@@ -568,7 +461,7 @@ Shader "OpenFrontier/Ship Cloak"
 
 					// The bend: the hull normal projected to view space is the
 					// lens. Grazing pixels (the silhouette) project wide,
-					// face-on pixels barely move, so the snapshot slides
+					// face-on pixels barely move, so the copy slides
 					// AROUND the hull instead of smearing across it -- light
 					// from behind the ship bending around it. Panel detail
 					// from the hull's own normal map (flat hulls leave (0,0)
@@ -584,31 +477,23 @@ Shader "OpenFrontier/Ship Cloak"
 						sin(input.uv.x * _CloakShimmerLines * 0.711h - t * 1.373h)
 					) * (_CloakShimmerScale * cloak);
 
-					// The frame behind, displaced. The snapshot is clamped by
-					// the sampler's wrap mode (the feature creates it clamped).
+					// The frame behind, displaced. The copy is clamped by its
+					// wrap mode (CloakBackdropCamera creates it clamped).
 					half3 bent = SAMPLE_TEXTURE2D(_CloakBackdropRT, sampler_CloakBackdropRT,
 						inputData.normalizedScreenSpaceUV + warp).rgb;
 
 					// Trade the material for the bend. The hull profile was fogged
-					// above; the snapshot is a finished, already-fogged frame --
+					// above; the copy is a finished frame of the SAME camera --
 					// both sides of the lerp are in the same space, do not fog
-					// again.
+					// again. And because the trade is a plain rgb crossfade over
+					// opaque geometry, the pixels at full cloak are entirely the
+					// bend: no alpha share dilutes the read (that composite bug
+					// is what v2's lensGate bandage chased). The floors keep
+					// their old meaning -- "fraction of the hull left standing
+					// at full cloak"; a construction strobe (floor 0) simply
+					// flickers between hull and bend, the same read the old
+					// alpha strobe produced.
 					color.rgb = lerp(color.rgb, bent, 1.0h - hullShare);
-
-					// THE COMPOSITE is why the distortion never showed: alpha
-					// used to be the hull's own share, so at full cloak 93% of
-					// the pixel passed straight through and the bent sample
-					// averaged itself into nothing (a 7% hull painting the
-					// bend could not read). The lens displaces the FRAME
-					// itself, so at high cloak it paints with its own opacity:
-					// cloak^2 like the bend strength, arming only when the
-					// floor is a real hull floor (0.07 enemy / 0.3 owned) --
-					// construction strobes and preview fades (floor 0) keep
-					// their plain alpha fade untouched. The 15% slack at full
-					// cloak lets what is actually behind -- flames, other
-					// ghosts -- stay readable through the lens.
-					half lensGate = saturate(saturate(_CloakFloor) * 20.0h);
-					color.a = max(hullShare, 0.85h * cloak * cloak * lensGate);
 
 					// The friendly tell: a rim of structure over the smear, only
 					// on hulls ActiveUnit marks as owned/allied-near. Players see
@@ -744,10 +629,12 @@ Shader "OpenFrontier/Ship Cloak"
 			{
 				UNITY_SETUP_INSTANCE_ID(input);
 				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-				// Same contract as the shadow pass: a cloaking hull is out of
-				// the depth prepass too, so depth-driven effects cannot ghost
-				// a silhouette the colour pass is erasing.
-				clip(0.02h - _CloakAmount);
+				// No clip (v3): the camo hull is a SURFACE standing in the
+				// world, not a hole in it. It stays in the depth prepass so
+				// depth-driven effects occlude against it like any hull,
+				// which the opaque fold IS. Only shadows clip (see
+				// ShadowCaster): no-shadow-while-cloaked is the tell the old
+				// shell had, and a light reveal would betray the ship.
 				return input.positionCS.z;
 			}
 			ENDHLSL
