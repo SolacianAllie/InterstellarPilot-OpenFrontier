@@ -23101,7 +23101,6 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   PlanetPrefabs:
   - {fileID: 114724804207875695, guid: b51e7cb6cdb04f2583318a8381db0ed2, type: 2}
-  - {fileID: 114724804207875695, guid: 00b565b0ffe34ebe871ff2d0c39832c0, type: 2}
   - {fileID: 114724804207875695, guid: 4a97ba521b8e43219d70dcdec05af775, type: 2}
   - {fileID: 114724804207875695, guid: d9ff0a0ffa4d4084b376b29e77f9022f, type: 2}
   - {fileID: 114724804207875695, guid: 9dfbb0cad8d9442eb128d97ae396b64a, type: 2}

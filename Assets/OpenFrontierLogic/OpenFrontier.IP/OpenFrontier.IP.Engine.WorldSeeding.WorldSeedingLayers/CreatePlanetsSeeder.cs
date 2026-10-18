@@ -26,7 +26,7 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 	//
 	//	planet distance   = max( radius * 2.17..2.2 ,
 	//	                         play bound + radius + clearance )
-	//	moon orbit        = max( planet radius * 8.3..8.7 ,
+	//	moon orbit        = max( planet radius * 11.5..12.5 ,
 	//	                         planet radius + moon radius*2 + clearance )
 	//
 	// Both bands are CALIBRATED against the numbers they replace. The
@@ -35,11 +35,11 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 	// The moon band was 4.3..4.5 - a stock orbit around the settings-era
 	// flat 40000, which was authored for the sector map, not a camera.
 	// It doubled to 8.3..8.7 when the cameras that capture the planets
-	// grew well past 40000: the same proportionality was exactly what the
-	// sky could then afford, a stock orbit reads as about 77350, and the
-	// shell it lives in is still empty (the play space ends at 7000,
-	// neighbouring sectors carry their own space, and the sector map does
-	// not draw planets at all). A small class (scale 0.5, radius
+	// grew well past 40000, and went again to 11.5..12.5 when play said
+	// even that sky crowded the host: a stock orbit now reads as about
+	// 109200 and the shell it lives in is still empty (the play space
+	// ends at 7000, neighbouring sectors carry their own space, and the
+	// sector map does not draw planets at all). A small class (scale 0.5, radius
 	// 4550) rolls 9873..10010 but the floor rule wins at 13050, so its
 	// near edge (dist - radius = 8500) still clears the sector's play
 	// shell (MaxUnitDistanceFromOriginUpperBound, 7000) by
@@ -168,12 +168,11 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 		// Orbit radius rides the PLANET's radius, not a global constant: a
 		// gas giant's moons are pushed proportionally out, a small planet's
 		// moons hug it, and proportionality keeps the silhouette the same
-		// whatever the bodies do. The band is 8.3..8.7 - a doubling of the
-		// 4.3..4.5 it replaced, and that band measured out as the
-		// settings-era flat 40000, which was authored for the sector map,
-		// not a camera. The doubling happened when the cameras that
-		// capture the planets grew well past 40000: a stock planet's
-		// moons now orbit at about 77350 (9100 * 8.5), proportionally the
+		// whatever the bodies do. The band is 11.5..12.5 - it started as
+		// 8.3..8.7 (a doubling of the 4.3..4.5 that replaced the settings-era
+		// flat 40000, authored for the sector map, not a camera) and play
+		// pushed it out once more: a stock planet's
+		// moons now orbit at about 109200 (9100 * 12), proportionally the
 		// same silhouette in a sky that fits it. The floor guard keeps a
 		// scaled-up moon out of
 		// its own planet: the moon needs its diameter plus slack inside the
@@ -188,7 +187,7 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 			float num4;
 			if (planetVisualRadius > 0f)
 			{
-				float num5 = planetVisualRadius * Random.Range(8.3f, 8.7f);
+				float num5 = planetVisualRadius * Random.Range(11.5f, 12.5f);
 				float num6 = planetVisualRadius + moonVisualRadius * 2f + MoonOrbitClearance;
 				num4 = Mathf.Max(num5, num6);
 			}
