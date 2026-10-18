@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.SceneManagement;
 
 namespace OpenFrontier
 {
@@ -108,6 +109,26 @@ namespace OpenFrontier
 		private static RenderTexture bufferA;
 		private static RenderTexture bufferB;
 
+		// The rig scan needs the world's backdrop cameras to EXIST. Ensure
+		// runs inside GameController.Awake, while the game only has its own
+		// camera rig: the standalone sky/planet/tint prefab cameras are
+		// instantiated after it, and one played session proved the first
+		// scan found no sky camera ("no sky camera found") and settled the
+		// grabber in the sky-cleared fallback for the whole session. The
+		// fallback stays live meanwhile; whenever it has not found the rig
+		// yet, the scan retries on scene loads and on a slow timer, and
+		// upgrades to the composed stack the moment the rig exists.
+		private static bool backdropPlanPending;
+
+		/// <summary>Frame-of-last-scan stamp; the retry is deliberately slow, world load takes under a second.</summary>
+		private static int nextPlanRetryFrame;
+
+		/// <summary>Scan attempts against the current rig; scene loads that re-open the scan restart the count.</summary>
+		private static int planRetryCount;
+
+		private const int PlanRetryInterval = 60;
+		private const int PlanRetryLimit = 30;
+
 		/// <summary>
 		/// Wire the grabber onto the engine's render camera. Called by
 		/// ProvideCamera wherever the game creates its camera; safe to call
@@ -179,19 +200,7 @@ namespace OpenFrontier
 			// once per rig creation - never on the frame path.
 			if (BuildBackdropStack(grabber, grabberObject))
 			{
-				// A stack member's own depth is not the render order (the
-				// stack list is), but mirroring the real rig's keeps any
-				// internal sort agreeing: base (sky) first, replicas
-				// ascending, the world pass last.
-				grabber.depth = camera.depth;
-				// Overlays never clear; the base's skybox clear owns the
-				// buffer, exactly like the real view.
-				grabber.clearFlags = CameraClearFlags.Nothing;
-				grabberData.renderType = CameraRenderType.Overlay;
-
-				backdropCamera = backdropReplicaCameras[0];
-				worldGrabber = grabber;
-				Report("copy stack composed: " + backdropReplicaCameras.Count + " cameras mirror the real backdrop rig");
+				ApplyStackedPlan(grabber, grabberData);
 			}
 			else
 			{
@@ -205,7 +214,13 @@ namespace OpenFrontier
 				worldGrabber = null;
 				realBackdropCameras.Clear();
 				backdropReplicaCameras.Clear();
-				Report("no sky camera found - copy base is the grabber itself (sky-cleared)");
+				// Almost always this scan simply ran before the world's
+				// backdrop cameras were instantiated. Stay live as the
+				// fallback and re-scan until the rig exists.
+				backdropPlanPending = true;
+				nextPlanRetryFrame = 0;
+				planRetryCount = 0;
+				Report("no sky camera found - copy base is the grabber itself (sky-cleared); scan deferred");
 			}
 
 			Report($"grabber attached under '{camera.name}'");
@@ -277,6 +292,11 @@ namespace OpenFrontier
 					isBase ? "CloakBackdropCopyBase" : "CloakBackdrop_" + real.name);
 				replicaObject.transform.SetParent(grabberObject.transform, worldPositionStays: false);
 				Camera replica = replicaObject.AddComponent<Camera>();
+				// Parked until a hull wants the copy, like the grabber
+				// itself: a newborn enabled camera copies the whole scene
+				// to the screen for a frame and can be swept into the
+				// real view's stack by a scene load landing same frame.
+				replica.enabled = false;
 				MirrorBackdropCamera(real, replica);
 				replica.clearFlags = isBase ? real.clearFlags : CameraClearFlags.Nothing;
 				replica.backgroundColor = real.backgroundColor;
@@ -296,6 +316,11 @@ namespace OpenFrontier
 
 			// Stack order is the render order: base sky, then the rest of
 			// the backdrop pack ascending, then the world pass last.
+			// The grabber must be OVERLAY-TYPED BEFORE it is added - URP
+			// rejects a Base camera being added to a stack, and the world
+			// pass would silently never render into the copy.
+			UniversalAdditionalCameraData grabberData = grabber.GetUniversalAdditionalCameraData();
+			grabberData.renderType = CameraRenderType.Overlay;
 			UniversalAdditionalCameraData baseData = backdropReplicaCameras[0].GetUniversalAdditionalCameraData();
 			for (int i = 1; i < backdropReplicaCameras.Count; i++)
 			{
@@ -315,6 +340,93 @@ namespace OpenFrontier
 			replica.farClipPlane = real.farClipPlane;
 			replica.cullingMask = real.cullingMask;
 			replica.depth = real.depth;
+		}
+
+		/// <summary>
+		/// Turn the grabber into the composed stack's final world overlay.
+		/// A stack member's own depth is not the render order (the stack
+		/// list is), but mirroring the real rig's keeps any internal sort
+		/// agreeing: base (sky) first, replicas ascending, the world pass
+		/// last. Used by Ensure at build time and by the deferred scan.
+		/// </summary>
+		private static void ApplyStackedPlan(Camera grabber, UniversalAdditionalCameraData grabberData)
+		{
+			grabber.depth = mainCamera.depth;
+			// Overlays never clear; the base's skybox clear owns the
+			// buffer, exactly like the real view.
+			grabber.clearFlags = CameraClearFlags.Nothing;
+			grabberData.renderType = CameraRenderType.Overlay;
+
+			backdropCamera = backdropReplicaCameras[0];
+			worldGrabber = grabber;
+			Report("copy stack composed: " + backdropReplicaCameras.Count + " cameras mirror the real backdrop rig");
+		}
+
+		/// <summary>
+		/// Retry the backdrop-rig scan once the world's cameras exist.
+		/// Called at a slow interval from LateUpdate; scene loads retry
+		/// immediately. On success the grabber upgrades from the fallback
+		/// to the composed stack; a real sky-less world settles the
+		/// fallback for good after a bounded number of attempts.
+		/// </summary>
+		private void TryRebuildBackdropPlan()
+		{
+			if (Time.frameCount < nextPlanRetryFrame)
+			{
+				return;
+			}
+			nextPlanRetryFrame = Time.frameCount + PlanRetryInterval;
+
+			// The grabber is always the object this component lives on,
+			// and the plan is rebuilt against the same rig it rides.
+			Camera grabber = GetComponent<Camera>();
+			if (grabber == null || mainCamera == null)
+			{
+				return;
+			}
+
+			if (!BuildBackdropStack(grabber, grabber.gameObject))
+			{
+				if (++planRetryCount >= PlanRetryLimit)
+				{
+					// Concluded: this world composes no skybox-clearing
+					// camera. The sky-cleared fallback stays; new worlds
+					// re-open the scan from each scene load.
+					backdropPlanPending = false;
+					Report("backdrop scan gave up - staying sky-cleared fallback");
+				}
+				return;
+			}
+
+			planRetryCount = 0;
+			backdropPlanPending = false;
+			// The fallback held the target on the grabber itself; the
+			// stacked plan hands it to the base replica and re-types the
+			// grabber an overlay. Clear the stale reference so no camera
+			// carries a build-time target into the stack.
+			grabber.targetTexture = null;
+			ApplyStackedPlan(grabber, grabber.GetUniversalAdditionalCameraData());
+			Report("copy stack composed after deferred scan");
+		}
+
+		// Scene loads are the earliest the world's replica cameras can be
+		// present, and they are an event, not the frame path.
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void RegisterSceneLoadRetry()
+		{
+			SceneManager.sceneLoaded -= OnSceneLoadedForRetry;
+			SceneManager.sceneLoaded += OnSceneLoadedForRetry;
+		}
+
+		private static void OnSceneLoadedForRetry(Scene scene, LoadSceneMode mode)
+		{
+			if (!backdropPlanPending)
+			{
+				return;
+			}
+			// The new scene may contain the rig the old one lacked: open
+			// the timer gate so the running instance re-scans this frame.
+			nextPlanRetryFrame = 0;
 		}
 
 		private void LateUpdate()
@@ -349,6 +461,15 @@ namespace OpenFrontier
 			}
 
 			bool wants = backdropCamera != null && mainCamera != null && CloakBackdropRequests.Any;
+
+			// A rig whose scan ran too early (the world's backdrop cameras
+			// are instantiated after the camera rig) re-scans here: slow,
+			// event-gated, and only while the fallback is standing in.
+			if (backdropPlanPending)
+			{
+				TryRebuildBackdropPlan();
+			}
+
 			if (!wants)
 			{
 				if (backdropCamera != null && backdropCamera.enabled)
