@@ -86,6 +86,21 @@ namespace OpenFrontier.IP.Engine
 		// shell behaviour untouched.
 		private bool cloakCapableHullChecked;
 		private bool cloakCapableHull;
+		// v3 shell-driven routing: some ship families (the Magnus pirate,
+		// to name the one that fooled a whole session) were AUTHORED with
+		// the cloak look as separate legacy shell meshes -- the hull
+		// renderers carry the plain Ship Surface material while the
+		// "Cloak" meshes carry the fold material. The grey the player saw
+		// "when cloaked" was those shells, drawn the legacy way, because
+		// the hull probe below failed and everything defaulted to the old
+		// render mode -- the fold never ran and the backdrop counter never
+		// engaged. When a unit is not hull-capable but its shells carry
+		// the cloak uniforms, the SHELLS become the cloak hull instead:
+		// they render through the fold shader (authored hull clones, the
+		// same swap the old game performed between hull and shell) while
+		// the hull stands in exactly decloaked, and no grey shell ever
+		// exists again.
+		private bool cloakDrivenByShells;
 		private float lastCloakAmount = -1f;
 		private float lastCloakFloor = -1f;
 		private int lastCloakFriendly = -1;
@@ -349,8 +364,39 @@ namespace OpenFrontier.IP.Engine
 				MeshRenderer meshRenderer = (LevelOfDetail && UnitRenderers.Count > 0) ? UnitRenderers[0] : UnitRenderer;
 				Material hullMaterial = ((meshRenderer != null) ? meshRenderer.sharedMaterial : null);
 				cloakCapableHull = ((hullMaterial != null) && hullMaterial.HasProperty("_CloakAmount"));
+				MeshRenderer shellRepresentative = null;
+				Material shellMaterial = null;
+				if (!cloakCapableHull)
+				{
+					// No fold material on the hull: fall back to the authored
+					// legacy shells when THEY carry it (see cloakDrivenByShells).
+					// Shells that are still legacy grey stay legacy -- this only
+					// routes when the material state genuinely exists.
+					shellRepresentative = (LevelOfDetail && CloakRenderers.Count > 0) ? CloakRenderers[0] : CloakRenderer;
+					shellMaterial = ((shellRepresentative != null) ? shellRepresentative.sharedMaterial : null);
+					if (shellMaterial != null && shellMaterial.HasProperty("_CloakAmount"))
+					{
+						cloakCapableHull = true;
+						cloakDrivenByShells = true;
+					}
+				}
+				ReportCloakProbe(meshRenderer, hullMaterial, shellRepresentative, shellMaterial);
 			}
 			return cloakCapableHull;
+		}
+
+		// One print per unit: the verdict that routes this unit's whole
+		// cloak flow would otherwise be invisible -- it took a session of
+		// frame-debugger archaeology to learn that the "cloak draws" on
+		// screen were the legacy shells. Editor-only.
+		[System.Diagnostics.Conditional("UNITY_EDITOR")]
+		private void ReportCloakProbe(MeshRenderer meshRenderer, Material hullMaterial, MeshRenderer shellRepresentative, Material shellMaterial)
+		{
+			string hullName = meshRenderer != null ? meshRenderer.name : "<none>";
+			string hullMaterialName = hullMaterial != null ? hullMaterial.name : "<none>";
+			string shellName = shellRepresentative != null ? shellRepresentative.name : "<none>";
+			string shellMaterialName = shellMaterial != null ? shellMaterial.name : "<none>";
+			Debug.Log($"[CloakProbe] '{name}': hull '{hullName}'/{hullMaterialName}, shell '{shellName}'/{shellMaterialName} -> capable {cloakCapableHull}, shell-driven {cloakDrivenByShells}");
 		}
 
 		private void UpdateCloakMaterial()
@@ -398,7 +444,40 @@ namespace OpenFrontier.IP.Engine
 				{
 					cloakMaterialPropertyBlock = new MaterialPropertyBlock();
 				}
-				if (LevelOfDetail)
+				if (cloakDrivenByShells)
+				{
+					// The fold runs on the authored shell meshes (see
+					// cloakDrivenByShells); the hull stands in exactly
+					// decloaked and parks the instant cloaking starts, so
+					// the player never sees a grey shell -- the shell was
+					// where the fold material already lived.
+					bool shellDraw = draw && cloakAmount > 0.001f;
+					if (LevelOfDetail)
+					{
+						foreach (MeshRenderer unitRenderer in UnitRenderers)
+						{
+							unitRenderer.enabled = cloakAmount <= 0.001f;
+						}
+						foreach (MeshRenderer shellRenderer in CloakRenderers)
+						{
+							shellRenderer.enabled = shellDraw;
+							ApplyCloakMaterialPropertyBlock(shellRenderer, cloakAmount, visibleFloor, friendly);
+						}
+					}
+					else
+					{
+						if (UnitRenderer != null)
+						{
+							UnitRenderer.enabled = cloakAmount <= 0.001f;
+						}
+						if (CloakRenderer != null)
+						{
+							CloakRenderer.enabled = shellDraw;
+							ApplyCloakMaterialPropertyBlock(CloakRenderer, cloakAmount, visibleFloor, friendly);
+						}
+					}
+				}
+				else if (LevelOfDetail)
 				{
 					foreach (MeshRenderer unitRenderer in UnitRenderers)
 					{
@@ -793,6 +872,38 @@ namespace OpenFrontier.IP.Engine
 				// and outlines stay dark for good, the hull draws until nothing
 				// is left to draw (ApplyCloakToUnitRenderers toggles it per
 				// frame).
+				if (cloakDrivenByShells)
+				{
+					// Shell-driven routing: the fold owns the shells; the hull
+					// stands in as the decloak surface. Per-frame
+					// ApplyCloakToUnitRenderers owns the swap from here on --
+					// this only sets the quiet state so spawn frames flash
+					// neither the standard hull mid-cloak nor a grey shell.
+					if (LevelOfDetail)
+					{
+						foreach (MeshRenderer cloakRenderer in CloakRenderers)
+						{
+							cloakRenderer.enabled = false;
+						}
+						foreach (MeshRenderer unitRenderer in UnitRenderers)
+						{
+							unitRenderer.enabled = true;
+						}
+					}
+					else
+					{
+						if (CloakRenderer != null)
+						{
+							CloakRenderer.enabled = false;
+						}
+						if (UnitRenderer != null)
+						{
+							UnitRenderer.enabled = true;
+						}
+					}
+					SetCloakOutlineRendererEnabled(enabled: false);
+					return;
+				}
 				if (LevelOfDetail)
 				{
 					foreach (MeshRenderer cloakRenderer in CloakRenderers)

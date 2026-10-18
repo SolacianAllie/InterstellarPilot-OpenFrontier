@@ -137,6 +137,22 @@ namespace OpenFrontier
 
 		private void LateUpdate()
 		{
+			// Superseded driver: two rigs can carry grabbers across a world
+			// swap (the log once showed two 'grabber attached' lines and two
+			// 'parked' sweeps from the same rig). Only the instance whose
+			// camera is the current backdropCamera may act; the stale one
+			// parks its child camera so the scene is not rendered every
+			// frame for a buffer nobody samples.
+			Camera ownGrabber = GetComponent<Camera>();
+			if (ownGrabber != backdropCamera)
+			{
+				if (ownGrabber.enabled)
+				{
+					ownGrabber.enabled = false;
+				}
+				return;
+			}
+
 			bool wants = backdropCamera != null && mainCamera != null && CloakBackdropRequests.Any;
 			if (!wants)
 			{
@@ -154,7 +170,9 @@ namespace OpenFrontier
 			// global stays on the other - the PREVIOUS frame's finished
 			// copy. The switch happens now, before any camera of this frame
 			// has rendered, so both the grab's own hulls and the main
-			// camera's hulls sample a stable buffer all frame long.
+			// camera's hulls sample a stable buffer all frame long. Only
+			// the current driver reaches this point (superseded ones bail
+			// above), so the flip runs exactly once per frame.
 			bufferAIsWrite = !bufferAIsWrite;
 			RenderTexture write = bufferAIsWrite ? bufferA : bufferB;
 			RenderTexture read = bufferAIsWrite ? bufferB : bufferA;
