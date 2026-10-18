@@ -1034,10 +1034,11 @@ namespace OpenFrontier.IP.Engine
 		private void CreateCamera()
 		{
 			mainCamera = UnityObjectHelper.InstantiateAndGetComponent(MainCameraPrefab);
-			// The cloak camera sync must drive THE render camera, not a
-			// Camera.main guess: this instantiation is the one that draws
-			// ships. Provided cameras are Unity-null-checked inside the sync.
-			OpenFrontier.CloakOpaqueTextureRequests.ProvideCamera(mainCamera);
+			// The cloak backdrop feature must run for THE render camera, not
+			// any game camera that happens to draw: this instantiation is
+			// the one that draws ships. The provided camera is gated on
+			// Unity-null inside the feature.
+			OpenFrontier.CloakBackdropRequests.ProvideCamera(mainCamera);
 			mainCameraAudioSource = mainCamera.GetComponent<AudioSource>();
 			if (mainCameraAudioSource == null)
 			{

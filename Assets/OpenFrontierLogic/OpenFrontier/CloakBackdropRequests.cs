@@ -4,12 +4,12 @@ namespace OpenFrontier
 {
 	/// <summary>
 	/// Open Frontier: process-wide counter of units whose cloak runtime
-	/// needs _CameraOpaqueTexture. ActiveUnit flips a unit in when its
-	/// cloak ramp first engages and out when it releases (or the renderer
-	/// is disabled/destroyed); CloakOpaqueTextureSync reads <see cref="Any"/>
-	/// at a poll interval and toggles the render camera's opaque-texture
-	/// override once per change. Lives here (the OpenFrontier assembly)
-	/// because the Engine assembly references this one, never the reverse.
+	/// needs the backdrop snapshot (_CloakBackdropRT). ActiveUnit flips a
+	/// unit in when its cloak ramp first engages and out when it releases
+	/// (or the renderer is disabled/destroyed); CloakBackdropFeature reads
+	/// <see cref="Any"/> when it records and skips its blit entirely when
+	/// nobody wants one. Lives here (the OpenFrontier assembly) because
+	/// the Engine assembly references this one, never the reverse.
 	///
 	/// The count's balance is held by the callers: each unit guards on its
 	/// own wants-state, so a unit can only contribute once until it
@@ -19,7 +19,7 @@ namespace OpenFrontier
 	/// instantiated mainCamera over at CreateCamera), because the camera
 	/// that draws ships is a runtime instance, not a Camera.main guess.
 	/// </summary>
-	public static class CloakOpaqueTextureRequests
+	public static class CloakBackdropRequests
 	{
 		private static int requestCount;
 
@@ -41,7 +41,7 @@ namespace OpenFrontier
 			ProvidedCamera = camera;
 		}
 
-		/// <summary>True while at least one cloaking hull is on screen duty.</summary>
+		/// <summary>True while at least one cloaking hull is asking for the snapshot.</summary>
 		public static bool Any => requestCount > 0;
 	}
 }

@@ -23,13 +23,6 @@ namespace OpenFrontier
 			{
 				gameObject.AddComponent<PostProcessingQualitySync>();
 			}
-			// Same for the cloak camera sync: it owns the opaque-texture
-			// override that the cloak shader's bent-light sample needs,
-			// and is only ever asked for when a hull actually cloaks.
-			if (GetComponent<CloakOpaqueTextureSync>() == null)
-			{
-				gameObject.AddComponent<CloakOpaqueTextureSync>();
-			}
 		}
 
 		private void Update()

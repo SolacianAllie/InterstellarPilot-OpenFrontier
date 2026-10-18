@@ -200,7 +200,7 @@ namespace OpenFrontier.IP.Engine
 			if (wantsCloakSceneColor)
 			{
 				wantsCloakSceneColor = false;
-				CloakOpaqueTextureRequests.Request(wants: false);
+				CloakBackdropRequests.Request(wants: false);
 			}
 		}
 
@@ -416,13 +416,13 @@ namespace OpenFrontier.IP.Engine
 				}
 			}
 			// The bend needs the frame behind the hull. Track transitions once:
-			// the opaque-texture copy is ON only while some hull actually
+			// the backdrop snapshot is built only while some hull actually
 			// deflects light, not for every decloaked ship carrying the shader.
 			bool wants = cloakAmount > 0.001f;
 			if (wantsCloakSceneColor != wants)
 			{
 				wantsCloakSceneColor = wants;
-				OpenFrontier.CloakOpaqueTextureRequests.Request(wants);
+				OpenFrontier.CloakBackdropRequests.Request(wants);
 			}
 		}
 
