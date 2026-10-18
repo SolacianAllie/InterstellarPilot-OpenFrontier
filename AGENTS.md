@@ -223,6 +223,21 @@ not a real missing reference before deciding:
 The editor refocus the user does anyway rebuilds `ScriptAssemblies`, which
 clears it. `grep -c "error CS" Logs/Editor.log` is the real confirmation.
 
+**Staleness and a missing `using` look IDENTICAL in the harness — and
+staleness clears on refocus while the missing `using` never does.** The
+CloakBackdropFeatureInstaller was misdiagnosed as staleness because the
+engine project failed the same way in the same run; the real cause was the
+installer referencing `CloakBackdropFeature` with no `using OpenFrontier;`.
+The tell was in the user's console AFTER a refocus that rebuilt everything:
+the type was demonstrably in the fresh DLL (the harness went green on every
+project that referenced it), yet `Assembly-CSharp-Editor` still said CS0246 —
+that can only be namespace resolution. Diagnosing order: (1) does the
+DEFINING assembly compile clean (yes → the type exists); (2) do OTHER types
+from the same namespace resolve inside the failing file (yes → the file can
+see the assembly, so the failure is the one symbol+name spelling/using); (3)
+only then call it staleness. Formats files always import project namespaces
+explicitly — never assume the file's own namespace reaches it.
+
 ## The harness is 15x faster now, and this is how
 
 It was 70 seconds and it was not the compiler. Measured breakdown of the old
