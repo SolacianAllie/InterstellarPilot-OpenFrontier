@@ -163,8 +163,8 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _HazeFalloff: 1.36
-    - _HazeStrength: 1
+    - _HazeFalloff: 2.5
+    - _HazeStrength: 0.45
     - _HazeSunAngle: 45
     - _HazeSunPower: 1.3
     - _HazeSunSpread: 35
@@ -192,10 +192,10 @@ Material:
     - _SrcBlendAlpha: 1
     - _Surface: 0
     - _TwilightDepth: 0.25
-    - _TwilightDim: 0.55
-    - _TwilightHaze: 0.018
-    - _TwilightSharpness: 0.2
-    - _TwilightStrength: 1
+    - _TwilightDim: 0.3
+    - _TwilightHaze: 0.6
+    - _TwilightSharpness: 0.13
+    - _TwilightStrength: 0.55
     - _UVSec: 0
     - _WaterFloor: 0.118
     - _WaterRange: 0.089
@@ -204,7 +204,7 @@ Material:
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1
     m_Colors:
-    - _AtmoColor: {r: 0.44313726, g: 0.37654948, b: 0.2627451, a: 1}
+    - _AtmoColor: {r: 0.45, g: 0.66, b: 0.87, a: 1}
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _CloudDrift: {r: 0.0005, g: 0, b: 0, a: 0}
     - _CloudPan: {r: 0, g: 0, b: 0, a: 0}
@@ -212,7 +212,7 @@ Material:
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
     - _SunRimColor: {r: 1, g: 0.62, b: 0.29999998, a: 1}
-    - _SunRimDeep: {r: 1, g: 0, b: 0, a: 1}
+    - _SunRimDeep: {r: 1, g: 0.3, b: 0.12, a: 1}
     - _TwilightColor: {r: 1, g: 0.62, b: 0.29999998, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
