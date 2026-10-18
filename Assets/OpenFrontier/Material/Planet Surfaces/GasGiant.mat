@@ -127,12 +127,13 @@ Material:
     - _AlphaToMask: 0
     - _Ambient: 0.03
     - _BandContrast: 1.15
-    - _BandDispStrength: 0.002
+    - _BandDispSpeed: 0.04
+    - _BandDispStrength: 0.012
+    - _BandJetSpeed: 0.0002
     - _BandNeutral: 0.6
     - _BandPivot: 0.42
     - _BandSoftness: 3
     - _BandSmoothness: 0.25
-    - _BandStreamSpeed: 0.001
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
     - _BumpScale: 1
