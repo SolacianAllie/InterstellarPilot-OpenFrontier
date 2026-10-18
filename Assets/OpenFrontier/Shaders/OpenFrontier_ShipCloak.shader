@@ -120,17 +120,21 @@ Shader "OpenFrontier/Ship Cloak"
 	// its hull profile.
 	//
 	// The FIRST pass (CloakSelfDepth) is the hull's self-occlusion
-	// prepass: v2's ZWrite Off colour pass let the hull show itself
-	// through itself (interior panels through the shell, worst early in
-	// the ramp when alpha is near 1). It writes the hull's nearest depth
-	// before ForwardLit draws, so the colour z-test keeps the near shell
-	// and culls its own interior -- while the transparent queue's
-	// back-to-front sort leaves behind-transparency untouched (farther
-	// transparents drew earlier, nearer ones pass the test). Same clip
-	// cliff as this section: once the hull is heavily cloaked the pass
-	// contributes nothing, so a full ghost is no invisible wall. Declared
-	// BEFORE ForwardLit on purpose; see the pass block for the order
-	// contract and the SRPDefaultUnlit citation.
+	// prepass -- the EarlyZ pattern: ZWrite-style self-culling with no
+	// depth cost for anything transparency-shaped. v2's ZWrite Off
+	// colour pass tested the hull against nothing of its own, so the
+	// ship showed through itself wherever alpha < 1 (interior panels
+	// through the shell; the whole middle of the ramp, not just the
+	// start). It writes the hull's nearest depth before ForwardLit
+	// draws, so the colour z-test keeps the near shell and culls the
+	// hull's own interior -- while the transparent queue's back-to-front
+	// sort leaves behind-transparency untouched (farther transparents
+	// drew earlier, nearer ones pass the test). Its clip follows
+	// VISIBILITY, not the shadow cliff above: shadows must stop at the
+	// first tick of cloak, but the prepass must run as long as anything
+	// visible is left to occlude, so it lets go only under ~5% vis.
+	// Declared BEFORE ForwardLit on purpose; see the pass block for the
+	// order contract and the SRPDefaultUnlit citation.
 	//
 	// No lightmap keywords, no _CLUSTER_LIGHT_LOOP (Forward renderer --
 	// the same documented Forward+ risk as the ship shader), no GBuffer,
@@ -307,12 +311,19 @@ Shader "OpenFrontier/Ship Cloak"
 			{
 				UNITY_SETUP_INSTANCE_ID(input);
 				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-				// Same cliff as ShadowCaster/DepthOnly: past a sliver of cloak
-				// the hull takes no prepass slot, so a fully ghosted ship is
-				// no invisible wall either. Only the still-mostly-visible
-				// half of the ramp pays for self-occlusion, which is where
-				// the see-through artefact lives.
-				clip(0.02h - _CloakAmount);
+				// The prepass follows the hull's VISIBILITY, not the shadow
+				// cliff. Shadows/DepthOnly stop at the first tick of cloak
+				// because a ghost must not cast a crisp shadow; self-occlusion
+				// is the opposite trade -- it exists so the still-visible part
+				// of the ramp (alpha well under 1) does not show through
+				// itself, and only lets go once the hull is under ~5% visible
+				// so nothing invisible holds a depth wall. Both gameplay floors
+				// (0.07 enemy, 0.3 owned) sit above that, so a cloaked hull
+				// self-occludes for the whole ramp including full cloak, and
+				// the construction strobe (floor 0) drops out exactly with its
+				// own alpha.
+				half vis = lerp(1.0h, saturate(_CloakFloor), saturate(_CloakAmount));
+				clip(vis - 0.05h);
 				return 0;
 			}
 			ENDHLSL
