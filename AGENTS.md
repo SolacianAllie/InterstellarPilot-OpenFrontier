@@ -136,18 +136,19 @@ here, first check `grep -nE "session ended|Moving to main menu|disconnect"`
 and make sure the disconnect actually followed — a session that ended without
 one is the thing to fix, not the editor.
 
-## Offline compile verification (`/tmp/opencode/harness`)
+## Offline compile verification (`tools/harness`, in the repo)
 
 C# changes are verified outside the editor with a generated .NET harness:
 
-- Regenerate: `bash /tmp/opencode/harness/check.sh --regen`
-- Check: `bash /tmp/opencode/harness/check.sh`
-- **It lives in /tmp. A power cut wipes it** — as happened on 2026-10-10. The
-  project is safe (everything is committed); only `gen.py` and `check.sh` have
-  to be written again. Everything they need survives in the project: Unity's
-  managed DLLs under `~/Unity/Hub/Editor/6000.6.4f1/Editor/Data/Managed`, the
-  package DLLs under `Library/ScriptAssemblies`, and the vendored ones under
-  `Assets/Plugins`.
+- Regenerate: `bash tools/harness/check.sh --regen`
+- Check: `bash tools/harness/check.sh`
+- **It lives IN THE REPO now** (`tools/harness/` — `gen.py`, `check.sh`,
+  `checks/`). It was originally `/tmp/opencode/harness` and lost twice (a
+  2026-10-10 power cut, a /tmp clear), which is why it was rebuilt in-tree on
+  2026-10-18. Everything it needs survives in the project: Unity's managed
+  DLLs under `~/Unity/Hub/Editor/6000.6.4f1/Editor/Data/Managed`, the package
+  DLLs under `Library/ScriptAssemblies`, and the vendored ones under
+  `Assets/Plugins`. Current shape: 14 projects, one per asmdef, ~4.6s warm / ~16.6s cold.
 - **One csproj per asmdef, with that asmdef's real references.** The earlier
   harness compiled everything into everything, which meant it could not see
   the two error classes that have actually bitten:
