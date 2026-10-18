@@ -1850,6 +1850,12 @@ namespace OpenFrontier.IP.Engine
 		// ring seeds its dust with it. Mixing before use keeps "small" from
 		// also meaning "orbits first" or "names nicer".
 		//
+		// VisualScaleSteps (>= 2) snaps the continuous fraction to evenly
+		// spaced sizes including both endpoints BEFORE the lerp. The roll
+		// itself is untouched, so a seed keeps meaning "small" or "big" the
+		// way it always did; moons authoring Min 0.5 / Max 1 / Steps 2 land
+		// on exactly 0.5 or exactly 1 and never anything above.
+		//
 		// No roll happens for: non-planet units (ships must never
 		// rescale), unset seeds (-1, Init's sentinel), classes with an
 		// unauthored range (0/0 - the default on every asset predating
@@ -1869,7 +1875,16 @@ namespace OpenFrontier.IP.Engine
 			{
 				return;
 			}
-			transform.localScale = Vector3.one * Mathf.Lerp(min, max, PlanetScaleFraction(Seed));
+			float t = PlanetScaleFraction(Seed);
+			int steps = ((displayData != null) ? displayData.VisualScaleSteps : 0);
+			if (steps >= 2)
+			{
+				// Evenly spaced sizes including both endpoints. The Min
+				// guards against the floor walking past the last step at t = 1.
+				int idx = Mathf.Min(steps - 1, Mathf.FloorToInt(t * (float)steps));
+				t = (float)idx / (float)(steps - 1);
+			}
+			transform.localScale = Vector3.one * Mathf.Lerp(min, max, t);
 		}
 
 		private static float PlanetScaleFraction(int seed)
