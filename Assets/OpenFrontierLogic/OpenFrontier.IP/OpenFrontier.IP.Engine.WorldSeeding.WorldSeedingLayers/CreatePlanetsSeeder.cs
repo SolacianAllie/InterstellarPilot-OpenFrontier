@@ -19,10 +19,11 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 	// planet's size, because every prefab carried the same one.
 	//
 	// What this layer now does: read the size, then place by it. The size
-	// itself is a class-authored range (UnitClassDisplayData
-	// VisualScaleMin/Max) rolled per unit from the unit's Seed by
-	// Unit.ApplyPlanetVisualScale, applied to the whole logic-unit root so
-	// the visual, its colliders, and every later re-derivation agree.
+	// is authored ON THE PREFAB - the active unit hierarchy's own
+	// transform scale - and nothing in the pipeline rescales a body. The
+	// same prefab renders the same silhouette in every world on every
+	// seed, and every measurement below reads that same prefab, so
+	// placement, orbit radius and silhouette agree by construction.
 	//
 	//	planet distance   = max( radius * 2.17..2.2 ,
 	//	                         play bound + radius + clearance )
@@ -43,13 +44,12 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 	// even that sky crowded the host: a stock orbit now reads as about
 	// 109200 and the shell it lives in is still empty (the play space
 	// ends at 7000, neighbouring sectors carry their own space, and the
-	// sector map does not draw planets at all). A small class (scale 0.5, radius
-	// 4550) rolls 9873..10010 but the floor rule wins at 13050, so its
-	// near edge (dist - radius = 8500) still clears the sector's play
-	// shell (MaxUnitDistanceFromOriginUpperBound, 7000) by
-	// PlanetPlacementClearance - the planet is close AND out of the
-	// shipping lanes. A big class (scale 3, radius 27300) rolls itself out
-	// past 59k and the floor never binds.
+	// sector map does not draw planets at all). The bands hold for any
+	// radius a prefab authors: a gas giant (~30100 measured) places
+	// itself out past 65k and the floor never binds; a small body sorts
+	// closer in, and its near edge (dist - radius) still clears the
+	// sector's play shell (MaxUnitDistanceFromOriginUpperBound, 7000) by
+	// PlanetPlacementClearance - close AND out of the shipping lanes.
 	//
 	// The radius is MEASURED from the class's active unit prefab
 	// (MeasureVisualRadius), not authored twice anywhere - the same
@@ -57,12 +57,9 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 	// shadow, because a typed number here would be a second copy of the
 	// scale waiting to disagree.
 	//
-	// Dice discipline: the roll is hashes of unit.Seed, NOT the
-	// UnityEngine.Random stream - the stream count is untouched by the
-	// sizing. But Init moved ahead of the position rolls (the roll reads
-	// Seed, which Init assigns), so the same CustomSeed regrows a
-	// different sector than before. That is expected, not a regression:
-	// the placement rule changed.
+	// Dice discipline: all generation dice ride the UnityEngine Random
+	// stream, exactly like the stock seeder. Sizes are not dice at all -
+	// a body is the size its prefab authors, every world, every seed.
 	[RequireComponent(typeof(WorldSeederLayer))]
 	public class CreatePlanetsSeeder : MonoBehaviour
 	{
@@ -140,12 +137,12 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 				}
 				Unit unit = UnityObjectHelper.InstantiateAndGetComponent(bestPlanetPrefabToSpawn);
 				unit.transform.SetParent(sector.transform, worldPositionStays: true);
-				// Seed exists BEFORE the position is picked: the size roll
-				// (ApplyPlanetVisualScale) reads it, and the distance math
-				// below has to agree with the body it is placing. This is
-				// the one reordering of rolls the header documents.
+				// Init before the position rolls: Seed lands ahead of the
+				// dice that use it, and the placement math below has to
+				// agree with the body it is placing. The size is already
+				// final - ReadVisualMeasure reads the prefab hierarchy
+				// and nothing rescales the instance.
 				unit.GetComponent<Unit>().Init();
-				unit.ApplyPlanetVisualScale();
 				float visualRadius = MeasureVisualRadius(unit);
 				unit.transform.localPosition = GetRandomPlanetLocalPosition(sector, CreatePlanetsSeederSettings, visualRadius);
 				float x = Random.Range(CreatePlanetsSeederSettings.MinPlanetRotationX, CreatePlanetsSeederSettings.MaxPlanetRotationX) * UnityRandomHelper.RandomSign();
@@ -160,11 +157,11 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 						if (component != null)
 						{
 							component.OrbitingAroundUnit = unit;
-							// Seed before offset for the same reason as the
-							// planet: the moon's own size roll needs it, and
-							// the orbit's floor guard reads that size.
+							// Seed before offset: the orbit phase in
+							// ActiveUnitMoon reads it, so Init lands
+							// first. The two radii are read straight
+							// off the prefabs, already final.
 							unit2.GetComponent<Unit>().Init(autoFindParents: false);
-							unit2.ApplyPlanetVisualScale();
 							RandomizeMoon(component, CreatePlanetsSeederSettings, visualRadius, MeasureVisualRadius(unit2), 0);
 							unit2.Sector = sector;
 						}
@@ -187,7 +184,7 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 		// 11.5 + ring * 2.5 radii, plus a 0..1 radius jitter. Every moon
 		// of a system keeps a unique distance; neighbours never stack on
 		// one band, and ring 0 keeps the familiar 11.5..12.5 the
-		// single-moon case tuned. The floor guard keeps a scaled-up moon
+		// single-moon case tuned. The floor guard keeps an outsized moon
 		// out of its own planet: the moon needs its diameter plus slack
 		// inside the orbit rim. A planet that failed to measure (no
 		// active unit prefab loaded) falls back to the settings pair,
@@ -237,9 +234,9 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 		// that vector is 17.3, which is not the radius - times the largest
 		// axis of the filter's cumulative scale), taking the LARGEST of
 		// every mesh in the prefab so the atmosphere shell (910, just over
-		// the planet's 900) counts as the silhouette it is. The per-instance
-		// roll (ApplyPlanetVisualScale, applied to the root before calling)
-		// multiplies in through the unit's own localScale. Returns 0 when
+		// the planet's 900) counts as the silhouette it is. The unit's own
+		// localScale multiplies in last, so a logic unit whose root was
+		// authored at a purposeful scale still measures true. Returns 0 when
 		// nothing can be measured; callers are written to fall back to the
 		// stock settings pair.
 		public static float MeasureVisualRadius(Unit unit)

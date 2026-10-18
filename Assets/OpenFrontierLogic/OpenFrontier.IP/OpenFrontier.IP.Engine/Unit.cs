@@ -1832,56 +1832,18 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
-		// ---- planet scale roll ----
+		// ---- planet sizing ----
 		//
-		// The planet's size is a class-authored range (UnitClassDisplayData
-		// VisualScaleMin/Max) rolled per unit from the unit's own Seed.
-		// Generation applies it through CreatePlanetsSeeder BEFORE it
-		// measures and places the body, so the placement math and the body
-		// agree; this method is where the SAME value is re-derived on every
-		// later activation, because the roll must reproduce exactly across
-		// save/load and unit.Seed is the one piece the save always carried
-		// (the importer writes unit.Seed = modelUnit.Seed). Nothing new is
-		// saved: the roll rebuilds itself from data that was always there.
+		// Planets and moons have NO size roll. A body's size is authored on
+		// its active unit prefab - the transform scale the hierarchy ships
+		// with - and every stage of the pipeline (placement, orbit, sector
+		// map) MEASURES that truth (CreatePlanetsSeeder.MeasureVisualRadius)
+		// rather than re-deriving or re-rolling it. The same prefab renders
+		// the same silhouette in every world, on every device, forever.
 		//
-		// The hash deliberately decorrelates from the other Seed consumers:
-		// ActiveUnitMoon uses Seed % 360 for orbit phase,
-		// UnitDesignationBuilder feeds it into names, and the planetary
-		// ring seeds its dust with it. Mixing before use keeps "small" from
-		// also meaning "orbits first" or "names nicer".
-		//
-		// No roll happens for: non-planet units (ships must never
-		// rescale), unset seeds (-1, Init's sentinel), classes with an
-		// unauthored range (0/0 - the default on every asset predating
-		// this), or a class missing its display data. All read as stock
-		// size 1. Menu-bound backdrops (raw ActiveUnit prefab instances
-		// with no logic Unit) never reach this at all.
-		public void ApplyPlanetVisualScale()
-		{
-			if (UnitType != UnitType.Planet || Seed < 0)
-			{
-				return;
-			}
-			UnitClassDisplayData displayData = ((unitClass != null) ? unitClass.DisplayData : null);
-			float min = ((displayData != null) ? displayData.VisualScaleMin : 0f);
-			float max = ((displayData != null) ? displayData.VisualScaleMax : 0f);
-			if (max <= min || max <= 0f)
-			{
-				return;
-			}
-			transform.localScale = Vector3.one * Mathf.Lerp(min, max, PlanetScaleFraction(Seed));
-		}
-
-		private static float PlanetScaleFraction(int seed)
-		{
-			uint num = (uint)seed ^ 0x9E3779B9u;
-			num ^= num >> 16;
-			num *= 0x7FEB352Du;
-			num ^= num >> 15;
-			num *= 0x846CA68Bu;
-			num ^= num >> 16;
-			return (float)(num & 0xFFFFFF) / 16777215f;
-		}
+		// The per-unit scaling this once did (Seed-rolled against
+		// UnitClassDisplayData VisualScaleMin/Max) is gone: sizes are
+		// decided by the prefabs, not by dice.
 
 		private void CreateActiveUnit()
 		{
@@ -1902,11 +1864,6 @@ namespace OpenFrontier.IP.Engine
 					component.Init();
 					if (UnitType == UnitType.Planet)
 					{
-						// First: the class range rolled from Seed, so the
-						// freshly instantiated visual and every earlier
-						// placement decision agree. Idempotent - same Seed,
-						// same size, whichever activation order.
-						ApplyPlanetVisualScale();
 						ActiveUnitMoon component2 = component.GetComponent<ActiveUnitMoon>();
 						if (component2 != null)
 						{

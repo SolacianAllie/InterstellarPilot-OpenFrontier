@@ -667,13 +667,14 @@ namespace OpenFrontier.IP.Engine.SaveGame
 					if (component != null)
 					{
 						// Same pipeline the seeder uses, on an old save being
-						// dragged up to it: roll the size, then size the
-						// orbit to the two bodies. A moon whose planet is
-						// null measures 0 and RandomizeMoon falls back to
-						// the settings pair inside. The ring is the moon's
-						// ordinal around its host (ladder spans the whole
-						// pass), so even a multi-moon migration staggers
-						// instead of stacking on one band.
+						// dragged up to it: size the orbit to the two
+						// bodies standing at their prefab sizes (none is
+						// rescaled). A moon whose planet is null measures
+						// 0 and RandomizeMoon falls back to the settings
+						// pair inside. The ring is the moon's ordinal
+						// around its host (ladder spans the whole pass),
+						// so even a multi-moon migration staggers instead
+						// of stacking on one band.
 						int num2 = 0;
 						if (component.OrbitingAroundUnit != null)
 						{
@@ -683,12 +684,10 @@ namespace OpenFrontier.IP.Engine.SaveGame
 							}
 							dictionary[component.OrbitingAroundUnit] = num2 + 1;
 						}
-						item.ApplyPlanetVisualScale();
 						CreatePlanetsSeeder.RandomizeMoon(component, GameController.Instance.GameSettings.DefaultWorldSeedSettings.CreatePlanetsSeederSettings, CreatePlanetsSeeder.MeasureVisualRadius(component.OrbitingAroundUnit), CreatePlanetsSeeder.MeasureVisualRadius(item), num2);
 					}
 					else
 					{
-						item.ApplyPlanetVisualScale();
 						item.transform.localPosition = CreatePlanetsSeeder.GetRandomPlanetLocalPosition(item.Sector, GameController.Instance.GameSettings.DefaultWorldSeedSettings.CreatePlanetsSeederSettings, CreatePlanetsSeeder.MeasureVisualRadius(item));
 					}
 				}
