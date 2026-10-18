@@ -119,6 +119,19 @@ Shader "OpenFrontier/Ship Cloak"
 	// not an approximation. Until then an unclipped hull shadows 1:1 with
 	// its hull profile.
 	//
+	// The FIRST pass (CloakSelfDepth) is the hull's self-occlusion
+	// prepass: v2's ZWrite Off colour pass let the hull show itself
+	// through itself (interior panels through the shell, worst early in
+	// the ramp when alpha is near 1). It writes the hull's nearest depth
+	// before ForwardLit draws, so the colour z-test keeps the near shell
+	// and culls its own interior -- while the transparent queue's
+	// back-to-front sort leaves behind-transparency untouched (farther
+	// transparents drew earlier, nearer ones pass the test). Same clip
+	// cliff as this section: once the hull is heavily cloaked the pass
+	// contributes nothing, so a full ghost is no invisible wall. Declared
+	// BEFORE ForwardLit on purpose; see the pass block for the order
+	// contract and the SRPDefaultUnlit citation.
+	//
 	// No lightmap keywords, no _CLUSTER_LIGHT_LOOP (Forward renderer --
 	// the same documented Forward+ risk as the ship shader), no GBuffer,
 	// no DOTS. Shadow/soft-shadow/probe/fog/instancing variants kept, per
@@ -214,6 +227,96 @@ Shader "OpenFrontier/Ship Cloak"
 		TEXTURE2D(_EmissionMap);      SAMPLER(sampler_EmissionMap);
 		TEXTURE2D(_DecalMap);         SAMPLER(sampler_DecalMap);
 		ENDHLSL
+
+		Pass
+		{
+			// ---- self-occlusion prepass ----
+			//
+			// ZWrite Off in the colour pass (v2's whole point) means the hull
+			// no longer depth-tests against ITSELF: interior panels and
+			// turret geometry sit behind the near surface and paint the
+			// blend recipe twice, which reads as "parts of the ship showing
+			// through the ship" wherever alpha < 1, worst early in the ramp
+			// when the hull is still nearly opaque. This pass writes the
+			// hull's own nearest depth into the camera depth buffer first
+			// (declared BEFORE ForwardLit so it draws first), and the
+			// colour pass then z-tests against it: the near shell paints,
+			// deeper fragments fail LEqual and vanish.
+			//
+			// That leaves everything transparency-dependent intact by the
+			// transparent queue's back-to-front sort:
+			//   - farther transparents (engine flames behind the ghost) draw
+			//     BEFORE this renderer, so they are already in the frame;
+			//   - nearer transparents draw AFTER and are closer than the
+			//     written depth, so their LEqual test passes;
+			//   - the background shown through the hull never changes,
+			//     because the colour pass blends over what the frame
+			//     already holds.
+			//
+			// The pass is LightMode "SRPDefaultUnlit": URP's forward bucket
+			// renders that LightMode as an EXTRA pass alongside the first
+			// UniversalForward pass (URP ShaderLab Pass tags docs; the
+			// DrawObjectsPass priority list is exactly
+			// {SRPDefaultUnlit, UniversalForward, UniversalForwardOnly}).
+			// Cost: a transform-only draw over the hull per renderer, same
+			// order as ShadowCaster. Multi-pass breaks SRP batching for
+			// this material -- a per-draw uniform upload on cloak hulls,
+			// acceptable for a handful of ships.
+			Name "CloakSelfDepth"
+			Tags { "LightMode" = "SRPDefaultUnlit" }
+
+			ZWrite On
+			ZTest LEqual
+			ColorMask 0
+			Cull [_Cull]
+
+			HLSLPROGRAM
+			#pragma target 2.0
+
+			#pragma vertex ShipCloakSelfDepthVertex
+			#pragma fragment ShipCloakSelfDepthFragment
+
+			//--------------------------------------
+			// GPU Instancing (same ships as everywhere else)
+			#pragma multi_compile_instancing
+
+			struct SelfDepthAttributes
+			{
+				float4 positionOS   : POSITION;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+			};
+
+			struct SelfDepthVaryings
+			{
+				float4 positionCS   : SV_POSITION;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+				UNITY_VERTEX_OUTPUT_STEREO
+			};
+
+			SelfDepthVaryings ShipCloakSelfDepthVertex(SelfDepthAttributes input)
+			{
+				SelfDepthVaryings output = (SelfDepthVaryings)0;
+				UNITY_SETUP_INSTANCE_ID(input);
+				UNITY_TRANSFER_INSTANCE_ID(input, output);
+				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+				output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+				return output;
+			}
+
+			half4 ShipCloakSelfDepthFragment(SelfDepthVaryings input) : SV_TARGET
+			{
+				UNITY_SETUP_INSTANCE_ID(input);
+				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+				// Same cliff as ShadowCaster/DepthOnly: past a sliver of cloak
+				// the hull takes no prepass slot, so a fully ghosted ship is
+				// no invisible wall either. Only the still-mostly-visible
+				// half of the ramp pays for self-occlusion, which is where
+				// the see-through artefact lives.
+				clip(0.02h - _CloakAmount);
+				return 0;
+			}
+			ENDHLSL
+		}
 
 		Pass
 		{
