@@ -76,37 +76,28 @@ Shader "OpenFrontier/Planet Gas Giant"
 	// one bad export.
 	//
 	// The honest reading is that this file is not usable as a normal map,
-	// and this shader STILL does not decode it as directions. That
-	// conclusion was the right one when the only ask was lighting: normals
-	// pointing away from the camera read as a planet lit from behind, with
-	// a soft terminator in the wrong place, and it would disagree with the
-	// atmosphere shell's terminator, which is correct. Decoding poison is
-	// still refused.
+	// and this shader does NOT use it as one -- not for lighting, and not
+	// for relief either, which was tried and died on its own demo.
 	//
-	// But the data for surface relief genuinely does exist in here, read
-	// a different way: GREEN is a usable HEIGHT field. Measured -- its
-	// mean height step over a 16-texel span is 0.020, 95th percentile
-	// 0.059, worst 0.19, so it is a smooth field with occasional steep
-	// rims; its own U-wrap seam is 0.0023 against an interior column step
-	// of 0.0022 (it tiles as well as the diffuse does); its worst
-	// row-mean jump is 0.008 against red's 0.076, so the hard seams live
-	// in the channel the deck already reads and not in the one the relief
-	// will. The normal planet user asked for the green channel as actual
-	// surface relief, and THE RELIEF below converts it the only honest
-	// way for data like this: by its gradient, never by decoding.
+	// Decoding remains refused for the reason that started this section:
+	// normals pointing away from the camera read as a planet lit from
+	// behind, with a soft terminator in the wrong place, disagreeing with
+	// the atmosphere shell's terminator, which is correct.
 	//
-	// One measurement belongs up here, because it is a limitation of the
-	// set and not of the conversion: relief from this green does NOT
-	// track the deck's own turbulence. The correlation of green's
-	// 16-texel derivative against the diffuse luminance's is +0.009 --
-	// nothing. So the bump reads as independent cloud rumple riding the
-	// bands, not as the plate's own shear caught by light. Said here so
-	// nobody re-discovers it by staring at a screenshot.
+	// The RELIEF ATTEMPT, for the record. Green is measurably a smooth
+	// height field (mean step 0.020 over 16 texels, p95 0.059, worst
+	// 0.19; U-wrap seam 0.0023 against an interior column step of
+	// 0.0022; worst row-mean jump 0.008 against red's 0.076), so it was
+	// converted by gradient -- the only honest way for data like this --
+	// and shipped as surface relief riding the deck's motion. It was
+	// seen in play and removed the same session on one word of verdict:
+	// "awful". The full autopsy is under THE RELIEF below. What survives
+	// of it here is the measurements, kept because they are facts about
+	// the file, not because the feature exists.
 	//
-	// The cheap-planet note survives, reworded to stay true: there is no
-	// terrain to bump, and the relief ships at a gain measured to keep
-	// the bands albedo-first. The reference is one extra texture sample
-	// behind the deck, and it costs nothing for what it buys.
+	// The cheap-planet note survives: there is no terrain to bump, the
+	// bands belong in the albedo, and the reference is one extra texture
+	// sample behind the deck, costing nothing for what it buys.
 	//
 	// THE BANDS ARE ALBEDO, AND THAT IS PHYSICAL
 	//
@@ -257,57 +248,46 @@ Shader "OpenFrontier/Planet Gas Giant"
 	// The U wrap is clean: seam 0.005 against an interior column step of
 	// 0.246, so this plate tiles like the deck does.
 	//
-	// THE RELIEF -- GREEN CONVERTED TO A NORMAL, AND EVERYTHING FLOWS
+	// THE RELIEF, TRIED AND REMOVED
 	//
-	// Two asks landed together after the sheen: bring the atmosphere down
-	// to what a gas giant wants (values, see the section above), and give
-	// the deck surface relief from the plate's green channel, riding the
-	// same motion as the albedo.
+	// For one session, green was a height field converted to surface
+	// slopes: texture-space gradient over a 16-texel step, one height and
+	// two slope taps per each of the deck's two flow phases (six samples,
+	// riding the same displaced coordinates and triangle weight as the
+	// albedo, so the relief drifted with its deck), landing on a tangent
+	// frame solved per pixel from screen derivatives -- no tangent
+	// attribute, because the solve needs none. The solve was verified
+	// numerically before being written (20,000 randomized quads plus
+	// mirrored, flipped and sheared layouts, all |cos| = 1.0 against the
+	// true frame); the one thing it cannot pin is the frame's GLOBAL
+	// sign, which belongs to the mesh's UV layout, so the strength
+	// slider took a negative half to answer it per mesh. The gain was
+	// calibrated on the measured field: 0.02 strength, about 3 degrees
+	// of tilt typical at the default, ~25 on the rarest rims.
 	//
-	// What green becomes: a HEIGHT field. Its texture-space gradient,
-	// measured across a 16-texel span, is turned into tangent-space
-	// slopes the way height maps have always been: normal =
-	// normalize(-du * gain, -dv * gain, 1). Six samples per fragment --
-	// one height and two slope taps, ACTICE for each of the deck's two
-	// phases -- is what that costs honestly; see MOBILE FIRST.
+	// It read badly anyway, and not at the margins. Three real reasons,
+	// deducible from the measurements that had looked like good news:
 	//
-	// THE STEP IS 16 TEXELS (1/128 of the plate's U), and it is a
-	// decision, not a knob. Measured height change across 8 texels is
-	// 0.012 and across 32 it is 0.031 -- slope per distance is flat
-	// across that whole range, so the field is smooth there and the
-	// choice mostly trades one-texel quantisation stitching away from
-	// relief scale. 16 texels is past the stitching and inside the rim
-	// structure, and the taps' implicit LOD makes relief fade out with
-	// view distance rather than shimmer at it.
+	//   1. Green is a CRATER field (rocky, see above). Rims and dents
+	//      are the one character a fluid cloud deck must not read as --
+	//      the same reason the header originally said "the bands belong
+	//      in the albedo".
+	//   2. The relief did not come from THIS deck. Its gradient's
+	//      correlation with the diffuse's own gradient is +0.009 --
+	//      nothing -- so the lighting disagreed with the albedo it sat
+	//      on, swampy rather than revealing.
+	//   3. The field slope stats that made the conversion possible
+	//      (mean 0.020/16texels) also mean most of the plate is FLAT:
+	//      the midfield got nothing from the whole cost, and the
+	//      occasional rim slopes arrived as isolated dark/bright streaks
+	//      rather than as a coherent surface.
 	//
-	// THE TANGENT FRAME it lands on is built per pixel from screen
-	// derivatives, not from an attribute (this shader ships none and
-	// still needs none). It is the standard least-squares solve of
-	// "where did the interpolated UV actually move this screen step, in
-	// world space", and verfied numerically to unit length on a sphere
-	// model before it was written here -- including mirrored and sheared
-	// quads, where it held |cos| = 1.0. What it does NOT fix by itself is
-	// the frame's GLOBAL SIGN: the solve recovers the two axes but
-	// whether the pair points east or west is a property of the mesh's
-	// UV layout, uniform over the whole visible disc of a convex mesh
-	// (skaged against camera orbit), known only in play. That is why
-	// Relief Strength's range runs negative: if the relief reads
-	// inverted -- rim lighting on the far side of bumps, dents catching
-	// the sun -- set it negative ONCE; the mesh remembers it in the
-	// material. Two degenerate quads fall back to an analytic
-	// east/north frame whose sign carries the same caveat: the single
-	// screen column at the U-wrap seam, and the poles, where the UV
-	// derivative collapses and the caps are the two flat grey rows of
-	// the plate anyway.
-	//
-	// The GAIN is calibrated on the measured field: slope per UV times
-	// 0.02 times the strength slider. At the default 1 that is about
-	// 3 degrees of tilt on the field's typical slopes and up to ~25 on
-	// the rarest rims -- visible in the sheen and at the terminator,
-	// never sandpaper. And the catch from WHAT THE TWO TEXTURES
-	// ACTUALLY ARE applies to the look: with +0.009 correlation to the
-	// deck's own gradient, this reads as generic cloud rumple riding the
-	// bands, not this planet's shear. That is the honest price.
+	// Verdict known and recorded: "it looks awful". Removed in the commit
+	// after the one that added it, lighting back on the geometric normal,
+	// everything else about the session kept. DO NOT RE-ADD without a
+	// fresh conversation about where a relief plate that actually
+	// matches a gas deck would come from -- the conversion machinery was
+	// fine; the data was not.
 	//
 	// THE DECK MOVES
 	//
@@ -373,32 +353,23 @@ Shader "OpenFrontier/Planet Gas Giant"
 	//
 	// MOBILE FIRST
 	//
-	// Eleven texture samples, the honest ledger: the deck twice, the band
-	// reference once (static -- it drives the motion, it must not ride
-	// it), the relief six times, the spec mask twice. The relief pays
-	// three taps per phase (height plus two slope neighbours) because any
-	// plate that rides the deck pays the same two-phase tax the deck
-	// itself pays -- blending two flow states is what makes motion
-	// reset-free, and it is charged per consumer, not once. The six
-	// relief taps fade with view distance through their implicit LOD,
-	// which is cheapening, not a bug. The atmosphere costs NO texture
-	// fetches -- one acos and about a dozen pow/rcp/smoothstep/lerp --
-	// and the sheen adds one pow on top of the plate taps above it. The
-	// tangent frame is built from screen derivatives: pure ALU, no
-	// fetches, no attribute.
-	//
-	// No tangent attribute and no tangent interpolator (the relief's
-	// frame is derived per pixel -- see THE RELIEF), no shadow caster and
-	// no depth pass: the mesh is a 2143-vertex sphere, and a planet is
-	// never close enough to the camera for self-shadowing to matter.
+	// Five texture samples: the deck twice (two cross-fade phases), the
+	// band reference once (static -- it drives the motion, it must not
+	// ride it), and the spec mask twice at the deck's two displaced
+	// coordinates. The atmosphere costs NO texture fetches -- one acos
+	// and about a dozen pow/rcp/smoothstep/lerp -- and the sheen adds
+	// one pow on top of the plate taps above it. No tangent attribute
+	// and no tangent interpolator, no shadow caster and no depth pass:
+	// the mesh is a 2143-vertex sphere, and a planet is never close
+	// enough to the camera for self-shadowing to matter.
 	//
 	// No parallax and no Fresnel of its own. The sheen is the one
 	// specular this surface gets -- the deck's own cloud lobe from the
 	// normal planet, driven by the spec mask. The rim this shader used to
 	// paint itself is emissive by nature and belongs to the atmosphere
 	// shell (OpenFrontier/Planet Atmosphere); the in-surface half is what
-	// is below. What is left is the texture, its motion, its relief, the
-	// light, and the air.
+	// is below. What is left is the texture, its motion, the light, and
+	// the air.
 
 	Properties
 	{
@@ -408,8 +379,6 @@ Shader "OpenFrontier/Planet Gas Giant"
 		//
 		// The deck displaces from gas_giant_06_normal's RED channel, read
 		// as a reference value at each pixel, never as a lighting normal.
-		// The same plate's GREEN is the relief's height field -- the
-		// slider for it is the next block down.
 		// _BandNeutral decides which red value reads as "no displacement",
 		// _BandSoftness dilutes the file's 88 quantisation levels and its
 		// hard row seams into that same remap, and the two sliders set
@@ -421,29 +390,11 @@ Shader "OpenFrontier/Planet Gas Giant"
 		// _BandDispSpeed is CYCLES PER SECOND: one cycle slides a band
 		// 2 * _BandDispStrength from west to east, so the visible speed
 		// of a band scales with both sliders and with its own red value.
-		[NoScaleOffset] _BandRef ("Band & Relief Reference (gas_giant_06_normal)", 2D) = "black" {}
+		[NoScaleOffset] _BandRef ("Band Reference (R: gas_giant_06_normal)", 2D) = "black" {}
 		_BandDispStrength ("Band Displacement", Range(0, 0.06)) = 0.012
 		_BandDispSpeed ("Band Stream Speed", Range(0, 0.5)) = 0.04
 		_BandSoftness ("Band Softness", Range(1, 8)) = 3
 		_BandNeutral ("Band Neutral", Range(0, 1)) = 0.6
-
-		// ---- the relief ----
-		//
-		// GREEN off the same plate as _BandRef, become surface slopes.
-		// The header's THE RELIEF section carries every measurement and
-		// the gain's calibration. The name is the normal planet's
-		// cloud-deck control, deliberately: this surface IS that deck, so
-		// the knob means the same thing from shader to shader.
-		//
-		// The negative half of the range is not decoration. The tangent
-		// frame the slopes land on is solved from screen derivatives, and
-		// its one global sign is decided by the mesh's UV layout, not
-		// something this shader can know. If the relief reads inverted --
-		// rim lighting landing on the far side of bumps -- set it
-		// negative once, per mesh; the solve itself verified to unit
-		// accuracy, and the sign is constant across the whole visible
-		// disc, so one flip is the whole fix.
-		_CloudNormalStrength ("Relief Strength", Range(-3, 3)) = 1
 
 		// ---- the sheen ----
 		//
@@ -565,7 +516,6 @@ Shader "OpenFrontier/Planet Gas Giant"
 				float _BandDispSpeed;
 				float _BandSoftness;
 				float _BandNeutral;
-				float _CloudNormalStrength;
 				float _SpecFloor;
 				float _SpecRange;
 				float _SpecGloss;
@@ -576,11 +526,9 @@ Shader "OpenFrontier/Planet Gas Giant"
 				float4 positionOS : POSITION;
 				float3 normalOS : NORMAL;
 				float2 uv : TEXCOORD0;
-				// No TANGENT, deliberately -- still, even after the relief
-				// landed. The frame the slopes land on is solved per pixel
-				// from screen and uv derivatives (see the relief block in
-				// the fragment), which needs no attribute and stays
-				// correct for any uv layout the mesh ships.
+				// No TANGENT. There is no normal map (see the header), so
+				// nothing needs a tangent frame, and carrying one costs an
+				// attribute and an interpolator for nothing.
 			};
 
 			struct Varyings
@@ -648,10 +596,9 @@ Shader "OpenFrontier/Planet Gas Giant"
 				float deckUB = float(input.uv.x) + (float)bandAmp * rampB;
 
 				// The cloud deck. TWO samples of the albedo, at the two
-				// displaced coordinates built above. EVERYTHING downstream
-				// -- albedo, relief, spec mask -- is sampled through
-				// flowUvA/flowUvB, so the whole surface moves as one and
-				// nothing trails behind the deck it belongs to.
+				// displaced coordinates built above. The spec mask samples
+				// through these same two coordinates further down, so it
+				// moves as one with the deck it belongs to.
 				float2 flowUvA = float2(deckUA, input.uv.y);
 				float2 flowUvB = float2(deckUB, input.uv.y);
 				half3 deckA = SAMPLE_TEXTURE2D(_Albedo, sampler_Albedo, flowUvA).rgb;
@@ -681,91 +628,6 @@ Shader "OpenFrontier/Planet Gas Giant"
 				// band's width.
 				float ndotl = dot((float3)N, (float3)L);
 				float ndotv = saturate(dot((float3)N, (float3)V));
-
-				// ---- tangent frame, per pixel, no attribute ----
-				// The standard least-squares solve of where the
-				// interpolated uv actually moved this screen step, in
-				// world space (Schueler's construction); verified
-				// numerically to unit length on a sphere model -- mirrored
-				// and sheared quads included -- BEFORE it was written
-				// here. The frame's one global sign is the mesh's UV
-				// layout's call, not this code's; Relief Strength runs
-				// negative so a mesh can answer it once (see the
-				// properties block and THE RELIEF).
-				float2 duv1 = ddx(float2(input.uv));
-				float2 duv2 = ddy(float2(input.uv));
-				float3 dp1 = ddx(input.positionWS);
-				float3 dp2 = ddy(input.positionWS);
-				float3 Ttan = cross(dp2, (float3)N) * duv1.x
-					+ cross((float3)N, dp1) * duv2.x;
-				float3 Btan = cross(dp2, (float3)N) * duv1.y
-					+ cross((float3)N, dp1) * duv2.y;
-				float tangent2 = dot(Ttan, Ttan);
-				float bitan2 = dot(Btan, Btan);
-
-				// Two degenerate quads fall back to an analytic frame: the
-				// single screen column at the U-wrap seam, whose ddx(u) is
-				// the full wrap-length jump, and the poles, where the uv
-				// derivative collapses. The axisRef switch keeps even the
-				// fallback finite at the poles, where up and the normal
-				// are parallel; its scale is incorrect there, and that is
-				// acceptable -- the caps are the two flat grey rows of the
-				// plate anyway.
-				float3 Tframe, Bframe;
-				if (min(tangent2, bitan2) < 1e-3 || max(abs(duv1.x), abs(duv2.x)) > 0.5)
-				{
-					float3 axisRef = (abs(N.y) < 0.9)
-						? float3(0.0, 1.0, 0.0) : float3(1.0, 0.0, 0.0);
-					Tframe = normalize(cross(axisRef, (float3)N));
-					Bframe = cross((float3)N, Tframe);
-				}
-				else
-				{
-					float3 Tan = Ttan * rsqrt(tangent2);
-					float3 Ban = Btan * rsqrt(bitan2);
-					// Orthogonalised against the geometric normal: the
-					// solve is least-squares, so both axes can carry a
-					// little normal drift on coarse quads, and drift in
-					// the frame is relief that leans off the surface.
-					Tframe = normalize(Tan - (float3)N * dot(Tan, (float3)N));
-					Bframe = normalize(Ban - (float3)N * dot(Ban, (float3)N));
-				}
-
-				// ---- the relief: GREEN as height, turned into slopes ----
-				// See THE RELIEF in the header for every number in here.
-				// Six samples: each of the deck's two flow phases needs its
-				// own height and its own two short-range neighbours,
-				// because the slopes must be taken AT the displaced
-				// coordinates -- a relief gradient measured on undisturbed
-				// ground would describe ground the deck is no longer
-				// showing. The step is 16 texels of the plate's U; the
-				// gain 0.02 * strength was calibrated on the measured
-				// field (typical ~3 degrees at the default, rare rims up
-				// to ~25).
-				const float reliefStep = 16.0 / 2048.0;
-				half hgtA   = SAMPLE_TEXTURE2D(_BandRef, sampler_BandRef, flowUvA).g;
-				half hgtAvA = SAMPLE_TEXTURE2D(_BandRef, sampler_BandRef, flowUvA + float2(0.0, reliefStep)).g;
-				half hgtAuA = SAMPLE_TEXTURE2D(_BandRef, sampler_BandRef, flowUvA + float2(reliefStep, 0.0)).g;
-				half hgtB   = SAMPLE_TEXTURE2D(_BandRef, sampler_BandRef, flowUvB).g;
-				half hgtAvB = SAMPLE_TEXTURE2D(_BandRef, sampler_BandRef, flowUvB + float2(0.0, reliefStep)).g;
-				half hgtAuB = SAMPLE_TEXTURE2D(_BandRef, sampler_BandRef, flowUvB + float2(reliefStep, 0.0)).g;
-				// Slopes in the plate's own units, blended with the same
-				// triangle weight as the deck BEFORE anything normalises
-				// -- the moving surface has one slope field, not two to
-				// choose between.
-				float2 slopeA = float2(hgtAuA - hgtA, hgtAvA - hgtA) * rcp(reliefStep);
-				float2 slopeB = float2(hgtAuB - hgtB, hgtAvB - hgtB) * rcp(reliefStep);
-				float2 slope = lerp(slopeB, slopeA, weightA);
-
-				// Height rising toward +U must tilt the lit surface toward
-				// -U, which is what "normal from height" means on every
-				// heightmap pipeline; the plane slopes then land on the
-				// tangent frame solved above.
-				float reliefGain = 0.02 * _CloudNormalStrength;
-				float3 tiltTan = normalize(
-					float3(-slope.x * reliefGain, -slope.y * reliefGain, 1.0));
-				half3  Np = (half3)normalize(
-					tiltTan.x * Tframe + tiltTan.y * Bframe + tiltTan.z * (float3)N);
 
 				// ---- twilight: the LIGHT, reddening ----
 				// Ported from OpenFrontier/Planet Surface; THE ATMOSPHERE
@@ -810,15 +672,7 @@ Shader "OpenFrontier/Planet Gas Giant"
 				// fetched it -- and a ring or a moon between the planet
 				// and the sun casting into the disc is a real thing to
 				// want.
-				// The DECK lights with the relief-perturbed normal (that is
-				// the whole point of slopes on a cloud top), while the
-				// twilight band around it stays with the geometric one,
-				// exactly as the atmosphere's comments insist on the rocky
-				// planets: the terminator is a property of the sphere, the
-				// slopes are a property of the cloud tops sitting on it.
-				half3 color = albedo * sunColour
-					* saturate(dot((float3)Np, (float3)L))
-					* mainLight.shadowAttenuation;
+				half3 color = albedo * sunColour * saturate(ndotl) * mainLight.shadowAttenuation;
 
 				// ---- the sheen: the cloud deck's own specular ----
 				// Ported from OpenFrontier/Planet Surface, where the same
@@ -860,11 +714,7 @@ Shader "OpenFrontier/Planet Gas Giant"
 				// highlight inside a dark band and read as the shadow
 				// glowing.
 				half3 halfVec = normalize(mainLight.direction + V);
-				// The lobe fires off the PERTURBED normal: slopes tilting
-				// into the half-vector are what make the relief read at
-				// all -- a sphere-flat lobe would reflect identically
-				// where the slopes say storm tops and valley floor.
-				half  sheen = pow(saturate(dot(Np, halfVec)), exp2(2.0 + 10.0 * cloudGloss)) * cloudGloss;
+				half  sheen = pow(saturate(dot(N, halfVec)), exp2(2.0 + 10.0 * cloudGloss)) * cloudGloss;
 				color += sunColour * sheen * mainLight.shadowAttenuation;
 
 				// ---- aerial perspective: the inside half of the air ----
