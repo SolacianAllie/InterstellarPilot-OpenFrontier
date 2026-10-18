@@ -107,11 +107,30 @@ namespace OpenFrontier
 			renderPassEvent = RenderPassEvent.BeforeRenderingTransparents;
 		}
 
+		// One-print-per-change skip/recording diagnostics (editor only --
+		// nothing here informs the player). Enumerating why the pass bails
+		// took a Frame Debugger session the first time; these replace that
+		// archaeology with a console line.
+		[System.Diagnostics.Conditional("UNITY_EDITOR")]
+		private static void ReportOnChange(ref string last, string detail, string prefix)
+		{
+			if (!string.Equals(last, detail))
+			{
+				last = detail;
+				Debug.Log($"{prefix}: {detail}");
+			}
+		}
+
+		private static string s_SkipReason;
+		private static string s_RecordCamera;
+
 		public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
 		{
 			// Nobody cloaks this frame: the snapshot has no reader.
 			if (!CloakBackdropRequests.Any)
 			{
+				ReportOnChange(ref s_SkipReason, "no cloaking hull wants a snapshot", "[CloakBackdrop] skip");
+				s_RecordCamera = null;
 				return;
 			}
 
@@ -120,13 +139,25 @@ namespace OpenFrontier
 			// game-type cameras must not stomp the player's snapshot.
 			if (CloakBackdropRequests.ProvidedCamera != null && cameraData.camera != CloakBackdropRequests.ProvidedCamera)
 			{
+				string provided = CloakBackdropRequests.ProvidedCamera != null ? CloakBackdropRequests.ProvidedCamera.name : "<null>";
+				ReportOnChange(ref s_SkipReason, $"camera '{cameraData.camera.name}' is not the provided '{provided}'", "[CloakBackdrop] skip");
+				s_RecordCamera = null;
 				return;
 			}
 
 			var resourceData = frameData.Get<UniversalResourceData>();
 			if (!resourceData.cameraColor.IsValid())
 			{
+				ReportOnChange(ref s_SkipReason, $"cameraColor invalid on '{cameraData.camera.name}'", "[CloakBackdrop] skip");
+				s_RecordCamera = null;
 				return;
+			}
+
+			if (!string.Equals(s_RecordCamera, cameraData.camera != null ? cameraData.camera.name : "<null>"))
+			{
+				s_RecordCamera = cameraData.camera != null ? cameraData.camera.name : "<null>";
+				s_SkipReason = null;
+				Debug.Log($"[CloakBackdrop] recording on '{s_RecordCamera}'");
 			}
 
 			var universalRenderingData = frameData.Get<UniversalRenderingData>();

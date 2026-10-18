@@ -21,6 +21,15 @@ static class CloakBackdropFeatureInstaller
 		foreach (string guid in AssetDatabase.FindAssets("t:UniversalRendererData"))
 		{
 			string path = AssetDatabase.GUIDToAssetPath(guid);
+			// Project assets only. The first install run also embedded the
+			// feature into URP's own UniversalRendererData inside the package
+			// cache; harmless (package cache is regenerable) but pointless --
+			// only the project's renderer assets drive ships.
+			if (!path.StartsWith("Assets/", System.StringComparison.OrdinalIgnoreCase))
+			{
+				continue;
+			}
+
 			var rendererData = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(path);
 			if (rendererData == null)
 			{
