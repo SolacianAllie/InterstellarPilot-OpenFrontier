@@ -841,8 +841,24 @@ Shader "OpenFrontier/Planet Surface" {
 				// chroma up at every step: at that same 0.55 it is (0.80, 0.57, 0.47),
 				// R minus B of +0.33. Squared on the second stage, because the deep
 				// end is only reached right at the terminator.
+
+				// The air scatters THE STAR's light, so the star's hue
+				// rides on the scattered colour. Same doctrine the atmosphere
+				// shell applies to this very colour (its lightHue lines):
+				// take the main light's colour as HUE ONLY, normalised by the
+				// brightest channel, guarded against black -- URP sets
+				// _MainLightColor black when there is no main light, and
+				// letting that through would black the air out. Hue, never
+				// brightness: a red star tints its air red without the rim
+				// brightening or dimming with the star's intensity, the same
+				// split the shell keeps. The amounts below stay untouched.
+				float3 lightRGB = (float3)mainLight.color;
+				float colorMax = max(lightRGB.r, max(lightRGB.g, lightRGB.b));
+				half3 lightHue = (half3)((colorMax > 1e-4)
+					? lightRGB / colorMax : float3(1.0, 1.0, 1.0));
+
 				half3 hazeTint = lerp(lerp(_AtmoColor.rgb, _SunRimColor.rgb, saturate(hazeSun)),
-					                  _SunRimDeep.rgb, saturate(hazeSun * hazeSun));
+					                  _SunRimDeep.rgb, saturate(hazeSun * hazeSun)) * lightHue;
 				// The band term as well as the limb term. hazeTint is already
 				// the sunset colour wherever the sun is low, so letting a slice
 				// of it in across the terminator is what makes the blue visibly

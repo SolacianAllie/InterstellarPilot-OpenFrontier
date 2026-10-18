@@ -164,6 +164,17 @@ Shader "OpenFrontier/Planet Gas Giant"
 	// vertex normal IS the geometric one and the port is exact rather than
 	// approximate.
 	//
+	// SINCE THAT PORT, THE AIR LEARNED THE STAR'S COLOUR: the haze tint
+	// multiplies the main light's colour taken as HUE ONLY -- normalized
+	// by its brightest channel, guarded against black -- which is the
+	// atmosphere shell's own doctrine for this very colour (see its
+	// lightHue). The deck and the sheen already light from mainLight.color
+	// through sunColour, so the air was the one term left painting a white
+	// sun's _AtmoColor under any star: the observation the fix answered.
+	// Amounts stay light-unaware on purpose -- hue belongs in the tint,
+	// brightness belongs in the existing factors. The planet surface
+	// carries the same five lines; keep the two in step if either moves.
+	//
 	// WHAT A GAS GIANT'S ATMOSPHERE WANTS
 	//
 	// The port brought the rocky planets' atmosphere over COMPLETE -- the
@@ -764,8 +775,24 @@ Shader "OpenFrontier/Planet Gas Giant"
 				// Routing through the deep sunset colour keeps the chroma
 				// up at every step. The second stage is squared because
 				// the deep end is only reached right at the terminator.
+
+				// The air scatters THE STAR's light, so the star's hue
+				// rides on the scattered colour. Same doctrine the atmosphere
+				// shell applies to this very colour (its lightHue lines):
+				// take the main light's colour as HUE ONLY, normalised by the
+				// brightest channel, guarded against black -- URP sets
+				// _MainLightColor black when there is no main light, and
+				// letting that through would black the air out. Hue, never
+				// brightness: a red star tints its air red without the rim
+				// brightening or dimming with the star's intensity, the same
+				// split the shell keeps. The amounts below stay untouched.
+				float3 lightRGB = (float3)mainLight.color;
+				float colorMax = max(lightRGB.r, max(lightRGB.g, lightRGB.b));
+				half3 lightHue = (half3)((colorMax > 1e-4)
+					? lightRGB / colorMax : float3(1.0, 1.0, 1.0));
+
 				half3 hazeTint = lerp(lerp(_AtmoColor.rgb, _SunRimColor.rgb, saturate(hazeSun)),
-				                      _SunRimDeep.rgb, saturate(hazeSun * hazeSun));
+				                      _SunRimDeep.rgb, saturate(hazeSun * hazeSun)) * lightHue;
 
 				// The twilight band as well as the limb term: hazeTint is
 				// already the sunset colour wherever the sun is low, so
