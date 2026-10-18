@@ -16,26 +16,30 @@ namespace OpenFrontier
 	/// nothing to diagnose. A child camera with a target texture is
 	/// ground truth - an enabled camera draws, or the console says why.
 	///
-	/// What the copy composes (v3.1): the player's view is not one
+	/// What the copy composes (v3.2): the player's view is not one
 	/// camera. It is an ordered pack, the BiRP depth+clear-flag
-	/// composition this project inherited from the original game - the
-	/// sky clears first, the planets/sun and background-sprite cameras
-	/// draw over it, and the world rig (the camera the fold childers
-	/// under) renders last. A child of the world rig alone - v3.0 -
-	/// copied only the pack's LAST member, so the fold sampled a copy
-	/// that never contained the sky, planets or sun it was bending:
-	/// folds showed holes instead of the backdrop. The grabber now
-	/// composes the same pack for itself: it enumerates the real
-	/// backdrop cameras once per rig (active scene cameras between the
-	/// menu and the world rig's depth, sorted ascending), turns the
-	/// skybox-clearing one into the copy's BASE and the rest into
-	/// replicas stacked under it, and re-types the grabber itself as
-	/// the stack's FINAL overlay - the world pass renders last, exactly
-	/// like the real rig. Every replica mirrors its real twin (pose,
-	/// FOV, clip planes, mask, depth) each frame in LateUpdate, so
-	/// whatever the engine drives for the real backdrop - sector
-	/// rotation, zoom, rig motion - stays live with no duplicate of
-	/// that logic here.
+	/// composition this project inherited from the original game. The
+	/// copy enumerates the real pack once per rig: every enabled camera
+	/// between a deep floor and the world rig's depth - this game's
+	/// space camera sits at depth -2 with a SolidColor clear, the
+	/// planets/sun and background-sprite cameras draw over it, and the
+	/// world rig (the camera the fold childrens under, v3.0) renders
+	/// last. Composed alone, a child of the world rig (v3.0) copied
+	/// only the pack's LAST member and the fold bent holes.
+	///
+	/// Who owns the copy's background: the pack member NEAREST the
+	/// world rig whose clear paints one (Skybox or SolidColor). Members
+	/// deeper than that clear are wiped under it in the real view the
+	/// same way, so they never enter the copy. Every remaining member
+	/// becomes an overlay replica stacked under the base, and the
+	/// grabber itself is re-typed as the stack's FINAL overlay - the
+	/// world pass renders last, exactly like the real rig. All replica
+	/// masks have the UI layers stripped: the interface camera may own
+	/// the background clear, but the interface never paints into the
+	/// copy. Every replica mirrors its real twin (pose, FOV, clip
+	/// planes, mask, depth) each frame in LateUpdate, so whatever the
+	/// engine drives for the real backdrop - sector rotation, zoom,
+	/// rig motion - stays live with no duplicate of that logic here.
 	///
 	/// Feedback: none. While the copy's world pass renders the grabber
 	/// raises the _CloakCopyPass global and every fold-material hull
@@ -82,9 +86,10 @@ namespace OpenFrontier
 
 		/// <summary>
 		/// The camera that owns the ping-pong target - the copy's base. In
-		/// a fallback rig (no skybox-clearing camera found between the menu
-		/// and the world rig) this is the grabber itself; with a composed
-		/// stack it is the sky replica. Unity-null after a scene teardown.
+		/// a fallback rig (no background-owning camera found between the
+		/// depth floor and the world rig) this is the grabber itself; with
+		/// a composed stack it is the background replica. Unity-null after
+		/// a scene teardown.
 		/// </summary>
 		private static Camera backdropCamera;
 
@@ -94,10 +99,7 @@ namespace OpenFrontier
 		/// <summary>The real backdrop cameras, in the order the view composites them.</summary>
 		private static readonly List<Camera> realBackdropCameras = new();
 
-		/// <summary>
-		/// The live mirrors of the same cameras, in matching order; entry
-		/// 0 is the copy base (the sky replica).
-		/// </summary>
+		/// <summary>The live mirrors of the same cameras, in matching order; entry 0 is the copy base.</summary>
 		private static readonly List<Camera> backdropReplicaCameras = new();
 
 		/// <summary>Which buffer is this frame's write target; the other one holds last frame's finished copy.</summary>
@@ -110,14 +112,13 @@ namespace OpenFrontier
 		private static RenderTexture bufferB;
 
 		// The rig scan needs the world's backdrop cameras to EXIST. Ensure
-		// runs inside GameController.Awake, while the game only has its own
-		// camera rig: the standalone sky/planet/tint prefab cameras are
-		// instantiated after it, and one played session proved the first
-		// scan found no sky camera ("no sky camera found") and settled the
-		// grabber in the sky-cleared fallback for the whole session. The
-		// fallback stays live meanwhile; whenever it has not found the rig
-		// yet, the scan retries on scene loads and on a slow timer, and
-		// upgrades to the composed stack the moment the rig exists.
+		// runs inside GameController.Awake, while the game may still be
+		// mid-instantiation: the world's backdrop pack and the additive
+		// scenes it rides on can arrive after, and a whole session once
+		// stood on the scan of a not-yet-live rig. The fallback stays
+		// live meanwhile; whenever it has not found the rig yet, the
+		// scan retries on scene loads and on a slow timer, and upgrades
+		// to the composed stack the moment the rig exists.
 		private static bool backdropPlanPending;
 
 		/// <summary>Frame-of-last-scan stamp; the retry is deliberately slow, world load takes under a second.</summary>
@@ -128,6 +129,46 @@ namespace OpenFrontier
 
 		private const int PlanRetryInterval = 60;
 		private const int PlanRetryLimit = 30;
+
+		// A pack camera can sit well below the world rig and still own
+		// the view's background: the played EngineScene drives its space
+		// camera at depth -2 (the SolidColor clear + starfield pass).
+		// The floor admits it; the menu itself is unreachable inside a
+		// world (scenario loads are LoadSceneMode.Single).
+		private const float PlanDepthFloor = -10f;
+
+		// Every copy-rig object carries this prefix (the grabber, the
+		// copy base, the replicas); the pack scan uses it as a guard so
+		// a still-parked old rig can never enumerate into a new plan.
+		private const string CopyRigPrefix = "CloakBackdrop";
+
+		/// <summary>UI layers stripped from every replica mask (cached once, lazily - never in a field initializer).</summary>
+		private static int uiStripMaskValue;
+
+		private static bool uiStripMaskReady;
+
+#if UNITY_EDITOR
+		/// <summary>
+		/// Rig state the dump table last printed for; a plan that keeps
+		/// failing prints its camera table once per distinct state
+		/// (dev builds only) instead of dying silently - the lesson that
+		/// killed v2.2: a copy rig that composes nothing looks like a
+		/// ghost.
+		/// </summary>
+		private static string lastRigDumpForDiagnostics;
+#endif
+
+		/// <summary>Mask of the UI layers to strip from copy-rig cameras; 0 when no UI layer exists.</summary>
+		private static int GetUiStripMask()
+		{
+			if (!uiStripMaskReady)
+			{
+				int uiLayer = LayerMask.NameToLayer("UI");
+				uiStripMaskValue = uiLayer >= 0 ? 1 << uiLayer : 0;
+				uiStripMaskReady = true;
+			}
+			return uiStripMaskValue;
+		}
 
 		/// <summary>
 		/// Wire the grabber onto the engine's render camera. Called by
@@ -213,9 +254,9 @@ namespace OpenFrontier
 			}
 			else
 			{
-				// No skybox-clearing camera between the menu and the world
-				// rig (an empty or odd world): the single-camera copy of
-				// v3.0, with one correction - the buffer is sky-cleared.
+				// No background-owning camera between the floor and the
+				// world rig (an empty or odd world): the single-camera copy
+				// of v3.0, with one correction - the buffer is sky-cleared.
 				// Without that the copy kept unwritten pixels between the
 				// nebula quads and the fold bent stale color.
 				grabber.clearFlags = CameraClearFlags.Skybox;
@@ -229,38 +270,75 @@ namespace OpenFrontier
 				backdropPlanPending = true;
 				nextPlanRetryFrame = 0;
 				planRetryCount = 0;
-				Report("no sky camera found - copy base is the grabber itself (sky-cleared); scan deferred");
+				Report("no background camera found - copy base is the grabber itself (covers no pack members); scan deferred");
 			}
 
 			Report($"grabber attached under '{camera.name}'");
 		}
 
 		/// <summary>
-		/// Mirror the real view's backdrop pack into a copy stack: the
-		/// skybox-clearing camera becomes the copy base, every other
-		/// backdrop camera becomes a replica stacked under it, and the
-		/// grabber itself is re-typed as the stack's final overlay (the
-		/// world pass renders last, like the real rig). Returns false when
-		/// no sky camera exists, which keeps the grabber a plain
-		/// single-camera copy and the caller in fallback mode.
+		/// Mirror the real view's backdrop pack into a copy stack. The
+		/// pack: every enabled camera between a deep floor and the world
+		/// rig's depth, sorted ascending. The copy's base is the member
+		/// NEAREST the world rig whose clear owns a background (Skybox or
+		/// SolidColor); members deeper than that clear are wiped under it
+		/// in the real view and never enter the copy. Every remaining
+		/// member becomes an overlay replica stacked under the base, and
+		/// the grabber itself is re-typed as the stack's final overlay
+		/// (the world pass renders last, like the real rig). All replica
+		/// masks have the UI layers stripped so the interface can never
+		/// paint into the copy. Returns false - the grabber stays a
+		/// plain single-camera copy, the caller in fallback mode - when
+		/// no background-owning camera exists.
 		/// </summary>
 		private static bool BuildBackdropStack(Camera grabber, GameObject grabberObject)
 		{
+			// A prior compose may ride on this grabber (scene loads
+			// re-open the plan): tear its replicas and stack list down
+			// before rebuilding, so no mirror leaks and the world pass is
+			// only ever on one stack.
+			if (backdropReplicaCameras.Count > 0)
+			{
+				Camera oldBase = backdropReplicaCameras[0];
+				if (oldBase != null)
+				{
+					oldBase.GetUniversalAdditionalCameraData().cameraStack.Clear();
+				}
+				foreach (Camera replica in backdropReplicaCameras)
+				{
+					if (replica != null)
+					{
+						Object.Destroy(replica.gameObject);
+					}
+				}
+				backdropReplicaCameras.Clear();
+			}
 			realBackdropCameras.Clear();
-			backdropReplicaCameras.Clear();
 
-			// One enumeration at rig creation - not the frame path.
-			// FindObjectsInactive.Exclude: menu and preview rigs stay out
-			// on their own where they exist.
+			// One enumeration at rig creation or plan retry - never the
+			// frame path. Inactive is INCLUDED on purpose: the pack filter
+			// tests liveness itself, and the diagnostics table is allowed
+			// to name cameras that are switched off.
 			List<Camera> sceneCameras = new List<Camera>(
-				Object.FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None));
+				Object.FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None));
+
+#if UNITY_EDITOR
+			// The rig table prints once per distinct camera state at the
+			// retry cadence (2 Hz worst case) - never per frame.
+			string rigDump = DumpRigForDiagnostics(sceneCameras);
+			if (rigDump != lastRigDumpForDiagnostics)
+			{
+				lastRigDumpForDiagnostics = rigDump;
+				Report(rigDump);
+			}
+#endif
+
 			foreach (Camera candidate in sceneCameras)
 			{
-				// The menu rig (depth < 0), the world rig and anything
-				// beyond it are not backdrop; our own grabber (already
-				// created, parked) is skipped explicitly.
 				if (candidate == null || candidate == grabber
-					|| !candidate.enabled || candidate.depth < 0f
+					|| !candidate.enabled || !candidate.gameObject.activeInHierarchy
+					|| candidate.name.StartsWith(CopyRigPrefix)
+					|| candidate.depth < PlanDepthFloor
 					|| candidate.depth >= mainCamera.depth)
 				{
 					continue;
@@ -269,25 +347,37 @@ namespace OpenFrontier
 			}
 			if (realBackdropCameras.Count == 0)
 			{
+				Report("no enabled camera between the depth floor and the world rig - copy stays single-camera fallback");
 				return false;
 			}
-			// The view composites far to near by depth - the sky first.
+			// The view composites far to near by depth - the deepest camera first.
 			realBackdropCameras.Sort((a, b) => a.depth.CompareTo(b.depth));
 
-			int skyIndex = -1;
-			for (int i = 0; i < realBackdropCameras.Count; i++)
+			// The copy base owns the buffer's background: the pack member
+			// NEAREST the world rig whose clear paints one (Skybox or
+			// SolidColor). Deeper members die under that clear in the real
+			// view the same way, so they are excluded from the copy.
+			int baseIndex = -1;
+			for (int i = realBackdropCameras.Count - 1; i >= 0; i--)
 			{
-				if (realBackdropCameras[i].clearFlags == CameraClearFlags.Skybox)
+				CameraClearFlags flags = realBackdropCameras[i].clearFlags;
+				if (flags == CameraClearFlags.Skybox || flags == CameraClearFlags.SolidColor)
 				{
-					skyIndex = i;
+					baseIndex = i;
 					break;
 				}
 			}
-			if (skyIndex < 0)
+			if (baseIndex < 0)
 			{
-				// No member clears the sky: there is no sky pass to mirror.
+				// No member paints a background: with nothing owning the
+				// buffer, a stack would only ever show stale pixels.
+				Report("no background-owning camera found (none clears Skybox or SolidColor) - copy stays single-camera fallback");
 				realBackdropCameras.Clear();
 				return false;
+			}
+			if (baseIndex > 0)
+			{
+				realBackdropCameras.RemoveRange(0, baseIndex);
 			}
 
 			// Everything is parented under the grabber object, so the copy
@@ -296,7 +386,7 @@ namespace OpenFrontier
 			for (int i = 0; i < realBackdropCameras.Count; i++)
 			{
 				Camera real = realBackdropCameras[i];
-				bool isBase = i == skyIndex;
+				bool isBase = i == baseIndex;
 				GameObject replicaObject = new GameObject(
 					isBase ? "CloakBackdropCopyBase" : "CloakBackdrop_" + real.name);
 				replicaObject.transform.SetParent(grabberObject.transform, worldPositionStays: false);
@@ -323,11 +413,11 @@ namespace OpenFrontier
 				backdropReplicaCameras.Add(replica);
 			}
 
-			// Stack order is the render order: base sky, then the rest of
-			// the backdrop pack ascending, then the world pass last.
-			// The grabber must be OVERLAY-TYPED BEFORE it is added - URP
-			// rejects a Base camera being added to a stack, and the world
-			// pass would silently never render into the copy.
+			// Stack order is the render order: base background first, then
+			// the rest of the backdrop pack ascending, then the world pass
+			// last. The grabber must be OVERLAY-TYPED BEFORE it is added -
+			// URP rejects a Base camera being added to a stack, and the
+			// world pass would silently never render into the copy.
 			UniversalAdditionalCameraData grabberData = grabber.GetUniversalAdditionalCameraData();
 			grabberData.renderType = CameraRenderType.Overlay;
 			UniversalAdditionalCameraData baseData = backdropReplicaCameras[0].GetUniversalAdditionalCameraData();
@@ -347,7 +437,11 @@ namespace OpenFrontier
 			replica.fieldOfView = real.fieldOfView;
 			replica.nearClipPlane = real.nearClipPlane;
 			replica.farClipPlane = real.farClipPlane;
-			replica.cullingMask = real.cullingMask;
+			// The UI layers are stripped here exactly like the per-frame
+			// mirror: a replica never paints the interface into the copy,
+			// even when the interface camera is itself a pack member - a
+			// background clear is inherited, interface content is not.
+			replica.cullingMask = real.cullingMask & ~GetUiStripMask();
 			replica.depth = real.depth;
 		}
 
@@ -361,7 +455,7 @@ namespace OpenFrontier
 		private static void ApplyStackedPlan(Camera grabber, UniversalAdditionalCameraData grabberData)
 		{
 			grabber.depth = mainCamera.depth;
-			// Overlays never clear; the base's skybox clear owns the
+			// Overlays never clear; the base's background clear owns the
 			// buffer, exactly like the real view.
 			grabber.clearFlags = CameraClearFlags.Nothing;
 			grabberData.renderType = CameraRenderType.Overlay;
@@ -375,8 +469,9 @@ namespace OpenFrontier
 		/// Retry the backdrop-rig scan once the world's cameras exist.
 		/// Called at a slow interval from LateUpdate; scene loads retry
 		/// immediately. On success the grabber upgrades from the fallback
-		/// to the composed stack; a real sky-less world settles the
-		/// fallback for good after a bounded number of attempts.
+		/// to the composed stack; a world with no background-owning
+		/// camera settles the fallback for good after a bounded number
+		/// of attempts.
 		/// </summary>
 		private void TryRebuildBackdropPlan()
 		{
@@ -398,11 +493,11 @@ namespace OpenFrontier
 			{
 				if (++planRetryCount >= PlanRetryLimit)
 				{
-					// Concluded: this world composes no skybox-clearing
-					// camera. The sky-cleared fallback stays; new worlds
-					// re-open the scan from each scene load.
+					// Concluded: this world composes no background-owning
+					// camera. The skycleared fallback stays; scene loads
+					// re-open the scan.
 					backdropPlanPending = false;
-					Report("backdrop scan gave up - staying sky-cleared fallback");
+					Report("backdrop scan gave up - staying single-camera fallback");
 				}
 				return;
 			}
@@ -429,13 +524,15 @@ namespace OpenFrontier
 
 		private static void OnSceneLoadedForRetry(Scene scene, LoadSceneMode mode)
 		{
-			if (!backdropPlanPending)
-			{
-				return;
-			}
-			// The new scene may contain the rig the old one lacked: open
-			// the timer gate so the running instance re-scans this frame.
+			// Every scene load re-opens the scan: the world's backdrop rig
+			// can arrive, the menu can leave, and even a COMPOSED plan is
+			// stale the moment the pack changes (a UI scene adding a
+			// depth-0 background-clearing camera, for instance).
+			// Rebuilds are safe - BuildBackdropStack tears the previous
+			// replicas and stack list down first.
 			nextPlanRetryFrame = 0;
+			planRetryCount = 0;
+			backdropPlanPending = mainCamera != null;
 		}
 
 		private void LateUpdate()
@@ -575,9 +672,12 @@ namespace OpenFrontier
 				{
 					replica.farClipPlane = real.farClipPlane;
 				}
-				if (replica.cullingMask != real.cullingMask)
+				// The UI layers never reach the copy through a re-mirrored
+				// mask either: strip at the same moment the mask moves.
+				int strippedMask = real.cullingMask & ~GetUiStripMask();
+				if (replica.cullingMask != strippedMask)
 				{
-					replica.cullingMask = real.cullingMask;
+					replica.cullingMask = strippedMask;
 				}
 				if (replica.depth != real.depth)
 				{
@@ -681,6 +781,35 @@ namespace OpenFrontier
 			snapshot.Create();
 			return snapshot;
 		}
+
+#if UNITY_EDITOR
+		// The camera table a failing scan prints, one line per camera.
+		// Built only here, at retry cadence, dev builds only - the same
+		// "no state change without a print" discipline that beat v2.2's
+		// silent capture.
+		private static string DumpRigForDiagnostics(List<Camera> sceneCameras)
+		{
+			string text = "camera rig scan (" + sceneCameras.Count + " cameras, floor " + PlanDepthFloor
+				+ ", world rig at "
+				+ (mainCamera != null ? mainCamera.depth.ToString("0.##") : "null") + ")";
+			foreach (Camera candidate in sceneCameras)
+			{
+				if (candidate == null)
+				{
+					text += "\n  <destroyed camera>";
+					continue;
+				}
+				text += "\n  '" + candidate.name + "'"
+					+ " depth=" + candidate.depth.ToString("0.##")
+					+ " clear=" + candidate.clearFlags
+					+ " mask=" + candidate.cullingMask
+					+ " activeInHierarchy=" + candidate.gameObject.activeInHierarchy
+					+ " enabled=" + candidate.enabled
+					+ " scene='" + candidate.gameObject.scene.name + "'";
+			}
+			return text;
+		}
+#endif
 
 		// One print per state change: the capture is invisible by nature
 		// and a silent grabber was the failure mode that killed v2.2.
