@@ -4,13 +4,13 @@ using UnityEngine.Rendering.Universal;
 namespace OpenFrontier
 {
 	/// <summary>
-	/// Open Frontier: drives the main camera's opaque-texture override from
-	/// CloakOpaqueTextureRequests, so the cloak shader's bent-light sample
-	/// (_CameraOpaqueTexture) only costs its fullscreen copy while some
-	/// hull is actually cloaking. Spawns next to ShadowQualitySync (see
-	/// its Awake -- additive components, no prefab wiring, no new-script
-	/// GUID dance), polls at 4 Hz, and touches the camera only when the
-	/// request state changes.
+	/// Open Frontier: drives the render camera's opaque-texture override
+	/// from CloakOpaqueTextureRequests, so the cloak shader's bent-light
+	/// sample (_CameraOpaqueTexture) only costs its fullscreen copy while
+	/// some hull is actually cloaking. Spawns next to ShadowQualitySync
+	/// (see its Awake -- additive components, no prefab wiring, no
+	/// new-script GUID dance), polls at 4 Hz, and applies only when the
+	/// request state or the provided camera changes.
 	///
 	/// The override lives on the camera's UniversalAdditionalCameraData
 	/// (requiresColorTexture, which the bool setter maps onto the On/Off
@@ -35,6 +35,10 @@ namespace OpenFrontier
 		// next poll instead of eating the state change.
 		private bool appliedWants;
 
+		// The camera that received the last apply: a REPLACED camera needs
+		// the same want re-applied even though wants did not change.
+		private Camera appliedCamera;
+
 		private void Update()
 		{
 			pollTimer += Time.unscaledDeltaTime;
@@ -43,21 +47,28 @@ namespace OpenFrontier
 				return;
 			}
 			pollTimer = 0f;
-			// Refreshed on real applies only: Camera.main is tagged on
-			// GameCamera/MenuCamera, and a destroyed camera fails Unity's
-			// null check so the next poll re-resolves the current one.
 			bool wantsNow = CloakOpaqueTextureRequests.Any;
-			if (wantsNow == appliedWants)
+			Camera provided = CloakOpaqueTextureRequests.ProvidedCamera;
+			if (wantsNow == appliedWants && provided == appliedCamera)
 			{
 				return;
 			}
-			Camera main = Camera.main;
-			if (main == null)
+			// The engine-provided render camera first (GameController hands
+			// its instantiation over); Camera.main is the fallback. A
+			// destroyed camera fails Unity's null check, so the next poll
+			// re-resolves.
+			Camera camera = CloakOpaqueTextureRequests.ProvidedCamera;
+			if (camera == null)
+			{
+				camera = Camera.main;
+			}
+			if (camera == null)
 			{
 				return;
 			}
 			appliedWants = wantsNow;
-			UniversalAdditionalCameraData cameraData = main.GetUniversalAdditionalCameraData();
+			appliedCamera = provided;
+			UniversalAdditionalCameraData cameraData = camera.GetUniversalAdditionalCameraData();
 			// The bool setter maps straight onto the On/Off override options.
 			cameraData.requiresColorTexture = wantsNow;
 		}

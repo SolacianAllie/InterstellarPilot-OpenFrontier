@@ -56,17 +56,42 @@ Shader "OpenFrontier/Ship Cloak"
 	// silhouette painted in _CloakTellColor so a friendly ghost is
 	// findable in a standing formation.
 	//
-	// WHY THE SHADER STAYS OPAQUE
+	// WHY THE HULL DRAWS IN THE TRANSPARENT PHASE (v2 -- measured bug)
 	//
-	// Blend One Zero, ZWrite On, Geometry queue. A cloaking hull never
-	// turns translucent: it swaps its own colour for a sample of the
-	// frame behind it, at the rate vis allows. No transparent queue, no
-	// sorting, no premultiply stack. Invisible at 100% falls out of the
-	// colour converging on bent background, not out of alpha. The thing
-	// a transparent shader would have needed is exactly the stack the
-	// ship shader refused to carry, and for the same reasons.
+	// v1 of this shader was opaque (Blend One Zero, Geometry queue) and
+	// went GREY in playtest: an opaque cloak hull renders BEFORE the
+	// opaque-texture copy, so the copy contains the ship itself, and the
+	// bent sample fed on its own previous output every frame -- the
+	// feedback diffused the hull into the frame's average colour. An
+	// opaque surface sampling a copy that includes itself can never look
+	// like the space behind it.
+	//
+	// The fix is the phase, and it is measured, not invented: the old
+	// IP2 cloak materials (MaterialMagnusCloakedPirateBlack etc) live on
+	// queue 3000 with _ZWrite 0 and DepthOnly/SHADOWCASTER disabled --
+	// transparent-phase surfaces drawn AFTER the copy. Painting the hull
+	// there means:
+	//
+	//   - the bent sample is the REAL background (opaques + sky, no ship,
+	//     no transparents), so the warp never feeds on itself;
+	//   - visibility is honest alpha: Blend SrcAlpha OneMinusSrcAlpha
+	//     with a = vis, so the true background shows through in exact
+	//     proportion to what the settings' floors leave of the hull.
+	//     Invisible at 100% is the blend's job; the bend stays visible
+	//     through the ramp (that is the "space distorts" effect) and the
+	//     friendly rim rides on what survives the floors;
+	//   - ZWrite Off like the old shell: engine flames and later
+	//     transparents are unsilenced behind the ghost, instead of a
+	//     invisible depth block eating them. Additive sorted draws are
+	//     handled by the transparent queue's back-to-front sort; the
+	//     hull still occludes OPAQUE geometry via the depth test because
+	//     opaques are written before this phase and the hull is its own
+	//     depth-test participant against them.
+	//   - ShadowCaster/DepthOnly clip from the first tick of cloak: the
+	//     same output the old material got by disabling those passes.
 	//
 	// _CameraOpaqueTexture
+	//
 	//
 	// Bend needs the frame behind the ship. This URP project does NOT
 	// request the opaque texture globally (m_OpaqueTexture off on the
@@ -149,8 +174,8 @@ Shader "OpenFrontier/Ship Cloak"
 		{
 			"RenderPipeline" = "UniversalPipeline"
 			"UniversalMaterialType" = "Lit"
-			"RenderType" = "Opaque"
-			"Queue" = "Geometry"
+			"RenderType" = "Transparent"
+			"Queue" = "Transparent"
 			"IgnoreProjector" = "True"
 		}
 
@@ -195,8 +220,12 @@ Shader "OpenFrontier/Ship Cloak"
 			Name "ForwardLit"
 			Tags { "LightMode" = "UniversalForward" }
 
-			Blend One Zero
-			ZWrite On
+			// Transparent-phase hull drawn AFTER the opaque-texture copy
+			// (the measured design of the v2 header). Straight alpha; the
+			// old shells used premultiply, which renders the same picture
+			// through One - this keeps alpha == vis legible.
+			Blend SrcAlpha OneMinusSrcAlpha
+			ZWrite Off
 			ZTest LEqual
 			Cull [_Cull]
 
@@ -394,8 +423,11 @@ Shader "OpenFrontier/Ship Cloak"
 
 				half4 color = UniversalFragmentPBR(inputData, surfaceData);
 				color.rgb = MixFog(color.rgb, inputData.fogCoord);
+				// Alpha 1 for the rest hull; the cloak branch replaces it
+				// with the visibility the settings describe.
+				color.a = 1.0h;
 
-				// ---- the cloak: bend the frame behind the hull, then close it ----
+				// ---- the cloak: bend the frame behind the hull, then release it ----
 				// Uniform-scalar branch: decloaked hulls pay nothing past the
 				// compare, the sampler stays bound but is never read.
 				half cloak = saturate(_CloakAmount);
@@ -426,6 +458,10 @@ Shader "OpenFrontier/Ship Cloak"
 					// above; the copy is a finished, already-fogged frame -- both
 					// sides of the lerp are in the same space, do not fog again.
 					color.rgb = lerp(color.rgb, bent, 1.0h - vis);
+					// Alpha IS the visibility: what remains of the hull after
+					// the settings' floors, blended over the true background.
+					// The bend paint rides on the surviving hull, opacity-wise.
+					color.a = vis;
 
 					// The friendly tell: a rim of structure over the smear, only
 					// on hulls ActiveUnit marks as owned/allied-near. Players see
@@ -433,8 +469,6 @@ Shader "OpenFrontier/Ship Cloak"
 					half rim = 1.0h - saturate(dot(inputData.normalWS, inputData.viewDirectionWS));
 					color.rgb += _CloakTellColor.rgb * (_CloakFriendly * rim * rim);
 				}
-
-				color.a = 1.0;
 
 				return color;
 			}
