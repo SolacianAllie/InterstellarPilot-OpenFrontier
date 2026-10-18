@@ -653,6 +653,7 @@ namespace OpenFrontier.IP.Engine.SaveGame
 				return;
 			}
 			engine.World.CreatedVersion = Versioning.Version;
+			Dictionary<Unit, int> dictionary = new Dictionary<Unit, int>();
 			foreach (Sector sector in EngineASX.Instance.Sectors)
 			{
 				List<Unit> unitsByType = sector.GetUnitsByType(UnitType.Planet);
@@ -669,9 +670,21 @@ namespace OpenFrontier.IP.Engine.SaveGame
 						// dragged up to it: roll the size, then size the
 						// orbit to the two bodies. A moon whose planet is
 						// null measures 0 and RandomizeMoon falls back to
-						// the settings pair inside.
+						// the settings pair inside. The ring is the moon's
+						// ordinal around its host (ladder spans the whole
+						// pass), so even a multi-moon migration staggers
+						// instead of stacking on one band.
+						int num2 = 0;
+						if (component.OrbitingAroundUnit != null)
+						{
+							if (dictionary.TryGetValue(component.OrbitingAroundUnit, out var value))
+							{
+								num2 = value;
+							}
+							dictionary[component.OrbitingAroundUnit] = num2 + 1;
+						}
 						item.ApplyPlanetVisualScale();
-						CreatePlanetsSeeder.RandomizeMoon(component, GameController.Instance.GameSettings.DefaultWorldSeedSettings.CreatePlanetsSeederSettings, CreatePlanetsSeeder.MeasureVisualRadius(component.OrbitingAroundUnit), CreatePlanetsSeeder.MeasureVisualRadius(item));
+						CreatePlanetsSeeder.RandomizeMoon(component, GameController.Instance.GameSettings.DefaultWorldSeedSettings.CreatePlanetsSeederSettings, CreatePlanetsSeeder.MeasureVisualRadius(component.OrbitingAroundUnit), CreatePlanetsSeeder.MeasureVisualRadius(item), num2);
 					}
 					else
 					{

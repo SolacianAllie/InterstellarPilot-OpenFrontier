@@ -359,12 +359,16 @@ namespace OpenFrontier.IP.Engine
 			// stock 0.8 roll may already have produced one, which counts.
 			int num = RollMenuMoonTargetCount();
 			int num2 = 0;
+			Dictionary<Unit, int> dictionary = new Dictionary<Unit, int>();
 			List<Unit> list = new List<Unit>();
 			EngineASX.Instance.EnumerateUnitsWithPredicate(delegate(Unit unit)
 			{
-				if (unit.GetComponent<Moon>() != null && unit.Sector == sector)
+				Moon component3 = unit.GetComponent<Moon>();
+				if (component3 != null && component3.OrbitingAroundUnit != null && unit.Sector == sector)
 				{
 					num2++;
+					dictionary.TryGetValue(component3.OrbitingAroundUnit, out var value2);
+					dictionary[component3.OrbitingAroundUnit] = value2 + 1;
 				}
 				else if (unit.Sector == sector)
 				{
@@ -374,6 +378,14 @@ namespace OpenFrontier.IP.Engine
 			if (list.Count > 0 && PlanetsSettings.MoonPrefabs.Count > 0)
 			{
 				Unit unit2 = list[list.Count - 1];
+				// Rings are per host: the moons the seeder already put
+				// around unit2 own the inner shells, so each top-up
+				// continues at the next ring out.
+				int num5 = 0;
+				if (dictionary.TryGetValue(unit2, out var value3))
+				{
+					num5 = value3;
+				}
 				for (int i = num2; i < num; i++)
 				{
 					Unit unit3 = UnityObjectHelper.InstantiateAndGetComponent(PlanetsSettings.MoonPrefabs[UnityEngine.Random.Range(0, PlanetsSettings.MoonPrefabs.Count)]);
@@ -389,7 +401,7 @@ namespace OpenFrontier.IP.Engine
 						Unit unit4 = unit3.GetComponent<Unit>();
 						unit4.Init(autoFindParents: false);
 						unit4.ApplyPlanetVisualScale();
-						CreatePlanetsSeeder.RandomizeMoon(component, PlanetsSettings, CreatePlanetsSeeder.MeasureVisualRadius(unit2), CreatePlanetsSeeder.MeasureVisualRadius(unit3));
+						CreatePlanetsSeeder.RandomizeMoon(component, PlanetsSettings, CreatePlanetsSeeder.MeasureVisualRadius(unit2), CreatePlanetsSeeder.MeasureVisualRadius(unit3), num5++);
 						unit3.Sector = sector;
 					}
 				}

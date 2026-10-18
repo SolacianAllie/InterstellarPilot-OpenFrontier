@@ -26,8 +26,12 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 	//
 	//	planet distance   = max( radius * 2.17..2.2 ,
 	//	                         play bound + radius + clearance )
-	//	moon orbit        = max( planet radius * 11.5..12.5 ,
+	//	moon orbit        = max( planet radius * (11.5 + ring*2.5 + 0..1) ,
 	//	                         planet radius + moon radius*2 + clearance )
+	//
+	// The ring index is the moon's ordinal around ITS OWN host (spawn
+	// order), so a multi-moon system staggers into unique shells the way
+	// real ones do, instead of stacking every body on one band.
 	//
 	// Both bands are CALIBRATED against the numbers they replace. The
 	// planet band lands a stock body almost exactly where the old annulus
@@ -71,6 +75,14 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 		// Slack under a moon (radius*2) inside its own orbit when the
 		// proportional band would try to park a moon inside its planet.
 		public const float MoonOrbitClearance = 1200f;
+
+		// Staggered rings: every moon of a host owns its own shell, spawn
+		// order inner-to-outer, so no two moons of a system ever share a
+		// distance. The 0..1 per-ring roll is jitter; adjacent rings stay
+		// >= 1.5 radii apart, so uniqueness survives it.
+		public const float MoonRingInnerFactor = 11.5f;
+
+		public const float MoonRingSpacing = 2.5f;
 
 		public CreatePlanetsSeederSettings CreatePlanetsSeederSettings;
 
@@ -153,7 +165,7 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 							// the orbit's floor guard reads that size.
 							unit2.GetComponent<Unit>().Init(autoFindParents: false);
 							unit2.ApplyPlanetVisualScale();
-							RandomizeMoon(component, CreatePlanetsSeederSettings, visualRadius, MeasureVisualRadius(unit2));
+							RandomizeMoon(component, CreatePlanetsSeederSettings, visualRadius, MeasureVisualRadius(unit2), 0);
 							unit2.Sector = sector;
 						}
 						else
@@ -168,18 +180,19 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 		// Orbit radius rides the PLANET's radius, not a global constant: a
 		// gas giant's moons are pushed proportionally out, a small planet's
 		// moons hug it, and proportionality keeps the silhouette the same
-		// whatever the bodies do. The band is 11.5..12.5 - it started as
-		// 8.3..8.7 (a doubling of the 4.3..4.5 that replaced the settings-era
-		// flat 40000, authored for the sector map, not a camera) and play
-		// pushed it out once more: a stock planet's
-		// moons now orbit at about 109200 (9100 * 12), proportionally the
-		// same silhouette in a sky that fits it. The floor guard keeps a
-		// scaled-up moon out of
-		// its own planet: the moon needs its diameter plus slack inside the
-		// orbit rim. A planet that failed to measure (no active unit prefab
-		// loaded) falls back to the settings pair, which is exactly the
-		// stock flat behaviour.
-		public static void RandomizeMoon(Moon moonComponent, CreatePlanetsSeederSettings settings, float planetVisualRadius, float moonVisualRadius)
+		// whatever the bodies do.
+		//
+		// Rings are staggered per host: ringIndex - the moon's ordinal
+		// around its own planet, in spawn order - picks the shell at
+		// 11.5 + ring * 2.5 radii, plus a 0..1 radius jitter. Every moon
+		// of a system keeps a unique distance; neighbours never stack on
+		// one band, and ring 0 keeps the familiar 11.5..12.5 the
+		// single-moon case tuned. The floor guard keeps a scaled-up moon
+		// out of its own planet: the moon needs its diameter plus slack
+		// inside the orbit rim. A planet that failed to measure (no
+		// active unit prefab loaded) falls back to the settings pair,
+		// which is exactly the stock flat behaviour.
+		public static void RandomizeMoon(Moon moonComponent, CreatePlanetsSeederSettings settings, float planetVisualRadius, float moonVisualRadius, int ringIndex)
 		{
 			float num = Random.value * 360f;
 			float num2 = settings.MaxMoonAngleXFromPlanet;
@@ -187,7 +200,7 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 			float num4;
 			if (planetVisualRadius > 0f)
 			{
-				float num5 = planetVisualRadius * Random.Range(11.5f, 12.5f);
+				float num5 = planetVisualRadius * (MoonRingInnerFactor + (float)ringIndex * MoonRingSpacing + Random.Range(0f, 1f));
 				float num6 = planetVisualRadius + moonVisualRadius * 2f + MoonOrbitClearance;
 				num4 = Mathf.Max(num5, num6);
 			}
