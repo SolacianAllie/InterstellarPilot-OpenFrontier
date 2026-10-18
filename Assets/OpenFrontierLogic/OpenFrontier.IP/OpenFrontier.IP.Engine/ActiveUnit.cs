@@ -78,6 +78,19 @@ namespace OpenFrontier.IP.Engine
 
 		private float lastFadeAlpha = -1f;
 
+		// Open Frontier: cloak-shader state. A hull whose material carries
+		// the cloak uniforms (_CloakAmount exists) is driven directly by
+		// this unit: the legacy cloak-shell and outline renderers stay
+		// dark and the hull trades itself for bent light inside the
+		// shader (OpenFrontier/Ship Cloak). Everything else keeps the old
+		// shell behaviour untouched.
+		private bool cloakCapableHullChecked;
+		private bool cloakCapableHull;
+		private float lastCloakAmount = -1f;
+		private float lastCloakFloor = -1f;
+		private int lastCloakFriendly = -1;
+		private bool wantsCloakSceneColor;
+
 		public bool IsInDrawRange => inDrawRange;
 
 		public Unit Unit
@@ -95,6 +108,9 @@ namespace OpenFrontier.IP.Engine
 					{
 						unit.ActiveUnit = this;
 					}
+					// A reassigned unit starts a fresh cloak history: the cached
+					// pushes must not carry the previous hull's values.
+					ResetCloakMaterialState();
 				}
 			}
 		}
@@ -156,6 +172,38 @@ namespace OpenFrontier.IP.Engine
 			ApplyRenderMode();
 		}
 
+		private void OnEnable()
+		{
+			// A re-enabled unit restarts its cloak history: the first
+			// ApplyCloakToUnitRenderers must push for real, not skip on a
+			// stale "unchanged" verdict from a previous draw cycle.
+			ResetCloakMaterialState();
+		}
+
+		private void OnDisable()
+		{
+			// Scene teardown or despawn: a dead unit must not keep the
+			// opaque-texture copy running for the fleet forever.
+			ReleaseCloakSceneColor();
+		}
+
+		private void ResetCloakMaterialState()
+		{
+			lastCloakAmount = -1f;
+			lastCloakFloor = -1f;
+			lastCloakFriendly = -1;
+			ReleaseCloakSceneColor();
+		}
+
+		private void ReleaseCloakSceneColor()
+		{
+			if (wantsCloakSceneColor)
+			{
+				wantsCloakSceneColor = false;
+				CloakOpaqueTextureRequests.Request(wants: false);
+			}
+		}
+
 		private void SetCloakOutlineRendererEnabled(bool enabled)
 		{
 			if (CloakOutlineRenderer != null)
@@ -209,11 +257,18 @@ namespace OpenFrontier.IP.Engine
 			}
 			if (inDrawRange)
 			{
+				if (IsCloakCapableHull())
+				{
+					// The hull's own shader owns cloaking: no shell swaps, no
+					// render mode. Amount and floor are pushed every frame while
+					// anything is actually changing.
+					UpdateCloakMaterial();
+					return;
+				}
 				UpdateRenderMode();
 				switch (activeUnitRenderMode)
 				{
 				case ActiveUnitRenderMode.Opaque:
-					UpdateOpaqueMaterial(unit.Faction);
 					break;
 				case ActiveUnitRenderMode.Fade:
 					UpdateFadeMaterial();
@@ -231,10 +286,6 @@ namespace OpenFrontier.IP.Engine
 			return UnityEngine.Random.rotation * Vector3.forward * UnityEngine.Random.Range(0f, unit.UnitClass.DisplayData.Radius * 0.5f);
 		}
 
-		public void UpdateOpaqueMaterial(Faction owner)
-		{
-		}
-
 		public void UpdateFadeForConstructionProgressValue(float constructionProgress, Faction owner)
 		{
 			VideoSettings videoSettings = GameController.Instance.GameSettings.VideoSettings;
@@ -244,6 +295,15 @@ namespace OpenFrontier.IP.Engine
 
 		public void SetFadeAlpha(float alpha, Faction owner)
 		{
+			if (IsCloakCapableHull())
+			{
+				// External fade control (BuildModePlacementScreen preview and
+				// friends): alpha is visibility. The cloak shader gets the
+				// complement as amount with no persistent floor, so the wanted
+				// alpha is exactly the alpha shown.
+				ApplyCloakToUnitRenderers(1f - Mathf.Clamp01(alpha), 0f);
+				return;
+			}
 			if (LevelOfDetail)
 			{
 				if (lastFadeAlpha == alpha)
@@ -278,6 +338,103 @@ namespace OpenFrontier.IP.Engine
 			meshRenderer.SetPropertyBlock(cloakMaterialPropertyBlock);
 		}
 
+		private bool IsCloakCapableHull()
+		{
+			if (!cloakCapableHullChecked)
+			{
+				cloakCapableHullChecked = true;
+				// One probe at first use: the hulls' materials are fixed per
+				// prefab (UpdateOpaqueMaterial was an empty stub, nothing swaps
+				// them at runtime), so this verdict never goes stale.
+				MeshRenderer meshRenderer = (LevelOfDetail && UnitRenderers.Count > 0) ? UnitRenderers[0] : UnitRenderer;
+				Material hullMaterial = ((meshRenderer != null) ? meshRenderer.sharedMaterial : null);
+				cloakCapableHull = ((hullMaterial != null) && hullMaterial.HasProperty("_CloakAmount"));
+			}
+			return cloakCapableHull;
+		}
+
+		private void UpdateCloakMaterial()
+		{
+			if (unit.IsUnderConstructionOrDismantling)
+			{
+				// The same strobe settings the legacy shell used, expressed as
+				// cloak amount: visibility inverted, no persistent floor.
+				VideoSettings videoSettings = GameController.Instance.GameSettings.VideoSettings;
+				float alpha = Mathf.Lerp(videoSettings.StationUnderConstructionMinAlpha, videoSettings.StationUnderConstructionMaxAlpha, (Mathf.Sin(unit.Components.ConstructionProgress * unit.UnitClass.maxHealth * videoSettings.StationUnderConstructionAlphaFadeRate) + 1f) / 2f);
+				ApplyCloakToUnitRenderers(1f - alpha, 0f);
+			}
+			else if (!unit.IsFullyDecloaked)
+			{
+				// Cloak progress under the same power curve the shell alpha
+				// used, with the settings' visibility floor for full cloak
+				// (0.3 owned/allied, 0.07 enemies).
+				CloakComponent cloakComponent = unit.Components.CloakComponent;
+				VideoSettings videoSettings2 = GameController.Instance.GameSettings.VideoSettings;
+				float cloakAmount = Mathf.Pow(cloakComponent.CloakProgress, videoSettings2.CloakAlphaPower);
+				ApplyCloakToUnitRenderers(cloakAmount, cloakComponent.GetCloakMinAlpha());
+			}
+			else
+			{
+				ApplyCloakToUnitRenderers(0f, 0f);
+			}
+		}
+
+		private void ApplyCloakToUnitRenderers(float cloakAmount, float visibleFloor)
+		{
+			// vis = how much of the hull's own material survives; the shader
+			// spends 1 - vis on bent background. Same surface the old alpha
+			// floors described, read through the hull instead of a shell.
+			float visible = Mathf.Lerp(1f, Mathf.Clamp01(visibleFloor), Mathf.Clamp01(cloakAmount));
+			// The friendly tell gate is the old outline gate: owned or allied,
+			// and either the current unit or close enough to read.
+			int friendly = (!(unit.IsPlayerOrAllied() && (unit.IsPlayerCurrentUnit || lastDistanceFromCamera < 1500f))) ? 0 : 1;
+			bool draw = visible > 0.003f;
+			if (cloakAmount != lastCloakAmount || visibleFloor != lastCloakFloor || friendly != lastCloakFriendly)
+			{
+				lastCloakAmount = cloakAmount;
+				lastCloakFloor = visibleFloor;
+				lastCloakFriendly = friendly;
+				if (cloakMaterialPropertyBlock == null)
+				{
+					cloakMaterialPropertyBlock = new MaterialPropertyBlock();
+				}
+				if (LevelOfDetail)
+				{
+					foreach (MeshRenderer unitRenderer in UnitRenderers)
+					{
+						unitRenderer.enabled = draw;
+						ApplyCloakMaterialPropertyBlock(unitRenderer, cloakAmount, visibleFloor, friendly);
+					}
+				}
+				else
+				{
+					if (UnitRenderer != null)
+					{
+						UnitRenderer.enabled = draw;
+						ApplyCloakMaterialPropertyBlock(UnitRenderer, cloakAmount, visibleFloor, friendly);
+					}
+				}
+			}
+			// The bend needs the frame behind the hull. Track transitions once:
+			// the opaque-texture copy is ON only while some hull actually
+			// deflects light, not for every decloaked ship carrying the shader.
+			bool wants = cloakAmount > 0.001f;
+			if (wantsCloakSceneColor != wants)
+			{
+				wantsCloakSceneColor = wants;
+				OpenFrontier.CloakOpaqueTextureRequests.Request(wants);
+			}
+		}
+
+		private void ApplyCloakMaterialPropertyBlock(MeshRenderer meshRenderer, float cloakAmount, float visibleFloor, int friendly)
+		{
+			meshRenderer.GetPropertyBlock(cloakMaterialPropertyBlock);
+			cloakMaterialPropertyBlock.SetFloat("_CloakAmount", cloakAmount);
+			cloakMaterialPropertyBlock.SetFloat("_CloakFloor", visibleFloor);
+			cloakMaterialPropertyBlock.SetFloat("_CloakFriendly", friendly);
+			meshRenderer.SetPropertyBlock(cloakMaterialPropertyBlock);
+		}
+
 		public void UpdateRenderMode()
 		{
 			ActiveUnitRenderMode = ((!unit.IsFullyDecloaked || unit.IsUnderConstructionOrDismantling) ? ActiveUnitRenderMode.Fade : ActiveUnitRenderMode.Opaque);
@@ -285,10 +442,10 @@ namespace OpenFrontier.IP.Engine
 
 		private void UpdateFadeMaterial()
 		{
-			if (CloakOutlineRenderer != null || CloakOutlineRenderers.Count > 0)
-			{
-				SetCloakOutlineRendererEnabled(GameController.Instance.RenderCloakedShipOutlinesEnabled && unit.CloakState == CloakState.Cloaked && unit.IsPlayerOrAllied() && (unit.IsPlayerCurrentUnit || lastDistanceFromCamera < 1500f));
-			}
+			// The cloak outline is gone: owned-ship visibility while
+			// construction/cloak fading belongs to the materials now (the
+			// cloak shader pushes the tell from within; non-cloak hulls keep
+			// their shell, which was always the visible thing here).
 			if (unit.IsUnderConstructionOrDismantling)
 			{
 				UpdateFadeForConstructionProgressValue(unit.Components.ConstructionProgress * unit.UnitClass.maxHealth, Unit.Faction);
@@ -630,6 +787,37 @@ namespace OpenFrontier.IP.Engine
 
 		public void ApplyRenderMode()
 		{
+			if (IsCloakCapableHull())
+			{
+				// The cloak shader owns visibility through _CloakAmount: shells
+				// and outlines stay dark for good, the hull draws until nothing
+				// is left to draw (ApplyCloakToUnitRenderers toggles it per
+				// frame).
+				if (LevelOfDetail)
+				{
+					foreach (MeshRenderer cloakRenderer in CloakRenderers)
+					{
+						cloakRenderer.enabled = false;
+					}
+					foreach (MeshRenderer unitRenderer in UnitRenderers)
+					{
+						unitRenderer.enabled = true;
+					}
+				}
+				else
+				{
+					if (CloakRenderer != null)
+					{
+						CloakRenderer.enabled = false;
+					}
+					if (UnitRenderer != null)
+					{
+						UnitRenderer.enabled = true;
+					}
+				}
+				SetCloakOutlineRendererEnabled(enabled: false);
+				return;
+			}
 			if (LevelOfDetail)
 			{
 				foreach (MeshRenderer cloakRenderer in CloakRenderers)

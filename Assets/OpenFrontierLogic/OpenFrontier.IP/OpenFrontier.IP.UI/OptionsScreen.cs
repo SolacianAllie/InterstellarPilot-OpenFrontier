@@ -170,7 +170,10 @@ namespace OpenFrontier.IP.UI
 			PreferRespawnOnDeathToggle.onValueChanged.AddListener(PreferRespawnOnDeathToggleValueChanged);
 			CalibrateTiltButton.onClick.AddListener(CalibrateTiltButton_Activated);
 			SpaceFogEnabledToggle.onValueChanged.AddListener(SpaceFogEnabledToggle_ValueChanged);
-			RenderCloakedShipOutlinesEnabledToggle.onValueChanged.AddListener(RenderCloakedShipOutlinesEnabledToggle_ValueChanged);
+			// The cloak outline is gone (its visibility is built into the
+			// cloak shader now): the row stays in the prefab but is hidden,
+			// its listener never wired.
+			RenderCloakedShipOutlinesEnabledToggle.gameObject.SetActive(value: false);
 			WormholeAnimationToggle.onValueChanged.AddListener(WormholeAnimationToggle_ValueChanged);
 			LightingFXToggle.onValueChanged.AddListener(LightingFXToggleValueChanged);
 			string[] names = QualitySettings.names;
@@ -420,7 +423,6 @@ namespace OpenFrontier.IP.UI
 				AutoCloseInGameMenuToggle.isOn = GameController.Instance.AutoCloseInGameMenu;
 				SpaceFogEnabledToggle.isOn = GameController.Instance.SpaceFogEnabled;
 				WormholeAnimationToggle.isOn = GameController.Instance.PlayerOptions.Video_WormholeAnimationEnabled;
-				RenderCloakedShipOutlinesEnabledToggle.isOn = GameController.Instance.RenderCloakedShipOutlinesEnabled;
 				LightingFXToggle.isOn = GameController.Instance.LightingFXEnabled;
 				ForceTouchControlEnabledToggle.isOn = GameController.Instance.ForceTouchInputEnabled;
 				TiltControlEnabledToggle.isOn = GameController.Instance.TiltControlEnabled;
@@ -640,14 +642,6 @@ namespace OpenFrontier.IP.UI
 			if (GameController.Instance != null)
 			{
 				GameController.Instance.SpaceFogEnabled = value;
-			}
-		}
-
-		private void RenderCloakedShipOutlinesEnabledToggle_ValueChanged(bool value)
-		{
-			if (GameController.Instance != null)
-			{
-				GameController.Instance.RenderCloakedShipOutlinesEnabled = value;
 			}
 		}
 

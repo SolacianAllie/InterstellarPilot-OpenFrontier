@@ -325,8 +325,6 @@ namespace OpenFrontier.IP.Engine
 
 		public const bool DefaultSpaceFogEnabled = true;
 
-		public const bool DefaultRenderCloakedShipOutlinesEnabled = true;
-
 		public float HypersleepTimeMultiplier = 8f;
 
 		public string HypersleepTimeMultiplierKey = "hypersleep_time_multiplier";
@@ -342,10 +340,6 @@ namespace OpenFrontier.IP.Engine
 		public string GraphicsQualityLevelKey = "graphics_quality_level";
 
 		public int DefaultQualityLevel = 2;
-
-		public bool RenderCloakedShipOutlinesEnabled = true;
-
-		public string RenderCloakedShipOutlinesKey = "cloaked_outline_enabled";
 
 		public string SpaceFogEnabledKey = "space_fog_enabled";
 
@@ -575,7 +569,6 @@ namespace OpenFrontier.IP.Engine
 			PlayerPrefs.SetInt(PlayButtonSoundsKey, Helper.BoolTo01(PlayButtonSounds));
 			PlayerPrefs.SetInt(PlayerOptionConstants.Audio_MissileLockSoundKey, Helper.BoolTo01(PlayerOptions.Audio_MissileLockSound));
 			PlayerPrefs.SetInt(SpaceFogEnabledKey, Helper.BoolTo01(SpaceFogEnabled));
-			PlayerPrefs.SetInt(RenderCloakedShipOutlinesKey, Helper.BoolTo01(RenderCloakedShipOutlinesEnabled));
 			PlayerPrefs.SetInt(PlayerOptionConstants.Video_WormholeAnimationEnabledKey, Helper.BoolTo01(PlayerOptions.Video_WormholeAnimationEnabled));
 			PlayerPrefs.SetInt(LightingFXEnabledKey, Helper.BoolTo01(LightingFXEnabled));
 			PlayerPrefs.SetInt(PreferCameraLockKey, Helper.BoolTo01(PreferCameraLock));
@@ -747,7 +740,6 @@ namespace OpenFrontier.IP.Engine
 			int defaultValue = CombatDifficultyLevels.IndexOf(DefaultCombatDifficultyLevel);
 			CombatDifficultyLevelIndex = Mathf.Clamp(PlayerPrefs.GetInt(CombatDifficultyLevelKey, defaultValue), 0, CombatDifficultyLevels.Length);
 			SpaceFogEnabled = PlayerPrefs.GetInt(SpaceFogEnabledKey, Helper.BoolToInt(val: true)) > 0;
-			RenderCloakedShipOutlinesEnabled = PlayerPrefs.GetInt(RenderCloakedShipOutlinesKey, Helper.BoolToInt(val: true)) > 0;
 			PlayerOptions.Video_WormholeAnimationEnabled = PlayerPrefs.GetInt(PlayerOptionConstants.Video_WormholeAnimationEnabledKey, Helper.BoolToInt(PlayerOptionConstants.Video_DefaultWormholeAnimationEnabled)) > 0;
 			LightingFXEnabled = PlayerPrefs.GetInt(LightingFXEnabledKey, Helper.BoolToInt(val: true)) > 0;
 			PreferCameraLock = PlayerPrefs.GetInt(PreferCameraLockKey, 0) > 0;
