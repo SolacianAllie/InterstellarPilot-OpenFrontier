@@ -137,67 +137,69 @@ Shader "OpenFrontier/Planet Gas Giant"
 	//
 	// THE DECK MOVES
 	//
-	// A fluid surface that never moves reads as glass. The deck gets two
-	// kinds of motion, and both are the same displacement applied to the
-	// ALBEDO's U coordinate before it is sampled -- never to the mesh:
+	// A fluid surface that never moves reads as glass. One displacement,
+	// applied to the ALBEDO's U coordinate before it is sampled -- never
+	// to the mesh -- with two rate terms inside it:
 	//
-	//   1. BAND SHEAR. Where red is high, the deck is pushed east; where
-	//      red is low, west. Belt-versus-zone shear, sourced from the
-	//      reference's own band structure, authored into the texture.
-	//   2. THE CONVEYOR. The whole deck streams east continuously at
-	//      _BandStreamSpeed, and the shear pattern RIDES that stream:
-	//      the reference is sampled at u + drift while the deck content
-	//      is taken at u - drift, so the shear travels with the flow
-	//      instead of pulling the content away from a frozen frame.
+	//   1. THE CONVEYOR. Everything streams at _BandStreamSpeed, a base
+	//      crawl in UV per second that every pixel shares.
+	//   2. THE JETS. Each latitude adds its own constant rate on top,
+	//      scaled by _BandDispStrength from the reference's red value at
+	//      that latitude. The reference is read down ONE vertical
+	//      column at a fixed coarse LOD, so the speed profile is a clean
+	//      latitude curve instead of cloud noise: bands stream fast and
+	//      slow in alternation, some in the opposite direction to the
+	//      conveyor -- zonal flow, the thing that makes a gas giant read
+	//      as weather rather than a decal turning on a stick.
 	//
-	// Two earlier designs are recorded because both failed visibly, for
+	// Three earlier designs are recorded because all three failed, for
 	// reasons worth more than their lines of code:
 	//
 	//   - A sin() wobble oscillated: bands slid back and forth. A fluid
 	//     that keeps reversing reads as a motor, not weather.
 	//   - A two-phase flow-map cross-fade (two deck samples, triangle
-	//     weights) never reversed either -- and still read as the
-	//     texture "resetting". Its weighted-mean displacement is
-	//     identically ZERO at every instant, so the strong band edges,
-	//     which dominate perception, slide half a span and then
-	//     collapse back to where they started, twice per cycle. Only
-	//     noise-like content can hide that collapse; a banded deck
-	//     cannot.
+	//     weights) never reversed -- and still read as the texture
+	//     "resetting". Its weighted-mean displacement is identically
+	//     ZERO at every instant, so the strong band edges, which
+	//     dominate perception, slide half a span and then collapse back
+	//     to where they started, twice per cycle. Only noise-like
+	//     content can hide that collapse; a banded deck cannot.
+	//   - One displacement scaled by the reference's U-gradient, with
+	//     the shear pattern riding the flow, was monotone and
+	//     reset-free -- and showed almost no relative band motion. The
+	//     differential rate that scheme produces is
+	//     stream * strength * the reference's U-gradient, and a
+	//     latitude curve has nearly none: every band slid together, one
+	//     rigid sheet. That read as worse than the artifact it fixed.
 	//
-	// The conveyor has neither failure, and this is why:
+	// The jet design has none of those failures, and this is why:
 	//
-	//   - Every pixel's sampled coordinate runs at
-	//     -_BandStreamSpeed * (1 - _BandDispStrength * dRef/du), which
-	//     keeps its sign for as long as _BandDispStrength * the
-	//     reference's local U gradient stays under 1. Measured over the
-	//     composite field, that holds for 99% of texels at the default
-	//     strength; the rest are single-texel quantisation spikes,
-	//     under one screen pixel wide at planet scale. If a hard zoom
-	//     ever shows local counterflow at a band edge, that is this
-	//     threshold -- lower _BandDispStrength.
-	//   - The shear pattern moves WITH the content, so the offset
-	//     between any two latitudes is a difference of two reference
-	//     values travelling together: bounded by the reference's own
-	//     amplitude FOREVER. Bands never drift apart. That bound is
-	//     what a plain monotone drift lacks -- it shears the deck to
-	//     death over hours -- and it is why the pattern rides rather
-	//     than stands.
-	//   - The reference's argument and the deck's separate at twice the
-	//     stream speed, so the shear morphology slowly transits the
-	//     disc: a whole pattern lap every 1/_BandStreamSpeed seconds,
-	//     about 17 minutes at the default. Bands continuously rearrange
-	//     their turbulence against each other, with no clock a viewer
-	//     could learn.
+	//   - Each pixel's rate is CONSTANT in time: deckU advances by
+	//     -(stream + strength * profile(v)) every second, forever.
+	//     Nothing reverses, nothing snaps, nothing is blended between
+	//     two positions -- the previous failures are structurally
+	//     impossible here.
+	//   - Rows stay rigid: all pixels at one latitude offset together,
+	//     so deck content inside a band never distorts, no matter how
+	//     long the session runs. The absolute offset grows through
+	//     whole texture periods and the REPEAT sampler absorbs it
+	//     seamlessly (the albedo is 1.1x-noise U-seamless, measured
+	//     above).
+	//   - What grows between latitudes is the SLIP at the boundaries,
+	//     where neighbouring bands draw from increasingly distant
+	//     columns. Real Jupiter has exactly that: jets shear past each
+	//     other and never come back into registration, and the deck's
+	//     own boundary turbulence is what reads as weather. Growing
+	//     offsets here are the LOOK, not a decaying artifact.
 	//
-	// One measured caveat, deliberately not hidden. The reference has a
-	// U-wrap seam: column 0 against column 2047 differs by 12.3x its
-	// interior column step in red (8.8x after the pow). That seam rides
-	// the conveyor and crosses the disc once per pattern lap. On the
-	// deck it is a shear step of _BandDispStrength * the seam delta --
-	// about a tenth of a deck texel at 2048, under the footprint of one
-	// screen pixel on any planet MIP the game actually shows. It is
-	// written down because "there is a seam and it moves" should never
-	// have to be discovered in a bug report.
+	// One subtlety, deliberately not hidden. The speed profile comes
+	// from ONE reference column at LOD 5 -- 32 latitude steps for this
+	// 1024-tall file, one step per belt on a Jupiter-layout texture,
+	// bilinear-smoothed between rows, with 64 columns of horizontal
+	// averaging killing the file's per-texel noise. A pixel-granular
+	// profile would tear individual rows apart instead of shearing
+	// whole belts; a lap-long U-swep of the reference is never even
+	// attempted, so its 12.3x wrap seam is irrelevant here.
 	//
 	// Both terms add into one float that offsets the deck's U. No C# needs
 	// to know any of this exists: animation is shader-time on _Time.y,
@@ -210,26 +212,25 @@ Shader "OpenFrontier/Planet Gas Giant"
 	// mobile answer: no CPU cost reachable from anywhere.
 	//
 	// ON PRECISION (wrote this down so it does not bite the next editor).
-	// The drift accumulates: deckU advances per frame by speed/60 --
-	// about 1.7e-5 UV at the default -- and runs away through whole
-	// texture periods within the hour. In half, whose ulp near 1.0 is
-	// 0.0005, that per-frame step would vanish into rounding: the
-	// animation would only crawl in half-ulp stair-steps, and the
-	// running counter would exhaust a half's exponent range long before
+	// deckU's rate accumulates indefinitely: the base crawl advances
+	// ~1.7e-5 UV per frame at the default, extreme belts up to ~1.2e-4,
+	// and over a day the counter reaches hundreds of texture periods.
+	// In half, whose ulp near 1.0 is 0.0005, those per-frame steps would
+	// vanish into rounding -- the motion would crawl in half-ulp
+	// stair-steps, one visible stutter every few hundred milliseconds,
+	// and the counter would exhaust a half's exponent range long before
 	// a session ended. Everything on the coordinate path is therefore
 	// float, and only the RESULT goes back to the sampler. The same
 	// reasoning makes _Time.y * speed float. This is a mobile GPU
 	// contract, not a style preference; mobile compilers promote to
 	// half aggressively.
 	//
-	// Both the ALBEDO and the band reference must wrap-tile in U for
-	// this to be safe, because deckU's counter runs through whole
-	// texture periods over a session. The albedo does, at 1.1x interior
-	// noise (measured above). The reference does NOT: its column seam
-	// is 12.3x its own interior column step -- see the caveat in THE
-	// DECK MOVES for what that costs once sheared and mip-reduced,
-	// which is under a screen pixel. Wrap repeat is already both
-	// assets' import setting.
+	// The ALBEDO must wrap-tile in U for this to be safe, because
+	// deckU's counter runs through whole texture periods over a
+	// session. It does, at 1.1x interior noise (measured above); wrap
+	// repeat is already its import setting. The band reference never
+	// traverses U at all -- it is read down one fixed column -- so its
+	// 12.3x wrap seam is irrelevant here.
 	//
 	// The BANDS ARE ALBEDO section above still governs the look: contrast,
 	// terminator and limb all apply AFTER the deck displacement, so they
@@ -274,25 +275,25 @@ Shader "OpenFrontier/Planet Gas Giant"
 		// darkens the planet overall.
 		_BandPivot ("Band Pivot", Range(0.1, 0.8)) = 0.42
 
-		// ---- band motion (the deck streams) ----
+		// ---- band motion (conveyor + zonal jets) ----
 		//
-		// The deck displaces from gas_giant_06_normal's RED channel, read
-		// as a reference value at each pixel, never as a lighting normal.
-		// _BandNeutral decides which red value reads as "no displacement"
-		// and _BandSoftness dilutes the file's 88 quantisation levels and
-		// its hard row seams into that same remap.
+		// The deck streams from gas_giant_06_normal's RED latitude
+		// profile, read down one fixed column at a fixed coarse LOD --
+		// never as a lighting normal, never as cloud noise.
 		//
-		// Motion is a conveyor. _BandStreamSpeed is UV PER SECOND -- the
-		// deck simply travels east; at 0.001 a 2048-wide lap takes about
-		// 17 minutes, or half a texel per second. _BandDispStrength
-		// scales how far a latitude's shear deviates it from the
-		// conveyor; because the reference rides the stream with the
-		// deck, bands shear against each other only within the
-		// reference's own amplitude, so nothing resets and nothing
-		// tears, however long the session runs. Full reasoning in THE
-		// DECK MOVES.
+		// Both motion scales are VELOCITIES in UV per second.
+		// _BandStreamSpeed is the base crawl every pixel shares;
+		// _BandDispStrength scales the profile into per-latitude rate
+		// deviations, so bands stream fast and slow in alternation,
+		// some against the conveyor, and slip past each other along
+		// their boundaries -- zonal flow. Rates are constant in time, so
+		// nothing resets or wobbles, and rows stay rigid so nothing
+		// tears, for any session length. _BandNeutral decides which red
+		// value adds no speed of its own and _BandSoftness dilutes the
+		// file's 88 quantisation levels into that same remap. Full
+		// reasoning in THE DECK MOVES.
 		[NoScaleOffset] _BandRef ("Band Reference (R: gas_giant_06_normal)", 2D) = "black" {}
-		_BandDispStrength ("Band Shear", Range(0, 0.06)) = 0.012
+		_BandDispStrength ("Band Shear", Range(0, 0.005)) = 0.002
 		_BandStreamSpeed ("Band Stream Speed", Range(0, 0.01)) = 0.001
 		_BandSoftness ("Band Softness", Range(1, 8)) = 3
 		_BandNeutral ("Band Neutral", Range(0, 1)) = 0.6
@@ -453,39 +454,37 @@ Shader "OpenFrontier/Planet Gas Giant"
 
 			half4 frag(Varyings input) : SV_Target
 			{
-				// ---- band motion (conveyor + riding shear) ----
-				//   drift = _BandStreamSpeed * _Time.y
-				//   deckU = u - drift
-				//       + _BandDispStrength * (pow(ref(u + drift).r, softness) - neutral)
+				// ---- band motion (conveyor + zonal jets) ----
+				//   deckU = u - (_BandStreamSpeed
+				//       + _BandDispStrength * (pow(profile(v).r, softness) - neutral)) * _Time.y
 				//
-				// The deck content is taken at u - drift: every pixel
-				// streams east forever at the conveyor rate. The shear
-				// reference is taken at u + drift: it rides the flow
-				// ahead of the content, so a latitude's shear changes
-				// only as the pattern transits, and the offset between
-				// two latitudes is a difference of two reference values
-				// travelling together -- bounded, never accumulating.
-				// The per-pixel rate of deckU is
-				//   -_BandStreamSpeed * (1 - _BandDispStrength * dRef/du),
-				// which keeps its sign unless the reference's local U
-				// gradient defeats it -- measured to be single-texel
-				// quantisation spikes only, below one screen pixel at
-				// planet scale. See THE DECK MOVES.
+				// The deck streams east at _BandStreamSpeed, and each
+				// latitude adds a constant speed of its own, scaled from
+				// the band reference's red profile: bands stream fast and
+				// slow in alternation, some against the conveyor -- zonal
+				// flow. Every rate is CONSTANT in time, so nothing can
+				// reset, wobble or blend between two positions; boundaries
+				// slip as neighbouring bands drift apart, which is
+				// Jupiter's jet look, not a decay, because rows stay
+				// rigid forever. See THE DECK MOVES for the three
+				// rejected designs' failures and why each is
+				// structurally impossible here.
 				//
-				// No phase, no cross-fade, no wrap: there is nothing in
-				// this motion that can reset, and that is the whole
-				// point. deckU's counter grows unbounded -- the REPEAT
-				// sampler absorbs it and the albedo is U-seamless -- so
-				// the sampler never sees a snap, and that is why the
-				// fp32 contract matters. Do not half this. See ON
-				// PRECISION.
-				float drift = _BandStreamSpeed * _Time.y;
-				half  bandAmount = pow(SAMPLE_TEXTURE2D(_BandRef, sampler_BandRef, float2(float(input.uv.x) + drift, input.uv.y)).r, (half)_BandSoftness);
-				half  bandOffset = bandAmount - (half)_BandNeutral;
-				float deckU = float(input.uv.x) - drift + (float)bandOffset * _BandDispStrength;
+				// The profile read: one column (u = 0.5, far from the
+				// file's wrap seam) at LOD 5 -- 32 latitude steps for a
+				// 1024-tall file, one step per belt, bilinear-smoothed,
+				// with 64 columns of averaging killing the file's
+				// per-texel noise. A pixel-granular profile would tear
+				// individual rows apart instead of shearing whole belts.
+				float uvY = float(input.uv.y);
+				half  profile  = pow(SAMPLE_TEXTURE2D_LOD(_BandRef, sampler_BandRef, float2(0.5, uvY), 5.0).r, (half)_BandSoftness);
+				half  bandSpeed = profile - (half)_BandNeutral;   // per-latitude speed
+				float deckU = float(input.uv.x)
+					- (_BandStreamSpeed + (float)bandSpeed * _BandDispStrength) * _Time.y;
 
-				// The cloud deck. ONE deck sample plus the band reference
-				// above -- that is this shader's whole texture budget.
+				// The cloud deck. ONE deck sample plus one reference
+				// profile read -- that is this shader's whole texture
+				// budget.
 				half3 albedo = SAMPLE_TEXTURE2D(_Albedo, sampler_Albedo, float2(deckU, input.uv.y)).rgb;
 
 				// Band contrast about a pivot, which is what separates the

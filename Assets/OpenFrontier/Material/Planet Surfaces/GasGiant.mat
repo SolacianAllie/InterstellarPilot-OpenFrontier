@@ -127,7 +127,7 @@ Material:
     - _AlphaToMask: 0
     - _Ambient: 0.03
     - _BandContrast: 1.15
-    - _BandDispStrength: 0.012
+    - _BandDispStrength: 0.002
     - _BandNeutral: 0.6
     - _BandPivot: 0.42
     - _BandSoftness: 3
