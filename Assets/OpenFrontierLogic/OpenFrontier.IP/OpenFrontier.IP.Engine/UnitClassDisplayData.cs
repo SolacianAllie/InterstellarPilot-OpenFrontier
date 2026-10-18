@@ -51,17 +51,9 @@ namespace OpenFrontier.IP.Engine
 		//
 		// The same pair is used for planets and for moons; a moon class and
 		// a planet class simply author their own ranges.
-		//
-		// VisualScaleSteps quantizes the roll instead of smoothing it: 0
-		// (the default on every asset predating it) keeps the range
-		// continuous, and N >= 2 snaps to N evenly spaced sizes INCLUDING
-		// both endpoints. Min 0.5, Max 1, Steps 2 reads as "each moon is
-		// exactly 0.5x or exactly 1x, never between, never above".
 		public float VisualScaleMin;
 
 		public float VisualScaleMax;
-
-		public int VisualScaleSteps;
 
 		public bool NormalCollisionDisabled;
 

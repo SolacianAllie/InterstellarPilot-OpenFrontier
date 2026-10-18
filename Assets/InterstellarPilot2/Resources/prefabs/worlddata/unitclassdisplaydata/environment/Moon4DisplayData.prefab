@@ -62,4 +62,3 @@ MonoBehaviour:
   SectorMapMinDrawSize: 30
   VisualScaleMin: 0.5
   VisualScaleMax: 1
-  VisualScaleSteps: 2
