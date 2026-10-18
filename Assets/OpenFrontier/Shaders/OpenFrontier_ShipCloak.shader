@@ -24,7 +24,7 @@ Shader "OpenFrontier/Ship Cloak"
 	//
 	// HOW THE SLIDER READS
 	//
-	// ActiveUnit pushes three uniforms per renderer (MaterialPropertyBlock):
+	// ActiveUnit pushes two uniforms per renderer (MaterialPropertyBlock):
 	//
 	//   _CloakAmount  0..1 -- 0 decloaked, 1 fully cloaked. This is the
 	//      CloakComponent progress under the CloakAlphaPower curve, or the
@@ -35,9 +35,6 @@ Shader "OpenFrontier/Ship Cloak"
 	//      CloakMinAlpha (0.07) for enemies, 0 during construction and
 	//      external fades. Same numbers the old shell alpha used; they are
 	//      not a new tuning surface.
-	//   _CloakFriendly  0/1 -- owned/allied within the old outline gate
-	//      (IsPlayerOrAllied, and current unit or within 1500u). Only
-	//      friendly hulls get the tell rim; enemies dissolve clean.
 	//
 	// The visible surface then trades itself for the bend:
 	//
@@ -52,9 +49,14 @@ Shader "OpenFrontier/Ship Cloak"
 	// the screen-UV of the previous-frame copy -- light following geometry,
 	// no extra texture) plus a slow sin ripple. It scales with amount
 	// squared: the first tick of cloaking barely bends, full cloak is a
-	// standing smear. Owned ships additionally get the tell rim -- the
-	// silhouette painted in _CloakTellColor so a friendly ghost is
-	// findable in a standing formation.
+	// standing smear.
+	//
+	// The V3 RETIRED the friendly tell rim (the old outline system's
+	// crutch: _CloakFriendly + _CloakTellColor, a cyan silhouette glow on
+	// owned/allied hulls). The fold itself is the visibility state now --
+	// the player sees a bent-light standing where their ship was -- and a
+	// structure rim painting OVER that read as noise. Removed from both
+	// sides: no pusher, no property, no shader reads.
 	//
 	// WHY THE HULL DRAWS OPAQUE IN GEOMETRY QUEUE (v3 -- the blog fold)
 	//
@@ -167,7 +169,6 @@ Shader "OpenFrontier/Ship Cloak"
 		// inspector shows what the unit is driving.
 		_CloakAmount("Cloak Amount (1 = fully cloaked)", Range(0.0, 1.0)) = 0.0
 		_CloakFloor("Cloak Floor (hull left at full cloak)", Range(0.0, 1.0)) = 0.0
-		_CloakFriendly("Cloak Friendly Tell", Float) = 0.0
 
 		// The bend, and its material-tuning side. The floor and amount are
 		// gameplay state; these are art direction per ship.
@@ -175,7 +176,6 @@ Shader "OpenFrontier/Ship Cloak"
 		_CloakShimmerScale("Cloak Shimmer Strength", Float) = 0.02
 		_CloakShimmerLines("Cloak Shimmer Lines", Float) = 18.0
 		_CloakShimmerSpeed("Cloak Shimmer Speed", Float) = 1.5
-		[HDR] _CloakTellColor("Cloak Tell Color (HDR)", Color) = (0.3, 0.8, 1.0, 1.0)
 	}
 
 	SubShader
@@ -210,14 +210,12 @@ Shader "OpenFrontier/Ship Cloak"
 		float4 _DecalMap_ST;
 		half4 _BaseColor;
 		half4 _EmissionColor;
-		half4 _CloakTellColor;
 		half _BumpScale;
 		half _OcclusionStrength;
 		half _Metallic;
 		half _Smoothness;
 		half _CloakAmount;
 		half _CloakFloor;
-		half _CloakFriendly;
 		half _CloakWarpScale;
 		half _CloakShimmerScale;
 		half _CloakShimmerLines;
@@ -494,12 +492,6 @@ Shader "OpenFrontier/Ship Cloak"
 					// flickers between hull and bend, the same read the old
 					// alpha strobe produced.
 					color.rgb = lerp(color.rgb, bent, 1.0h - hullShare);
-
-					// The friendly tell: a rim of structure over the smear, only
-					// on hulls ActiveUnit marks as owned/allied-near. Players see
-					// their ghost; enemies dissolve clean.
-					half rim = 1.0h - saturate(dot(inputData.normalWS, inputData.viewDirectionWS));
-					color.rgb += _CloakTellColor.rgb * (_CloakFriendly * rim * rim);
 				}
 
 				return color;

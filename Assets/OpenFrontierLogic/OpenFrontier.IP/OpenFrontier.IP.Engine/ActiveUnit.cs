@@ -103,7 +103,6 @@ namespace OpenFrontier.IP.Engine
 		private bool cloakDrivenByShells;
 		private float lastCloakAmount = -1f;
 		private float lastCloakFloor = -1f;
-		private int lastCloakFriendly = -1;
 		private bool wantsCloakSceneColor;
 
 		public bool IsInDrawRange => inDrawRange;
@@ -206,7 +205,6 @@ namespace OpenFrontier.IP.Engine
 		{
 			lastCloakAmount = -1f;
 			lastCloakFloor = -1f;
-			lastCloakFriendly = -1;
 			ReleaseCloakSceneColor();
 		}
 
@@ -431,15 +429,11 @@ namespace OpenFrontier.IP.Engine
 			// spends 1 - vis on bent background. Same surface the old alpha
 			// floors described, read through the hull instead of a shell.
 			float visible = Mathf.Lerp(1f, Mathf.Clamp01(visibleFloor), Mathf.Clamp01(cloakAmount));
-			// The friendly tell gate is the old outline gate: owned or allied,
-			// and either the current unit or close enough to read.
-			int friendly = (!(unit.IsPlayerOrAllied() && (unit.IsPlayerCurrentUnit || lastDistanceFromCamera < 1500f))) ? 0 : 1;
 			bool draw = visible > 0.003f;
-			if (cloakAmount != lastCloakAmount || visibleFloor != lastCloakFloor || friendly != lastCloakFriendly)
+			if (cloakAmount != lastCloakAmount || visibleFloor != lastCloakFloor)
 			{
 				lastCloakAmount = cloakAmount;
 				lastCloakFloor = visibleFloor;
-				lastCloakFriendly = friendly;
 				if (cloakMaterialPropertyBlock == null)
 				{
 					cloakMaterialPropertyBlock = new MaterialPropertyBlock();
@@ -461,7 +455,7 @@ namespace OpenFrontier.IP.Engine
 						foreach (MeshRenderer shellRenderer in CloakRenderers)
 						{
 							shellRenderer.enabled = shellDraw;
-							ApplyCloakMaterialPropertyBlock(shellRenderer, cloakAmount, visibleFloor, friendly);
+							ApplyCloakMaterialPropertyBlock(shellRenderer, cloakAmount, visibleFloor);
 						}
 					}
 					else
@@ -473,7 +467,7 @@ namespace OpenFrontier.IP.Engine
 						if (CloakRenderer != null)
 						{
 							CloakRenderer.enabled = shellDraw;
-							ApplyCloakMaterialPropertyBlock(CloakRenderer, cloakAmount, visibleFloor, friendly);
+							ApplyCloakMaterialPropertyBlock(CloakRenderer, cloakAmount, visibleFloor);
 						}
 					}
 				}
@@ -482,7 +476,7 @@ namespace OpenFrontier.IP.Engine
 					foreach (MeshRenderer unitRenderer in UnitRenderers)
 					{
 						unitRenderer.enabled = draw;
-						ApplyCloakMaterialPropertyBlock(unitRenderer, cloakAmount, visibleFloor, friendly);
+						ApplyCloakMaterialPropertyBlock(unitRenderer, cloakAmount, visibleFloor);
 					}
 				}
 				else
@@ -490,7 +484,7 @@ namespace OpenFrontier.IP.Engine
 					if (UnitRenderer != null)
 					{
 						UnitRenderer.enabled = draw;
-						ApplyCloakMaterialPropertyBlock(UnitRenderer, cloakAmount, visibleFloor, friendly);
+						ApplyCloakMaterialPropertyBlock(UnitRenderer, cloakAmount, visibleFloor);
 					}
 				}
 			}
@@ -505,12 +499,11 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
-		private void ApplyCloakMaterialPropertyBlock(MeshRenderer meshRenderer, float cloakAmount, float visibleFloor, int friendly)
+		private void ApplyCloakMaterialPropertyBlock(MeshRenderer meshRenderer, float cloakAmount, float visibleFloor)
 		{
 			meshRenderer.GetPropertyBlock(cloakMaterialPropertyBlock);
 			cloakMaterialPropertyBlock.SetFloat("_CloakAmount", cloakAmount);
 			cloakMaterialPropertyBlock.SetFloat("_CloakFloor", visibleFloor);
-			cloakMaterialPropertyBlock.SetFloat("_CloakFriendly", friendly);
 			meshRenderer.SetPropertyBlock(cloakMaterialPropertyBlock);
 		}
 
@@ -523,7 +516,7 @@ namespace OpenFrontier.IP.Engine
 		{
 			// The cloak outline is gone: owned-ship visibility while
 			// construction/cloak fading belongs to the materials now (the
-			// cloak shader pushes the tell from within; non-cloak hulls keep
+			// fold shader answers its own amount; non-cloak hulls keep
 			// their shell, which was always the visible thing here).
 			if (unit.IsUnderConstructionOrDismantling)
 			{
