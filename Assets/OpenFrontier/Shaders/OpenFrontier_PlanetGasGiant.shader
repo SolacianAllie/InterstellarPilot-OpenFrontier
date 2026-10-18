@@ -137,7 +137,7 @@ Shader "OpenFrontier/Planet Gas Giant"
 	//
 	// THE DECK MOVES
 	//
-	// A fluid surface that never moves reads as glass. The deck gets three
+	// A fluid surface that never moves reads as glass. The deck gets two
 	// kinds of motion, and all of them are the same displacement applied to
 	// the ALBEDO's U coordinate before it is sampled -- never to the mesh:
 	//
@@ -155,9 +155,19 @@ Shader "OpenFrontier/Planet Gas Giant"
 	//      standard tax: the two deck copies stay exactly one ramp-span
 	//      apart wherever red sits away from neutral, which reads as a
 	//      faint motion-trail of width up to ~_BandDispStrength.
-	//   3. ZONAL JET. A small constant eastward creep with time.
 	//
-	// All three add into one float that offsets the deck's U. No C# needs
+	// NO ROTATION TERM HERE, DELIBERATELY. Rotation belongs to the engine:
+	// ActiveUnitPlanet.Rotate() spins the planet mesh every FixedUpdate at
+	// PlanetRotation deg/s scaled by the unit's RotationRateMultiplier, and
+	// ActiveUnitPlanetClouds spins a separate cloud shell at its own rate.
+	// A texture-space rotation in this shader would be a THIRD one, synced
+	// to neither: on a real planet the surface texture would creep against
+	// the spinning mesh -- a slow beat between two rates -- and buy nothing.
+	// Do not add a Zonal Jet back. A menu backdrop that needs to turn gets
+	// RotateObject on its mesh instead: free, and it keeps rotation in one
+	// place.
+	//
+	// Both terms add into one float that offsets the deck's U. No C# needs
 	// to know any of this exists: animation is shader-time on _Time.y,
 	// which continues while the game is paused behind a PauseWhenShown
 	// screen -- deliberately, because a backdrop planet that keeps
@@ -168,15 +178,15 @@ Shader "OpenFrontier/Planet Gas Giant"
 	// mobile answer: no CPU cost reachable from anywhere.
 	//
 	// ON PRECISION (wrote this down so it does not bite the next editor).
-	// The jet creeps per frame at ~1e-6 UV -- far below fp16 (half)'s ulp
-	// near 0.7, which is 0.0005. If the displacement is computed in half
-	// or assigned through a half-coordinate, the accumulated per-half
-	// quantisation (0.0005) is larger than the per-frame step (1e-6) and
-	// the jet freezes into texel-wide stair-steps. All pattern arithmetic
-	// leading to the sample coordinate therefore happens in float, and
-	// only the RESULT goes back to the sampler. The same reasoning makes
-	// _Time.y * speed float. This is a mobile GPU contract, not a style
-	// preference; mobile compilers promote to half aggressively.
+	// The surviving ramp moves the sample coordinate by about
+	// 2 * _BandDispSpeed / 60 ~ 1.3e-3 UV per frame at the default --
+	// comfortably above fp16's ulp (5e-4), so half would be tolerable
+	// today. Everything on the coordinate path is float anyway: it costs
+	// nothing, and the trap this section exists to prevent is that a
+	// step far below half's ulp per frame does not animate at all -- it
+	// rounds to the same value frame after frame and the motion freezes
+	// into stair-steps. Mobile compilers promote to half aggressively, so
+	// float here is a contract, not a preference.
 	//
 	// The deck's ALBEDO texture must wrap-tile in U for this to be safe:
 	// it does, at 1.1x interior noise (measured above). Wrap repeat is
@@ -232,18 +242,18 @@ Shader "OpenFrontier/Planet Gas Giant"
 		// as a reference value at each pixel, never as a lighting normal.
 		// _BandNeutral decides which red value reads as "no displacement",
 		// _BandSoftness dilutes the file's 88 quantisation levels and its
-		// hard row seams into that same remap, and the remaining sliders
-		// set how far the deck shifts per cycle (_BandDispStrength), how
+		// hard row seams into that same remap, and the two sliders set
+		// how far the deck shifts per cycle (_BandDispStrength) and how
 		// fast those cycles run so the shear streams continuously in one
-		// direction rather than wobbling back and forth (_BandDispSpeed),
-		// and how fast the whole deck creeps east regardless (_BandJetSpeed).
+		// direction rather than wobbling back and forth (_BandDispSpeed).
+		// Rotation is the engine's job -- see NO ROTATION TERM in the
+		// header.
 		// _BandDispSpeed is CYCLES PER SECOND: one cycle slides a band
 		// 2 * _BandDispStrength from west to east, so the visible speed
 		// of a band scales with both sliders and with its own red value.
 		[NoScaleOffset] _BandRef ("Band Reference (R: gas_giant_06_normal)", 2D) = "black" {}
 		_BandDispStrength ("Band Displacement", Range(0, 0.06)) = 0.012
 		_BandDispSpeed ("Band Stream Speed", Range(0, 0.5)) = 0.04
-		_BandJetSpeed ("Zonal Jet", Range(0, 0.01)) = 0.0002
 		_BandSoftness ("Band Softness", Range(1, 8)) = 3
 		_BandNeutral ("Band Neutral", Range(0, 1)) = 0.6
 
@@ -328,7 +338,6 @@ Shader "OpenFrontier/Planet Gas Giant"
 				float _Ambient;
 				float _BandDispStrength;
 				float _BandDispSpeed;
-				float _BandJetSpeed;
 				float _BandSoftness;
 				float _BandNeutral;
 			CBUFFER_END
@@ -440,9 +449,8 @@ Shader "OpenFrontier/Planet Gas Giant"
 				half  bandField  = pow(SAMPLE_TEXTURE2D(_BandRef, sampler_BandRef, input.uv).r, (half)_BandSoftness);
 				half  bandOffset = bandField - (half)_BandNeutral;
 				half  bandAmp    = bandOffset * (half)_BandDispStrength;
-				float jetOffset  = -_BandJetSpeed * _Time.y;
-				float deckUA = float(input.uv.x) + (float)bandAmp * rampA + jetOffset;
-				float deckUB = float(input.uv.x) + (float)bandAmp * rampB + jetOffset;
+				float deckUA = float(input.uv.x) + (float)bandAmp * rampA;
+				float deckUB = float(input.uv.x) + (float)bandAmp * rampB;
 
 				// The cloud deck. TWO deck samples plus the band reference
 				// above -- that is this shader's whole texture budget.
