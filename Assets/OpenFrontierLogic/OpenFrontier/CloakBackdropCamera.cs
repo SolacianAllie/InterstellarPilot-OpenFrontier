@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 namespace OpenFrontier
@@ -13,35 +15,52 @@ namespace OpenFrontier
 	/// nothing to diagnose. A child camera with a target texture is
 	/// ground truth - an enabled camera draws, or the console says why.
 	///
-	/// How it works: a camera childed under the engine's render camera
-	/// (same pose and FOV for free) renders the real scene at a FIXED
-	/// 256-long-edge into a ping-pong pair of RTs. The cloak shader
-	/// samples whichever buffer holds the finished PREVIOUS frame
-	/// (_CloakBackdropRT, a global), bending it around the hull's
-	/// silhouette. The copy carries everything the stock opaque texture
-	/// never could - the nebula and sun quads are transparent-phase
-	/// content - because it is a camera rendering the actual view: the
-	/// main camera's own culling mask, clipped only of HUD canvases.
+	/// What the copy composes (v3.1): the player's view is not one
+	/// camera. It is an ordered pack, the BiRP depth+clear-flag
+	/// composition this project inherited from the original game - the
+	/// sky clears first, the planets/sun and background-sprite cameras
+	/// draw over it, and the world rig (the camera the fold childers
+	/// under) renders last. A child of the world rig alone - v3.0 -
+	/// copied only the pack's LAST member, so the fold sampled a copy
+	/// that never contained the sky, planets or sun it was bending:
+	/// folds showed holes instead of the backdrop. The grabber now
+	/// composes the same pack for itself: it enumerates the real
+	/// backdrop cameras once per rig (active scene cameras between the
+	/// menu and the world rig's depth, sorted ascending), turns the
+	/// skybox-clearing one into the copy's BASE and the rest into
+	/// replicas stacked under it, and re-types the grabber itself as
+	/// the stack's FINAL overlay - the world pass renders last, exactly
+	/// like the real rig. Every replica mirrors its real twin (pose,
+	/// FOV, clip planes, mask, depth) each frame in LateUpdate, so
+	/// whatever the engine drives for the real backdrop - sector
+	/// rotation, zoom, rig motion - stays live with no duplicate of
+	/// that logic here.
 	///
-	/// Feedback and why it converges: last frame's copy contains the
-	/// ship, but painted AS ITS OWN PREVIOUS CLOAK (bent space, not a
-	/// hull), and the warp pushes sample points PAST the silhouette
-	/// first (grazing normals project wide), so fresh background keeps
-	/// entering and the interior converges to space instead of to a
-	/// diffused grey. GR:FS shipped exactly this. See the ship cloak
-	/// shader's header for the full v1/v2/v3 story.
+	/// Feedback: none. While the copy's world pass renders the grabber
+	/// raises the _CloakCopyPass global and every fold-material hull
+	/// clips itself out of the copy (ship cloak shader, v3.1): the
+	/// sampled pixels are the view the player sees minus the hulls
+	/// that fold - always true background, no painting feeding
+	/// forward. The blog's copy is a blit of the finished frame and so
+	/// feeds its own previous painting back into the next; with a
+	/// camera we do not have to, which is why a parked ship stays bent
+	/// space instead of diffusing toward a readable hull. The trade:
+	/// anything standing directly behind a cloaking hull is swallowed
+	/// by the copy the same way - the GRFS read hid things behind the
+	/// actor too.
 	///
 	/// Cost: while any hull asks (CloakBackdropRequests), every frame
-	/// pays one extra small scene render (culling + draws at ~256px
-	/// fill). While none do, the camera is disabled and nothing runs.
-	/// Shadow maps are not re-rendered for the copy: the sample is
-	/// consumed as a bent smear through which a lit difference is not
-	/// readable, and skipping the atlas keeps the cloak frame cheap.
+	/// pays one extra composed scene render (culling + draws at ~256px
+	/// fill). While none do, the rig is disabled and nothing runs.
+	/// Post-processing, shadow re-renders and the depth prepass are off
+	/// for the copy: the sample is consumed as a bent smear through
+	/// which a post-pass difference is not readable, and skipping the
+	/// atlas keeps the cloak frame cheap.
 	///
 	/// Lifecycle: ProvideCamera (engine, at CreateCamera) wires it; the
-	/// child camera dies with its parent rig, a scene change rebuilds
-	/// it. The RTs persist for the session (fixed dims, static refs) and
-	/// are re-created if a domain reload dropped them.
+	/// rig dies with its parent rig, a scene change rebuilds it. The
+	/// RTs persist for the session (fixed dims, static refs) and are
+	/// re-created if a domain reload dropped them.
 	/// </summary>
 	[DefaultExecutionOrder(1000)]
 	public sealed class CloakBackdropCamera : MonoBehaviour
@@ -51,11 +70,34 @@ namespace OpenFrontier
 		// map and the cost does not grow with the device's pixels.
 		private const int SnapshotLongEdge = 256;
 
+		// Raised while the copy's world pass renders; every fold-material
+		// hull clips itself out of the copy under it (ship cloak shader).
+		// A global, not a material property: render-phase state, not art
+		// state.
+		private const string FoldCopyPassGlobal = "_CloakCopyPass";
+
 		/// <summary>The engine's render camera as handed over; Unity-null when its rig is destroyed.</summary>
 		private static Camera mainCamera;
 
-		/// <summary>The grab camera, a child of mainCamera. Unity-null after a scene teardown.</summary>
+		/// <summary>
+		/// The camera that owns the ping-pong target - the copy's base. In
+		/// a fallback rig (no skybox-clearing camera found between the menu
+		/// and the world rig) this is the grabber itself; with a composed
+		/// stack it is the sky replica. Unity-null after a scene teardown.
+		/// </summary>
 		private static Camera backdropCamera;
+
+		/// <summary>The world-pass camera, the copy stack's final overlay; Unity-null in a fallback rig.</summary>
+		private static Camera worldGrabber;
+
+		/// <summary>The real backdrop cameras, in the order the view composites them.</summary>
+		private static readonly List<Camera> realBackdropCameras = new();
+
+		/// <summary>
+		/// The live mirrors of the same cameras, in matching order; entry
+		/// 0 is the copy base (the sky replica).
+		/// </summary>
+		private static readonly List<Camera> backdropReplicaCameras = new();
 
 		/// <summary>Which buffer is this frame's write target; the other one holds last frame's finished copy.</summary>
 		private static bool bufferAIsWrite;
@@ -76,11 +118,18 @@ namespace OpenFrontier
 			if (camera == null)
 			{
 				mainCamera = null;
-				// The child dies with its rig anyway; switching it off is
-				// belt and braces for the frame between teardown and rebuild.
+				// A stack is not rendered when its base is disabled, so
+				// disabling the base parks the whole copy rig; the world
+				// pass is parked alongside it. Belt and braces for the
+				// frame between teardown and rebuild - the objects die
+				// with their rig anyway.
 				if (backdropCamera != null)
 				{
 					backdropCamera.enabled = false;
+				}
+				if (worldGrabber != null && worldGrabber.enabled)
+				{
+					worldGrabber.enabled = false;
 				}
 				return;
 			}
@@ -105,34 +154,167 @@ namespace OpenFrontier
 			grabber.orthographic = false;
 			grabber.clearFlags = camera.clearFlags;
 			grabber.backgroundColor = camera.backgroundColor;
-			// The main camera's own scene, minus HUD canvases: the copy
-			// must frame the world the hull stands in front of, not the
-			// interface painted over it. Everything else travels - ships,
-			// nebulae, the sun, particles - which is the entire point.
+			// The main camera's own scene, minus HUD canvases: the world
+			// pass must frame the world the hull stands in front of, not
+			// the interface painted over it. Everything else travels -
+			// ships, nebulae, the sun quad of the world pass, particles.
 			int uiLayer = LayerMask.NameToLayer("UI");
 			grabber.cullingMask = uiLayer >= 0 ? (camera.cullingMask & ~(1 << uiLayer)) : camera.cullingMask;
 			// Early in the frame loop, before its parent renders (depth
-			// ascending). With previous-frame sampling the order is only
-			// insurance; making it explicit keeps the frame debugger
-			// reading top to bottom as a grab then a main pass.
+			// ascending). Only the fallback keeps this camera as its own
+			// base; with a stack the depth is re-set to the world rig's own
+			// so any internal ordering agrees with the stack order.
 			grabber.depth = camera.depth - 10f;
 			grabber.fieldOfView = camera.fieldOfView;
 			grabber.nearClipPlane = camera.nearClipPlane;
 			grabber.farClipPlane = camera.farClipPlane;
-			grabber.enabled = false; // LateUpdate enables it while any hull wants the copy
+			grabber.enabled = false; // LateUpdate enables the rig while any hull wants the copy
 
-			// The extras that keep the grab cheap and unambiguous: no post,
-			// no shadow atlas re-render, no depth prepass. What is sampled
-			// has one frame of lag and a warp displacing it - none of those
-			// layers survive to the bend.
-			UniversalAdditionalCameraData additionalData = grabber.GetUniversalAdditionalCameraData();
-			additionalData.renderPostProcessing = false;
-			additionalData.renderShadows = false;
-			additionalData.requiresDepthOption = CameraOverrideOption.Off;
+			UniversalAdditionalCameraData grabberData = grabber.GetUniversalAdditionalCameraData();
+			grabberData.renderPostProcessing = false;
+			grabberData.renderShadows = false;
+			grabberData.requiresDepthOption = CameraOverrideOption.Off;
 
-			backdropCamera = grabber;
-			grabberObject.AddComponent<CloakBackdropCamera>();
+			// v3.1: compose the copy the way the view composites. ONE scan,
+			// once per rig creation - never on the frame path.
+			if (BuildBackdropStack(grabber, grabberObject))
+			{
+				// A stack member's own depth is not the render order (the
+				// stack list is), but mirroring the real rig's keeps any
+				// internal sort agreeing: base (sky) first, replicas
+				// ascending, the world pass last.
+				grabber.depth = camera.depth;
+				// Overlays never clear; the base's skybox clear owns the
+				// buffer, exactly like the real view.
+				grabber.clearFlags = CameraClearFlags.Nothing;
+				grabberData.renderType = CameraRenderType.Overlay;
+
+				backdropCamera = backdropReplicaCameras[0];
+				worldGrabber = grabber;
+				Report("copy stack composed: " + backdropReplicaCameras.Count + " cameras mirror the real backdrop rig");
+			}
+			else
+			{
+				// No skybox-clearing camera between the menu and the world
+				// rig (an empty or odd world): the single-camera copy of
+				// v3.0, with one correction - the buffer is sky-cleared.
+				// Without that the copy kept unwritten pixels between the
+				// nebula quads and the fold bent stale color.
+				grabber.clearFlags = CameraClearFlags.Skybox;
+				backdropCamera = grabber;
+				worldGrabber = null;
+				realBackdropCameras.Clear();
+				backdropReplicaCameras.Clear();
+				Report("no sky camera found - copy base is the grabber itself (sky-cleared)");
+			}
+
 			Report($"grabber attached under '{camera.name}'");
+		}
+
+		/// <summary>
+		/// Mirror the real view's backdrop pack into a copy stack: the
+		/// skybox-clearing camera becomes the copy base, every other
+		/// backdrop camera becomes a replica stacked under it, and the
+		/// grabber itself is re-typed as the stack's final overlay (the
+		/// world pass renders last, like the real rig). Returns false when
+		/// no sky camera exists, which keeps the grabber a plain
+		/// single-camera copy and the caller in fallback mode.
+		/// </summary>
+		private static bool BuildBackdropStack(Camera grabber, GameObject grabberObject)
+		{
+			realBackdropCameras.Clear();
+			backdropReplicaCameras.Clear();
+
+			// One enumeration at rig creation - not the frame path.
+			// FindObjectsInactive.Exclude: menu and preview rigs stay out
+			// on their own where they exist.
+			List<Camera> sceneCameras = new List<Camera>(
+				Object.FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None));
+			foreach (Camera candidate in sceneCameras)
+			{
+				// The menu rig (depth < 0), the world rig and anything
+				// beyond it are not backdrop; our own grabber (already
+				// created, parked) is skipped explicitly.
+				if (candidate == null || candidate == grabber
+					|| !candidate.enabled || candidate.depth < 0f
+					|| candidate.depth >= mainCamera.depth)
+				{
+					continue;
+				}
+				realBackdropCameras.Add(candidate);
+			}
+			if (realBackdropCameras.Count == 0)
+			{
+				return false;
+			}
+			// The view composites far to near by depth - the sky first.
+			realBackdropCameras.Sort((a, b) => a.depth.CompareTo(b.depth));
+
+			int skyIndex = -1;
+			for (int i = 0; i < realBackdropCameras.Count; i++)
+			{
+				if (realBackdropCameras[i].clearFlags == CameraClearFlags.Skybox)
+				{
+					skyIndex = i;
+					break;
+				}
+			}
+			if (skyIndex < 0)
+			{
+				// No member clears the sky: there is no sky pass to mirror.
+				realBackdropCameras.Clear();
+				return false;
+			}
+
+			// Everything is parented under the grabber object, so the copy
+			// rig dies with the engine's rig and parks with a superseded
+			// grab. Pose and settings are mirrored per frame afterwards.
+			for (int i = 0; i < realBackdropCameras.Count; i++)
+			{
+				Camera real = realBackdropCameras[i];
+				bool isBase = i == skyIndex;
+				GameObject replicaObject = new GameObject(
+					isBase ? "CloakBackdropCopyBase" : "CloakBackdrop_" + real.name);
+				replicaObject.transform.SetParent(grabberObject.transform, worldPositionStays: false);
+				Camera replica = replicaObject.AddComponent<Camera>();
+				MirrorBackdropCamera(real, replica);
+				replica.clearFlags = isBase ? real.clearFlags : CameraClearFlags.Nothing;
+				replica.backgroundColor = real.backgroundColor;
+
+				UniversalAdditionalCameraData replicaData = replica.GetUniversalAdditionalCameraData();
+				replicaData.renderType = isBase ? CameraRenderType.Base : CameraRenderType.Overlay;
+				// The same cheap-copy rules as the grabber: no post, no
+				// shadow re-render, no depth prepass. The sample is a
+				// bent one-frame-old smear; none of those layers survive
+				// to it.
+				replicaData.renderPostProcessing = false;
+				replicaData.renderShadows = false;
+				replicaData.requiresDepthOption = CameraOverrideOption.Off;
+
+				backdropReplicaCameras.Add(replica);
+			}
+
+			// Stack order is the render order: base sky, then the rest of
+			// the backdrop pack ascending, then the world pass last.
+			UniversalAdditionalCameraData baseData = backdropReplicaCameras[0].GetUniversalAdditionalCameraData();
+			for (int i = 1; i < backdropReplicaCameras.Count; i++)
+			{
+				baseData.cameraStack.Add(backdropReplicaCameras[i]);
+			}
+			baseData.cameraStack.Add(grabber);
+			return true;
+		}
+
+		/// <summary>Copy every render-relevant setting of a real backdrop camera onto its replica, once, at build.</summary>
+		private static void MirrorBackdropCamera(Camera real, Camera replica)
+		{
+			replica.transform.SetPositionAndRotation(real.transform.position, real.transform.rotation);
+			replica.orthographic = real.orthographic;
+			replica.fieldOfView = real.fieldOfView;
+			replica.nearClipPlane = real.nearClipPlane;
+			replica.farClipPlane = real.farClipPlane;
+			replica.cullingMask = real.cullingMask;
+			replica.depth = real.depth;
 		}
 
 		private void LateUpdate()
@@ -140,15 +322,28 @@ namespace OpenFrontier
 			// Superseded driver: two rigs can carry grabbers across a world
 			// swap (the log once showed two 'grabber attached' lines and two
 			// 'parked' sweeps from the same rig). Only the instance whose
-			// camera is the current backdropCamera may act; the stale one
-			// parks its child camera so the scene is not rendered every
-			// frame for a buffer nobody samples.
+			// camera is the current world pass may act; the stale one parks
+			// its whole copy rig (children included) so nothing renders
+			// every frame for a buffer nobody samples.
 			Camera ownGrabber = GetComponent<Camera>();
-			if (ownGrabber != backdropCamera)
+			// Not the current world pass, and not the fallback's own base:
+			// a superseded rig from a previous Ensure.
+			if (ownGrabber == null || (ownGrabber != worldGrabber && ownGrabber != backdropCamera))
 			{
-				if (ownGrabber.enabled)
+				if (ownGrabber != null)
 				{
-					ownGrabber.enabled = false;
+					if (ownGrabber.enabled)
+					{
+						ownGrabber.enabled = false;
+					}
+					// The copy base and replicas ride under this object.
+					foreach (Camera childCamera in ownGrabber.GetComponentsInChildren<Camera>())
+					{
+						if (childCamera != ownGrabber && childCamera.enabled)
+						{
+							childCamera.enabled = false;
+						}
+					}
 				}
 				return;
 			}
@@ -164,15 +359,19 @@ namespace OpenFrontier
 				return;
 			}
 
+			// Mirror the rig every active frame BEFORE rendering (which
+			// happens after all LateUpdates): the engine poses the real
+			// backdrop cameras at order 0, we run at 1000, so the copy
+			// renders through this frame's freshest geometry.
+			MirrorBackdropRig();
+
 			FormatBuffers(mainCamera.aspect);
 
 			// Ping-pong: this frame's render fills one buffer while the
 			// global stays on the other - the PREVIOUS frame's finished
 			// copy. The switch happens now, before any camera of this frame
-			// has rendered, so both the grab's own hulls and the main
-			// camera's hulls sample a stable buffer all frame long. Only
-			// the current driver reaches this point (superseded ones bail
-			// above), so the flip runs exactly once per frame.
+			// has rendered, so all the copy's passes and the main camera's
+			// hulls sample a stable buffer all frame long.
 			bufferAIsWrite = !bufferAIsWrite;
 			RenderTexture write = bufferAIsWrite ? bufferA : bufferB;
 			RenderTexture read = bufferAIsWrite ? bufferB : bufferA;
@@ -180,17 +379,127 @@ namespace OpenFrontier
 			if (!backdropCamera.enabled)
 			{
 				backdropCamera.enabled = true;
+				if (worldGrabber != null && !worldGrabber.enabled)
+				{
+					worldGrabber.enabled = true;
+				}
+				// Stack members ride with the base: raise them all at once,
+				// a disabled overlay is skipped by the stack.
+				foreach (Camera replica in backdropReplicaCameras)
+				{
+					if (replica != null && !replica.enabled)
+					{
+						replica.enabled = true;
+					}
+				}
 				Report("grabbing previous frames while a cloaking hull wants them");
 			}
+			// Only the base holds the target; the overlays of a stack
+			// render into the base's buffers by construction. Parking and
+			// enabling move the whole rig at once (base + members).
 			backdropCamera.targetTexture = write;
-			// Zoom may ride on FOV; the copy has to project like the main
-			// camera or the bend maps the wrong content into its silhouette.
-			if (backdropCamera.fieldOfView != mainCamera.fieldOfView)
-			{
-				backdropCamera.fieldOfView = mainCamera.fieldOfView;
-			}
 
 			Shader.SetGlobalTexture("_CloakBackdropRT", read);
+		}
+
+		/// <summary>
+		/// Per-frame pose and settings mirror. The engine's own
+		/// LateUpdates (order 0) have already posed the real backdrop
+		/// cameras when ours runs (execution order 1000); rendering
+		/// happens after every script, so the copy always renders through
+		/// the frame's freshest rig - sector rotation, zoom and camera
+		/// motion included, with no duplication of that logic here.
+		/// </summary>
+		private static void MirrorBackdropRig()
+		{
+			// The world pass mirrors its own parent (zoom rides on FOV in
+			// this game); pose is free through the parent-child transform.
+			if (worldGrabber != null && mainCamera != null
+				&& worldGrabber.fieldOfView != mainCamera.fieldOfView)
+			{
+				worldGrabber.fieldOfView = mainCamera.fieldOfView;
+			}
+
+			int count = realBackdropCameras.Count;
+			for (int i = 0; i < count; i++)
+			{
+				Camera real = realBackdropCameras[i];
+				Camera replica = backdropReplicaCameras[i];
+				// A real camera can die mid-session (scene teardown); the
+				// replica freezes on its last pose rather than touching a
+				// destroyed transform.
+				if (real == null || replica == null)
+				{
+					continue;
+				}
+				replica.transform.SetPositionAndRotation(real.transform.position, real.transform.rotation);
+				if (replica.fieldOfView != real.fieldOfView)
+				{
+					replica.fieldOfView = real.fieldOfView;
+				}
+				if (replica.nearClipPlane != real.nearClipPlane)
+				{
+					replica.nearClipPlane = real.nearClipPlane;
+				}
+				if (replica.farClipPlane != real.farClipPlane)
+				{
+					replica.farClipPlane = real.farClipPlane;
+				}
+				if (replica.cullingMask != real.cullingMask)
+				{
+					replica.cullingMask = real.cullingMask;
+				}
+				if (replica.depth != real.depth)
+				{
+					replica.depth = real.depth;
+				}
+			}
+		}
+
+		private void OnEnable()
+		{
+			RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
+			RenderPipelineManager.endCameraRendering += OnEndCameraRendering;
+		}
+
+		private void OnDisable()
+		{
+			RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+			RenderPipelineManager.endCameraRendering -= OnEndCameraRendering;
+			// The rig can die between the raise and the release (a teardown
+			// mid-frame); the hulls must never clip outside the copy.
+			Shader.SetGlobalFloat(FoldCopyPassGlobal, 0f);
+		}
+
+		// The copy must not contain the hulls that fold (the fold would
+		// sample its own previous painting, and with a visibility floor
+		// > 0 that recursion converges to hull). Raised exactly around
+		// the copy's world pass: begin raises, end releases, and nothing
+		// else - the sky and backdrop passes have no fold material, and
+		// probes and previews fire for their own cameras and see the
+		// global at 0.
+		private void OnBeginCameraRendering(ScriptableRenderContext context, Camera camera)
+		{
+			if (IsCopyWorldPass(camera))
+			{
+				Shader.SetGlobalFloat(FoldCopyPassGlobal, 1f);
+			}
+		}
+
+		private void OnEndCameraRendering(ScriptableRenderContext context, Camera camera)
+		{
+			if (IsCopyWorldPass(camera))
+			{
+				Shader.SetGlobalFloat(FoldCopyPassGlobal, 0f);
+			}
+		}
+
+		// Unity-null comparison (== null is the destroyed-tested overload);
+		// the fallback's single camera is its own world pass.
+		private static bool IsCopyWorldPass(Camera camera)
+		{
+			return camera != null
+				&& (camera == worldGrabber || (worldGrabber == null && camera == backdropCamera));
 		}
 
 		/// <summary>

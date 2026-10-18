@@ -18,9 +18,9 @@ Shader "OpenFrontier/Ship Cloak"
 	// difference is what happens when ActiveUnit pushes the cloak values.
 	//
 	// It exists so the CLOAK OUTLINE becomes material state instead of a
-	// second renderer: the hull itself sinks into a bent-image of the
-	// background, and owned ships keep a rim of readable structure. No
-	// CloakRenderer shell, no CloakOutlineRenderer, no settings toggle.
+	// second renderer: the hull itself sinks into a bent image of the
+	// background. No CloakRenderer shell, no CloakOutlineRenderer, no
+	// settings toggle.
 	//
 	// HOW THE SLIDER READS
 	//
@@ -45,11 +45,13 @@ Shader "OpenFrontier/Ship Cloak"
 	// "fraction of the hull's own material left standing", which reads the
 	// same way for the player as the old alpha floors did.
 	//
-	// The bend comes from the hull's own normal map (panel detail warps
-	// the screen-UV of the previous-frame copy -- light following geometry,
-	// no extra texture) plus a slow sin ripple. It scales with amount
-	// squared: the first tick of cloaking barely bends, full cloak is a
-	// standing smear.
+	// The bend is the post's two terms: the hull normal projected to
+	// view space (silhouette pixels bend wide, face-on pixels barely
+	// move) plus panel detail from the hull's own normal map and an
+	// organic scrolling flow -- sine products, no extra texture. The
+	// flow scales with amount; the panel detail with amount squared:
+	// the first tick of cloaking barely bends, full cloak is a living
+	// smear that never resolves into a mat of background.
 	//
 	// The V3 RETIRED the friendly tell rim (the old outline system's
 	// crutch: _CloakFriendly + _CloakTellColor, a cyan silhouette glow on
@@ -93,6 +95,29 @@ Shader "OpenFrontier/Ship Cloak"
 	// One frame of lag in what bends is the technique's defining
 	// artifact (GR:FS had it too); at ship speeds it reads as purpose.
 	//
+	// V3.1 -- TWO CORRECTIONS FROM PLAYING THE V3 BUILD:
+	//
+	//   1. THE COPY COMPOSES THE SKY. The player-facing background is
+	//      not one camera (see CloakBackdropCamera): the sky's clear
+	//      comes first, the planets/sun and background-sprite cameras
+	//      draw over it, and the world rig renders last. v3's single
+	//      child camera copied only the world rig, so the fold sampled
+	//      a copy with no sky, planets or sun in it -- a cloaked hull
+	//      bent holes where the backdrop should be. The grabber now
+	//      mirrors the whole pack as a small camera stack; what bends
+	//      behind the hull is the view the player actually sees.
+	//
+	//   2. THE FOLD NEVER FEEDS ON ITSELF. v3's copy contained the
+	//      hull's own previous painting, and with a floor > 0 that
+	//      recursion's fixed point is the hull itself -- a parked ship
+	//      brightened back into view over seconds, which read as "the
+	//      cloak does not work". While the copy renders now, the
+	//      grabber raises _CloakCopyPass and every fold hull clips out
+	//      of it (see the fragment: the sampled pixels are the true
+	//      background, and parking changes nothing over time. The blog
+	//      lives with the recursion because its copy is a blit of the
+	//      finished frame; ours is a camera render and can do better.
+	//
 	// _CloakBackdropRT -- the previous frame, from a camera, not a pass
 	//
 	// Stock URP's opaque texture could not carry it: the visible backdrop
@@ -100,13 +125,17 @@ Shader "OpenFrontier/Ship Cloak"
 	// content and never reaches the stock copy. And the v2.2 renderer
 	// feature that redrew those quads into a mid-frame snapshot turned
 	// out to be a trap: its passes never recorded, silently. So the
-	// capture now is CloakBackdropCamera -- a child of the main camera
-	// rendering the REAL view (nebulae, sun, other ships, particles; the
-	// main camera's own culling mask, minus HUD) into a ping-pong pair
-	// of fixed 256-long-edge RTs and publishing whichever buffer holds
-	// the finished previous frame as the global. No render features,
-	// nothing to discover in pass ordering, no silent skips -- an
-	// enabled camera draws or the console says why. Details and cost:
+	// capture now is CloakBackdropCamera -- a small camera stack childed
+	// under the main rig (v3.1): the sky base first, then the
+	// planets/sun and background-sprite cameras, the world pass last --
+	// the whole composed view, not just the world rig's slice -- at
+	// fixed 256-long-edge into a ping-pong pair, publishing whichever
+	// buffer holds the finished previous frame as the global. While it
+	// renders the grabber raises _CloakCopyPass and fold hulls clip
+	// themselves out of the copy: the sampled pixels are background,
+	// never the hull's own painting. No render features, nothing to
+	// discover in pass ordering, no silent skips -- an enabled camera
+	// draws or the console says why. Details and cost:
 	// CloakBackdropCamera.cs.
 	//
 	// Cameras other than the game's (reflection probes, previews)
@@ -233,6 +262,15 @@ Shader "OpenFrontier/Ship Cloak"
 		// texture, exactly like _CameraOpaqueTexture always was; not a
 		// material property -- the grabber is engine state, not art state).
 		TEXTURE2D(_CloakBackdropRT);  SAMPLER(sampler_CloakBackdropRT);
+
+		// Raised by the grabber while the copy's own world pass renders;
+		// every fold hull clips itself out of the copy under it, so the
+		// copy the fold samples is the view MINUS the hulls that fold --
+		// no painting feeds back into the next frame (the blog's blit
+		// copy carries that recursion; a camera render need not). A
+		// global, not a material property: render-phase state, not art
+		// state.
+		float _CloakCopyPass;
 		ENDHLSL
 
 		Pass
@@ -453,27 +491,48 @@ Shader "OpenFrontier/Ship Cloak"
 				half cloak = saturate(_CloakAmount);
 				if (cloak > 0.001h)
 				{
+					// The copy must never contain this hull: the grabber
+					// raises _CloakCopyPass for the length of its world
+					// pass (see the header). Without the clip the copy
+					// held the hull's own last painting, and with a
+					// floor > 0 that recursion's fixed point is the
+					// hull -- parked ships used to brighten back into
+					// view over seconds. Clipped, the sampled pixels
+					// are true background, forever.
+					if (_CloakCopyPass > 0.5h)
+					{
+						clip(-1.0h);
+					}
+
 					// How much of the hull's own material survives. Drops from 1
 					// to the settings floor; the bend eats the remainder.
 					half hullShare = lerp(1.0h, saturate(_CloakFloor), cloak);
 
-					// The bend: the hull normal projected to view space is the
-					// lens. Grazing pixels (the silhouette) project wide,
+					// The lens: the hull normal projected to view space --
+					// grazing pixels (the silhouette) project wide,
 					// face-on pixels barely move, so the copy slides
-					// AROUND the hull instead of smearing across it -- light
-					// from behind the ship bending around it. Panel detail
-					// from the hull's own normal map (flat hulls leave (0,0)
-					// and the ship bends only via the ripple) and a slow
-					// two-axis ripple ride on top, so a parked hull never
-					// looks like a static mat of background.
+					// AROUND the hull instead of smearing across it --
+					// light from behind the ship bending around it. On
+					// it: panel detail from the hull's own normal map
+					// (flat hulls leave (0,0) and ride the flow alone),
+					// and the post's scrolling-cloud term rebuilt from
+					// four cheap sine products in two octaves -- the
+					// product of two waves per channel reads as blobs,
+					// not bands -- so a parked hull resolves into
+					// drifting cells instead of a standing mat of
+					// background.
 					half3 viewNormal = normalize(mul((half3x3)GetWorldToViewMatrix(), inputData.normalWS));
-					half t = _Time.y * _CloakShimmerSpeed;
+					float t = _Time.y * _CloakShimmerSpeed;
+					half L = _CloakShimmerLines;
 					half2 warp = viewNormal.xy * (_CloakWarpScale * 2.0h) * cloak;
 					warp += surfaceData.normalTS.xy * (_CloakWarpScale * cloak * cloak);
-					warp += half2(
-						sin(input.uv.y * _CloakShimmerLines + t),
-						sin(input.uv.x * _CloakShimmerLines * 0.711h - t * 1.373h)
-					) * (_CloakShimmerScale * cloak);
+					half2 flow = half2(
+						sin(input.uv.x * L + t) * sin(input.uv.y * L * 0.731h - t * 1.271h),
+						sin(input.uv.y * L * 1.129h - t * 0.811h) * sin(input.uv.x * L * 0.577h + t * 1.577h));
+					flow += half2(
+						sin(input.uv.y * L * 0.211h + t * 0.229h),
+						sin(input.uv.x * L * 0.191h - t * 0.171h)) * 0.5h;
+					warp += flow * (_CloakShimmerScale * cloak);
 
 					// The frame behind, displaced. The copy is clamped by its
 					// wrap mode (CloakBackdropCamera creates it clamped).
@@ -481,9 +540,10 @@ Shader "OpenFrontier/Ship Cloak"
 						inputData.normalizedScreenSpaceUV + warp).rgb;
 
 					// Trade the material for the bend. The hull profile was fogged
-					// above; the copy is a finished frame of the SAME camera --
-					// both sides of the lerp are in the same space, do not fog
-					// again. And because the trade is a plain rgb crossfade over
+					// above; the copy is a finished frame of the SAME view
+					// (same projection, no post, no fog) -- both sides of the
+					// lerp are in the same space, do not fog again. And because
+					// the trade is a plain rgb crossfade over
 					// opaque geometry, the pixels at full cloak are entirely the
 					// bend: no alpha share dilutes the read (that composite bug
 					// is what v2's lensGate bandage chased). The floors keep
