@@ -1,0 +1,101 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1709254077376921
+GameObject:
+  serializedVersion: 6
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Component:
+  - component: {fileID: 4730242686860875}
+  - component: {fileID: 114724804207875695}
+  m_Layer: 0
+  m_Name: unit_class_planet_biolumin
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4730242686860875
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 46.38317, y: -42.396122, z: 20.265797}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
+--- !u!114 &114724804207875695
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1709254077376921}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad91520bcddc1f797ae6dcb3ac55fb7d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  RelativeShipSaleCost: 0
+  CaptureLikelihood: 0.05
+  ShipPurposes: []
+  AIBuildPreferenceMultiplierFudge: 1
+  PassengerGroupCountMultiplier: 1
+  Legal: 1
+  AICreditsReserve: 0
+  StationPurpose: 0
+  DisplayData: {fileID: 114724804207875695, guid: 91bd6a18e9274835bfd99be92f92b2d2, type: 2}
+  CanTradeAtOwnStation: 0
+  PurposeWarship: 0
+  PurposeTrader: 0
+  PurposeMiner: 0
+  PurposeStealth: 0
+  PurposePassengerTransport: 0
+  PurposeCourier: 0
+  PurposeEquipmentDealer: 0
+  PurposeScout: 0
+  CombatRating: 0
+  RequiredProduct: {fileID: 0}
+  AIMaxAttackDist: 275
+  BaseCost: 0
+  CanFireAt: 0
+  className: Biolumin
+  ShortClassName:
+  Description:
+  ShortDescription:
+  Drag: 0.5
+  ExcludeFromDeliverShipMission: 0
+  GenerateMissions: 0
+  HasRepairFacilities: 0
+  RepairFacilitiesCostMultiplier: 1
+  HullType: 128
+  ShipType: 0
+  IsArmed: 0
+  IsCivilian: 0
+  IsFreighter: 0
+  IsPilottable: 0
+  IsUsable: 0
+  ExcludeFromGodModeSpawn: 0
+  AllowBuildByPlayer: 1
+  SeedInSandbox: 0
+  Manufacturer: {fileID: 0}
+  maxHealth: 1000
+  RepairCostMultiplier: 0.5
+  RpCost: 0
+  SaleCost: 0
+  TurnAcceleration: 0
+  turnRate: 0
+  UniqueID: 100149
+  UnitPrefab: {fileID: 114724804207875695, guid: e3e08ed2f11d4f538fa704bd0126feab, type: 2}
+  ConstructionRateMultiplier: 1
+  UnitSeries: {fileID: 0}
+  UnitType: 256
+  PlanetClass: {fileID: 0}

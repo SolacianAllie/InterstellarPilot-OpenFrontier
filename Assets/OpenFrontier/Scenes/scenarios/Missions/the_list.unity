@@ -23101,6 +23101,18 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   PlanetPrefabs:
   - {fileID: 114724804207875695, guid: b51e7cb6cdb04f2583318a8381db0ed2, type: 2}
+  - {fileID: 114724804207875695, guid: 00b565b0ffe34ebe871ff2d0c39832c0, type: 2}
+  - {fileID: 114724804207875695, guid: 4a97ba521b8e43219d70dcdec05af775, type: 2}
+  - {fileID: 114724804207875695, guid: d9ff0a0ffa4d4084b376b29e77f9022f, type: 2}
+  - {fileID: 114724804207875695, guid: 9dfbb0cad8d9442eb128d97ae396b64a, type: 2}
+  - {fileID: 114724804207875695, guid: 301aa17eca174a3d847ba77f3069bdb2, type: 2}
+  - {fileID: 114724804207875695, guid: 20c320f44d0f4be1acb6647a1933ee4d, type: 2}
+  - {fileID: 114724804207875695, guid: 49db6ef47be4417ba2f9fd9bb36d635c, type: 2}
+  - {fileID: 114724804207875695, guid: 919e02f99447492e9b14c777b17d59aa, type: 2}
+  - {fileID: 114724804207875695, guid: 64407d92cfd84f1db53e1254c532f33c, type: 2}
+  - {fileID: 114724804207875695, guid: ef58b129881e46b7b0fe26fbc7c17c19, type: 2}
+  - {fileID: 114724804207875695, guid: e3e08ed2f11d4f538fa704bd0126feab, type: 2}
+  - {fileID: 114724804207875695, guid: d2ecadf00aa444adbc527259e53cbce1, type: 2}
   MoonPrefabs:
   - {fileID: 114724804207875695, guid: 3fc47ecb877cfc142b8b0d19c275cf8d, type: 2}
   - {fileID: 114724804207875695, guid: cc4a30c18bbe011478fdd7a33b44e32d, type: 2}
