@@ -60,3 +60,5 @@ MonoBehaviour:
   NormalCollisionDisabled: 0
   BuildBlockerRadius: 0
   SectorMapMinDrawSize: 30
+  VisualScaleMin: 0.9
+  VisualScaleMax: 1.1

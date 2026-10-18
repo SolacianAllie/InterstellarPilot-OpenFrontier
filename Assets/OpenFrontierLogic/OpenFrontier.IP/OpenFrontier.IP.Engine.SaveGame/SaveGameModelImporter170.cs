@@ -665,11 +665,18 @@ namespace OpenFrontier.IP.Engine.SaveGame
 					Moon component = item.GetComponent<Moon>();
 					if (component != null)
 					{
-						CreatePlanetsSeeder.RandomizeMoon(component, GameController.Instance.GameSettings.DefaultWorldSeedSettings.CreatePlanetsSeederSettings);
+						// Same pipeline the seeder uses, on an old save being
+						// dragged up to it: roll the size, then size the
+						// orbit to the two bodies. A moon whose planet is
+						// null measures 0 and RandomizeMoon falls back to
+						// the settings pair inside.
+						item.ApplyPlanetVisualScale();
+						CreatePlanetsSeeder.RandomizeMoon(component, GameController.Instance.GameSettings.DefaultWorldSeedSettings.CreatePlanetsSeederSettings, CreatePlanetsSeeder.MeasureVisualRadius(component.OrbitingAroundUnit), CreatePlanetsSeeder.MeasureVisualRadius(item));
 					}
 					else
 					{
-						item.transform.localPosition = CreatePlanetsSeeder.GetRandomPlanetLocalPosition(item.Sector, GameController.Instance.GameSettings.DefaultWorldSeedSettings.CreatePlanetsSeederSettings);
+						item.ApplyPlanetVisualScale();
+						item.transform.localPosition = CreatePlanetsSeeder.GetRandomPlanetLocalPosition(item.Sector, GameController.Instance.GameSettings.DefaultWorldSeedSettings.CreatePlanetsSeederSettings, CreatePlanetsSeeder.MeasureVisualRadius(item));
 					}
 				}
 			}

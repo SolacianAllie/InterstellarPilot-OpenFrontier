@@ -6,9 +6,66 @@ using UnityEngine;
 
 namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 {
+	// ---- planets scaled to themselves ----
+	//
+	// What generation used to do: every planet class renders an active unit
+	// whose sphere child is scaled 900 over a mesh with extents (10,10,10),
+	// so every planet measured the same radius - about 9000 world units,
+	// 9100 with its atmosphere shell - and that body was parked at a random
+	// annulus 19800..20000 from the sector centre. Since neighbouring
+	// sector anchors sit only 8000 apart, the disc already outran its own
+	// slot, and moons orbited at a flat 40000 - further out than the
+	// neighbouring planet is far. Nothing in the pipeline had ever read a
+	// planet's size, because every prefab carried the same one.
+	//
+	// What this layer now does: read the size, then place by it. The size
+	// itself is a class-authored range (UnitClassDisplayData
+	// VisualScaleMin/Max) rolled per unit from the unit's Seed by
+	// Unit.ApplyPlanetVisualScale, applied to the whole logic-unit root so
+	// the visual, its colliders, and every later re-derivation agree.
+	//
+	//	planet distance   = max( radius * 2.17..2.2 ,
+	//	                         play bound + radius + clearance )
+	//	moon orbit        = max( planet radius * 4.3..4.5 ,
+	//	                         planet radius + moon radius*2 + clearance )
+	//
+	// Both bands are CALIBRATED against the numbers they replace, so a
+	// stock-sized planet lands almost exactly where the old annulus rolled
+	// (radius 9100 -> 19747..20020 against the old 19800..20000) and a
+	// stock moon band still spans about 40000: the sky ships and UI were
+	// tuned against survives unchanged. A small class (scale 0.5, radius
+	// 4550) rolls 9873..10010 but the floor rule wins at 13050, so its
+	// near edge (dist - radius = 8500) still clears the sector's play
+	// shell (MaxUnitDistanceFromOriginUpperBound, 7000) by
+	// PlanetPlacementClearance - the planet is close AND out of the
+	// shipping lanes. A big class (scale 3, radius 27300) rolls itself out
+	// past 59k and the floor never binds.
+	//
+	// The radius is MEASURED from the class's active unit prefab
+	// (MeasureVisualRadius), not authored twice anywhere - the same
+	// discipline ActiveUnitPlanet.ResolvePlanetRadius applies to the ring
+	// shadow, because a typed number here would be a second copy of the
+	// scale waiting to disagree.
+	//
+	// Dice discipline: the roll is hashes of unit.Seed, NOT the
+	// UnityEngine.Random stream - the stream count is untouched by the
+	// sizing. But Init moved ahead of the position rolls (the roll reads
+	// Seed, which Init assigns), so the same CustomSeed regrows a
+	// different sector than before. That is expected, not a regression:
+	// the placement rule changed.
 	[RequireComponent(typeof(WorldSeederLayer))]
 	public class CreatePlanetsSeeder : MonoBehaviour
 	{
+		// How far a planet's NEAR EDGE must clear the sector's play shell.
+		// Measured in the same units as MaxUnitDistanceFromOriginUpperBound
+		// (7000), accepted as a constant rather than a settings field until
+		// a second cluster of worlds wants it different.
+		public const float PlanetPlacementClearance = 1500f;
+
+		// Slack under a moon (radius*2) inside its own orbit when the
+		// proportional band would try to park a moon inside its planet.
+		public const float MoonOrbitClearance = 1200f;
+
 		public CreatePlanetsSeederSettings CreatePlanetsSeederSettings;
 
 		public void SeedLayer(WorldBase world)
@@ -59,56 +116,142 @@ namespace OpenFrontier.IP.Engine.WorldSeeding.WorldSeedingLayers
 			for (int i = 0; i < num; i++)
 			{
 				Unit bestPlanetPrefabToSpawn = GetBestPlanetPrefabToSpawn();
-				if (!(bestPlanetPrefabToSpawn != null))
+				if (!bestPlanetPrefabToSpawn)
 				{
 					continue;
 				}
 				Unit unit = UnityObjectHelper.InstantiateAndGetComponent(bestPlanetPrefabToSpawn);
 				unit.transform.SetParent(sector.transform, worldPositionStays: true);
-				unit.transform.localPosition = GetRandomPlanetLocalPosition(sector, CreatePlanetsSeederSettings);
+				// Seed exists BEFORE the position is picked: the size roll
+				// (ApplyPlanetVisualScale) reads it, and the distance math
+				// below has to agree with the body it is placing. This is
+				// the one reordering of rolls the header documents.
+				unit.GetComponent<Unit>().Init();
+				unit.ApplyPlanetVisualScale();
+				float visualRadius = MeasureVisualRadius(unit);
+				unit.transform.localPosition = GetRandomPlanetLocalPosition(sector, CreatePlanetsSeederSettings, visualRadius);
 				float x = Random.Range(CreatePlanetsSeederSettings.MinPlanetRotationX, CreatePlanetsSeederSettings.MaxPlanetRotationX) * UnityRandomHelper.RandomSign();
 				unit.GetComponent<UnitPlanet>().Rotation = new Vector3(x, Random.Range(0f, 360f), 0f);
-				unit.GetComponent<Unit>().Init();
-				if (!(Random.value < CreatePlanetsSeederSettings.ProbabilityOfPlanetMoon))
+				if (Random.value < CreatePlanetsSeederSettings.ProbabilityOfPlanetMoon)
 				{
-					continue;
-				}
-				Unit random = CreatePlanetsSeederSettings.MoonPrefabs.GetRandom();
-				if (random != null)
-				{
-					Unit unit2 = UnityObjectHelper.InstantiateAndGetComponent(random);
-					Moon component = unit2.GetComponent<Moon>();
-					if (component != null)
+					Unit random = CreatePlanetsSeederSettings.MoonPrefabs.GetRandom();
+					if (random != null)
 					{
-						component.OrbitingAroundUnit = unit;
-						RandomizeMoon(component, CreatePlanetsSeederSettings);
-						unit2.GetComponent<Unit>().Init(autoFindParents: false);
-						unit2.Sector = sector;
-					}
-					else
-					{
-						Debug.LogError("Expecting moon to have moon component", unit2.gameObject);
+						Unit unit2 = UnityObjectHelper.InstantiateAndGetComponent(random);
+						Moon component = unit2.GetComponent<Moon>();
+						if (component != null)
+						{
+							component.OrbitingAroundUnit = unit;
+							// Seed before offset for the same reason as the
+							// planet: the moon's own size roll needs it, and
+							// the orbit's floor guard reads that size.
+							unit2.GetComponent<Unit>().Init(autoFindParents: false);
+							unit2.ApplyPlanetVisualScale();
+							RandomizeMoon(component, CreatePlanetsSeederSettings, visualRadius, MeasureVisualRadius(unit2));
+							unit2.Sector = sector;
+						}
+						else
+						{
+							Debug.LogError("Expecting moon to have moon component", unit2.gameObject);
+						}
 					}
 				}
 			}
 		}
 
-		public static void RandomizeMoon(Moon moonComponent, CreatePlanetsSeederSettings settings)
+		// Orbit radius rides the PLANET's radius, not a global constant: a
+		// gas giant's moons are pushed proportionally out, a small planet's
+		// moons hug it, and proportionality keeps the silhouette the same
+		// whatever the bodies do. Random.Range(4.3, 4.5) reproduces the
+		// stock flat 40000 for a stock planet (9100 * 4.4) with a skim of
+		// per-system variety. The floor guard keeps a scaled-up moon out of
+		// its own planet: the moon needs its diameter plus slack inside the
+		// orbit rim. A planet that failed to measure (no active unit prefab
+		// loaded) falls back to the settings pair, which is exactly the
+		// stock flat behaviour.
+		public static void RandomizeMoon(Moon moonComponent, CreatePlanetsSeederSettings settings, float planetVisualRadius, float moonVisualRadius)
 		{
-			float y = Random.value * 360f;
-			float maxMoonAngleXFromPlanet = settings.MaxMoonAngleXFromPlanet;
-			float x = Random.Range(0f - maxMoonAngleXFromPlanet, maxMoonAngleXFromPlanet);
-			moonComponent.OffsetFromPlanet = Quaternion.Euler(new Vector3(x, y, 0f)) * Vector3.forward * Random.Range(settings.MinMoonDistanceFromPlanet, settings.MaxMoonDistanceFromPlanet);
+			float num = Random.value * 360f;
+			float num2 = settings.MaxMoonAngleXFromPlanet;
+			float num3 = Random.Range(0f - num2, num2);
+			float num4;
+			if (planetVisualRadius > 0f)
+			{
+				float num5 = planetVisualRadius * Random.Range(4.3f, 4.5f);
+				float num6 = planetVisualRadius + moonVisualRadius * 2f + MoonOrbitClearance;
+				num4 = Mathf.Max(num5, num6);
+			}
+			else
+			{
+				num4 = Random.Range(settings.MinMoonDistanceFromPlanet, settings.MaxMoonDistanceFromPlanet);
+			}
+			moonComponent.OffsetFromPlanet = Quaternion.Euler(new Vector3(num3, num, 0f)) * Vector3.forward * num4;
 		}
 
-		public static Vector3 GetRandomPlanetLocalPosition(Sector sector, CreatePlanetsSeederSettings settings)
+		// Distance from the sector centre, now a function of the planet's
+		// size. The proportional band (2.17..2.2 x radius) is the stock
+		// annulus expressed against the body instead of against the sky;
+		// the floor keeps the near edge out of the play shell no matter
+		// how small the body is. Y keeps the settings band - the whole
+		// disc sits in its shallow deck and that has never been the
+		// problem.
+		public static Vector3 GetRandomPlanetLocalPosition(Sector sector, CreatePlanetsSeederSettings settings, float visualRadius)
 		{
 			float y = Random.Range(settings.MinPlanetPositionY, settings.MaxPlanetPositionY);
 			Vector3 vector = Geometry.RandomXZUnitVector();
-			float num = Random.Range(settings.MinPlanetDistance, settings.MaxPlanetDistance);
+			float num = visualRadius * Random.Range(2.17f, 2.2f);
+			float num2 = GameController.Instance.GameSettings.UniverseBoundsSettings.MaxUnitDistanceFromOriginUpperBound + visualRadius + PlanetPlacementClearance;
+			num = Mathf.Max(num, num2);
 			Vector3 result = vector * num;
 			result.y = y;
 			return result;
+		}
+
+		// The radius this unit will RENDER, read from the class's active
+		// unit prefab - the identical vocabulary to
+		// ActiveUnitPlanet.ResolvePlanetRadius (max axis of the mesh
+		// extents - SphereMediumPoly is (10,10,10), and the magnitude of
+		// that vector is 17.3, which is not the radius - times the largest
+		// axis of the filter's cumulative scale), taking the LARGEST of
+		// every mesh in the prefab so the atmosphere shell (910, just over
+		// the planet's 900) counts as the silhouette it is. The per-instance
+		// roll (ApplyPlanetVisualScale, applied to the root before calling)
+		// multiplies in through the unit's own localScale. Returns 0 when
+		// nothing can be measured; callers are written to fall back to the
+		// stock settings pair.
+		public static float MeasureVisualRadius(Unit unit)
+		{
+			if (!(unit != null) || !unit.IsValidAndNotDestroyed)
+			{
+				return 0f;
+			}
+			string activeUnitResourceName = unit.GetActiveUnitResourceName();
+			if (string.IsNullOrEmpty(activeUnitResourceName))
+			{
+				return 0f;
+			}
+			ActiveUnit activeUnit = GameController.Instance.ActiveUnitPrefabCache.GetActiveUnit(EngineASX.Instance, activeUnitResourceName);
+			if (activeUnit == null)
+			{
+				return 0f;
+			}
+			float num = 0f;
+			MeshFilter[] componentsInChildren = activeUnit.GetComponentsInChildren<MeshFilter>(true);
+			for (int i = 0; i < componentsInChildren.Length; i++)
+			{
+				Mesh sharedMesh = componentsInChildren[i].sharedMesh;
+				if (sharedMesh == null)
+				{
+					continue;
+				}
+				num = Mathf.Max(num, LargestAxis(sharedMesh.bounds.extents) * LargestAxis(componentsInChildren[i].transform.lossyScale));
+			}
+			return num * LargestAxis(unit.transform.localScale);
+		}
+
+		private static float LargestAxis(Vector3 vector)
+		{
+			return Mathf.Max(vector.x, Mathf.Max(vector.y, vector.z));
 		}
 	}
 }

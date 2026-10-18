@@ -376,8 +376,15 @@ namespace OpenFrontier.IP.Engine
 					if (component != null)
 					{
 						component.OrbitingAroundUnit = unit2;
-						CreatePlanetsSeeder.RandomizeMoon(component, PlanetsSettings);
-						unit3.GetComponent<Unit>().Init(autoFindParents: false);
+						// Same order the seeder uses: Init assigns Seed, the
+						// class range roll reads it, and the orbit is sized
+						// to the two bodies as they will render. unit2's
+						// roll already happened inside CreateScenePlanets,
+						// so its measured radius is the scaled one.
+						Unit unit4 = unit3.GetComponent<Unit>();
+						unit4.Init(autoFindParents: false);
+						unit4.ApplyPlanetVisualScale();
+						CreatePlanetsSeeder.RandomizeMoon(component, PlanetsSettings, CreatePlanetsSeeder.MeasureVisualRadius(unit2), CreatePlanetsSeeder.MeasureVisualRadius(unit3));
 						unit3.Sector = sector;
 					}
 				}
