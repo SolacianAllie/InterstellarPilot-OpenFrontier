@@ -35,8 +35,11 @@ Shader "OpenFrontier/Ship Cloak"
 	//      CloakMinAlpha for enemies (both serialized on the
 	//      VideoSettings prefab), 0 during construction and external
 	//      fades. Same numbers the old shell alpha used; not a new
-	//      tuning surface. Full cloak currently ships at 0 = the fold
-	//      is completely invisible (the renderer parks at vis <= 0.003).
+	//      tuning surface. Full cloak ships floor 0: the hull material
+	//      cedes to the bend entirely while the fold SURFACE keeps
+	//      drawing - visible as pure bent space, never as nothing. The
+	//      renderers are not toggled by visibility; the material state
+	//      alone speaks.
 	//
 	// The visible surface then trades itself for the bend:
 	//

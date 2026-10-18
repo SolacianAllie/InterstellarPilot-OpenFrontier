@@ -425,11 +425,11 @@ namespace OpenFrontier.IP.Engine
 
 		private void ApplyCloakToUnitRenderers(float cloakAmount, float visibleFloor)
 		{
-			// vis = how much of the hull's own material survives; the shader
-			// spends 1 - vis on bent background. Same surface the old alpha
-			// floors described, read through the hull instead of a shell.
-			float visible = Mathf.Lerp(1f, Mathf.Clamp01(visibleFloor), Mathf.Clamp01(cloakAmount));
-			bool draw = visible > 0.003f;
+			// _CloakFloor is how much hull material survives at amount 1
+			// (0 = the hull fully cedes to the bend). Appearance is the
+			// material's state alone: the fold surface is never toggled by
+			// visibility, so at full cloak the silhouette keeps drawing as
+			// pure bent space instead of turning into nothing.
 			if (cloakAmount != lastCloakAmount || visibleFloor != lastCloakFloor)
 			{
 				lastCloakAmount = cloakAmount;
@@ -441,11 +441,12 @@ namespace OpenFrontier.IP.Engine
 				if (cloakDrivenByShells)
 				{
 					// The fold runs on the authored shell meshes (see
-					// cloakDrivenByShells); the hull stands in exactly
-					// decloaked and parks the instant cloaking starts, so
-					// the player never sees a grey shell -- the shell was
-					// where the fold material already lived.
-					bool shellDraw = draw && cloakAmount > 0.001f;
+					// cloakDrivenByShells); only the hull - the STANDARD
+					// material, which has no cloak state of its own -
+					// parks while the cloak holds, the one swap the
+					// material cannot do for itself. Decloaked, the hull
+					// stands back in and the shells rest again.
+					bool shellDraw = cloakAmount > 0.001f;
 					if (LevelOfDetail)
 					{
 						foreach (MeshRenderer unitRenderer in UnitRenderers)
@@ -475,7 +476,7 @@ namespace OpenFrontier.IP.Engine
 				{
 					foreach (MeshRenderer unitRenderer in UnitRenderers)
 					{
-						unitRenderer.enabled = draw;
+						unitRenderer.enabled = true;
 						ApplyCloakMaterialPropertyBlock(unitRenderer, cloakAmount, visibleFloor);
 					}
 				}
@@ -483,7 +484,7 @@ namespace OpenFrontier.IP.Engine
 				{
 					if (UnitRenderer != null)
 					{
-						UnitRenderer.enabled = draw;
+						UnitRenderer.enabled = true;
 						ApplyCloakMaterialPropertyBlock(UnitRenderer, cloakAmount, visibleFloor);
 					}
 				}
