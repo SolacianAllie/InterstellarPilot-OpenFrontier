@@ -158,6 +158,44 @@ Shader "OpenFrontier/Planet Gas Giant"
 	// vertex normal IS the geometric one and the port is exact rather than
 	// approximate.
 	//
+	// WHAT THE SPEC MAP IS
+	//
+	// gas_giant_01_specular.png, measured, not assumed:
+	//
+	//   - R is entirely zero. One distinct 8-bit level across 2048x1024,
+	//     mean 0.000. B is entirely zero too. So the land-mask reading
+	//     the normal shader uses (landMask = saturate(specTex.r)) has
+	//     NOTHING to read in this file -- half of that shader's spec
+	//     system cannot exist here, and porting it would be porting a
+	//     channel that is uniformly off.
+	//   - G is the data: mean 0.246, range 0.09-0.345, 48 levels, and
+	//     never below 0.09 -- it has no black in it anywhere.
+	//   - G is a gloss mask, and specifically an INVERSION of its own
+	//     planet's albedo: correlation -0.897 against gas_giant_01's
+	//     diffuse luminance. Gloss over the dark belts. That is what a
+	//     cloud-top sheen map is.
+	//
+	// The pairing caveat, measured rather than waved at: this plate was
+	// authored against planet 01, and the albedo on GasGiant.mat is
+	// planet 06. Correlation against THAT diffuse is -0.409, so there is
+	// real alignment but not the near-identity it has with its own
+	// planet. The sheen will therefore favour some of 06's bands and not
+	// others. There is no 06 specular plate in the set (gas_giant_06 has
+	// diffuse and normal only), and the alternative plate,
+	// pd_gas_giant_01_specular, is worse aligned still (-0.314), so this
+	// one stays bound. Flagged because "the sheen lights the wrong
+	// bands" is a bug report waiting to be filed otherwise.
+	//
+	// Because G never leaves 0.09-0.345, it is remapped through a floor
+	// and a range before use -- the same threshold-pair mechanism the
+	// normal shader applies to this very channel for its water mask.
+	// Used raw, gloss would live in a narrow slice of the lobe's exponent
+	// range AND the lobe's amplitude could never exceed 0.345, so the
+	// sheen slider would do nothing visible at any setting.
+	//
+	// The U wrap is clean: seam 0.005 against an interior column step of
+	// 0.246, so this plate tiles like the deck does.
+	//
 	// THE DECK MOVES
 	//
 	// A fluid surface that never moves reads as glass. The deck gets two
@@ -222,10 +260,10 @@ Shader "OpenFrontier/Planet Gas Giant"
 	//
 	// MOBILE FIRST
 	//
-	// Three texture samples, unchanged: the deck twice (two cross-fade
-	// phases) plus the band reference. The atmosphere costs NO texture
+	// Four texture samples: the deck twice (two cross-fade phases), the
+	// band reference, and the spec mask. The atmosphere costs NO texture
 	// fetches -- one acos and about a dozen pow/rcp/smoothstep/lerp --
-	// which is cheap against the four bespoke terms it replaced. No tangent
+	// and the sheen adds one fetch and one pow. No tangent
 	// attribute and no tangent interpolator, no shadow caster and no depth
 	// pass: the mesh is a 2143-vertex sphere, and a planet is never close
 	// enough to the camera for self-shadowing to matter.
@@ -260,6 +298,34 @@ Shader "OpenFrontier/Planet Gas Giant"
 		_BandDispSpeed ("Band Stream Speed", Range(0, 0.5)) = 0.04
 		_BandSoftness ("Band Softness", Range(1, 8)) = 3
 		_BandNeutral ("Band Neutral", Range(0, 1)) = 0.6
+
+		// ---- the sheen ----
+		//
+		// The cloud deck's own specular, ported from the cloud term of
+		// OpenFrontier/Planet Surface. What is ported is the LOBE, not
+		// the water/land machinery around it: a gas giant is a cloud deck
+		// all the way down, and this plate's land channel is flat zero
+		// anyway (see WHAT THE SPEC MAP IS in the header).
+		//
+		// [NoScaleOffset] because this plate has to stay registered with
+		// the deck -- it is the same equirectangular layout of the same
+		// planet, and a tile or offset here would slide the sheen off
+		// the bands it belongs to.
+		[NoScaleOffset] _SpecMap ("Specular Mask (G: gas_giant_01_specular)", 2D) = "black" {}
+		// The remap of G. Floor 0.09 is the file's measured minimum and
+		// range 0.26 its measured span, so the default maps the whole
+		// plate across 0..1.
+		_SpecFloor ("Sheen Floor", Range(0, 1)) = 0.09
+		_SpecRange ("Sheen Range", Range(0.01, 1)) = 0.26
+		// Gloss, and with it both how bright the sheen can get and how
+		// tight it is (the lobe's exponent is exp2(2 + 10 * gloss), so
+		// this one number sets size and strength together -- the same
+		// double duty _CloudSmoothness does in the source).
+		//
+		// Kept low deliberately: gloss peaks over the DARK belts, and at
+		// 1.0 the lobe would out-shine the cloud it sits on and read as
+		// a wet highlight rather than as haze on cloud tops.
+		_SpecGloss ("Sheen Gloss", Range(0, 2)) = 0.25
 
 		// ---- the atmosphere ----
 		//
@@ -325,6 +391,8 @@ Shader "OpenFrontier/Planet Gas Giant"
 
 			TEXTURE2D(_Albedo);   SAMPLER(sampler_Albedo);
 			TEXTURE2D(_BandRef);  SAMPLER(sampler_BandRef);
+			// _SpecMap is [NoScaleOffset] as well, so no _ST for it either.
+			TEXTURE2D(_SpecMap);  SAMPLER(sampler_SpecMap);
 
 			// Every material property belongs here, textures included by way
 			// of their _ST, or the SRP Batcher drops to per-draw setup.
@@ -350,6 +418,9 @@ Shader "OpenFrontier/Planet Gas Giant"
 				float _BandDispSpeed;
 				float _BandSoftness;
 				float _BandNeutral;
+				float _SpecFloor;
+				float _SpecRange;
+				float _SpecGloss;
 			CBUFFER_END
 
 			struct Attributes
@@ -427,7 +498,7 @@ Shader "OpenFrontier/Planet Gas Giant"
 				float deckUB = float(input.uv.x) + (float)bandAmp * rampB;
 
 				// The cloud deck. TWO deck samples plus the band reference
-				// above -- that is this shader's whole texture budget.
+				// above; the spec mask below is the fourth and last fetch.
 				half3 deckA = SAMPLE_TEXTURE2D(_Albedo, sampler_Albedo, float2(deckUA, input.uv.y)).rgb;
 				half3 deckB = SAMPLE_TEXTURE2D(_Albedo, sampler_Albedo, float2(deckUB, input.uv.y)).rgb;
 				half3 albedo = lerp(deckB, deckA, (half)weightA);
@@ -500,6 +571,39 @@ Shader "OpenFrontier/Planet Gas Giant"
 				// and the sun casting into the disc is a real thing to
 				// want.
 				half3 color = albedo * sunColour * saturate(ndotl) * mainLight.shadowAttenuation;
+
+				// ---- the sheen: the cloud deck's own specular ----
+				// Ported from OpenFrontier/Planet Surface, where the same
+				// lobe is applied to ITS cloud deck (cloudGloss /
+				// cloudSpec there). A gas giant is a cloud deck all the way
+				// down, so it is that term which ports -- see WHAT THE SPEC
+				// MAP IS in the header for the measurements, including why
+				// the water/land half of that system could not.
+				//
+				// Gloss is G, read as data like every other plate in this
+				// shader, remapped through the floor/range pair because the
+				// file's G never leaves 0.09-0.345. The lobe's exponent is
+				// exp2(2 + 10 * gloss): a tight pinpoint at full gloss, a
+				// broad sheen near zero -- the whole range a cloud top has.
+				half4 specTex = SAMPLE_TEXTURE2D(_SpecMap, sampler_SpecMap, input.uv);
+				float sheenMask = saturate((specTex.g - _SpecFloor) * rcp(max(1e-3, _SpecRange)));
+				half  cloudGloss = (half)_SpecGloss * (half)sheenMask;
+
+				// Additive, and in SUN colour, like the source: this is the
+				// star reflecting off cloud tops, so it follows the sun and
+				// cannot survive on the night side.
+				//
+				// Shadowed as well, which is a DEVIATION from the source and
+				// deliberately so. There the cloud deck is a separate layer
+				// floating above the terrain and is lit unshadowed. Here the
+				// deck IS the surface, so a ring or moon between the planet
+				// and the sun falls across the cloud tops and their sheen
+				// alike; leaving this one unshadowed would put a bright
+				// highlight inside a dark band and read as the shadow
+				// glowing.
+				half3 halfVec = normalize(mainLight.direction + V);
+				half  sheen = pow(saturate(dot(N, halfVec)), exp2(2.0 + 10.0 * cloudGloss)) * cloudGloss;
+				color += sunColour * sheen * mainLight.shadowAttenuation;
 
 				// ---- aerial perspective: the inside half of the air ----
 				// The atmosphere shell only ever draws OUTSIDE the
