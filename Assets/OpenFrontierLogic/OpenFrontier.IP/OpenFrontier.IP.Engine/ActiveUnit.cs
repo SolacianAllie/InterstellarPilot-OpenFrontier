@@ -17,8 +17,6 @@ namespace OpenFrontier.IP.Engine
 	{
 		public delegate void ActiveUnitDrawDistanceChanged(ActiveUnit sender);
 
-		public Color CloakDrawColor = Color.white;
-
 		private bool shouldEffectsBeDrawn;
 
 		private ActiveUnitRenderMode activeUnitRenderMode;
@@ -73,10 +71,6 @@ namespace OpenFrontier.IP.Engine
 
 		[SerializeField]
 		private List<ActiveUnitThrusterAudio> activeUnitThrusterAudios = new List<ActiveUnitThrusterAudio>();
-
-		private Color lastAppliedOpaqueColor = Color.white;
-
-		private float lastFadeAlpha = -1f;
 
 		// Open Frontier: cloak-shader state. A hull whose material carries
 		// the cloak uniforms (_CloakAmount exists) is driven directly by
@@ -308,47 +302,16 @@ namespace OpenFrontier.IP.Engine
 
 		public void SetFadeAlpha(float alpha, Faction owner)
 		{
+			// The cloak shader is the single fade authority (the renamed
+			// Cloaked materials carry it, and every shell is cloak-driven):
+			// alpha is visibility, the shader gets the complement as its
+			// amount with no persistent floor, so the wanted alpha is
+			// exactly the alpha shown. Units with no cloak-capable material
+			// never had a ghost of their own - their shells were empty no-ops.
 			if (IsCloakCapableHull())
 			{
-				// External fade control (BuildModePlacementScreen preview and
-				// friends): alpha is visibility. The cloak shader gets the
-				// complement as amount with no persistent floor, so the wanted
-				// alpha is exactly the alpha shown.
 				ApplyCloakToUnitRenderers(1f - Mathf.Clamp01(alpha), 0f);
-				return;
 			}
-			if (LevelOfDetail)
-			{
-				if (lastFadeAlpha == alpha)
-				{
-					return;
-				}
-				Color color = CalculateCloakColor(alpha, owner);
-				foreach (MeshRenderer cloakRenderer in CloakRenderers)
-				{
-					ApplyCloakColorMaterialPropertyBlock(cloakRenderer, ref color);
-				}
-				lastFadeAlpha = alpha;
-			}
-			else if (CloakRenderer != null)
-			{
-				Color color2 = CalculateCloakColor(alpha, owner);
-				ApplyCloakColorMaterialPropertyBlock(CloakRenderer, ref color2);
-			}
-		}
-
-		private Color CalculateCloakColor(float alpha, Faction owner)
-		{
-			Color cloakDrawColor = CloakDrawColor;
-			cloakDrawColor.a = alpha;
-			return cloakDrawColor;
-		}
-
-		private void ApplyCloakColorMaterialPropertyBlock(MeshRenderer meshRenderer, ref Color color)
-		{
-			meshRenderer.GetPropertyBlock(cloakMaterialPropertyBlock);
-			cloakMaterialPropertyBlock.SetColor("_BaseColor", color); // URP port: _Color -> _BaseColor
-			meshRenderer.SetPropertyBlock(cloakMaterialPropertyBlock);
 		}
 
 		private bool IsCloakCapableHull()
