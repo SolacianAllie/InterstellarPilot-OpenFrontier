@@ -1,4 +1,4 @@
-using DigitalRubyShared;
+using OpenFrontier.Gestures;
 
 namespace OpenFrontier.IP.UI
 {

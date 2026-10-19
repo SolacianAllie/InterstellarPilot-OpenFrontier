@@ -439,6 +439,19 @@ exit 198) — the user performs all editor actions.
   (this blacked out the wormhole transition; the anim's camera is now
   disabled in the prefab). Never spawn enabled cameras at runtime unless
   they are explicitly stacked.
+- **Profiler counters moved assembly and namespace in Unity 6000.6:**
+  `ProfilerRecorder`/`ProfilerCategory` live in `Unity.Profiling` (inside
+  `UnityEngine.CoreModule.dll` — there is NO `UnityEngine.ProfilingModule.dll`
+  in this install, whatever the docs say), while the legacy static
+  `Profiler` with the memory getters stays `UnityEngine.Profiling.Profiler`.
+  The options enum renamed too: `WrapAroundWhenOverwrite` →
+  `WrapAroundWhenCapacityReached`; graphics memory is
+  `Profiler.GetAllocatedMemoryForGraphicsDriver()` (not
+  `GetGraphicsDriverAllocatedMemoryLong`). The two namespaces coexist with
+  no name collisions, so `using UnityEngine.Profiling;` +
+  `using Unity.Profiling;` is legal. Found by reflection-probing
+  CoreModule from a throwaway csproj after two honest harness failures —
+  the harness (via the editor rsp) is right and the docs are behind.
 - **Play-mode edits to the URP asset can PERSIST in the editor:**
   `ShadowQualitySync` writes `mainLightShadowmapResolution` at runtime;
   the editor re-serialized the asset mid-session and the value stuck
@@ -467,11 +480,10 @@ exit 198) — the user performs all editor actions.
   it into touch/drag thresholds directly — it once set
   `EventSystem.pixelDragThreshold` to 0 and ate every tap on the sector map.
   Use `OpenFrontier.ScreenDpi.Value` (Screen.dpi → JNI DisplayMetrics → 200
-  fallback). Fingers.dll reads `Screen.dpi` in its Awake and falls back to
-  its serialized DefaultDPI with a red error; `FingersDpiFix` on the
-  GameController prefab's EventSystem object overrides `DeviceInfo` after
-  each scene load. The one-time red error at startup is cosmetic and cannot
-  be silenced without patching the DLL.
+  fallback). `GestureScript` feeds `GestureUnits.PixelsPerInch` from it on
+  enable, on `sceneLoaded` and on a resolution change — the old
+  `FingersDpiFix` override (and its one-time red error from the DLL) went
+  with Fingers.dll.
 - **Only `Assets/Scripts/OpenFrontier/OpenFrontier.asmdef` references
   `Unity.RenderPipelines.Universal.Runtime`** — any new script touching URP
   types (`UniversalRenderPipelineAsset`, etc.) MUST live in the OpenFrontier
@@ -496,7 +508,26 @@ exit 198) — the user performs all editor actions.
 - **`OpenFrontier.LegacyInput` is a shim over the NEW Input System**, not
   `UnityEngine.Input`: `Mouse.current` is null/stale on touch-only devices,
   so `mousePosition` must mirror the primary touch (fixed in the shim —
-  keep that behaviour when migrating the remaining ~60 call sites).
+  keep that behaviour). `Fingers.dll` was the only caller of the actual
+  legacy input module; it is gone (see the gestures note below), so
+  Active Input Handling can be, and should be, "Input System Package
+  (New)" only. Nothing in `Assets/Scripts`-era code uses
+  `UnityEngine.Input` directly any more.
+- **`OpenFrontier.Gestures` replaces Fingers.dll** (deleted 2026-10-19;
+  decompile-derived port of Tap/Pan/Scale, fed from EnhancedTouch —
+  `GestureScript` self-spawns, no prefab). Thresholds are in screen
+  INCHES via `GestureUnits` (fed from `OpenFrontier.ScreenDpi.Value`, so
+  the old `FingersDpiFix` component is gone). Mouse buttons ride as three
+  fingers with Fingers' ids and the button index in
+  `PlatformSpecificTouch` — that is what `IsRightMouseButton()` reads.
+  Two behaviours are load-bearing and easy to "fix" into bugs: a
+  recognizer reporting `Ended` re-arms to `Possible` immediately (and its
+  touches are untracked only after `TouchesEnded` returns) — so the
+  consumer's `Ended` callback is the only place `FocusX/FocusY` and
+  `TapTouches` are valid; and same-view exclusivity
+  (`AllowSimultaneousExecutionIfPlatformSpecificViewsAreDifferent = true`)
+  holds the stream for the rest of the pump frame after `Ended`, which is
+  what stops orbit-pan and pinch-scale from double-driving the camera.
 - **No Unity native calls in MonoBehaviour field initializers / static
   constructors** (`LayerMask.NameToLayer`, `Shader.Find`, etc.): type
   initialization can run during serialization, where native calls are

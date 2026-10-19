@@ -1,4 +1,4 @@
-using DigitalRubyShared;
+using OpenFrontier.Gestures;
 using OpenFrontier.IP.Engine;
 using OpenFrontier.IP.Engine.Settings;
 using UnityEngine;
@@ -24,7 +24,7 @@ namespace OpenFrontier.IP.UI.Screens.Hud
 			OrbitPanGesture = new PanGestureRecognizer();
 			OrbitPanGesture.StateUpdated += PanGestureUpdated;
 			OrbitPanGesture.PlatformSpecificView = OrbitScaleGesturePlatformSpecificView;
-			FingersScript.Instance.AddGesture(OrbitPanGesture);
+			GestureScript.Instance.AddGesture(OrbitPanGesture);
 		}
 
 		private void PanGestureUpdated(GestureRecognizer r)
@@ -47,7 +47,7 @@ namespace OpenFrontier.IP.UI.Screens.Hud
 					HudCameraSettings hudCameraSettings = EngineASX.Instance.GameSettings.HudCameraSettings;
 					float num = Mathf.Lerp(hudCameraSettings.OrbitPanGestureMinRotationSpeed, hudCameraSettings.OrbitPanGestureMaxRotationSpeed, GameController.Instance.CameraDragRotateSensitivity) * hudCameraSettings.OrbitPanGestureSpeedMultiplier;
 					num *= GameController.Instance.GetCameraDragRotateSensitivityMultiplier();
-					desiredCameraAngleY += DeviceInfo.PixelsToUnits(velocityX) * num;
+					desiredCameraAngleY += GestureUnits.PixelsToUnits(velocityX) * num;
 					// Vertical drag pitches the camera (free look up/down)
 					// instead of changing elevation; elevation stays on its button.
 					// NEGATED to match the menu's spectator camera: that one
@@ -55,7 +55,7 @@ namespace OpenFrontier.IP.UI.Screens.Hud
 					// so an upwards swipe looks up there, while a positive
 					// euler X here would look DOWN - the two were inverted
 					// since elevation became pitch.
-					desiredCameraAngleX = Mathf.Clamp(desiredCameraAngleX - DeviceInfo.PixelsToUnits(velocityY) * num, 0f - MaxManualOrbitAngleX, MaxManualOrbitAngleX);
+					desiredCameraAngleX = Mathf.Clamp(desiredCameraAngleX - GestureUnits.PixelsToUnits(velocityY) * num, 0f - MaxManualOrbitAngleX, MaxManualOrbitAngleX);
 					EngineASX.Instance.HudCamera.SetCameraDesiredRotation(desiredCameraAngleX, desiredCameraAngleY);
 				}
 			}
@@ -63,9 +63,9 @@ namespace OpenFrontier.IP.UI.Screens.Hud
 
 		private void OnDisable()
 		{
-			if (FingersScript.HasInstance)
+			if (GestureScript.HasInstance)
 			{
-				FingersScript.Instance.RemoveGesture(OrbitPanGesture);
+				GestureScript.Instance.RemoveGesture(OrbitPanGesture);
 			}
 		}
 	}

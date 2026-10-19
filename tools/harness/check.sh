@@ -117,8 +117,13 @@ done | xargs -P "$JOBS" -I{} "$WORKER" "$BUILD" {} > "$RESULTS"
 NPASS=0; NFAIL=0
 while read -r line; do
   case "$line" in
+    PASS|FAIL) echo "worker emitted an empty verdict line: $line" >&2; continue ;;
     PASS*) NPASS=$((NPASS+1)); green "  $line" ;;
-    *) NFAIL=$((NFAIL+1)); red "$line" ;;
+    FAIL*) NFAIL=$((NFAIL+1)); red "$line" ;;
+    # Error detail lines carry no verdict - printing them here would
+    # double-count files as failed projects (a real failure with 5 error
+    # lines reads "6 of N", and N inflates by the error-line count).
+    *) red "    $line" ;;
   esac
 done < "$RESULTS"
 

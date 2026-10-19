@@ -1,4 +1,4 @@
-using DigitalRubyShared;
+using OpenFrontier.Gestures;
 using OpenFrontier.IP.Engine;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -48,7 +48,7 @@ namespace OpenFrontier.IP.UI.Controls
 				ToggleTarget.OnPointerUp(new PointerEventData(EventSystem.current));
 				EventSystem.current.SetSelectedGameObject(null);
 				GameController.Instance.DebouceEventSystem(0.2f);
-				FingersScript.Instance.ResetState(clearGestures: true);
+				GestureScript.Instance.ResetState(clearGestures: true);
 				if (!Item.ParentListBase.IsMultiSelectEnabled && Item.ParentListBase.SelectedItemCount > 1)
 				{
 					Item.ParentListBase.DeselectAllExcept(Item);

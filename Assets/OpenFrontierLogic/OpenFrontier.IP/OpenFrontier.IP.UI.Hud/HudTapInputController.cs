@@ -1,4 +1,4 @@
-using DigitalRubyShared;
+using OpenFrontier.Gestures;
 using OpenFrontier.IP.UI.Screens.Hud;
 using UnityEngine;
 
@@ -18,7 +18,7 @@ namespace OpenFrontier.IP.UI.Hud
 			};
 			tapGesture.StateUpdated += TapGesture_StateUpdated;
 			tapGesture.PlatformSpecificView = gameObject;
-			FingersScript.Instance.AddGesture(tapGesture);
+			GestureScript.Instance.AddGesture(tapGesture);
 		}
 
 		private void TapGesture_StateUpdated(GestureRecognizer gesture)
@@ -38,7 +38,7 @@ namespace OpenFrontier.IP.UI.Hud
 
 		private void OnDisable()
 		{
-			FingersScript.Instance.RemoveGesture(tapGesture);
+			GestureScript.Instance.RemoveGesture(tapGesture);
 		}
 	}
 }
