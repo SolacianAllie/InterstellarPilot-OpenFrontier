@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Imphenzia.SpaceForUnity;
 using OpenFrontier.IP.Common;
 using OpenFrontier.IP.SpaceUnity.Nebulas;
 using OpenFrontier.IP.SpaceUnity.Stars;
