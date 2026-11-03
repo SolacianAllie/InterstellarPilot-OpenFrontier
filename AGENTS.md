@@ -294,6 +294,25 @@ spellings before anything else.** A case mismatch plus a wrong `ignorecase`
 deletes silently, and `git checkout` will not bring it back because git does
 not know it was ever supposed to be there.
 
+**All binaries in this repo live in Git LFS — a recovery clone must fetch them
+or Unity reports ~1890 broken assets.** `.gitattributes` routes PNG/WAV/OGG/
+MP3/FBX/DLL etc. through LFS. Cloning without fetching LFS objects leaves
+~130-byte pointer stubs on disk, which materialise as: `Could not create asset
+from …: File could not be read` for every texture/audio import, white/blank
+materials, silent audio, and (for the plugin DLLs) CS0246/CS0103 on plugin
+types. **That stub state is the real cause behind several historical
+mysteries** ("stars broken the whole time", "lost plugin dependencies") —
+check for stubs before inventing a cause:
+`grep -rl "git-lfs.github.com/spec/v1" Assets | wc -l` must be 0.
+Fix: `git lfs install` (the recovery clone had not run it — `lfs checkout`
+fails with "Git LFS is not installed" without it) → `git lfs fetch origin`
+(~5 GB, genuinely on the remote) → `git lfs checkout`. Nothing to commit
+afterwards: real bytes in the worktree while git still tracks pointers.
+Unity session edits made *while the stubs were on disk* (wiped URP global
+settings, material re-saves, rewritten `.png.meta` importer state) are
+import-of-garbage normalisation — revert them, then let Unity re-import
+against the real files.
+
 ## A green harness run can have compiled almost nothing
 
 `gen.main()` **writes the csproj files every time it runs**, so it is not a
