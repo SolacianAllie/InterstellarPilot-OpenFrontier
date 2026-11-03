@@ -6610,7 +6610,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 49}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 1626198429, guid: ef414f5d2d1aea840316d8fd155405df, type: 3}
+  m_Script: {fileID: 11500000, guid: a375e5997abccb25513414b151b590a6, type: 3}
   m_Name:
   m_EditorClassIdentifier:
   starsTexture: {fileID: 0}
