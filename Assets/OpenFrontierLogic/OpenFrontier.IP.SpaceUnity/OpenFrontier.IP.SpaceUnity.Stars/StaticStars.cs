@@ -3,9 +3,11 @@ using UnityEngine;
 namespace OpenFrontier.IP.SpaceUnity.Stars
 {
 	/// <summary>
-	/// OpenFrontier-native static starfield. Renders a huge six-face cuboid around the camera
-	/// with the stars texture applied to every face, so the stars never parallax.
+	/// OpenFrontier-native static starfield. Renders a huge six-face cuboid around the play
+	/// area with the stars texture applied to every face, so the stars never parallax.
 	/// Own replacement for the vendored "Space for Unity" component that was lost from the project.
+	/// Like the original (AGENTS.md): the dome is PINNED AT THE WORLD ORIGIN every frame and
+	/// the DeepSpace SpaceCamera sits at the sector anchor with far plane 100000 looking in.
 	/// </summary>
 	[DisallowMultipleComponent]
 	public class StaticStars : MonoBehaviour
@@ -17,8 +19,8 @@ namespace OpenFrontier.IP.SpaceUnity.Stars
 
 		public float starsIntensity = 1f;
 
-		[Tooltip("Keep the dome centered on the active camera every frame.")]
-		public bool followCamera = true;
+		[Tooltip("Force the dome back to the world origin every frame (matches the original dome behaviour).")]
+		public bool pinToWorldOrigin = true;
 
 		public MeshFilter MeshFilter;
 
@@ -26,11 +28,8 @@ namespace OpenFrontier.IP.SpaceUnity.Stars
 
 		[SerializeField] private Mesh _mesh;
 
-		[SerializeField] private float _side = 2000f;
+		[SerializeField] private float _side = 20000f;
 
-		private static readonly int PropMainTex = Shader.PropertyToID("_MainTex");
-		private static readonly int PropStarsColor = Shader.PropertyToID("_StarsColor");
-		private static readonly int PropStarsIntensity = Shader.PropertyToID("_StarsIntensity");
 		private const string StarsShaderName = "OpenFrontier/Stars";
 
 		private void OnEnable()
@@ -62,18 +61,9 @@ namespace OpenFrontier.IP.SpaceUnity.Stars
 
 		private void LateUpdate()
 		{
-			if (!followCamera)
+			if (pinToWorldOrigin)
 			{
-				return;
-			}
-			Camera camera = Camera.main;
-			if (camera == null && Camera.allCameras.Length > 0)
-			{
-				camera = Camera.allCameras[0];
-			}
-			if (camera != null)
-			{
-				transform.position = camera.transform.position;
+				transform.position = Vector3.zero;
 			}
 		}
 
@@ -97,9 +87,10 @@ namespace OpenFrontier.IP.SpaceUnity.Stars
 				material.name = "SU_StaticStars (runtime)";
 				MeshRenderer.sharedMaterial = material;
 			}
-			material.SetTexture(PropMainTex, starsTexture);
-			material.SetColor(PropStarsColor, starsColor);
-			material.SetFloat(PropStarsIntensity, starsIntensity);
+			// Property names by string: no Unity native calls in field initializers / static ctors (AGENTS.md).
+			material.SetTexture("_MainTex", starsTexture);
+			material.SetColor("_StarsColor", starsColor);
+			material.SetFloat("_StarsIntensity", starsIntensity);
 			MeshRenderer.enabled = true;
 		}
 
@@ -145,19 +136,11 @@ namespace OpenFrontier.IP.SpaceUnity.Stars
 					(d + u + v) * halfSide,                     // C: top-right
 					(d - u + v) * halfSide                      // D: top-left
 				};
-				Vector2[] faceUvs =
-				{
-					new Vector2(0f, 0f),
-					new Vector2(1f, 0f),
-					new Vector2(1f, 1f),
-					new Vector2(0f, 1f)
-				};
-
 				for (int i = 0; i < 4; i++)
 				{
 					vertices[index + i] = faceVerts[i];
 					normals[index + i] = d;
-					uvs[index + i] = faceUvs[i];
+					uvs[index + i] = new Vector2((i == 1 || i == 2) ? 1f : 0f, (i == 2 || i == 3) ? 1f : 0f);
 				}
 				// Clockwise when viewed from outside, so the shader (Cull Front) shows the inner surface.
 				triangles[index + 0] = index;
