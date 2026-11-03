@@ -6482,7 +6482,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6057a796132559d2a1689750de102cf3, type: 3}
   m_Name:
   m_EditorClassIdentifier:
-  NebulaPrefab: {fileID: 1709254077376921, guid: fa23199685370cd4082766091c05cda1, type: 2}
+  NebulaPrefab: {fileID: 1709254077376921, guid: a60e9059a4a43deff8eb8bc94875f77c, type: 2}
   StaticStars: {fileID: 221}
   NebulasTransform: {fileID: 135}
 --- !u!114 &215
