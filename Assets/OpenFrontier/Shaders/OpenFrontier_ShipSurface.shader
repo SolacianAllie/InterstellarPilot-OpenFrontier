@@ -65,6 +65,19 @@ Shader "OpenFrontier/Ship Surface"
 	// fake its own bump, that is a second sampler and a decision, not
 	// an accident.
 	//
+	// THE EMISSIVE DECAL LAYER
+	//
+	// _DecalEmissionMap is the glow companion to _DecalMap: same tiling
+	// (_DecalMap_ST), same decal UV interpolator. RGB is the lit
+	// artwork, its ALPHA is the per-part mask on top of that, and
+	// _DecalEmissionColor (HDR) scales it so a faction's glow can be
+	// retuned without repainting. It adds to _EmissionMap's luminance,
+	// never replaces it. Pixel alignment with the paint decal is the
+	// contract: an emissive stripe sits exactly where the decal sheet
+	// drew it, so this layer costs one extra sample and, because it
+	// rides the layer-switch keyword (_DECALEMISSION), nothing at all
+	// on the faction materials whose decals do not glow.
+	//
 	// WHAT WAS TRIMMED FROM STOCK, AND WHY (mobile-first)
 	//
 	// The project renderer is FORWARD (OpenFrontier-URP-Renderer,
@@ -125,6 +138,14 @@ Shader "OpenFrontier/Ship Surface"
 		// Default black = fully transparent = nothing drawn.
 		_DecalMap("Decal Overlay (RGBA)", 2D) = "black" {}
 
+		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
+		// artwork; RGBA where rgb glows and a gates it. HDR color for the
+		// per-material retune. Default black + toggle off = zero cost
+		// and zero light on factions that do not use glowing decals.
+		[HDR] _DecalEmissionColor("Decal Glow Color (HDR)", Color) = (1,1,1,1)
+		_DecalEmissionMap("Decal Glow Map (RGB col, A mask)", 2D) = "black" {}
+		[Toggle(_DECALEMISSION)] _DecalEmissionToggle("Emissive Decals", Float) = 0.0
+
 		[ToggleOff] _SpecularHighlights("Specular Highlights", Float) = 1.0
 		[ToggleOff] _EnvironmentReflections("Environment Reflections", Float) = 1.0
 
@@ -164,6 +185,7 @@ Shader "OpenFrontier/Ship Surface"
 		float4 _DecalMap_ST;
 		half4 _BaseColor;
 		half4 _EmissionColor;
+		half4 _DecalEmissionColor;
 		half _BumpScale;
 		half _OcclusionStrength;
 		half _Metallic;
@@ -176,6 +198,7 @@ Shader "OpenFrontier/Ship Surface"
 		TEXTURE2D(_MetallicGlossMap); SAMPLER(sampler_MetallicGlossMap);
 		TEXTURE2D(_EmissionMap);      SAMPLER(sampler_EmissionMap);
 		TEXTURE2D(_DecalMap);         SAMPLER(sampler_DecalMap);
+		TEXTURE2D(_DecalEmissionMap); SAMPLER(sampler_DecalEmissionMap);
 		ENDHLSL
 
 		Pass
@@ -203,6 +226,9 @@ Shader "OpenFrontier/Ship Surface"
 			#pragma shader_feature_local_fragment _OCCLUSIONMAP
 			#pragma shader_feature_local_fragment _SPECULARHIGHLIGHTS_OFF
 			#pragma shader_feature_local_fragment _ENVIRONMENTREFLECTIONS_OFF
+			// Emissive decals: on per material ([Toggle] drawer). Off by
+			// default so faction hulls that never glow pay nothing.
+			#pragma shader_feature_local_fragment _DECALEMISSION
 
 			// Pipeline keywords, trimmed to what a Hull forward pass can
 			// be asked for by the project's setup (see header).
@@ -299,6 +325,15 @@ Shader "OpenFrontier/Ship Surface"
 				surfaceData.emission = SAMPLE_TEXTURE2D(_EmissionMap, sampler_EmissionMap, input.uv).rgb * _EmissionColor.rgb;
 				#else
 				surfaceData.emission = half3(0, 0, 0);
+				#endif
+
+				// Emissive decals: pixel-aligned with the paint decal (same
+				// decalUV). RGB glows, its alpha gates it, the HDR color
+				// retunes per faction. ADDS to the luminance above, never
+				// replaces it.
+				#ifdef _DECALEMISSION
+				half4 decalGlow = SAMPLE_TEXTURE2D(_DecalEmissionMap, sampler_DecalEmissionMap, input.decalUV);
+				surfaceData.emission += decalGlow.rgb * decalGlow.a * _DecalEmissionColor.rgb;
 				#endif
 			}
 
