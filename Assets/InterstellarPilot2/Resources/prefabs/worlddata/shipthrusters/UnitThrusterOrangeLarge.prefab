@@ -45,3 +45,7 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier:
   UnitThrusterClass: {fileID: 114724804207875695, guid: 9ae5c9d89968b7c4086b9c064e503e05, type: 2}
+  EngineFlareMinIntensity: 0.25
+  EngineFlareIntensityMultiplier: 2
+  EngineFlareDrawDistance: 1000
+  EngineFlareOcclusionReferenceDistance: 25

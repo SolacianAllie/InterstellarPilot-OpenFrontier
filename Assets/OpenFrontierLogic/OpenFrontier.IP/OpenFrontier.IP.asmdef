@@ -10,6 +10,7 @@
         "OpenFrontier.IP.SpaceUnity",
         "OpenFrontier.Math",
         "OpenFrontier.Unity.Utils",
+        "Unity.RenderPipelines.Core.Runtime",
         "UnityEngine.UI",
         "Unity.TextMeshPro",
         "Discord.Sdk",

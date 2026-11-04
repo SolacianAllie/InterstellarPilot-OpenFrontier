@@ -368,7 +368,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: 57fdf5a5c42eb6049a6162ad21d7dfc2, type: 3}
-  EngineFlareIdleIntensity: 0.2
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
   EngineFlareDrawDistance: 1200
   EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1044625135789424
@@ -417,7 +418,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: 57fdf5a5c42eb6049a6162ad21d7dfc2, type: 3}
-  EngineFlareIdleIntensity: 0.2
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
   EngineFlareDrawDistance: 1200
   EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1045458335737618
@@ -857,7 +859,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: c52bb7d22683afe4bb0b0c128bdf9246, type: 3}
-  EngineFlareIdleIntensity: 0.2
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
   EngineFlareDrawDistance: 1200
   EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1215879266689626
@@ -1176,7 +1179,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: c52bb7d22683afe4bb0b0c128bdf9246, type: 3}
-  EngineFlareIdleIntensity: 0.2
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
   EngineFlareDrawDistance: 1200
   EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1291844617409189
@@ -1578,7 +1582,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: c52bb7d22683afe4bb0b0c128bdf9246, type: 3}
-  EngineFlareIdleIntensity: 0.2
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
   EngineFlareDrawDistance: 1200
   EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1344419225485095
@@ -1758,7 +1763,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: 57fdf5a5c42eb6049a6162ad21d7dfc2, type: 3}
-  EngineFlareIdleIntensity: 0.2
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
   EngineFlareDrawDistance: 1200
   EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1397768327470545
@@ -2562,7 +2568,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: 57fdf5a5c42eb6049a6162ad21d7dfc2, type: 3}
-  EngineFlareIdleIntensity: 0.2
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
   EngineFlareDrawDistance: 1200
   EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1589667821646929
@@ -2611,7 +2618,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: 57fdf5a5c42eb6049a6162ad21d7dfc2, type: 3}
-  EngineFlareIdleIntensity: 0.2
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
   EngineFlareDrawDistance: 1200
   EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1618682377417806
@@ -3423,7 +3431,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: 57fdf5a5c42eb6049a6162ad21d7dfc2, type: 3}
-  EngineFlareIdleIntensity: 0.2
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
   EngineFlareDrawDistance: 1200
   EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1709254077376921
@@ -3647,7 +3656,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: 57fdf5a5c42eb6049a6162ad21d7dfc2, type: 3}
-  EngineFlareIdleIntensity: 0.2
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
   EngineFlareDrawDistance: 1200
   EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1711914853252429
@@ -5315,7 +5325,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: c52bb7d22683afe4bb0b0c128bdf9246, type: 3}
-  EngineFlareIdleIntensity: 0.2
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
   EngineFlareDrawDistance: 1200
   EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1985305603660343
@@ -5364,7 +5375,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: 57fdf5a5c42eb6049a6162ad21d7dfc2, type: 3}
-  EngineFlareIdleIntensity: 0.2
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
   EngineFlareDrawDistance: 1200
   EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &837912457550178957

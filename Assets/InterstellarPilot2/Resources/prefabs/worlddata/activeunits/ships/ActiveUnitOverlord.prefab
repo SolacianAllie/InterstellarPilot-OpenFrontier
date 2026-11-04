@@ -248,6 +248,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: 355de605c47907e428e2e52d5071be1f, type: 3}
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
+  EngineFlareDrawDistance: 2000
+  EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1061268324235159
 GameObject:
   m_ObjectHideFlags: 0
@@ -782,6 +786,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: bba75c277494a0c4eb0384cfc5acb7c9, type: 3}
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
+  EngineFlareDrawDistance: 2000
+  EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1470112387431263
 GameObject:
   m_ObjectHideFlags: 0
@@ -967,6 +975,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: bba75c277494a0c4eb0384cfc5acb7c9, type: 3}
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
+  EngineFlareDrawDistance: 2000
+  EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1618682377417806
 GameObject:
   m_ObjectHideFlags: 0
@@ -1492,6 +1504,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UnitThrusterClass: {fileID: 114724804207875695, guid: 355de605c47907e428e2e52d5071be1f, type: 3}
+  EngineFlareMinIntensity: 0
+  EngineFlareIntensityMultiplier: 2
+  EngineFlareDrawDistance: 2000
+  EngineFlareOcclusionReferenceDistance: 25
 --- !u!1 &1724804207875695
 GameObject:
   m_ObjectHideFlags: 0
