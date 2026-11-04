@@ -11,8 +11,9 @@ Shader "OpenFrontier/Ship Cloak"
 	// OpenFrontier/Ship Surface + a cloak block. Everything else is byte
 	// for byte the ship shader's contract: the same slots (_BaseMap,
 	// _BumpMap, _OcclusionMap, _MetallicGlossMap, _EmissionMap, the decal
-	// layer), the same keyword names (_EMISSION, _METALLICSPECGLOSSMAP,
-	// _NORMALMAP, _OCCLUSIONMAP), the same trim list -- so a cloaking
+	// layer and its emissive companion), the same keyword names
+	// (_EMISSION, _DECALEMISSION, _METALLICSPECGLOSSMAP, _NORMALMAP,
+	// _OCCLUSIONMAP), the same trim list -- so a cloaking
 	// ship's material swaps onto this shader with its bindings and flags
 	// intact and looks IDENTICAL to its hull material. The only visual
 	// difference is what happens when ActiveUnit pushes the cloak values.
@@ -193,6 +194,14 @@ Shader "OpenFrontier/Ship Cloak"
 
 		_DecalMap("Decal Overlay (RGBA)", 2D) = "black" {}
 
+		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
+		// artwork; RGBA where rgb glows and a gates it. HDR color for the
+		// per-material retune. Default black + toggle off = zero cost
+		// and zero light, exactly as on Ship Surface.
+		[HDR] _DecalEmissionColor("Decal Glow Color (HDR)", Color) = (1,1,1,1)
+		_DecalEmissionMap("Decal Glow Map (RGB col, A mask)", 2D) = "black" {}
+		[Toggle(_DECALEMISSION)] _DecalEmissionToggle("Emissive Decals", Float) = 0.0
+
 		[ToggleOff] _SpecularHighlights("Specular Highlights", Float) = 1.0
 		[ToggleOff] _EnvironmentReflections("Environment Reflections", Float) = 1.0
 
@@ -244,6 +253,7 @@ Shader "OpenFrontier/Ship Cloak"
 		float4 _DecalMap_ST;
 		half4 _BaseColor;
 		half4 _EmissionColor;
+		half4 _DecalEmissionColor;
 		half _BumpScale;
 		half _OcclusionStrength;
 		half _Metallic;
@@ -262,6 +272,7 @@ Shader "OpenFrontier/Ship Cloak"
 		TEXTURE2D(_MetallicGlossMap); SAMPLER(sampler_MetallicGlossMap);
 		TEXTURE2D(_EmissionMap);      SAMPLER(sampler_EmissionMap);
 		TEXTURE2D(_DecalMap);         SAMPLER(sampler_DecalMap);
+		TEXTURE2D(_DecalEmissionMap); SAMPLER(sampler_DecalEmissionMap);
 
 		// The previous-frame copy CloakBackdropCamera publishes (a global
 		// texture, exactly like _CameraOpaqueTexture always was; not a
@@ -304,6 +315,9 @@ Shader "OpenFrontier/Ship Cloak"
 			#pragma shader_feature_local_fragment _OCCLUSIONMAP
 			#pragma shader_feature_local_fragment _SPECULARHIGHLIGHTS_OFF
 			#pragma shader_feature_local_fragment _ENVIRONMENTREFLECTIONS_OFF
+			// Emissive decals: on per material ([Toggle] drawer). Off by
+			// default so cloak hulls whose decals never glow pay nothing.
+			#pragma shader_feature_local_fragment _DECALEMISSION
 
 			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
 			#pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
@@ -391,6 +405,15 @@ Shader "OpenFrontier/Ship Cloak"
 				surfaceData.emission = SAMPLE_TEXTURE2D(_EmissionMap, sampler_EmissionMap, input.uv).rgb * _EmissionColor.rgb;
 				#else
 				surfaceData.emission = half3(0, 0, 0);
+				#endif
+
+				// Emissive decals: pixel-aligned with the paint decal (same
+				// decalUV), riding _DecalMap_ST. Same layer and contract as
+				// the ship shader's; glowing parts keep their light while
+				// the hull cloaks and builds.
+				#ifdef _DECALEMISSION
+				half4 decalGlow = SAMPLE_TEXTURE2D(_DecalEmissionMap, sampler_DecalEmissionMap, input.decalUV);
+				surfaceData.emission += decalGlow.rgb * decalGlow.a * _DecalEmissionColor.rgb;
 				#endif
 			}
 
