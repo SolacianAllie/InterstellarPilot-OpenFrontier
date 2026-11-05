@@ -66,6 +66,18 @@ working tree is never disturbed:
 git branch -f Dev Legacy && git push origin Dev   # only if Legacy is ahead
 ```
 
+## Agent commits sweep the user's working tree
+
+When a coding agent is about to commit, it stages the user's uncommitted
+working-tree state into the same commit instead of leaving files stranded
+unpushed (user-requested 2026-11-05; the old "churn, do not stage" list is
+dead). It still reads `git status` first and names in its report which
+changed files were the user's and which were its own. Anything that looks
+like scratch — temporary tooling, editor debris that is not an asset the
+user saved — gets listed and skipped in the report, never swept silently.
+LFS pointer-ization of binaries on add is expected form (checked once
+against local object presence, 2026-11-05, e2f1577d).
+
 Only non-obvious traps live here — things you cannot learn from the project
 structure. Add new ones as they are found.
 
