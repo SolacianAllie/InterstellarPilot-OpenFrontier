@@ -60,8 +60,16 @@ Shader "OpenFrontier/Ship Surface"
 	// tinted ones darken and colour the hull panels they cover. Livery
 	// drawn this way shades the hull instead of covering it. The default
 	// texture is white, which is inert by definition.
-	// It costs exactly one texture sample
-	// and a lerp - no pass, no variant, no stencil - because this game
+	//
+	// _DecalPaintStrength is the escape hatch from multiply's one
+	// blindness: hull x white = hull, so under multiply a WHITE livery
+	// mark cannot exist -- there is no paint lighter than the hull. The
+	// slider lifts a texel from the multiplied result toward the decal's
+	// own colour, weighted by the same alpha brush: 0 keeps pure
+	// shading, 1 repaints the texel outright, and the useful middle
+	// paints the mark while the hull's dirt still grimes through it from
+	// underneath. The layer's whole cost stays one sample and two
+	// lerps - no pass, no variant, no stencil - because this game
 	// runs on phones where the cheapest feature is the one that lives.
 	//
 	// It overlays ALBEDO only. It does not push normals, occlusion or
@@ -144,6 +152,14 @@ Shader "OpenFrontier/Ship Surface"
 		// inert by definition, however needs no-op honestly.
 		_DecalMap("Decal Overlay (RGBA, multiply)", 2D) = "white" {}
 
+		// How far a decal texel stops SHADING and starts PAINTING.
+		// 0 keeps the multiply overlay only (whites vanish into the
+		// hull). 1 lets the decal's own colour take the texel over.
+		// Mid values paint the mark while the hull's dirt and panel
+		// wear still shade through from underneath - the balance
+		// between stencilled-on wear and fresh livery.
+		_DecalPaintStrength("Decal Paint Strength", Range(0.0, 1.0)) = 0.0
+
 		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
 		// artwork; RGBA where rgb glows and a gates it. HDR color for the
 		// per-material retune. Default black + toggle off = zero cost
@@ -196,6 +212,7 @@ Shader "OpenFrontier/Ship Surface"
 		half _OcclusionStrength;
 		half _Metallic;
 		half _Smoothness;
+		half _DecalPaintStrength;
 		CBUFFER_END
 
 		TEXTURE2D(_BaseMap);          SAMPLER(sampler_BaseMap);
@@ -290,14 +307,19 @@ Shader "OpenFrontier/Ship Surface"
 
 				half4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
 
-				// The decal layer: alpha sets how hard the paint pushes,
-				// RGB is the multiply filter it carries. White squares
-				// erase themselves; tinted squares shade the recoloured
-				// hull. Where alpha is 0 the filter lerps to white and
-				// the artwork's transparent-region RGB is ignored, so a
-				// sheet kept on black-transparent backgrounds stays safe.
+				// The decal layer, in two halves. Base: the multiply filter
+				// (alpha is the brush, RGB the filter; white erases itself,
+				// alpha 0 ignores the artwork's transparent-region RGB) -
+				// dirt, panel wear and tint washes ride through here. Then
+				// _DecalPaintStrength lifts the result toward the texel's
+				// own colour: whites become paint instead of vanishing,
+				// while the multiplied residue underneath stays as the
+				// wear showing through them. Dark marks are the same in
+				// both halves, so stencils and black icons read identically
+				// at every strength.
 				half4 decal = SAMPLE_TEXTURE2D(_DecalMap, sampler_DecalMap, input.decalUV);
-				albedo.rgb *= lerp(half3(1.0h, 1.0h, 1.0h), decal.rgb, decal.a);
+				half3 shaded = albedo.rgb * lerp(half3(1.0h, 1.0h, 1.0h), decal.rgb, decal.a);
+				albedo.rgb = lerp(shaded, decal.rgb, decal.a * _DecalPaintStrength);
 
 				surfaceData.albedo = albedo.rgb;
 				surfaceData.alpha = 1.0h; // opaque hulls, always

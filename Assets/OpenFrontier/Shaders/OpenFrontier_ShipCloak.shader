@@ -197,6 +197,10 @@ Shader "OpenFrontier/Ship Cloak"
 		// inert by definition. Contract doc: Ship Surface's header.
 		_DecalMap("Decal Overlay (RGBA, multiply)", 2D) = "white" {}
 
+		// Paint strength: see the ship shader's header. Lifts texels
+		// from multiply shading toward the decal's own colour.
+		_DecalPaintStrength("Decal Paint Strength", Range(0.0, 1.0)) = 0.0
+
 		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
 		// artwork; RGBA where rgb glows and a gates it. HDR color for the
 		// per-material retune. Default black + toggle off = zero cost
@@ -261,6 +265,7 @@ Shader "OpenFrontier/Ship Cloak"
 		half _OcclusionStrength;
 		half _Metallic;
 		half _Smoothness;
+		half _DecalPaintStrength;
 		half _CloakAmount;
 		half _CloakFloor;
 		half _CloakWarpScale;
@@ -373,12 +378,15 @@ Shader "OpenFrontier/Ship Cloak"
 
 				half4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
 
-				// Decal overlay, multiply semantics (alpha is the brush,
-				// RGB is the filter; white erases itself, alpha 0 ignores
-				// the artwork's transparent-region RGB). Same contract as
-				// the ship shader's decal layer.
+				// Decal overlay, two halves as on the ship shader: the
+				// multiply filter first (alpha is the brush, RGB the
+				// filter), then _DecalPaintStrength lifts full-ish alpha
+				// texels toward the decal's own colour. Painted marks
+				// keep paint through the cloak; the multiplied residue
+				// stays as the wear showing through them.
 				half4 decal = SAMPLE_TEXTURE2D(_DecalMap, sampler_DecalMap, input.decalUV);
-				albedo.rgb *= lerp(half3(1.0h, 1.0h, 1.0h), decal.rgb, decal.a);
+				half3 shaded = albedo.rgb * lerp(half3(1.0h, 1.0h, 1.0h), decal.rgb, decal.a);
+				albedo.rgb = lerp(shaded, decal.rgb, decal.a * _DecalPaintStrength);
 
 				surfaceData.albedo = albedo.rgb;
 				surfaceData.alpha = 1.0h;
