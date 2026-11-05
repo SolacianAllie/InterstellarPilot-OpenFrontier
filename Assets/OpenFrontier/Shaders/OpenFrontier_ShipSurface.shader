@@ -52,10 +52,15 @@ Shader "OpenFrontier/Ship Surface"
 	//
 	// _DecalMap is a straightforward ON TOP overlay, not a decal-projection
 	// system: one RGBA image, its own tiling/offset (_DecalMap_ST), same
-	// UV0 space as the hull. Where its ALPHA is 0 the hull shows
-	// untouched; where it is 1 the decal RGB replaces the albedo
-	// underneath. The default texture is black, whose alpha of 0 makes
-	// an unassigned decal a no-op. It costs exactly one texture sample
+	// UV0 space as the hull. ALPHA is the brush; the RGB underneath it is
+	// a MULTIPLY filter, not absolute paint: where alpha is 0 the hull
+	// shows untouched (the lerped filter is white and the artwork's
+	// transparent-region RGB is ignored), where it is 1 the decal RGB
+	// multiplies the albedo underneath - white decals erase themselves,
+	// tinted ones darken and colour the hull panels they cover. Livery
+	// drawn this way shades the hull instead of covering it. The default
+	// texture is white, which is inert by definition.
+	// It costs exactly one texture sample
 	// and a lerp - no pass, no variant, no stencil - because this game
 	// runs on phones where the cheapest feature is the one that lives.
 	//
@@ -134,9 +139,10 @@ Shader "OpenFrontier/Ship Surface"
 		[HDR] _EmissionColor("Luminance Color (HDR)", Color) = (0,0,0)
 		_EmissionMap("Luminance (Emission) Map", 2D) = "white" {}
 
-		// The decal layer: RGBA, its own tiling. Alpha is the brush.
-		// Default black = fully transparent = nothing drawn.
-		_DecalMap("Decal Overlay (RGBA)", 2D) = "black" {}
+		// The decal layer: RGBA, its own tiling. Alpha is the brush;
+		// RGB is a multiply filter (white = no paint). Default white =
+		// inert by definition, however needs no-op honestly.
+		_DecalMap("Decal Overlay (RGBA, multiply)", 2D) = "white" {}
 
 		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
 		// artwork; RGBA where rgb glows and a gates it. HDR color for the
@@ -284,11 +290,14 @@ Shader "OpenFrontier/Ship Surface"
 
 				half4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
 
-				// The decal layer: RGB where alpha says so. Painted on
-				// AFTER the tint, so the decal is absolute artwork over
-				// the recolouring, not another coefficient in it.
+				// The decal layer: alpha sets how hard the paint pushes,
+				// RGB is the multiply filter it carries. White squares
+				// erase themselves; tinted squares shade the recoloured
+				// hull. Where alpha is 0 the filter lerps to white and
+				// the artwork's transparent-region RGB is ignored, so a
+				// sheet kept on black-transparent backgrounds stays safe.
 				half4 decal = SAMPLE_TEXTURE2D(_DecalMap, sampler_DecalMap, input.decalUV);
-				albedo.rgb = lerp(albedo.rgb, decal.rgb, decal.a);
+				albedo.rgb *= lerp(half3(1.0h, 1.0h, 1.0h), decal.rgb, decal.a);
 
 				surfaceData.albedo = albedo.rgb;
 				surfaceData.alpha = 1.0h; // opaque hulls, always

@@ -192,7 +192,10 @@ Shader "OpenFrontier/Ship Cloak"
 		[HDR] _EmissionColor("Luminance Color (HDR)", Color) = (0,0,0)
 		_EmissionMap("Luminance (Emission) Map", 2D) = "white" {}
 
-		_DecalMap("Decal Overlay (RGBA)", 2D) = "black" {}
+		// The decal layer: RGBA, its own tiling. Alpha is the brush;
+		// RGB is a multiply filter (white = no paint). Default white =
+		// inert by definition. Contract doc: Ship Surface's header.
+		_DecalMap("Decal Overlay (RGBA, multiply)", 2D) = "white" {}
 
 		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
 		// artwork; RGBA where rgb glows and a gates it. HDR color for the
@@ -370,8 +373,12 @@ Shader "OpenFrontier/Ship Cloak"
 
 				half4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
 
+				// Decal overlay, multiply semantics (alpha is the brush,
+				// RGB is the filter; white erases itself, alpha 0 ignores
+				// the artwork's transparent-region RGB). Same contract as
+				// the ship shader's decal layer.
 				half4 decal = SAMPLE_TEXTURE2D(_DecalMap, sampler_DecalMap, input.decalUV);
-				albedo.rgb = lerp(albedo.rgb, decal.rgb, decal.a);
+				albedo.rgb *= lerp(half3(1.0h, 1.0h, 1.0h), decal.rgb, decal.a);
 
 				surfaceData.albedo = albedo.rgb;
 				surfaceData.alpha = 1.0h;
