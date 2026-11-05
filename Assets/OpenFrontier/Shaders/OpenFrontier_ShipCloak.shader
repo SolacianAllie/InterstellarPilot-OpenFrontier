@@ -11,7 +11,8 @@ Shader "OpenFrontier/Ship Cloak"
 	// OpenFrontier/Ship Surface + a cloak block. Everything else is byte
 	// for byte the ship shader's contract: the same slots (_BaseMap,
 	// _BumpMap, _OcclusionMap, _MetallicGlossMap, _EmissionMap, the decal
-	// layer and its emissive companion), the same keyword names
+	// layers - pattern and superpower brand - and their emissive
+	// companion), the same keyword names
 	// (_EMISSION, _DECALEMISSION, _METALLICSPECGLOSSMAP, _NORMALMAP,
 	// _OCCLUSIONMAP), the same trim list -- so a cloaking
 	// ship's material swaps onto this shader with its bindings and flags
@@ -192,15 +193,30 @@ Shader "OpenFrontier/Ship Cloak"
 		[HDR] _EmissionColor("Luminance Color (HDR)", Color) = (0,0,0)
 		_EmissionMap("Luminance (Emission) Map", 2D) = "white" {}
 
-		// The decal layer: RGBA, its own tiling. Alpha is the brush;
-		// RGB is a multiply filter (white = no paint). Default white =
-		// inert by definition. Contract doc: Ship Surface's header.
-		_DecalMap("Decal Overlay (RGBA, multiply)", 2D) = "white" {}
+		// LAYER 1 -- faction pattern. Not paint, a ZONE MASK: RGB are
+		// pure channel masks (R primary / G secondary / B tertiary
+		// zones), alpha the brush; the three colours below recolour it
+		// per material. Default sheet + white triad + strength 0
+		// below = fully inert. Contract doc: Ship Surface's header.
+		_DecalMap("Decal Pattern Mask (R/G/B zones, A brush)", 2D) = "white" {}
+		_DecalPrimary("Pattern Primary (R zones)", Color) = (1,1,1,1)
+		_DecalSecondary("Pattern Secondary (G zones)", Color) = (1,1,1,1)
+		_DecalTertiary("Pattern Tertiary (B zones)", Color) = (1,1,1,1)
 
-		// Paint strength: see the ship shader's header. Lifts texels
-		// from multiply shading toward the decal's own colour, capped
-		// at half so full replace stays out of reach.
-		_DecalPaintStrength("Decal Paint Strength", Range(0.0, 0.5)) = 0.5
+		// Pattern paint strength: see the ship shader's header. Lifts
+		// texels from multiply shading toward their faction colour,
+		// capped at half so full replace stays out of reach. Defaults
+		// to ZERO for the same reason as there: an unbound sheet plus
+		// a non-zero strength lifts the whole hull to white. Bound
+		// materials carry their own value.
+		_DecalPaintStrength("Pattern Paint Strength", Range(0.0, 0.5)) = 0.0
+
+		// LAYER 2 -- superpower brand over the pattern: the old baked
+		// colour decal contract applied again (RGB multiply filter +
+		// paint lift, alpha brush, sheet's own colours), own tiling
+		// and strength. Default white + strength 0 = inert.
+		_PowerDecalMap("Superpower Brand (RGBA, multiply)", 2D) = "white" {}
+		_PowerDecalPaintStrength("Superpower Paint Strength", Range(0.0, 0.5)) = 0.0
 
 		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
 		// artwork; RGBA where rgb glows and a gates it. HDR color for the
@@ -259,14 +275,19 @@ Shader "OpenFrontier/Ship Cloak"
 		CBUFFER_START(UnityPerMaterial)
 		float4 _BaseMap_ST;
 		float4 _DecalMap_ST;
+		float4 _PowerDecalMap_ST;
 		half4 _BaseColor;
 		half4 _EmissionColor;
 		half4 _DecalEmissionColor;
+		half4 _DecalPrimary;
+		half4 _DecalSecondary;
+		half4 _DecalTertiary;
 		half _BumpScale;
 		half _OcclusionStrength;
 		half _Metallic;
 		half _Smoothness;
 		half _DecalPaintStrength;
+		half _PowerDecalPaintStrength;
 		half _CloakAmount;
 		half _CloakFloor;
 		half _CloakWarpScale;
@@ -281,6 +302,7 @@ Shader "OpenFrontier/Ship Cloak"
 		TEXTURE2D(_MetallicGlossMap); SAMPLER(sampler_MetallicGlossMap);
 		TEXTURE2D(_EmissionMap);      SAMPLER(sampler_EmissionMap);
 		TEXTURE2D(_DecalMap);         SAMPLER(sampler_DecalMap);
+		TEXTURE2D(_PowerDecalMap);    SAMPLER(sampler_PowerDecalMap);
 		TEXTURE2D(_DecalEmissionMap); SAMPLER(sampler_DecalEmissionMap);
 
 		// The previous-frame copy CloakBackdropCamera publishes (a global
@@ -367,6 +389,7 @@ Shader "OpenFrontier/Ship Cloak"
 				half    fogFactor   : TEXCOORD5;
 			#endif
 				float3  vertexSH    : TEXCOORD6;   // baked ambient
+				float2  powerUV     : TEXCOORD7;   // _PowerDecalMap space (own ST)
 				float4  positionCS  : SV_POSITION;
 				UNITY_VERTEX_INPUT_INSTANCE_ID
 				UNITY_VERTEX_OUTPUT_STEREO
@@ -379,15 +402,21 @@ Shader "OpenFrontier/Ship Cloak"
 
 				half4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
 
-				// Decal overlay, two halves as on the ship shader: the
-				// multiply filter first (alpha is the brush, RGB the
-				// filter), then _DecalPaintStrength lifts full-ish alpha
-				// texels toward the decal's own colour. Painted marks
-				// keep paint through the cloak; the multiplied residue
-				// stays as the wear showing through them.
-				half4 decal = SAMPLE_TEXTURE2D(_DecalMap, sampler_DecalMap, input.decalUV);
-				half3 shaded = albedo.rgb * lerp(half3(1.0h, 1.0h, 1.0h), decal.rgb, decal.a);
-				albedo.rgb = lerp(shaded, decal.rgb, decal.a * _DecalPaintStrength);
+				// Both decal layers, same two halves as the ship shader:
+				// the pattern mask selects its faction triad (R/G/B zone
+				// weights, saturate-guarded), then the superpower brand
+				// lands over it in the sheet's own baked colours. Painted
+				// marks keep paint through the cloak; the multiplied
+				// residue stays as the wear showing through them.
+				half4 mask = SAMPLE_TEXTURE2D(_DecalMap, sampler_DecalMap, input.decalUV);
+				half3 triad = saturate(_DecalPrimary.rgb * mask.r
+					+ _DecalSecondary.rgb * mask.g + _DecalTertiary.rgb * mask.b);
+				half3 shaded = albedo.rgb * lerp(half3(1.0h, 1.0h, 1.0h), triad, mask.a);
+				albedo.rgb = lerp(shaded, triad, mask.a * _DecalPaintStrength);
+
+				half4 brand = SAMPLE_TEXTURE2D(_PowerDecalMap, sampler_PowerDecalMap, input.powerUV);
+				shaded = albedo.rgb * lerp(half3(1.0h, 1.0h, 1.0h), brand.rgb, brand.a);
+				albedo.rgb = lerp(shaded, brand.rgb, brand.a * _PowerDecalPaintStrength);
 
 				surfaceData.albedo = albedo.rgb;
 				surfaceData.alpha = 1.0h;
@@ -423,10 +452,10 @@ Shader "OpenFrontier/Ship Cloak"
 				surfaceData.emission = half3(0, 0, 0);
 				#endif
 
-				// Emissive decals: pixel-aligned with the paint decal (same
-				// decalUV), riding _DecalMap_ST. Same layer and contract as
-				// the ship shader's; glowing parts keep their light while
-				// the hull cloaks and builds.
+				// Emissive decals: pixel-aligned with the pattern decal
+				// (same decalUV), riding _DecalMap_ST. Same layer and
+				// contract as the ship shader's; glowing parts keep
+				// their light while the hull cloaks and builds.
 				#ifdef _DECALEMISSION
 				half4 decalGlow = SAMPLE_TEXTURE2D(_DecalEmissionMap, sampler_DecalEmissionMap, input.decalUV);
 				surfaceData.emission += decalGlow.rgb * decalGlow.a * _DecalEmissionColor.rgb;
@@ -490,6 +519,7 @@ Shader "OpenFrontier/Ship Cloak"
 
 				output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
 				output.decalUV = TRANSFORM_TEX(input.texcoord, _DecalMap);
+				output.powerUV = TRANSFORM_TEX(input.texcoord, _PowerDecalMap);
 
 				output.normalWS = normalInput.normalWS;
 				#ifdef _NORMALMAP
