@@ -158,7 +158,7 @@ Shader "OpenFrontier/Ship Surface"
 		// Mid values paint the mark while the hull's dirt and panel
 		// wear still shade through from underneath - the balance
 		// between stencilled-on wear and fresh livery.
-		_DecalPaintStrength("Decal Paint Strength", Range(0.0, 1.0)) = 0.0
+		_DecalPaintStrength("Decal Paint Strength", Range(0.0, 1.0)) = 0.25
 
 		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
 		// artwork; RGBA where rgb glows and a gates it. HDR color for the
