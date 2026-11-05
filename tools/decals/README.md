@@ -30,42 +30,50 @@ tools/decals/run.sh place.py --sheet sheet.png --mark mark.png --x 1200 --y 2400
 tools/decals/run.sh preview.py --albedo hull_Color.png --decal out.png --out preview.png
 ```
 
-## The AI half — on this Steam Deck
+## The AI half — as built on this Steam Deck (2026-11-05)
 
-Editor: **Krita** (host) + **AI Diffusion plugin** (install through
-Krita's Python plugin manager or the Release zip from
-`github.com/Acly/krita-ai-diffusion`). Its settings panel is where the
-backend URL (`http://127.0.0.1:8188`) and the per-document inpaint model
-get picked.
+tl;dr: **ComfyUI/ROCm is parked.** HIP computes return garbage on this
+APU no matter the stack (see the story in `comfy.sh`). The working engine
+is **stable-diffusion.cpp's prebuilt Vulkan binary** — and for the decal
+batcher that's the *better* engine anyway: one CLI call per mark, no
+python stack, no server.
 
-Backend: **ComfyUI inside the existing Arch distrobox** (host stays
-pristine; SteamOS survives updates):
-
-```bash
-distrobox enter <box>
-sudo pacman -S --needed python git
-git clone --recursive https://github.com/comfyanonymous/ComfyUI
-cd ComfyUI && python -m venv venv && . venv/bin/activate
-pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm6.2
-pip install -r requirements.txt
-# Deck's APU (gfx1033 → RDNA2 family override; gfx1041 etc. need 11.0.0):
-export HSA_OVERRIDE_GFX_VERSION=10.3.0
-python main.py              # host ports are shared — 8188 is on 127.0.0.1:8188 on the host
-```
-
-Models go under `ComfyUI/models/checkpoints/` etc.:
-
-- an **SD 1.5 inpainting** checkpoint — the iteration model (the ENTIRE
-  original `runwayml/...` repo has been pulled from Hugging Face at
-  times; use an actively mirrored equivalent search result)
-- a **ControlNet canny or lineart** model in `models/controlnet/` —
-  locks silhouette to drawn guides when wanted
-- an SDXL inpaint checkpoint for hero marks only (its native box is
-  1536–2048 px and each run is several times an SD generation)
+- binary: `~/sdcpp/` (`sd-cli`, `sd-server`, `libggml-vulkan.so` —
+  commit `58bb3c1`, the `Linux-Ubuntu-26.04-vulkan` release zip; runs on
+  the host directly, no distrobox, no glibc complaints)
+- device: `AMD Custom GPU 0932 (RADV VANGOGH)` — uma, fp16 dot2
+- model: the same checkpoint works —
+  `~/ComfyUI/repo/models/checkpoints/sd-v1-5-inpainting.ckpt` (4.0 G;
+  the original `runwayml` HF org was deleted 2024-08; hash-identical
+  mirrors are `stable-diffusion-v1-5/stable-diffusion-inpainting` and
+  `Comfy-Org/stable-diffusion-v1-5-archive`)
+- measured on this APU: 512² txt2img 8 steps **~41 s total** (1.88 s/it
+  + ~8.6 s VAE decode); 256² mask-inpaint 10 steps **~30 s**; extrapolate
+  1024² ≈ 2.5–4 min/hero mark — overnight batch is comfortable
+- mask convention verified: **white = generate**, black = preserved
+  (the preserved side survives within a feathered ~5% brightness drift —
+  final "AI never erases" is enforced deterministically at
+  place-time by compositing original pixels outside the mask)
+- inpaint shape: `sd-cli -M img_gen -m <ckpt> -i hull_crop.png
+  --mask white_is_generate.png -p "..." --steps 10 --strength 0.9
+  -o out.png` (`--mask-mode`, `dilate_erode`, `inpaint_padding` exist
+  as model-args if needed)
+- interactive painting outside Krita: `~/sdcpp/start-server.sh` runs
+  `sd-server` (OpenAI-compatible HTTP image API + built-in web UI)
 
 Licence note for a commercial game: check each checkpoint's licence on
 its download page (SD 1.5 = OpenRAIL-M; SDXL = Stability's ≤$1M clause;
 FLUX dev = non-commercial — skip it).
+
+### Krita + AI Diffusion plugin (optional, NOT the batch path)
+
+The plugin speaks **ComfyUI only** — it cannot talk to sd.cpp, and
+ComfyUI's ROCm path is parked above (Krita's plugin would fall back to
+CPU-turtle). If in-Krita generation is ever wanted, revisit when either
+AMD fixes the APU or the plugin grows a llama.cpp/sd.cpp backend:
+install the plugin zip from `github.com/Acly/krita-ai-diffusion`
+(Tools ▸ Scripts ▸ Import Python Plugin from File...), point it at a
+ComfyUI, and re-read this section's history first.
 
 ## The working loop per sheet
 
