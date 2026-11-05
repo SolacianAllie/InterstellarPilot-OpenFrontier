@@ -64,13 +64,17 @@ Shader "OpenFrontier/Ship Surface"
 	// masks (primary / secondary / tertiary zones) recoloured from the
 	// material's triad (_DecalPrimary/_DecalSecondary/_DecalTertiary),
 	// so ONE pattern sheet serves every faction and each material picks
-	// its three colours. Zones are painted exclusive; a pixel blending
+	// its three colours. Each colour's own alpha carries the ink:
+	// alpha 1 paints its zones solid, a partial alpha paints them
+	// translucently (hull shows through the ink), alpha 0 empties the
+	// zone - the two scales multiply, sheet brush x ink opacity.
+	// Zones are painted exclusive; a pixel blending
 	// two channels is an intended edge blend (the shader sums the
 	// channel weights, so a zone boundary colour-ramps for free), and
 	// anything that would sum past white is saturated, never doubled.
 	// channelize.py in tools/decals builds sheets in this language from
-	// three painted palette colours. Defaults (white sheet, white
-	// triad) saturate to white: inert by definition.
+	// three painted palette colours. Defaults (white sheet, opaque
+	// white triad, strength 0) are fully inert.
 	//
 	// LAYER 2 (the SUPERPOWER BRAND) is the old baked-colour decal
 	// contract applied a second time over layer 1: _PowerDecalMap, its
@@ -156,10 +160,12 @@ Shader "OpenFrontier/Ship Surface"
 
 		// LAYER 1 -- faction pattern. Not paint, a ZONE MASK: RGB are
 		// pure channel masks (R primary / G secondary / B tertiary
-		// zones), alpha the brush, so ONE pattern sheet serves every
-		// faction and the three colours below recolour it per
-		// material. Default sheet + white triad + strength 0 below
-		// = fully inert.
+		// zones), sheet alpha the brush, so ONE pattern sheet serves
+		// every faction and the three colours below recolour it per
+		// material. Each colour's own alpha is INK TRANSLUCENCY:
+		// alpha 1 paints solid, a partial alpha paints that zone at
+		// half ink (hull showing through), 0 erases the zone. Default
+		// sheet + opaque white triad + strength 0 below = fully inert.
 		_DecalMap("Decal Pattern Mask (R/G/B zones, A brush)", 2D) = "white" {}
 		_DecalPrimary("Pattern Primary (R zones)", Color) = (1,1,1,1)
 		_DecalSecondary("Pattern Secondary (G zones)", Color) = (1,1,1,1)
@@ -339,21 +345,24 @@ Shader "OpenFrontier/Ship Surface"
 				half4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
 
 				// The decal layers, each in two halves. The pattern mask's
-				// RGB selects the faction triad: R/G/B zone weights mix
-				// the three colours, zones exclusive and edges blending
-				// naturally; saturate keeps a stray overlap from summing
-				// past white (and keeps the white default exactly
-				// inert). Then the old language verbatim: the selected
-				// colour multiplies the albedo (wear rides through) and
-				// _DecalPaintStrength lifts marks toward their faction
-				// colour, residue underneath. The superpower brand is
-				// the same contract a second time with the sheet's own
-				// baked colours, landing over the pattern.
+				// RGB selects the faction triad (edges blending as summed
+				// weights, saturate guarding overlaps), and each colour's
+				// own alpha rides its channel as INK TRANSLUCENCY: the
+				// sheet brush and the zone alpha MULTIPLY, so a
+				// half-alpha colour paints its zones at half ink, an
+				// opaque colour is unchanged, and the opaque white
+				// default stays exactly inert. Then the old language
+				// per layer: the ink darkens via the multiply half and
+				// lifts with its strength, the multiplied residue
+				// underneath as the wear showing through.
 				half4 mask = SAMPLE_TEXTURE2D(_DecalMap, sampler_DecalMap, input.decalUV);
 				half3 triad = saturate(_DecalPrimary.rgb * mask.r
 					+ _DecalSecondary.rgb * mask.g + _DecalTertiary.rgb * mask.b);
-				half3 shaded = albedo.rgb * lerp(half3(1.0h, 1.0h, 1.0h), triad, mask.a);
-				albedo.rgb = lerp(shaded, triad, mask.a * _DecalPaintStrength);
+				half zoneA = saturate(_DecalPrimary.a * mask.r
+					+ _DecalSecondary.a * mask.g + _DecalTertiary.a * mask.b);
+				half paintA = mask.a * zoneA;
+				half3 shaded = albedo.rgb * lerp(half3(1.0h, 1.0h, 1.0h), triad, paintA);
+				albedo.rgb = lerp(shaded, triad, paintA * _DecalPaintStrength);
 
 				half4 brand = SAMPLE_TEXTURE2D(_PowerDecalMap, sampler_PowerDecalMap, input.powerUV);
 				shaded = albedo.rgb * lerp(half3(1.0h, 1.0h, 1.0h), brand.rgb, brand.a);

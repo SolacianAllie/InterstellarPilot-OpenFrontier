@@ -122,3 +122,6 @@ InitTestScene*.unity*
 # machine. Safe to delete; nothing depends on it existing.
 openfrontier-profile.txt
 MeshExports/
+
+# decals tool bytecode (swept-in scratch from a py_compile run)
+__pycache__/

@@ -9,8 +9,9 @@ weight the material's three colours, alpha stays the brush. The superpower
 brand (--brand, _PowerDecalMap) is the old baked-colour layer over it.
 
     triad  = clamp(P.primary*r + P.secondary*g + P.tertiary*b)  # zone select
-    shaded = hull tint x lerp(1, layer.rgb, layer.a)            # multiply pass
-    out    = lerp(shaded, layer.rgb, layer.a * strength)         # paint lift
+    paintA = sheet.a x each colour's own alpha (ink translucency, RRGGBBAA)
+    shaded = hull tint x lerp(1, layer.rgb, paintA)            # multiply pass
+    out    = lerp(shaded, layer.rgb, paintA * strength)         # paint lift
 
 at the strengths the materials actually carry (0.5 defaults, both ranges
 capped there). It is a QA tool: cheap, deterministic, runs before Unity so
@@ -46,12 +47,13 @@ def main(argv=None):
                    'if the material binds one')
     p.add_argument('--emission', help='the _DecalEmissionMap texture, if wired')
     p.add_argument('--tint', default='FFFFFF', help='_BaseColor tint as RRGGBB')
-    p.add_argument('--primary', default='FFFFFF',
-                   help='Pattern Primary (R zones) as RRGGBB')
-    p.add_argument('--secondary', default='FFFFFF',
-                   help='Pattern Secondary (G zones) as RRGGBB')
-    p.add_argument('--tertiary', default='FFFFFF',
-                   help='Pattern Tertiary (B zones) as RRGGBB')
+    p.add_argument('--primary', default='FFFFFFFF',
+                   help='Pattern Primary (R zones) as RRGGBB or RRGGBBAA '
+                        '(alpha = ink translucency, default opaque)')
+    p.add_argument('--secondary', default='FFFFFFFF',
+                   help='Pattern Secondary (G zones) as RRGGBBAA')
+    p.add_argument('--tertiary', default='FFFFFFFF',
+                   help='Pattern Tertiary (B zones) as RRGGBBAA')
     p.add_argument('--strength', type=float, default=0.5,
                    help='Pattern Paint Strength the material carries (capped 0.5)')
     p.add_argument('--brand-strength', type=float, default=0.5,
@@ -77,22 +79,35 @@ def main(argv=None):
     h, w = decal_a.shape[:2]
     hullt = hull * tint[None, None, :]
 
-    def parse_rgb(text):
-        return np.array([int(text[i:i + 2], 16) for i in (0, 2, 4)],
-                        dtype=np.float32) / 255.0
+    def parse_rgba(text):
+        t = text.lstrip('#')
+        if len(t) == 6:
+            t += 'FF'                      # default opaque (1,1,1,1)
+        if len(t) != 8:
+            sys.exit('%s: expected RRGGBB or RRGGBBAA hex' % text)
+        v = [int(t[i:i + 2], 16) for i in (0, 2, 4, 6)]
+        return np.array(v[0:3], dtype=np.float32) / 255.0, v[3] / 255.0
 
-    primary, secondary, tertiary = (parse_rgb(x) for x in
-                                    (args.primary, args.secondary, args.tertiary))
-    # triad = clamp(P*r + S*g + T*b)  -- the zone select, zones exclusive,
-    # edge weights blending exactly as the shader sums them
+    primary, pa = parse_rgba(args.primary)
+    secondary, sa = parse_rgba(args.secondary)
+    tertiary, ta = parse_rgba(args.tertiary)
+    # triad = clamp(P.rgb*r + S.rgb*g + T.rgb*b)  -- zone select, edges
+    # blending exactly as the shader sums them. Each colour's own alpha
+    # rides its channel as ink translucency (RRGGBBAA inputs): pa/sa/ta,
+    # multiplied with the sheet brush below - half-alpha colours paint
+    # their zones at half ink, alpha 0 empties the zone.
     triad = np.clip(primary[None, None, :] * decal_rgb[:, :, 0:1]
                     + secondary[None, None, :] * decal_rgb[:, :, 1:2]
                     + tertiary[None, None, :] * decal_rgb[:, :, 2:3], 0.0, 1.0)
+    zoneA = np.clip(pa * decal_rgb[:, :, 0:1]
+                    + sa * decal_rgb[:, :, 1:2]
+                    + ta * decal_rgb[:, :, 2:3], 0.0, 1.0)
+    paintA = decal_a * zoneA[:, :, 0]
     # shaded = hull * lerp(1, layer.rgb, layer.a)   -- the multiply pass
-    shaded = hullt * ((1.0 - decal_a[:, :, None]) + triad * decal_a[:, :, None])
+    shaded = hullt * ((1.0 - paintA[:, :, None]) + triad * paintA[:, :, None])
     # out = lerp(shaded, layer.rgb, layer.a * strength)  -- the paint lift
-    out = shaded * (1.0 - decal_a * strength)[:, :, None] \
-        + triad * (decal_a * strength)[:, :, None]
+    out = shaded * (1.0 - paintA * strength)[:, :, None] \
+        + triad * (paintA * strength)[:, :, None]
 
     if args.brand:
         brand_rgb, brand_a = load_f(args.brand)

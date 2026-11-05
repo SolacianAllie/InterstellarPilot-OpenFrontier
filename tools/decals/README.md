@@ -14,7 +14,10 @@ enforced by architecture, not discipline:
 - marks enter a sheet only in its language: flat palette colours, keyed
   background, hard alpha (`quantize`), and the pattern layer reads as a
   triad zone mask — R/G/B weights the shader recolours from the
-  material's three faction colours (`channelize`).
+  material's three faction colours (`channelize`). Each faction
+  colour's own alpha is **ink translucency**: partial alpha paints its
+  zone at half ink (hull through the paint), alpha 0 erases the zone
+  (8-digit hex everywhere in `preview.py`).
 
 ## The five tools (all stdlib-free — Pillow + numpy via run.sh)
 
