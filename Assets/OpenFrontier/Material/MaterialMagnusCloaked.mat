@@ -40,6 +40,10 @@ Material:
         m_Texture: {fileID: 2800000, guid: 2be44392e6ceed2908c610796a486202, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _DecalEmissionMap:
+        m_Texture: {fileID: 2800000, guid: ebff688da5b80aee3b7a008bdcca72d6, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _DecalMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -110,6 +114,7 @@ Material:
     - _CloakWarpScale: 0.06
     - _Cull: 2
     - _Cutoff: 0.5
+    - _DecalEmissionToggle: 0
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
@@ -141,6 +146,7 @@ Material:
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 0.2735848, g: 0.2735848, b: 0.2735848, a: 1}
+    - _DecalEmissionColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []
