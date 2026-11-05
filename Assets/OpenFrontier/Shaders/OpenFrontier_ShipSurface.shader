@@ -66,11 +66,14 @@ Shader "OpenFrontier/Ship Surface"
 	// mark cannot exist -- there is no paint lighter than the hull. The
 	// slider lifts a texel from the multiplied result toward the decal's
 	// own colour, weighted by the same alpha brush: 0 keeps pure
-	// shading, 1 repaints the texel outright, and the useful middle
-	// paints the mark while the hull's dirt still grimes through it from
-	// underneath. The layer's whole cost stays one sample and two
-	// lerps - no pass, no variant, no stencil - because this game
-	// runs on phones where the cheapest feature is the one that lives.
+	// shading, and the range is CAPPED at 0.5 -- half lift repaints a
+	// texel halfway, leaving the multiplied residue underneath to
+	// carry the wear. Full replace is deliberately out of reach:
+	// paint that erases the hull's wear stops looking painted on the
+	// ship and starts looking like a sticker. The layer's whole cost
+	// stays one sample and two lerps - no pass, no variant, no
+	// stencil - because this game runs on phones where the cheapest
+	// feature is the one that lives.
 	//
 	// It overlays ALBEDO only. It does not push normals, occlusion or
 	// smoothness: livery is paint on the hull, and painted hulls still
@@ -154,11 +157,12 @@ Shader "OpenFrontier/Ship Surface"
 
 		// How far a decal texel stops SHADING and starts PAINTING.
 		// 0 keeps the multiply overlay only (whites vanish into the
-		// hull). 1 lets the decal's own colour take the texel over.
-		// Mid values paint the mark while the hull's dirt and panel
-		// wear still shade through from underneath - the balance
-		// between stencilled-on wear and fresh livery.
-		_DecalPaintStrength("Decal Paint Strength", Range(0.0, 1.0)) = 0.25
+		// hull); 0.5 blends the mark halfway to its own colour while
+		// the hull's dirt and panel wear still shade through from
+		// underneath. Capped at half on purpose: full replace kills
+		// the wear-through character, so the inspector cannot walk
+		// there even by accident.
+		_DecalPaintStrength("Decal Paint Strength", Range(0.0, 0.5)) = 0.5
 
 		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
 		// artwork; RGBA where rgb glows and a gates it. HDR color for the

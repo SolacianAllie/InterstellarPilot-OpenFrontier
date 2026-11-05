@@ -198,8 +198,9 @@ Shader "OpenFrontier/Ship Cloak"
 		_DecalMap("Decal Overlay (RGBA, multiply)", 2D) = "white" {}
 
 		// Paint strength: see the ship shader's header. Lifts texels
-		// from multiply shading toward the decal's own colour.
-		_DecalPaintStrength("Decal Paint Strength", Range(0.0, 1.0)) = 0.25
+		// from multiply shading toward the decal's own colour, capped
+		// at half so full replace stays out of reach.
+		_DecalPaintStrength("Decal Paint Strength", Range(0.0, 0.5)) = 0.5
 
 		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
 		// artwork; RGBA where rgb glows and a gates it. HDR color for the
