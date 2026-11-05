@@ -2,23 +2,25 @@
 """Preview a decal sheet exactly the way the ship shaders will read it.
 
 This composites decal-over-albedo with the same math as
-OpenFrontier/Ship Surface and /Ship Cloak - BOTH layers, in order.
+OpenFrontier/Ship Surface and /Ship Cloak - BOTH layers, in order,
+each a plain alpha overlay (no strength slider; the amounts live in
+the sheets' own alpha).
 
 The pattern sheet (--decal, _DecalMap) is a triad ZONE MASK: its R/G/B
-weight the material's three colours, alpha stays the brush. The superpower
-brand (--brand, _PowerDecalMap) is the old baked-colour layer over it.
+weight the material's three colours. The superpower brand (--brand,
+_PowerDecalMap) overlays in its own baked colours.
 
     triad  = clamp(P.primary*r + P.secondary*g + P.tertiary*b)  # zone select
     paintA = sheet.a x each colour's own alpha (ink translucency, RRGGBBAA)
-    shaded = hull tint x lerp(1, layer.rgb, paintA)            # multiply pass
-    out    = lerp(shaded, layer.rgb, paintA * strength)         # paint lift
+    out    = lerp(hull tint, triad, paintA)                     # overlay
+    brand  = lerp(out, brand.rgb, brand.a)                      # overlay 2
 
-at the strengths the materials actually carry (0.5 defaults, both ranges
-capped there). It is a QA tool: cheap, deterministic, runs before Unity so
-alignment and readability problems do not cost an editor round trip.
+Inert notes mirror the shaders: an unbound pattern slot samples opaque
+black (no zone selected -> nothing painted); the brand only exists
+behind the _POWERDECAL toggle, which --brand stands in for here.
 Emission (the _DecalEmissionMap layer) is added the same way when
---emission is given. Math runs in sRGB space - a visual approximation of
-the engine's linear-light result, not a LUT.
+--emission is given. Math runs in sRGB space - a visual approximation
+of the engine's linear-light result, not a LUT.
 """
 import argparse, os, sys
 
@@ -54,10 +56,6 @@ def main(argv=None):
                    help='Pattern Secondary (G zones) as RRGGBBAA')
     p.add_argument('--tertiary', default='FFFFFFFF',
                    help='Pattern Tertiary (B zones) as RRGGBBAA')
-    p.add_argument('--strength', type=float, default=0.5,
-                   help='Pattern Paint Strength the material carries (capped 0.5)')
-    p.add_argument('--brand-strength', type=float, default=0.5,
-                   help='Superpower Paint Strength (capped 0.5)')
     p.add_argument('--emission-color', default='FFFFFF', help='Decal Glow Color RRGGBB')
     p.add_argument('--out', required=True, help='preview PNG to write')
     p.add_argument('--width', type=int, default=1600,
@@ -65,7 +63,6 @@ def main(argv=None):
     p.add_argument('--region', help='x,y,w,h in sheet pixels - full-res crop')
     args = p.parse_args(argv)
 
-    strength = min(max(args.strength, 0.0), 0.5)
     tint = np.array([int(args.tint[i:i + 2], 16) for i in (0, 2, 4)],
                     dtype=np.float32) / 255.0
 
@@ -103,11 +100,10 @@ def main(argv=None):
                     + sa * decal_rgb[:, :, 1:2]
                     + ta * decal_rgb[:, :, 2:3], 0.0, 1.0)
     paintA = decal_a * zoneA[:, :, 0]
-    # shaded = hull * lerp(1, layer.rgb, layer.a)   -- the multiply pass
-    shaded = hullt * ((1.0 - paintA[:, :, None]) + triad * paintA[:, :, None])
-    # out = lerp(shaded, layer.rgb, layer.a * strength)  -- the paint lift
-    out = shaded * (1.0 - paintA * strength)[:, :, None] \
-        + triad * (paintA * strength)[:, :, None]
+    # out = lerp(hull, triad, paintA)  -- plain alpha overlay: the mark
+    # REPLACES the hull by its ink amount, hull showing through at
+    # partial alpha. No strength slider - the sheet carries the amount.
+    out = hullt * (1.0 - paintA[:, :, None]) + triad * paintA[:, :, None]
 
     if args.brand:
         brand_rgb, brand_a = load_f(args.brand)
@@ -115,10 +111,9 @@ def main(argv=None):
             sys.exit('brand sheet %s differs in size from the pattern '
                      'sheet - both ride the hull\'s UV space'
                      % args.brand)
-        bst = min(max(args.brand_strength, 0.0), 0.5)
-        shaded = out * ((1.0 - brand_a[:, :, None]) + brand_rgb * brand_a[:, :, None])
-        out = shaded * (1.0 - brand_a * bst)[:, :, None] \
-            + brand_rgb * (brand_a * bst)[:, :, None]
+        # out = lerp(out, brand.rgb, brand.a)  -- overlay 2, baked colours
+        out = out * (1.0 - brand_a[:, :, None]) \
+            + brand_rgb * brand_a[:, :, None]
 
     if args.emission:
         er, ea = load_f(args.emission)
@@ -138,9 +133,8 @@ def main(argv=None):
     crop.save(args.out)
     ink = (decal_a > 0).mean()
     ink_brand = ((brand_a > 0).mean() if args.brand else 0.0)
-    print('%s: %dx%d @pattern %.2f%s, ink %.2f%%%s -> %s'
-          % (os.path.basename(args.out), w, h, strength,
-             ' @brand %.2f' % bst if args.brand else '',
+    print('%s: %dx%d, ink %.2f%%%s -> %s'
+          % (os.path.basename(args.out), w, h,
              100 * ink,
              ' (brand ink %.2f%%)' % (100 * ink_brand) if args.brand else '',
              args.out))

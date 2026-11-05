@@ -11,6 +11,9 @@ on an alpha-brushed canvas) into exactly that language:
   painter's colour ramp;
 - everything opaque is hard-cut: below the alpha threshold the pixel
   keys out to RGB 0 + alpha 0 (the shader ignores that region);
+- a background colour can be keyed OUT first (--bg RRGGBB, --bg-tol):
+  a sheet painted black-as-empty on a full-alpha canvas becomes alpha-0
+  emptiness here, which is what the shaders' ink gate wants;
 - pixels that match none of the three colours are REPORTED, never
   invented into a zone (run with --palette N first to see the sheet's
   dominant colours and pick your three).
@@ -92,6 +95,11 @@ def main(argv=None):
                         '(useful for choosing --colors), then continue')
     p.add_argument('--alpha-thresh', type=float, default=0.5,
                    help='hard alpha cut between 0 and 1 (default 0.5)')
+    p.add_argument('--bg', help='background colour to key OUT (RRGGBB), e.g. '
+                   '--bg 000000 when a sheet paints black as empty')
+    p.add_argument('--bg-tol', type=float, default=0.12,
+                   help='max colour distance from --bg that still keys out '
+                        '(default 0.12, same scale as --tol)')
     p.add_argument('--tol', type=float, default=0.12,
                    help='max colour distance from the triad before a pixel '
                         'is reported unmapped (default 0.12)')
@@ -108,6 +116,14 @@ def main(argv=None):
     rgb = arr[:, :, :3]
 
     opaque = arr[:, :, 3] >= args.alpha_thresh * 255.0
+    if args.bg:
+        bg = np.array(parse_color(args.bg), dtype=np.float32) / 255.0
+        dist = np.sqrt(((rgb / 255.0 - bg[None, None, :]) ** 2).sum(axis=2))
+        keyed = dist <= args.bg_tol
+        opaque &= ~keyed
+        print('%s: bg #%s keys %d px out (painted-empty -> alpha 0)'
+              % (os.path.basename(args.input), args.bg.lstrip('#').upper(),
+                 int(keyed.sum())))
     fp = rgb[opaque]
     n_opaque = int(opaque.sum())
 

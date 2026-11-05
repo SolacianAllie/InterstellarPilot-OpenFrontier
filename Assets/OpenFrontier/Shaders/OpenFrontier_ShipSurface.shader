@@ -50,38 +50,41 @@ Shader "OpenFrontier/Ship Surface"
 	//
 	// THE DECAL LAYERS -- faction pattern, then superpower brand
 	//
-	// Two albedo overlays, in order, same two-half maths each. The
-	// shape survives from the original decal layer: ALPHA is the brush
-	// (alpha 0 leaves the hull untouched), the RGB is a MULTIPLY filter
-	// rather than absolute paint, and a strength slider lifts marks from
-	// shading toward their own colour with the multiplied residue
-	// underneath as the wear showing through. No pass, no variant, no
-	// stencil - two samples and a handful of lerps, because this game
-	// runs on phones where the cheapest feature is the one that lives.
+	// Two plain ALPHA OVERLAYS, in order. ALPHA is the coverage: where
+	// a mark's alpha says ink, the hull is replaced by the mark's
+	// colour; partial alpha leaves hull showing through. There is no
+	// strength slider and no multiply leg any more - the amounts live
+	// in the sheet (and the colours') own alpha, authored per texel,
+	// so the global slider and its cap went with the old language. No
+	// pass, no stencil - two samples and a couple of lerps, because
+	// this game runs on phones where the cheapest feature is the one
+	// that lives.
 	//
-	// LAYER 1 (the faction PATTERN) inverts what the RGB means:
-	// _DecalMap is a ZONE MASK, not paint. R, G and B are pure channel
-	// masks (primary / secondary / tertiary zones) recoloured from the
-	// material's triad (_DecalPrimary/_DecalSecondary/_DecalTertiary),
-	// so ONE pattern sheet serves every faction and each material picks
-	// its three colours. Each colour's own alpha carries the ink:
-	// alpha 1 paints its zones solid, a partial alpha paints them
-	// translucently (hull shows through the ink), alpha 0 empties the
-	// zone - the two scales multiply, sheet brush x ink opacity.
-	// Zones are painted exclusive; a pixel blending
-	// two channels is an intended edge blend (the shader sums the
-	// channel weights, so a zone boundary colour-ramps for free), and
-	// anything that would sum past white is saturated, never doubled.
+	// LAYER 1 (the faction PATTERN): _DecalMap is a ZONE MASK, not
+	// paint. R, G and B are pure channel weights (primary / secondary
+	// / tertiary zones) recoloured from the material's triad
+	// (_DecalPrimary/_DecalSecondary/_DecalTertiary), so ONE pattern
+	// sheet serves every faction and each material picks its three
+	// colours. Each colour's own alpha carries the ink: opaque paints
+	// its zones solid, a partial alpha paints them translucently (hull
+	// shows through the ink), alpha 0 empties the zone - the two
+	// scales multiply, sheet coverage x ink opacity. Zones are painted
+	// exclusive; a pixel blending two channels is an intended edge
+	// blend (the shader sums the channel weights, so a zone boundary
+	// colour-ramps for free), and anything that would sum past white
+	// is saturated, never doubled. That same ink gate is what keeps an
+	// unbound layer inert: the default texture is opaque BLACK, which
+	// selects no zone at all, so black-in-black alpha draws nothing.
 	// channelize.py in tools/decals builds sheets in this language from
-	// three painted palette colours. Defaults (white sheet, opaque
-	// white triad, strength 0) are fully inert.
+	// three painted palette colours.
 	//
-	// LAYER 2 (the SUPERPOWER BRAND) is the old baked-colour decal
-	// contract applied a second time over layer 1: _PowerDecalMap, its
-	// own tiling (_PowerDecalMap_ST) and its own strength slider
-	// (_PowerDecalPaintStrength, same 0.5 cap). RGB is a multiply
-	// filter in the sheet's own baked colours, alpha the brush; the
-	// brand lands on top of the faction pattern. Default white = inert.
+	// LAYER 2 (the SUPERPOWER BRAND) is the same overlay a second
+	// time: _PowerDecalMap, its own tiling (_PowerDecalMap_ST), the
+	// sheet's own baked colours, alpha the amount, landing on top of
+	// the faction pattern. It has no channel gate of its own, so its
+	// inert contract is the _POWERDECAL toggle (same shape as
+	// _DECALEMISSION below): off = unbound slot that must not be
+	// sampled, inert AND free.
 	//
 	// Both layers overlay ALBEDO only. They do not push normals,
 	// occlusion or smoothness: livery is paint on the hull, and painted
@@ -159,36 +162,28 @@ Shader "OpenFrontier/Ship Surface"
 		_EmissionMap("Luminance (Emission) Map", 2D) = "white" {}
 
 		// LAYER 1 -- faction pattern. Not paint, a ZONE MASK: RGB are
-		// pure channel masks (R primary / G secondary / B tertiary
-		// zones), sheet alpha the brush, so ONE pattern sheet serves
-		// every faction and the three colours below recolour it per
-		// material. Each colour's own alpha is INK TRANSLUCENCY:
-		// alpha 1 paints solid, a partial alpha paints that zone at
-		// half ink (hull showing through), 0 erases the zone. Default
-		// sheet + opaque white triad + strength 0 below = fully inert.
-		_DecalMap("Decal Pattern Mask (R/G/B zones, A brush)", 2D) = "white" {}
+		// pure channel weights (R primary / G secondary / B tertiary
+		// zones), sheet alpha the ink coverage, and the composite is
+		// a PLAIN ALPHA OVERLAY - no strength slider, the amounts live
+		// in the sheet. The three colours below recolour one shared
+		// pattern sheet per material; each colour's own alpha is INK
+		// TRANSLUCENCY (opaque = solid, partial = hull through the
+		// ink, 0 = zone erased). The default opaque-BLACK sheet
+		// selects no zone at all, so an unbound layer is perfectly
+		// inert by construction.
+		_DecalMap("Decal Pattern Mask (R/G/B zones, A ink)", 2D) = "black" {}
 		_DecalPrimary("Pattern Primary (R zones)", Color) = (1,1,1,1)
 		_DecalSecondary("Pattern Secondary (G zones)", Color) = (1,1,1,1)
 		_DecalTertiary("Pattern Tertiary (B zones)", Color) = (1,1,1,1)
 
-		// Paint strength: 0 keeps the multiply overlay only (marks
-		// vanish into the hull); 0.5 blends the mark halfway to its
-		// faction colour while the hull's dirt and panel wear still
-		// shade through from underneath. Capped at half on purpose:
-		// full replace kills the wear-through character, so the
-		// inspector cannot walk there even by accident. Defaults to
-		// ZERO, deliberately: an unbound _DecalMap samples Unity's
-		// opaque white default, and any strength above 0 would lift
-		// the whole hull toward white - a silent pastel fleet.
-		// Materials that bind a sheet set their own value (0.5 here).
-		_DecalPaintStrength("Pattern Paint Strength", Range(0.0, 0.5)) = 0.0
-
-		// LAYER 2 -- superpower brand over the pattern: the old baked
-		// colour decal contract, applied again (RGB multiply filter +
-		// paint lift, alpha brush, sheet's own colours), with its own
-		// tiling and strength. Default white + strength 0 = inert.
-		_PowerDecalMap("Superpower Brand (RGBA, multiply)", 2D) = "white" {}
-		_PowerDecalPaintStrength("Superpower Paint Strength", Range(0.0, 0.5)) = 0.0
+		// LAYER 2 -- superpower brand over the pattern: the same plain
+		// alpha overlay a second time (RGB the baked paint, A the
+		// amount), its own tiling. Its inert contract is the TOGGLE:
+		// off = the slot is unbound and must not be sampled - with no
+		// strength slider left to gate it, off is how an empty brand
+		// stays inert AND free.
+		_PowerDecalMap("Superpower Brand (RGBA, overlay)", 2D) = "black" {}
+		[Toggle(_POWERDECAL)] _PowerDecalToggle("Superpower Brand", Float) = 0.0
 
 		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
 		// artwork; RGBA where rgb glows and a gates it. HDR color for the
@@ -246,8 +241,6 @@ Shader "OpenFrontier/Ship Surface"
 		half _OcclusionStrength;
 		half _Metallic;
 		half _Smoothness;
-		half _DecalPaintStrength;
-		half _PowerDecalPaintStrength;
 		CBUFFER_END
 
 		TEXTURE2D(_BaseMap);          SAMPLER(sampler_BaseMap);
@@ -288,6 +281,7 @@ Shader "OpenFrontier/Ship Surface"
 			// Emissive decals: on per material ([Toggle] drawer). Off by
 			// default so faction hulls that never glow pay nothing.
 			#pragma shader_feature_local_fragment _DECALEMISSION
+			#pragma shader_feature_local_fragment _POWERDECAL
 
 			// Pipeline keywords, trimmed to what a Hull forward pass can
 			// be asked for by the project's setup (see header).
@@ -344,29 +338,31 @@ Shader "OpenFrontier/Ship Surface"
 
 				half4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
 
-				// The decal layers, each in two halves. The pattern mask's
-				// RGB selects the faction triad (edges blending as summed
-				// weights, saturate guarding overlaps), and each colour's
-				// own alpha rides its channel as INK TRANSLUCENCY: the
-				// sheet brush and the zone alpha MULTIPLY, so a
-				// half-alpha colour paints its zones at half ink, an
-				// opaque colour is unchanged, and the opaque white
-				// default stays exactly inert. Then the old language
-				// per layer: the ink darkens via the multiply half and
-				// lifts with its strength, the multiplied residue
-				// underneath as the wear showing through.
+				// The decal layers as plain ALPHA OVERLAYS: where a
+				// mark's alpha says ink, the hull is REPLACED by the
+				// mark's colour, partial alpha leaving hull through -
+				// no strength slider, the amounts live in the sheet.
+				// The pattern mask's RGB selects the faction triad
+				// (edges blending as summed weights, saturate guarding
+				// overlaps) and each colour's own alpha rides its
+				// channel as INK TRANSLUCENCY: sheet coverage x ink
+				// opacity gates the overlay, which also keeps the
+				// opaque-BLACK default texture perfectly inert (black
+				// selects no zone). The superpower brand is the same
+				// overlay a second time in the sheet's own baked
+				// colours, riding its _POWERDECAL toggle: unbound slot
+				// = off = nothing sampled, free.
 				half4 mask = SAMPLE_TEXTURE2D(_DecalMap, sampler_DecalMap, input.decalUV);
 				half3 triad = saturate(_DecalPrimary.rgb * mask.r
 					+ _DecalSecondary.rgb * mask.g + _DecalTertiary.rgb * mask.b);
 				half zoneA = saturate(_DecalPrimary.a * mask.r
 					+ _DecalSecondary.a * mask.g + _DecalTertiary.a * mask.b);
-				half paintA = mask.a * zoneA;
-				half3 shaded = albedo.rgb * lerp(half3(1.0h, 1.0h, 1.0h), triad, paintA);
-				albedo.rgb = lerp(shaded, triad, paintA * _DecalPaintStrength);
+				albedo.rgb = lerp(albedo.rgb, triad, mask.a * zoneA);
 
+				#ifdef _POWERDECAL
 				half4 brand = SAMPLE_TEXTURE2D(_PowerDecalMap, sampler_PowerDecalMap, input.powerUV);
-				shaded = albedo.rgb * lerp(half3(1.0h, 1.0h, 1.0h), brand.rgb, brand.a);
-				albedo.rgb = lerp(shaded, brand.rgb, brand.a * _PowerDecalPaintStrength);
+				albedo.rgb = lerp(albedo.rgb, brand.rgb, brand.a);
+				#endif
 
 				surfaceData.albedo = albedo.rgb;
 				surfaceData.alpha = 1.0h; // opaque hulls, always

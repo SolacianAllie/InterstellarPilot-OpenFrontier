@@ -13,8 +13,8 @@ Shader "OpenFrontier/Ship Cloak"
 	// _BumpMap, _OcclusionMap, _MetallicGlossMap, _EmissionMap, the decal
 	// layers - pattern and superpower brand - and their emissive
 	// companion), the same keyword names
-	// (_EMISSION, _DECALEMISSION, _METALLICSPECGLOSSMAP, _NORMALMAP,
-	// _OCCLUSIONMAP), the same trim list -- so a cloaking
+	// (_EMISSION, _DECALEMISSION, _POWERDECAL, _METALLICSPECGLOSSMAP,
+	// _NORMALMAP, _OCCLUSIONMAP), the same trim list -- so a cloaking
 	// ship's material swaps onto this shader with its bindings and flags
 	// intact and looks IDENTICAL to its hull material. The only visual
 	// difference is what happens when ActiveUnit pushes the cloak values.
@@ -194,31 +194,25 @@ Shader "OpenFrontier/Ship Cloak"
 		_EmissionMap("Luminance (Emission) Map", 2D) = "white" {}
 
 		// LAYER 1 -- faction pattern. Not paint, a ZONE MASK: RGB are
-		// pure channel masks (R primary / G secondary / B tertiary
-		// zones), sheet alpha the brush; the three colours below
-		// recolour it per material. Each colour's own alpha is INK
-		// TRANSLUCENCY: alpha 1 paints solid, a partial alpha paints
-		// that zone at half ink, 0 erases the zone. Contract doc:
-		// Ship Surface's header.
-		_DecalMap("Decal Pattern Mask (R/G/B zones, A brush)", 2D) = "white" {}
+		// pure channel weights (R primary / G secondary / B tertiary
+		// zones), sheet alpha the ink coverage, and the composite is
+		// a PLAIN ALPHA OVERLAY - no strength slider. Each colour's
+		// own alpha is INK TRANSLUCENCY (opaque = solid, partial =
+		// hull through the ink, 0 = zone erased); the default
+		// opaque-BLACK sheet selects no zone, unbound = inert.
+		// Contract doc: Ship Surface's header.
+		_DecalMap("Decal Pattern Mask (R/G/B zones, A ink)", 2D) = "black" {}
 		_DecalPrimary("Pattern Primary (R zones)", Color) = (1,1,1,1)
 		_DecalSecondary("Pattern Secondary (G zones)", Color) = (1,1,1,1)
 		_DecalTertiary("Pattern Tertiary (B zones)", Color) = (1,1,1,1)
 
-		// Pattern paint strength: see the ship shader's header. Lifts
-		// texels from multiply shading toward their faction colour,
-		// capped at half so full replace stays out of reach. Defaults
-		// to ZERO for the same reason as there: an unbound sheet plus
-		// a non-zero strength lifts the whole hull to white. Bound
-		// materials carry their own value.
-		_DecalPaintStrength("Pattern Paint Strength", Range(0.0, 0.5)) = 0.0
-
-		// LAYER 2 -- superpower brand over the pattern: the old baked
-		// colour decal contract applied again (RGB multiply filter +
-		// paint lift, alpha brush, sheet's own colours), own tiling
-		// and strength. Default white + strength 0 = inert.
-		_PowerDecalMap("Superpower Brand (RGBA, multiply)", 2D) = "white" {}
-		_PowerDecalPaintStrength("Superpower Paint Strength", Range(0.0, 0.5)) = 0.0
+		// LAYER 2 -- superpower brand over the pattern: the same plain
+		// alpha overlay a second time (RGB the baked paint, A the
+		// amount), own tiling. Inert contract is the TOGGLE - with no
+		// strength slider left to gate the slot, off is how an empty
+		// brand stays inert AND free.
+		_PowerDecalMap("Superpower Brand (RGBA, overlay)", 2D) = "black" {}
+		[Toggle(_POWERDECAL)] _PowerDecalToggle("Superpower Brand", Float) = 0.0
 
 		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
 		// artwork; RGBA where rgb glows and a gates it. HDR color for the
@@ -288,8 +282,6 @@ Shader "OpenFrontier/Ship Cloak"
 		half _OcclusionStrength;
 		half _Metallic;
 		half _Smoothness;
-		half _DecalPaintStrength;
-		half _PowerDecalPaintStrength;
 		half _CloakAmount;
 		half _CloakFloor;
 		half _CloakWarpScale;
@@ -351,6 +343,7 @@ Shader "OpenFrontier/Ship Cloak"
 			// Emissive decals: on per material ([Toggle] drawer). Off by
 			// default so cloak hulls whose decals never glow pay nothing.
 			#pragma shader_feature_local_fragment _DECALEMISSION
+			#pragma shader_feature_local_fragment _POWERDECAL
 
 			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
 			#pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
@@ -404,27 +397,26 @@ Shader "OpenFrontier/Ship Cloak"
 
 				half4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
 
-				// Both decal layers, same two halves as the ship shader:
-				// the pattern mask selects its faction triad (R/G/B
-				// zone weights, saturate-guarded), and each colour's
-				// own alpha rides its channel as ink translucency,
-				// multiplied with the sheet brush. Then the superpower
-				// brand lands over it in the sheet's own baked colours.
-				// Painted marks keep paint through the cloak; the
-				// multiplied residue stays as the wear showing through
-				// them.
+				// Both decal layers, plain alpha overlays exactly as
+				// the ship shader: the pattern mask selects its
+				// faction triad (R/G/B weights, saturate-guarded) and
+				// each colour's own alpha rides its channel as ink
+				// translucency, gating the overlay with the sheet's
+				// coverage; the superpower brand lands over it in the
+				// sheet's own baked colours behind the _POWERDECAL
+				// toggle. Painted marks keep paint through the cloak,
+				// identical to their hull material at cloak-floor.
 				half4 mask = SAMPLE_TEXTURE2D(_DecalMap, sampler_DecalMap, input.decalUV);
 				half3 triad = saturate(_DecalPrimary.rgb * mask.r
 					+ _DecalSecondary.rgb * mask.g + _DecalTertiary.rgb * mask.b);
 				half zoneA = saturate(_DecalPrimary.a * mask.r
 					+ _DecalSecondary.a * mask.g + _DecalTertiary.a * mask.b);
-				half paintA = mask.a * zoneA;
-				half3 shaded = albedo.rgb * lerp(half3(1.0h, 1.0h, 1.0h), triad, paintA);
-				albedo.rgb = lerp(shaded, triad, paintA * _DecalPaintStrength);
+				albedo.rgb = lerp(albedo.rgb, triad, mask.a * zoneA);
 
+				#ifdef _POWERDECAL
 				half4 brand = SAMPLE_TEXTURE2D(_PowerDecalMap, sampler_PowerDecalMap, input.powerUV);
-				shaded = albedo.rgb * lerp(half3(1.0h, 1.0h, 1.0h), brand.rgb, brand.a);
-				albedo.rgb = lerp(shaded, brand.rgb, brand.a * _PowerDecalPaintStrength);
+				albedo.rgb = lerp(albedo.rgb, brand.rgb, brand.a);
+				#endif
 
 				surfaceData.albedo = albedo.rgb;
 				surfaceData.alpha = 1.0h;
