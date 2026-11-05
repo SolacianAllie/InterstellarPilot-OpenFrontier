@@ -107,6 +107,7 @@ Material:
     - _Cull: 2
     - _Cutoff: 0.5
     - _DecalEmissionToggle: 0
+    - _DecalPaintStrength: 0.75
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
