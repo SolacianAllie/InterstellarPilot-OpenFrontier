@@ -58,8 +58,13 @@ python stack, no server.
   --mask white_is_generate.png -p "..." --steps 10 --strength 0.9
   -o out.png` (`--mask-mode`, `dilate_erode`, `inpaint_padding` exist
   as model-args if needed)
-- interactive painting outside Krita: `~/sdcpp/start-server.sh` runs
-  `sd-server` (OpenAI-compatible HTTP image API + built-in web UI)
+- interactive painting outside Krita: `tools/decals/sdserver.sh` runs
+  `sd-server` inside a **cgroup cap** (soft throttle 4.5 GB, hard kill
+  5.25 GB) at `http://127.0.0.1:1234` — *always use the capped launcher*:
+  an uncapped 1024²-window generation OOM-freezes the whole desktop
+  session (happened 2026-11-05; on the capped server the same runaway
+  kills only the job/process). Keep painter windows ≤512²; the model
+  loads automatically in the UI.
 
 Licence note for a commercial game: check each checkpoint's licence on
 its download page (SD 1.5 = OpenRAIL-M; SDXL = Stability's ≤$1M clause;
