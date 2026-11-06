@@ -37,10 +37,12 @@ namespace OpenFrontier.IP.Engine
 	//              band (the bandits-always-red / mercs-always-green
 	//              lock is gone). Chartreuse is still skipped - paint
 	//              there reads sickly on grey hulls.
-	//   spread   - secondary and tertiary hues fan out +120..170deg and
-	//              -100..145deg from the primary, enforced >=30deg apart
-	//              pairwise, so the three zones stay distinct even after
-	//              reshaping.
+	//   spread   - the triad's relationship is PICKED, not poured: one of
+	//              four canonical brand schemes (triadic, split-
+	//              complementary, complement-plus-kin, analogous) chosen
+	//              per faction off its seed, tight jitter only. Zones
+	//              stay >=30deg apart pairwise, so the three colours
+	//              stay distinct even after reshaping.
 	//   status   - faction type plus personality: bandit/outlaw paint is
 	//              grimy (saturated down, darkened), empire dress SAT is
 	//              nudged up, aggression darkens the bite, minors are
@@ -307,8 +309,35 @@ namespace OpenFrontier.IP.Engine
 				valMul *= 1.06f;
 			}
 
-			float secondaryHue = Wrap01(hue + 0.33f + 0.12f * (float)random.NextDouble());
-			float tertiaryHue = Wrap01(hue - 0.28f - 0.12f * (float)random.NextDouble());
+			// The triad's relationship is PICKED, not poured - corporate
+			// palettes feel right because the two support colours sit in
+			// fixed roles against the primary, not at random wheel
+			// points. Four canonical schemes, chosen per faction from its
+			// seed; jitter is tight (about 7 deg) so same-scheme
+			// factions read as siblings, not clones. The identity wheel
+			// still spreads primaries, so scheme reuse between factions
+			// lands on different hues.
+			float secondaryHue;
+			float tertiaryHue;
+			switch (random.Next(4))
+			{
+				case 0: // triadic: even thirds
+					secondaryHue = Wrap01(hue + 0.3333f + 0.02f * ((float)random.NextDouble() - 0.5f));
+					tertiaryHue = Wrap01(hue - 0.3333f + 0.02f * ((float)random.NextDouble() - 0.5f));
+					break;
+				case 1: // split-complementary: the classic brand relation
+					secondaryHue = Wrap01(hue + 0.4167f + 0.02f * ((float)random.NextDouble() - 0.5f));
+					tertiaryHue = Wrap01(hue - 0.4167f + 0.02f * ((float)random.NextDouble() - 0.5f));
+					break;
+				case 2: // one complement, one kin of the primary
+					secondaryHue = Wrap01(hue + 0.5f + 0.02f * ((float)random.NextDouble() - 0.5f));
+					tertiaryHue = Wrap01(hue - (0.085f + 0.04f * (float)random.NextDouble()));
+					break;
+				default: // analogous: kin either side, separation carried by value
+					secondaryHue = Wrap01(hue + 0.09f + 0.05f * (float)random.NextDouble());
+					tertiaryHue = Wrap01(hue - 0.16f - 0.08f * (float)random.NextDouble());
+					break;
+			}
 			secondaryHue = PushedApart(hue, secondaryHue, random);
 			tertiaryHue = PushedApart(hue, tertiaryHue, random);
 			tertiaryHue = PushedApart(secondaryHue, tertiaryHue, random);
