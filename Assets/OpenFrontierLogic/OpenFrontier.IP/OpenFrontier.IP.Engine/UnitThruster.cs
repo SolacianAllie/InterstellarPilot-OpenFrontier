@@ -208,7 +208,16 @@ namespace OpenFrontier.IP.Engine
 			// (menu-after-quit ships spawn with Unit unset for a while).
 			UnitComponentHolder components = activeUnit != null && activeUnit.Unit != null ? activeUnit.Unit.Components : null;
 			bool enginesInUse = components != null && components.EngineComponent != null && components.EngineComponent.EngineThrottle > 0f;
-			SetEngineFlareActive(isActive && enginesInUse && InFlareDrawRange());
+			// Gate on the flare's OWN rules, not the particle switch: ships
+			// carry flare draw distances of 1000-2000 while the particle
+			// effect recycles at the quality settings' ~400m thruster
+			// range, and the old isActive term popped the flare off with
+			// the particles a kilometre early. Cloak, dock and destroy
+			// still kill it through ShouldEffectsBeDrawn (the same cached
+			// field the particles read, so transitions stay coherent), the
+			// burn still needs the engine tie-in, and InFlareDrawRange
+			// keeps the authored distance with its hysteresis.
+			SetEngineFlareActive(activeUnit.ShouldEffectsBeDrawn && enginesInUse && InFlareDrawRange());
 			if (isFlareActive)
 			{
 				SetEngineFlareIntensity();
