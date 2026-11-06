@@ -250,6 +250,12 @@ namespace OpenFrontier.IP.Engine
 				}
 			}
 			ApplyRenderMode();
+			// Open Frontier: peel in the faction livery, in post. This runs
+			// on every ActiveUnit creation - which is every active-sector
+			// entry - so existing units get the transplant without any
+			// separate sweep. Same class gate as the cloak probe: legacy
+			// hulls without the decal slots keep their authored look.
+			ShipDecals.ApplyToUnit(unit);
 		}
 
 		private void Update()

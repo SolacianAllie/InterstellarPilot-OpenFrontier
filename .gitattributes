@@ -178,3 +178,4 @@ LightingData.asset     binary
 # Android-debug, voice (Krisp) and debug-symbol files were removed to
 # stay under GitHub's 100MB per-file limit and the LFS quota. Re-extract
 # them from DiscordSocialSdk-UnityPlugin-<version>.zip if ever needed.
+*.xcf                  lfs
