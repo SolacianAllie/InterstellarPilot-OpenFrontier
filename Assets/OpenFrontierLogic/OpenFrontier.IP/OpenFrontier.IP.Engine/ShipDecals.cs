@@ -202,8 +202,10 @@ namespace OpenFrontier.IP.Engine
 				}
 				return null;
 			}
-			// Type-named sheets bind by prefix ("<FactionType>_"), the
-			// first sheet alphabetically is the fallback fleet look.
+			// Type-named sheets bind by prefix ("<FactionType>_") with
+			// the trading family inheriting Trader and everyone else
+			// inheriting Generic; the first sheet alphabetically is the
+			// last-resort look when no names resolve.
 			if (sheetByType.Count == 0)
 			{
 				foreach (Texture2D candidate in sheets)
@@ -222,7 +224,29 @@ namespace OpenFrontier.IP.Engine
 			{
 				return typed;
 			}
+			// The family ruling: who CAN wear the trader decal. Trading
+			// types (with no sheet of their own) inherit it; every other
+			// faction lands on the Generic sheet, which doubles as the
+			// last-resort fallback when nothing is named at all.
+			if (TradingFamily(faction.FactionType) &&
+				sheetByType.TryGetValue((int)FactionType.Trader, out Texture2D trader))
+			{
+				return trader;
+			}
+			if (sheetByType.TryGetValue((int)FactionType.Generic, out Texture2D generic))
+			{
+				return generic;
+			}
 			return sheets[0];
+		}
+
+		// A faction wearing the trader decal family: trades for a living,
+		// even when its own <FactionType>_ sheet was never painted.
+		private static bool TradingFamily(FactionType type)
+		{
+			return type == FactionType.Trader
+				|| type == FactionType.EquipmentDealer
+				|| type == FactionType.PassengerTransport;
 		}
 
 		// ---- the palette decider ------------------------------------------------
