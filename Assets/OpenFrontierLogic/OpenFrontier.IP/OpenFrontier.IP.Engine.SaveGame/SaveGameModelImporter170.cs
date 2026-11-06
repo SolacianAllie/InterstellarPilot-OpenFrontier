@@ -797,7 +797,14 @@ namespace OpenFrontier.IP.Engine.SaveGame
 							component.OffsetFromPlanet = moon.OffsetFromPlanet.ToVector3();
 							if (unitByid.ActiveUnit != null)
 							{
-								unitByid.ActiveUnit.GetComponent<ActiveUnitMoon>().Reposition();
+								// A moon active-unit that lost its behaviour (rip-recovered
+								// prefab with an unbindable script ref) must not abort the
+								// whole load: degrade to "the moon stays put" instead.
+								ActiveUnitMoon moonBehaviour = unitByid.ActiveUnit.GetComponent<ActiveUnitMoon>();
+								if (moonBehaviour != null)
+								{
+									moonBehaviour.Reposition();
+								}
 							}
 						}
 					}

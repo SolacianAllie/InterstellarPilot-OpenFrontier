@@ -1330,22 +1330,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1002669891404536, guid: 897b48d69abadd94580dbda4c5270f4e, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 1161607090078389, guid: 897b48d69abadd94580dbda4c5270f4e, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 1256069497284392, guid: 897b48d69abadd94580dbda4c5270f4e, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 1336590748365959, guid: 897b48d69abadd94580dbda4c5270f4e, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
     - target: {fileID: 1709254077376921, guid: 897b48d69abadd94580dbda4c5270f4e, type: 3}
       propertyPath: m_Name
       value: ActiveUnitMagnus
@@ -1442,9 +1426,12 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: e3ecd32f8bc8657a8b0c3c2417fec343, type: 2}
+    - target: {fileID: 114642988549198181, guid: 897b48d69abadd94580dbda4c5270f4e, type: 3}
+      propertyPath: CloakOutlineRenderer
+      value: 
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
-    m_RemovedGameObjects:
-    - {fileID: 1302127217294661, guid: 897b48d69abadd94580dbda4c5270f4e, type: 3}
+    m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 897b48d69abadd94580dbda4c5270f4e, type: 3}
