@@ -201,8 +201,13 @@ namespace OpenFrontier.IP.Engine
 				return;
 			}
 			SetEngineFlareOcclusionRadius(GetCameraDistance());
-			UnitComponentHolder components = activeUnit.Unit.Components;
-			bool enginesInUse = components.EngineComponent != null && components.EngineComponent.EngineThrottle > 0f;
+			// The flare rides the engine-power tie-in below, which needs the
+			// sim unit. GetShouldEffectsBeDrawn() already rules unit-less
+			// active-units out of drawing every other effect - honour the
+			// same contract here instead of throwing through it per frame
+			// (menu-after-quit ships spawn with Unit unset for a while).
+			UnitComponentHolder components = activeUnit != null && activeUnit.Unit != null ? activeUnit.Unit.Components : null;
+			bool enginesInUse = components != null && components.EngineComponent != null && components.EngineComponent.EngineThrottle > 0f;
 			SetEngineFlareActive(isActive && enginesInUse && InFlareDrawRange());
 			if (isFlareActive)
 			{
