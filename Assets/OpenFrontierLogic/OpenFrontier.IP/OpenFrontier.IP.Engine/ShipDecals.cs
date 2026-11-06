@@ -22,11 +22,22 @@ namespace OpenFrontier.IP.Engine
 	//   per ship under its Resources/Decals folder, because the masks are
 	//   painted in the hull's own UV space - and the faction's triad
 	//   colours. Legacy URP Lit hulls fail the gate and stay untouched.
-	// - Clones are cached per (source material, faction), so a fleet of
-	//   N ships shares ONE material instance and SRP batches normally;
-	//   the cloak path keeps pushing _CloakAmount/_CloakFloor over the
-	//   top through its material property block, which composes with
-	//   this without either side overwriting the other.
+	// - A unit's paint is ASSIGNED, not derived: its faction's role type
+	//   names a pool of sheets on the hull, and the unit draws one
+	//   deterministically (hash of unique id + painted role). The draw
+	//   STICKS while the role stands; a changed role repaints at the
+	//   station dock (OnDocked, hooked inside UnitComponentHolder.
+	//   TryDockInHangar - the dock primitive every approved dock goes
+	//   through, TryDockInUnit included, so fleet regroup and the
+	//   multiplayer docked-state sync repaint with everything else, and
+	//   an unpainted or already-agreeing ship pays a dictionary read).
+	//   Player-repaint-at-station is the same choke point later.
+	// - Clones are cached per (source material, faction, sheet), so
+	//   ships wearing the same paint share ONE material instance and
+	//   SRP batch normally; the cloak path keeps pushing
+	//   _CloakAmount/_CloakFloor over the top through its material
+	//   property block, which composes with this without either side
+	//   overwriting the other.
 	//
 	// THE PALETTE DECIDER
 	// One faction, three colours, picked from its identity, status and
@@ -84,24 +95,33 @@ namespace OpenFrontier.IP.Engine
 		// plates) or "<Ship>_<FactionType>_<mark>" (workbench masks) -
 		// tokens split on spaces AND underscores, so both spellings bind
 		// identically. The ship token binds art to its hull's UV space,
-		// the FactionType token picks which sheet a faction wears, and one
-		// Resources.LoadAll("Decals") collects every ship's set at once.
+		// the FactionType token puts a sheet into that role's DRAW POOL,
+		// and one Resources.LoadAll("Decals") collects every ship's set
+		// at once. Adding sheets to a role widens its pool automatically.
 		private sealed class ShipSheetSet
 		{
 			public string shipToken;
-			public readonly List<Texture2D> alphabetical = new List<Texture2D>();
-			public readonly Dictionary<int, Texture2D> sheetByType = new Dictionary<int, Texture2D>();
+			public readonly List<Texture2D> bound = new List<Texture2D>();
+			public readonly Dictionary<int, List<Texture2D>> listsByType =
+				new Dictionary<int, List<Texture2D>>();
 		}
 
 		private static readonly List<ShipSheetSet> shipSheetSets = new List<ShipSheetSet>();
 		private static bool sheetsLoaded;
 		private static bool warnedNoSheets;
 
+		// Which ROLE each unit is currently painted as - the paint stick
+		// itself. Runtime state, deliberately not serialized: the same
+		// draw recomputes deterministically, so all this buys is
+		// "repaint after the dock, not on arbitrary sector entries".
+		private static readonly Dictionary<int, FactionType> paintedRoleOfUnit =
+			new Dictionary<int, FactionType>();
+
 		private static readonly Dictionary<int, Color[]> paletteCache =
 			new Dictionary<int, Color[]>();
 
-		private static readonly Dictionary<(string sourceName, int factionId), Material> cloneCache =
-			new Dictionary<(string sourceName, int factionId), Material>();
+		private static readonly Dictionary<(string sourceName, int factionId, string sheet), Material> cloneCache =
+			new Dictionary<(string sourceName, int factionId, string sheet), Material>();
 
 		// ---- the entry point ----------------------------------------------------
 
@@ -133,13 +153,46 @@ namespace OpenFrontier.IP.Engine
 				// hull - so the sheet follows the MATERIAL's ship token,
 				// never the faction alone. A hull without its own sheet
 				// keeps its authored look untouched.
-				Texture2D sheet = SheetFor(faction, ShipTokenFor(source.name));
+				Texture2D sheet = SheetFor(unit, source.name);
 				if (sheet == null)
 				{
 					continue;
 				}
 				renderer.sharedMaterial = AcquireClone(source, faction, sheet, palette);
 			}
+		}
+
+		// The repaint station. Called from UnitComponentHolder.
+		// TryDockInHangar - the dock primitive every approved dock goes
+		// through (TryDockInUnit funnels into it; fleet regroup, the
+		// multiplayer docked-state applier and the loader land here
+		// too) - never a poll. Station-gated inside: a ship whose
+		// painted role no longer matches its faction's role draws its
+		// NEW look as it docks, and keeps that until the next role
+		// change. Unpainted units pass through untouched - their first
+		// paint already used their current role, which is exactly what
+		// makes the load, seed and join paths free here.
+		public static void OnDocked(Unit unit, Unit station)
+		{
+			if (unit == null || unit.Faction == null || unit.IsDestroyed)
+			{
+				return;
+			}
+			if (station == null || station.UnitClass == null ||
+				station.UnitClass.StationPurpose == StationPurpose.None)
+			{
+				return;
+			}
+			if (!paintedRoleOfUnit.TryGetValue(unit.UniqueId, out FactionType painted) ||
+				painted == unit.Faction.FactionType)
+			{
+				return;
+			}
+			// Station services rendered: record the new role and refresh
+			// the hull at once (hidden docked units simply rebuild with
+			// it at the next sector entry).
+			paintedRoleOfUnit[unit.UniqueId] = unit.Faction.FactionType;
+			ApplyToUnit(unit);
 		}
 
 		private static IEnumerable<MeshRenderer> RenderersOf(ActiveUnit activeUnit)
@@ -182,7 +235,8 @@ namespace OpenFrontier.IP.Engine
 		private static Material AcquireClone(Material source, Faction faction,
 			Texture2D sheet, Color[] palette)
 		{
-			(string sourceName, int factionId) key = (source.name, faction.UniqueId);
+			(string sourceName, int factionId, string sheet) key =
+				(source.name, faction.UniqueId, sheet.name);
 			if (cloneCache.TryGetValue(key, out Material cached) && cached != null)
 			{
 				return cached;
@@ -207,10 +261,11 @@ namespace OpenFrontier.IP.Engine
 		//       <Ship> Decal <FactionType> <mark>.png   (authored plates)
 		//       <Ship>_<FactionType>_<mark>.png            (workbench masks)
 		//
-		// "<Ship>_" binds a sheet to its hull - the masks are painted in
-		// that hull's UV0 space and are meaningless on any other ship. The
-		// next token is the FactionType the sheet serves; the trailing mark
-		// ("1", "2", ...) only ever breaks alphabetical ties.
+		// "<Ship>_" binds a sheet to its hull - the plates are painted in
+		// that hull's UV0 space and are meaningless on any other ship.
+		// The next token puts the sheet into that FactionType's DRAW
+		// POOL; the trailing mark ("1", "2", ...) decides nothing at
+		// runtime - it is authoring bookkeeping.
 		//
 		// A hull whose material carries no matching ship token, or whose
 		// ship has no sheets yet, keeps its authored look untouched - never
@@ -239,38 +294,90 @@ namespace OpenFrontier.IP.Engine
 			return best != null ? best.shipToken : null;
 		}
 
-		private static Texture2D SheetFor(Faction faction, string shipToken)
+		// ---- the paint job ------------------------------------------------------
+		//
+		// A UNIT's paint is ASSIGNED, not derived: its faction's role
+		// type names a pool of sheets for the hull, and the unit
+		// deterministically draws one (stable hash of its unique id and
+		// the role it is painted as) - same id, same paint, on every
+		// client and every launch, with no saved state and no network
+		// traffic. The draw STICKS: the painted role is recorded per
+		// unit, and only a role CHANGE leads to a fresh draw - and only
+		// once the unit docks (OnDocked). A hull with no sheet for its
+		// role and no inherited pool keeps its authored look untouched.
+
+		private static Texture2D SheetFor(Unit unit, string materialName)
 		{
+			string shipToken = ShipTokenFor(materialName);
 			LoadSheets();
 			if (shipToken == null)
 			{
 				return null;
 			}
 			ShipSheetSet set = ShipSetFor(shipToken);
-			if (set == null || set.alphabetical.Count == 0)
+			if (set == null || set.bound.Count == 0)
 			{
 				return null;
 			}
-			// Type-named sheets bind by FactionType with the first
-			// alphabetical sheet of each type winning the slot.
-			if (set.sheetByType.TryGetValue((int)faction.FactionType, out Texture2D typed))
+			FactionType painted = PaintedRoleOf(unit);
+			List<Texture2D> pool = ListForRole(set, painted);
+			return (pool != null && pool.Count > 0)
+				? pool[PickIndex(unit.UniqueId, painted, pool.Count)]
+				: null;
+		}
+
+		// The role a unit is painted as: recorded on first paint, read
+		// back on every sector entry, so the livery never re-rolls while
+		// its role stands still.
+		private static FactionType PaintedRoleOf(Unit unit)
+		{
+			FactionType current = unit.Faction.FactionType;
+			if (!paintedRoleOfUnit.TryGetValue(unit.UniqueId, out FactionType painted))
 			{
-				return typed;
+				painted = current;
+				paintedRoleOfUnit[unit.UniqueId] = painted;
 			}
-			// The family ruling: who CAN wear the trader decal. Trading
-			// types (with no sheet of their own) inherit it; every other
-			// faction lands on the Generic sheet, which doubles as the
-			// last-resort fallback for their ship.
-			if (TradingFamily(faction.FactionType) &&
-				set.sheetByType.TryGetValue((int)FactionType.Trader, out Texture2D trader))
+			return painted;
+		}
+
+		// The role's draw pool: every sheet its FactionType names, then
+		// the trading families draw from the Trader pool, everyone else
+		// from Generic, and the ship's whole bound set is the last
+		// resort. Sheets added to a role widen its pool automatically.
+		private static List<Texture2D> ListForRole(ShipSheetSet set, FactionType role)
+		{
+			if (set.listsByType.TryGetValue((int)role, out List<Texture2D> pool) &&
+				pool.Count > 0)
 			{
-				return trader;
+				return pool;
 			}
-			if (set.sheetByType.TryGetValue((int)FactionType.Generic, out Texture2D generic))
+			if (TradingFamily(role) &&
+				set.listsByType.TryGetValue((int)FactionType.Trader, out pool) &&
+				pool.Count > 0)
 			{
-				return generic;
+				return pool;
 			}
-			return set.alphabetical[0];
+			if (set.listsByType.TryGetValue((int)FactionType.Generic, out pool) &&
+				pool.Count > 0)
+			{
+				return pool;
+			}
+			return set.bound;
+		}
+
+		// The stable draw: multiply-xor hash of the unit's id and the
+		// role it is painted as, mod the pool length. Same on both sides
+		// of a multiplayer link and across restarts; only content edits
+		// (a pool growing) can re-bucket a draw.
+		private static int PickIndex(int uniqueId, FactionType role, int count)
+		{
+			ulong hash = (ulong)(uint)uniqueId * 0x9E3779B97F4A7C15UL;
+			hash ^= hash >> 32;
+			hash += (ulong)(int)role * 0xD1B54A32D192ED03UL;
+			hash ^= hash >> 29;
+			hash *= 0xBF58476D1CE4E5B9UL;
+			hash ^= hash >> 32;
+			return (int)(hash % (ulong)count);
 		}
 
 		private static ShipSheetSet ShipSetFor(string shipToken)
@@ -335,14 +442,18 @@ namespace OpenFrontier.IP.Engine
 					set = new ShipSheetSet { shipToken = shipToken };
 					shipSheetSets.Add(set);
 				}
-				// First alphabetically of each type wins the slot; the
-				// alphabetical list keeps only BOUND sheets, so a hollow
-				// set never falls back onto non-pattern stock.
-				if (!set.sheetByType.ContainsKey((int)parsed))
+				// Every sheet a role names joins that role's list - the
+				// lists are draw pools, not single slots. The bound list
+				// keeps only parseable sheets, so a fallback never dresses
+				// from authoring stock.
+				List<Texture2D> pool;
+				if (!set.listsByType.TryGetValue((int)parsed, out pool))
 				{
-					set.sheetByType[(int)parsed] = texture;
+					pool = new List<Texture2D>();
+					set.listsByType[(int)parsed] = pool;
 				}
-				set.alphabetical.Add(texture);
+				pool.Add(texture);
+				set.bound.Add(texture);
 			}
 			if (raw.Length == 0 && !warnedNoSheets)
 			{

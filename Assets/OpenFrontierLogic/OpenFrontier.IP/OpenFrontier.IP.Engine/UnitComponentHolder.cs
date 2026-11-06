@@ -1990,6 +1990,17 @@ namespace OpenFrontier.IP.Engine
 				if (bay != null)
 				{
 					DockedInHangarBay = bay;
+					// Open Frontier: docking is the repaint moment. This
+					// is the dock primitive every dock goes through -
+					// TryDockInUnit funnels into it, and the direct hangar
+					// callers (fleet regroup, the multiplayer docked-state
+					// applier, the loader and ship-build seeders) land on
+					// this same call - so the paint check lives here, once
+					// per approved dock. The station gate and the role
+					// comparison happen inside ShipDecals; an unpainted or
+					// already-agreeing ship is a dictionary read out.
+					ShipDecals.OnDocked(unit, hangar.UnitComponents != null
+						? hangar.UnitComponents.Unit : null);
 					return true;
 				}
 			}
