@@ -34,8 +34,8 @@ Practical form of it, in the order it actually bites:
   shows when there is rendering to compete with, so it appears as "moving the
   camera halves the FPS" and looks like a graphics problem. Measure on the
   target before believing what the symptom points at.
-- **Memory is budget starvation, not depth** - see the mipmap streaming note
-  below. The same instinct applies to allocations: steady small allocations
+- **Memory is budget starvation, not depth.** The same instinct applies to
+  allocations: steady small allocations
   cause GC hitches, which read as random frame drops ("sometimes"), not as
   the cost they are.
 
@@ -412,14 +412,6 @@ exit 198) — the user performs all editor actions.
   clips into the skybox", worse at 1.6× size). All 338 nebula materials
   are now queue 2999 — the sun always draws after the backdrop, while
   gameplay particles (3000) still distance-sort over it correctly.
-- **Mipmap streaming is OFF for good — budget starvation, not
-  reduction depth.** This game's working set is enormous (an Instant
-  Action capital fleet ≈ 2.3GB+ of 2K maps); any mobile-sane budget
-  starves the streamer and textures sit at their smallest loaded mip
-  = "white ships". Verified matrix: OFF=fine, 256MB=white (even
-  menu), 768-2048MB=white (Instant Action), 4096MB=fine, OFF=fine.
-  Mipmaps themselves stay ON (all 746 textures) — only streaming is
-  disabled. Do not re-enable.
 - **Script GUIDs are deterministic:** `Guid(MD5(assemblyName + namespace + className))`
   (AssetRipper decompile scheme). Never regenerate .meta files; renaming
   namespaces/assemblies is safe because GUIDs live in the .meta files, but the

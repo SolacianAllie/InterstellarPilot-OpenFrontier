@@ -18,7 +18,9 @@ namespace OpenFrontier.IP.Engine
 	//   the next time they are observed. One choke point, no sweeps.
 	// - Every hull/cloak-shell renderer whose material has the decal
 	//   slots (OpenFrontier/Ship Surface and Ship Cloak) gets a CLONED
-	//   material carrying the faction's pattern sheet and its triad
+	//   material carrying that HULL's faction pattern sheet - sheets live
+	//   per ship under its Resources/Decals folder, because the masks are
+	//   painted in the hull's own UV space - and the faction's triad
 	//   colours. Legacy URP Lit hulls fail the gate and stay untouched.
 	// - Clones are cached per (source material, faction), so a fleet of
 	//   N ships shares ONE material instance and SRP batches normally;
@@ -77,12 +79,23 @@ namespace OpenFrontier.IP.Engine
 		private const float MinValue = 0f;
 		private const float MaxValue = 1f;
 
-		private static bool sheetWarned;
+		// Per-ship sheet sets under Ships/<Ship>/Resources/Decals/. The
+		// contract names: "<Ship> Decal <FactionType> <mark>" (the authored
+		// plates) or "<Ship>_<FactionType>_<mark>" (workbench masks) -
+		// tokens split on spaces AND underscores, so both spellings bind
+		// identically. The ship token binds art to its hull's UV space,
+		// the FactionType token picks which sheet a faction wears, and one
+		// Resources.LoadAll("Decals") collects every ship's set at once.
+		private sealed class ShipSheetSet
+		{
+			public string shipToken;
+			public readonly List<Texture2D> alphabetical = new List<Texture2D>();
+			public readonly Dictionary<int, Texture2D> sheetByType = new Dictionary<int, Texture2D>();
+		}
 
-		private static Texture2D[] sheets;
-
-		private static readonly Dictionary<int, Texture2D> sheetByType =
-			new Dictionary<int, Texture2D>();
+		private static readonly List<ShipSheetSet> shipSheetSets = new List<ShipSheetSet>();
+		private static bool sheetsLoaded;
+		private static bool warnedNoSheets;
 
 		private static readonly Dictionary<int, Color[]> paletteCache =
 			new Dictionary<int, Color[]>();
@@ -105,11 +118,6 @@ namespace OpenFrontier.IP.Engine
 				return;
 			}
 			Color[] palette = PaletteFor(faction);
-			Texture2D sheet = SheetFor(faction);
-			if (palette == null || sheet == null)
-			{
-				return;
-			}
 			foreach (MeshRenderer renderer in RenderersOf(activeUnit))
 			{
 				Material source = renderer.sharedMaterial;
@@ -117,6 +125,16 @@ namespace OpenFrontier.IP.Engine
 				// whose shader actually carries the decal slots are
 				// considered; everything else must keep its authored look.
 				if (source == null || !source.HasProperty(PropDecalMap))
+				{
+					continue;
+				}
+				// Pattern sheets are authored per hull - a Magnus sheet is
+				// painted in Magnus UV space and is nonsense on any other
+				// hull - so the sheet follows the MATERIAL's ship token,
+				// never the faction alone. A hull without its own sheet
+				// keeps its authored look untouched.
+				Texture2D sheet = SheetFor(faction, ShipTokenFor(source.name));
+				if (sheet == null)
 				{
 					continue;
 				}
@@ -180,65 +198,159 @@ namespace OpenFrontier.IP.Engine
 			return clone;
 		}
 
-		// ---- sheet library ------------------------------------------------------
+		// ---- sheet library -----------------------------------------------------
+		//
+		// Sheets live PER SHIP, inside the ship's own texture area, under a
+		// private Resources root so runtime loads can reach them:
+		//
+		//   Assets/OpenFrontier/Textures/Ships/<Ship>/Resources/Decals/
+		//       <Ship> Decal <FactionType> <mark>.png   (authored plates)
+		//       <Ship>_<FactionType>_<mark>.png            (workbench masks)
+		//
+		// "<Ship>_" binds a sheet to its hull - the masks are painted in
+		// that hull's UV0 space and are meaningless on any other ship. The
+		// next token is the FactionType the sheet serves; the trailing mark
+		// ("1", "2", ...) only ever breaks alphabetical ties.
+		//
+		// A hull whose material carries no matching ship token, or whose
+		// ship has no sheets yet, keeps its authored look untouched - never
+		// wear another ship's masks.
 
-		private static Texture2D SheetFor(Faction faction)
+		private static string ShipTokenFor(string materialName)
 		{
-			if (sheets == null)
+			LoadSheets();
+			if (shipSheetSets.Count == 0 || string.IsNullOrEmpty(materialName))
 			{
-				sheets = Resources.LoadAll<Texture2D>("Decals");
-				if (sheets == null || sheets.Length == 0)
-				{
-					sheets = Array.Empty<Texture2D>();
-				}
-				Array.Sort(sheets, (a, b) => string.CompareOrdinal(a.name, b.name));
-			}
-			if (sheets.Length == 0)
-			{
-				if (!sheetWarned)
-				{
-					sheetWarned = true;
-					Debug.LogWarning("ShipDecals: no pattern sheets under a " +
-						"Resources/Decals folder - ship decals stay unwired.");
-				}
 				return null;
 			}
-			// Type-named sheets bind by prefix ("<FactionType>_") with
-			// the trading family inheriting Trader and everyone else
-			// inheriting Generic; the first sheet alphabetically is the
-			// last-resort look when no names resolve.
-			if (sheetByType.Count == 0)
+			// Longest token first, so a hull-variant folder (when one
+			// exists) is never shadowed by its family prefix.
+			ShipSheetSet best = null;
+			int length = -1;
+			foreach (ShipSheetSet set in shipSheetSets)
 			{
-				foreach (Texture2D candidate in sheets)
+				if (set.shipToken != null && set.shipToken.Length > length &&
+					materialName.IndexOf(set.shipToken, StringComparison.OrdinalIgnoreCase) >= 0)
 				{
-					int underscore = candidate.name.IndexOf('_');
-					if (underscore > 0 &&
-						Enum.TryParse(candidate.name.Substring(0, underscore),
-							out FactionType parsed) &&
-						!sheetByType.ContainsKey((int)parsed))
-					{
-						sheetByType[(int)parsed] = candidate;
-					}
+					best = set;
+					length = set.shipToken.Length;
 				}
 			}
-			if (sheetByType.TryGetValue((int)faction.FactionType, out Texture2D typed))
+			return best != null ? best.shipToken : null;
+		}
+
+		private static Texture2D SheetFor(Faction faction, string shipToken)
+		{
+			LoadSheets();
+			if (shipToken == null)
+			{
+				return null;
+			}
+			ShipSheetSet set = ShipSetFor(shipToken);
+			if (set == null || set.alphabetical.Count == 0)
+			{
+				return null;
+			}
+			// Type-named sheets bind by FactionType with the first
+			// alphabetical sheet of each type winning the slot.
+			if (set.sheetByType.TryGetValue((int)faction.FactionType, out Texture2D typed))
 			{
 				return typed;
 			}
 			// The family ruling: who CAN wear the trader decal. Trading
 			// types (with no sheet of their own) inherit it; every other
 			// faction lands on the Generic sheet, which doubles as the
-			// last-resort fallback when nothing is named at all.
+			// last-resort fallback for their ship.
 			if (TradingFamily(faction.FactionType) &&
-				sheetByType.TryGetValue((int)FactionType.Trader, out Texture2D trader))
+				set.sheetByType.TryGetValue((int)FactionType.Trader, out Texture2D trader))
 			{
 				return trader;
 			}
-			if (sheetByType.TryGetValue((int)FactionType.Generic, out Texture2D generic))
+			if (set.sheetByType.TryGetValue((int)FactionType.Generic, out Texture2D generic))
 			{
 				return generic;
 			}
-			return sheets[0];
+			return set.alphabetical[0];
+		}
+
+		private static ShipSheetSet ShipSetFor(string shipToken)
+		{
+			foreach (ShipSheetSet set in shipSheetSets)
+			{
+				if (set.shipToken == shipToken)
+				{
+					return set;
+				}
+			}
+			return null;
+		}
+
+		private static void LoadSheets()
+		{
+			if (sheetsLoaded)
+			{
+				return;
+			}
+			sheetsLoaded = true;
+			Texture2D[] raw = Resources.LoadAll<Texture2D>("Decals");
+			Array.Sort(raw, (a, b) => string.CompareOrdinal(a.name, b.name));
+			foreach (Texture2D texture in raw)
+			{
+				// The binding contract speaks BOTH spellings: the authored
+				// plates ("<Ship> Decal <FactionType> <mark>" - the user's
+				// painting files) and workbench masks
+				// ("<Ship>_<FactionType>_<mark>"). Tokens split on spaces
+				// AND underscores, so "Magnus Decal Trader 1" and
+				// "Magnus_Trader_2" bind identically. Anything whose
+				// faction token is not a FactionType (the dirt plate, the
+				// mask stock) is authoring-only and skipped, never
+				// guessed at.
+				string[] tokens = texture.name.Split(
+					new char[] { ' ', '_' }, StringSplitOptions.RemoveEmptyEntries);
+				if (tokens.Length < 2)
+				{
+					continue;
+				}
+				string shipToken = tokens[0];
+				int cursor = 1;
+				if (string.Equals(tokens[cursor], "Decal", StringComparison.OrdinalIgnoreCase) ||
+					string.Equals(tokens[cursor], "Decals", StringComparison.OrdinalIgnoreCase))
+				{
+					cursor++;
+				}
+				// Numeric tokens are marks, never factions ("Decal 1"
+				// would otherwise parse "1" straight into Trader=1).
+				if (cursor >= tokens.Length || char.IsDigit(tokens[cursor][0]))
+				{
+					continue;
+				}
+				if (!Enum.TryParse(tokens[cursor], true, out FactionType parsed) ||
+					!Enum.IsDefined(typeof(FactionType), parsed))
+				{
+					continue;
+				}
+				ShipSheetSet set = ShipSetFor(shipToken);
+				if (set == null)
+				{
+					set = new ShipSheetSet { shipToken = shipToken };
+					shipSheetSets.Add(set);
+				}
+				// First alphabetically of each type wins the slot; the
+				// alphabetical list keeps only BOUND sheets, so a hollow
+				// set never falls back onto non-pattern stock.
+				if (!set.sheetByType.ContainsKey((int)parsed))
+				{
+					set.sheetByType[(int)parsed] = texture;
+				}
+				set.alphabetical.Add(texture);
+			}
+			if (raw.Length == 0 && !warnedNoSheets)
+			{
+				warnedNoSheets = true;
+				Debug.LogWarning("ShipDecals: no pattern sheets under any " +
+					"Ships/<Ship>/Resources/Decals folder - ship decals " +
+					"stay unwired.");
+			}
 		}
 
 		// A faction wearing the trader decal family: trades for a living,
