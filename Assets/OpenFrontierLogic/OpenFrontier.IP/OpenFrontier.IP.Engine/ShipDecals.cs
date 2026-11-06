@@ -29,15 +29,14 @@ namespace OpenFrontier.IP.Engine
 	// THE PALETTE DECIDER
 	// One faction, three colours, picked from its identity, status and
 	// economy:
-	//   hue      - the anchored choice: a non-white/non-black
-	//              Faction.TeamColour is the seed (the curated empire or
-	//              bandit team colours are hand-chosen and sane).
-	//              Otherwise the hue comes from the faction's.UniqueId,
-	//              stably hashed, inside a hue family for its type
-	//              (bandits red, miners rust, stations azure, everyone
-	//              else in the readable warm/cyan bands; chartreuse
-	//              mid-wheels are deliberately skipped - paint there
-	//              reads sickly on grey hulls).
+	//   hue      - IDENTITY, not type. A saturated Faction.TeamColour is
+	//              still the anchor (a hand-authored colour wins);
+	//              otherwise the hue is golden-ratio stepped from the
+	//              faction's UniqueId, so every faction owns a stable,
+	//              distinct hue instead of inheriting its type family's
+	//              band (the bandits-always-red / mercs-always-green
+	//              lock is gone). Chartreuse is still skipped - paint
+	//              there reads sickly on grey hulls.
 	//   spread   - secondary and tertiary hues fan out +120..170deg and
 	//              -100..145deg from the primary, enforced >=30deg apart
 	//              pairwise, so the three zones stay distinct even after
@@ -264,7 +263,7 @@ namespace OpenFrontier.IP.Engine
 			float satMul = 1f;
 			float valMul = 1f;
 
-			TypeAnchors(faction, random, out float hue);
+			HueFor(faction, out float hue);
 
 			// Economy on a log scale: 1x the minor-faction threshold is a
 			// young faction, 40x threshold is top of the range.
@@ -332,10 +331,14 @@ namespace OpenFrontier.IP.Engine
 			return seed ^ (uint)(int)faction.FactionType * 2654435761u;
 		}
 
-		// The hue family per faction type, plus the TeamColour seed that
-		// outranks everything when it carries real saturation.
-		private static void TypeAnchors(Faction faction, System.Random random,
-			out float hue)
+		// The TeamColour seed outranks everything when it carries real
+		// saturation; otherwise the hue belongs to the FACTION, not its
+		// type: Knuth-multiply the UniqueId and lay the top 24 bits over
+		// the readable wheel. Golden-ratio stepping spreads neighbouring
+		// ids far apart, keeps the hue stable across sessions (ids are
+		// stored verbatim in saves), and the chartreuse gap survives -
+		// paint in 0.2..0.45 reads sickly on grey hulls.
+		private static void HueFor(Faction faction, out float hue)
 		{
 			Color.RGBToHSV(faction.TeamColour, out float teamHue,
 				out float teamSat, out float teamVal);
@@ -347,43 +350,10 @@ namespace OpenFrontier.IP.Engine
 				return;
 			}
 
-			FactionType type = faction.FactionType;
-			switch (type)
-			{
-				case FactionType.Bandit:
-				case FactionType.Outlaw:
-					hue = 0.96f + 0.05f * (float)random.NextDouble();   // red blood band
-					break;
-				case FactionType.Empire:
-					hue = 0.5f + 0.12f * (float)random.NextDouble();    // cold blue-cyan
-					break;
-				case FactionType.Security:
-				case FactionType.Mercenary:
-				case FactionType.BountyHunter:
-					hue = 0.38f + 0.08f * (float)random.NextDouble();   // gunmetal green
-					break;
-				case FactionType.Miner:
-				case FactionType.Scavenger:
-					hue = 0.03f + 0.06f * (float)random.NextDouble();   // rust and ochre
-					break;
-				case FactionType.StationBuilder:
-					hue = 0.55f + 0.06f * (float)random.NextDouble();   // industrial azure
-					break;
-				case FactionType.Player:
-					hue = 0.58f + 0.05f * (float)random.NextDouble();   // settled cyan
-					break;
-				default:
-					// Free wheel, but restrained to the readable halves
-					// of the wheel: warm through gold, or the
-					// cyan-magenta range. Chartreuse (0.2..0.45) is
-					// skipped on purpose - paint there reads sickly on
-					// grey hulls.
-					hue = random.NextDouble() < 0.5
-						? 0.02f + 0.16f * (float)random.NextDouble()
-						: 0.5f + 0.42f * (float)random.NextDouble();
-					break;
-			}
-			hue = Wrap01(hue);
+			uint hashed = (uint)faction.UniqueId * 2654435761u;
+			float wheel = (hashed >> 8) / 16777216f;   // 0..1, top 24 bits
+			float scaled = wheel * 0.75f;              // usable span 0.20 + 0.55
+			hue = Wrap01(scaled < 0.20f ? scaled : 0.45f + (scaled - 0.20f));
 		}
 
 		private static Color HsvClamped(float hue, float sat, float val)

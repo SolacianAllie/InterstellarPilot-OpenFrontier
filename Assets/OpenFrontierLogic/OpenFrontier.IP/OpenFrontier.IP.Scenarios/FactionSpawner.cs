@@ -420,14 +420,17 @@ namespace OpenFrontier.IP.Scenarios
 			faction.TeamColour = GetTeamColour(faction);
 		}
 
+		// Colour authority lives in the decal palette decider now: every
+		// faction without a HAND-set colour derives its hue from its own
+		// id (the identity wheel), so the per-type rolls here - one shared
+		// GenericColors list for the whole map - are retired. The tables
+		// stay in the asset for a future hand-tuning pass.
 		public static Color GetTeamColour(Faction faction)
 		{
-			return faction.FactionType switch
-			{
-				FactionType.Empire => GameController.Instance.GameSettings.TeamColourSettings.EmpireColors.GetRandom(), 
-				FactionType.Bandit => GameController.Instance.GameSettings.TeamColourSettings.BanditColors.GetRandom(), 
-				_ => GameController.Instance.GameSettings.TeamColourSettings.GenericColors.GetRandom(), 
-			};
+			// A neutral reads as "no hand colour": the decider's team
+			// gate sees saturation under its floor and hands the hue to
+			// the identity wheel.
+			return GameController.Instance.GameSettings.TeamColourSettings.DefaultTeamColour;
 		}
 
 		public static bool ShouldApplyTeamColour(Faction faction)
