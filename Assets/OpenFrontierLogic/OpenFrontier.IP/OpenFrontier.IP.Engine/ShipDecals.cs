@@ -50,11 +50,15 @@ namespace OpenFrontier.IP.Engine
 	//              log scale: destitute factions wear faded paint
 	//              (-22% sat, -14% val), rich ones vivid (+8% sat, +10%
 	//              val). A faction that prospers literally paints
-	//              louder; bounds keep it from ever going neon or
-	//              invisible.
-	// Every output is clamped to saturation/value in [0.30, 0.85] and
-	// fully opaque: no near-white ghost marks, no near-black ink lost
-	// against the dark hulls, no accidental translucency.
+	//              louder, and the extremes are allowed to run free -
+	//              the shaping layer owns the look, nothing counters it.
+	//   domain   - saturation and value run the FULL 0..1 range: the
+	//              old [0.30, 0.85] mid-tone caps are gone by decision,
+	//              the only clamp left is HSVToRGB's legal domain. A
+	//              maximal faction may light up at full saturation; a
+	//              starved one may paint nearly bare. Ink stays alpha 1
+	//              - translucency remains a hand-authored material
+	//              knob, not a decider output.
 	public static class ShipDecals
 	{
 		private const string PropDecalMap = "_DecalMap";
@@ -62,10 +66,15 @@ namespace OpenFrontier.IP.Engine
 		private const string PropSecondary = "_DecalSecondary";
 		private const string PropTertiary = "_DecalTertiary";
 
-		private const float MinSaturation = 0.3f;
-		private const float MaxSaturation = 0.85f;
-		private const float MinValue = 0.3f;
-		private const float MaxValue = 0.85f;
+		// Validity caps only: saturation/value run the full 0..1 domain
+		// (the [0.30, 0.85] aesthetic pair is gone by decision). The
+		// clamp exists purely because HSVToRGB needs a legal [0..1]
+		// input - over-saturated shaping lands exactly at the cap,
+		// never wraps.
+		private const float MinSaturation = 0f;
+		private const float MaxSaturation = 1f;
+		private const float MinValue = 0f;
+		private const float MaxValue = 1f;
 
 		private static bool sheetWarned;
 
