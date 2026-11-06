@@ -1197,7 +1197,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7580e5954fe4294e1ad88aec641e3da0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  CloakDrawColor: {r: 0.40392157, g: 0.40392157, b: 0.40392157, a: 1}
   ActiveUnitClass: {fileID: 114724804207875695, guid: 89a8fbe29ccfb6145ae2d184c9e46db8, type: 3}
   CommsDialogPositioner: {fileID: 1044625135789424}
   DrawRangeObjects: []
@@ -1660,6 +1659,30 @@ MonoBehaviour:
     m_Curve:
     - serializedVersion: 3
       time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  scaleByDistanceCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
       value: 2
       inSlope: 0
       outSlope: 0
@@ -1679,48 +1702,6 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 0.14583334
       value: 0.13761905
-      inSlope: -0.42
-      outSlope: -0.42
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: -0.02
-      outSlope: -0.02
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  scaleByDistanceCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 0.3
-      value: 0.3
-      inSlope: -2
-      outSlope: -2
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 0.6
-      value: 0.09
       inSlope: -0.42
       outSlope: -0.42
       tangentMode: 0
@@ -1769,7 +1750,7 @@ MonoBehaviour:
   occlusionRadius: 0.15
   sampleCount: 32
   occlusionOffset: 0.05
-  scale: 0.3
+  scale: 0.2
   allowOffScreen: 0
   occlusionRemapCurve:
     <length>k__BackingField: 2
@@ -1855,6 +1836,30 @@ MonoBehaviour:
     m_Curve:
     - serializedVersion: 3
       time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  scaleByDistanceCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
       value: 2
       inSlope: 0
       outSlope: 0
@@ -1874,48 +1879,6 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 0.14583334
       value: 0.13761905
-      inSlope: -0.42
-      outSlope: -0.42
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: -0.02
-      outSlope: -0.02
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  scaleByDistanceCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 0.3
-      value: 0.3
-      inSlope: -2
-      outSlope: -2
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 0.6
-      value: 0.09
       inSlope: -0.42
       outSlope: -0.42
       tangentMode: 0
@@ -1964,7 +1927,7 @@ MonoBehaviour:
   occlusionRadius: 0.15
   sampleCount: 32
   occlusionOffset: 0.05
-  scale: 0.3
+  scale: 0.2
   allowOffScreen: 0
   occlusionRemapCurve:
     <length>k__BackingField: 2

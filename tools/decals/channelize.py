@@ -13,7 +13,13 @@ on an alpha-brushed canvas) into exactly that language:
   keys out to RGB 0 + alpha 0 (the shader ignores that region);
 - a background colour can be keyed OUT first (--bg RRGGBB, --bg-tol):
   a sheet painted black-as-empty on a full-alpha canvas becomes alpha-0
-  emptiness here, which is what the shaders' ink gate wants;
+  emptiness here, which is what the shaders' ink gate wants. Default
+  --bg-tol 0 keys ONLY exact background pixels, so dark ink next to the
+  canvas (a tonal near-black mark) survives the key; the wide key
+  (--bg-tol 0.12) floats the boundary and will eat such ink with it.
+  Note paint-tool antialiasing blends marks toward the canvas across
+  edge pixels: with the exact key those blends survive as tiny dark
+  fringe - paint hard-edged marks, or accept the sub-4K falloff.
 - pixels that match none of the three colours are REPORTED, never
   invented into a zone (run with --palette N first to see the sheet's
   dominant colours and pick your three).
@@ -97,9 +103,11 @@ def main(argv=None):
                    help='hard alpha cut between 0 and 1 (default 0.5)')
     p.add_argument('--bg', help='background colour to key OUT (RRGGBB), e.g. '
                    '--bg 000000 when a sheet paints black as empty')
-    p.add_argument('--bg-tol', type=float, default=0.12,
+    p.add_argument('--bg-tol', type=float, default=0.0,
                    help='max colour distance from --bg that still keys out '
-                        '(default 0.12, same scale as --tol)')
+                        '(default 0: only exact background pixels key out, '
+                        'so near-black ink survives; 0.12 was the old wide '
+                        'key and eats dark ink with the canvas)')
     p.add_argument('--tol', type=float, default=0.12,
                    help='max colour distance from the triad before a pixel '
                         'is reported unmapped (default 0.12)')

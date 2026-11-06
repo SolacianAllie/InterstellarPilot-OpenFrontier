@@ -1143,7 +1143,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7580e5954fe4294e1ad88aec641e3da0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  CloakDrawColor: {r: 0.5188679, g: 0.5188679, b: 0.5188679, a: 1}
   ActiveUnitClass: {fileID: 114724804207875695, guid: 58fb4a69830a39243956454fcf58fb31, type: 3}
   CommsDialogPositioner: {fileID: 1099118695303065}
   DrawRangeObjects: []
@@ -1701,7 +1700,7 @@ MonoBehaviour:
   occlusionRadius: 0.05
   sampleCount: 32
   occlusionOffset: 0.05
-  scale: 0.3
+  scale: 0.2
   allowOffScreen: 0
   occlusionRemapCurve:
     <length>k__BackingField: 2
@@ -1878,7 +1877,7 @@ MonoBehaviour:
   occlusionRadius: 0.05
   sampleCount: 32
   occlusionOffset: 0.05
-  scale: 0.3
+  scale: 0.2
   allowOffScreen: 0
   occlusionRemapCurve:
     <length>k__BackingField: 2
