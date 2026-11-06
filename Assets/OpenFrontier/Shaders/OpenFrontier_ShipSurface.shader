@@ -86,7 +86,15 @@ Shader "OpenFrontier/Ship Surface"
 	// _DECALEMISSION below): off = unbound slot that must not be
 	// sampled, inert AND free.
 	//
-	// Both layers overlay ALBEDO only. They do not push normals,
+	// LAYER 3 (the WEAR) is the grime pass: _DecalDirtMap, same decal
+	// UV space as the pattern, RGB the dirt colour, A the amount. It
+	// lands after both of the above a ONE plain alpha overlay, gated
+	// to the painted ink alone (pattern ink, or the brand's amount
+	// where it covers) - the hull underneath never grimes, and
+	// translucent paint takes proportionally less dirt. Its inert
+	// contract is the _DECALDIRT toggle, same shape as the other two.
+	//
+	// All of these layers overlay ALBEDO only. They do not push normals,
 	// occlusion or smoothness: livery is paint on the hull, and painted
 	// hulls still reflect the panel geometry underneath. If a decal
 	// ever needs to fake its own bump, that is a second sampler and a
@@ -185,6 +193,18 @@ Shader "OpenFrontier/Ship Surface"
 		_PowerDecalMap("Superpower Brand (RGBA, overlay)", 2D) = "black" {}
 		[Toggle(_POWERDECAL)] _PowerDecalToggle("Superpower Brand", Float) = 0.0
 
+		// LAYER 3 -- the wear pass: _DecalDirtMap is grime over BOTH
+		// decal layers. RGB is the dirt colour, A the dirtiness,
+		// sampled in the pattern's decal space (decalUV -- a dirt
+		// sheet paints against the same maker canvas as a decal
+		// sheet; no ST of its own). It composites after everything as
+		// a plain alpha overlay, but gated to ONLY the painted ink:
+		// the hull below stays clean, and translucent ink takes dirt
+		// at its own weight. Same inert contract as the two layers
+		// above: toggle off = unbound and not sampled.
+		_DecalDirtMap("Ship Decal Dirt (RGBA, overlay)", 2D) = "black" {}
+		[Toggle(_DECALDIRT)] _DecalDirtToggle("Ship Decal Dirt", Float) = 0.0
+
 		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
 		// artwork; RGBA where rgb glows and a gates it. HDR color for the
 		// per-material retune. Default black + toggle off = zero cost
@@ -250,6 +270,7 @@ Shader "OpenFrontier/Ship Surface"
 		TEXTURE2D(_EmissionMap);      SAMPLER(sampler_EmissionMap);
 		TEXTURE2D(_DecalMap);         SAMPLER(sampler_DecalMap);
 		TEXTURE2D(_PowerDecalMap);    SAMPLER(sampler_PowerDecalMap);
+		TEXTURE2D(_DecalDirtMap);     SAMPLER(sampler_DecalDirtMap);
 		TEXTURE2D(_DecalEmissionMap); SAMPLER(sampler_DecalEmissionMap);
 		ENDHLSL
 
@@ -282,6 +303,9 @@ Shader "OpenFrontier/Ship Surface"
 			// default so faction hulls that never glow pay nothing.
 			#pragma shader_feature_local_fragment _DECALEMISSION
 			#pragma shader_feature_local_fragment _POWERDECAL
+			// Wear over the decals, same per-material toggle contract:
+			// off = unbound slot sampled by nobody.
+			#pragma shader_feature_local_fragment _DECALDIRT
 
 			// Pipeline keywords, trimmed to what a Hull forward pass can
 			// be asked for by the project's setup (see header).
@@ -351,17 +375,30 @@ Shader "OpenFrontier/Ship Surface"
 				// selects no zone). The superpower brand is the same
 				// overlay a second time in the sheet's own baked
 				// colours, riding its _POWERDECAL toggle: unbound slot
-				// = off = nothing sampled, free.
+				// = off = nothing sampled, free. The wear pass lands
+				// over both in the same language, gated to the ink they
+				// put down; see below.
 				half4 mask = SAMPLE_TEXTURE2D(_DecalMap, sampler_DecalMap, input.decalUV);
 				half3 triad = saturate(_DecalPrimary.rgb * mask.r
 					+ _DecalSecondary.rgb * mask.g + _DecalTertiary.rgb * mask.b);
 				half zoneA = saturate(_DecalPrimary.a * mask.r
 					+ _DecalSecondary.a * mask.g + _DecalTertiary.a * mask.b);
-				albedo.rgb = lerp(albedo.rgb, triad, mask.a * zoneA);
+				half ink = saturate(mask.a * zoneA);
+				albedo.rgb = lerp(albedo.rgb, triad, ink);
 
 				#ifdef _POWERDECAL
 				half4 brand = SAMPLE_TEXTURE2D(_PowerDecalMap, sampler_PowerDecalMap, input.powerUV);
 				albedo.rgb = lerp(albedo.rgb, brand.rgb, brand.a);
+				// The brand joins the wear gate: dirt lands over its ink too.
+				ink = max(ink, brand.a);
+				#endif
+
+				// The dirt lands last: a plain overlay over whatever the
+				// two layers painted, gated by the ink they put down -
+				// livery wears, bare hull does not.
+				#ifdef _DECALDIRT
+				half4 dirt = SAMPLE_TEXTURE2D(_DecalDirtMap, sampler_DecalDirtMap, input.decalUV);
+				albedo.rgb = lerp(albedo.rgb, dirt.rgb, dirt.a * ink);
 				#endif
 
 				surfaceData.albedo = albedo.rgb;
