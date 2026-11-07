@@ -50,7 +50,13 @@ namespace OpenFrontier.IP.Engine
 		// on cull boundaries the shader cannot see. This radius is baked into
 		// the SHARED mesh's bounds (below), so no per-instance bounds
 		// overrides and no per-instance code ever has to run for culling.
-		private const float WorldCullRadius = 100f;
+		// 10 covers the grown cap (half-quad 3) plus the z relief (4.5) with
+		// margin; it previously read 100, which kept every chip a draw
+		// candidate up to a hundred metres past any frustum edge and also
+		// made scene-view picking meaningless - clicking anywhere near a
+		// ship returned whichever chip's 100-unit box came off the tie-break
+		// first. Tighten costs nothing and buys both back (2026-11-07).
+		private const float WorldCullRadius = 10f;
 
 		[Header("Look")]
 		[Tooltip("Light colour. HDR allowed for glow; alpha is ignored (Intensity is the brightness knob).")]
