@@ -8,20 +8,9 @@ namespace OpenFrontier.IP.Engine
 	// authoring surface: colour, flare texture, flash pattern, period, size,
 	// intensity and phase. Hand-place instances on a ship wherever you like.
 	//
-	// PLACEMENT (2026-11-07): a chip's local +Z is the MOUNT AXIS. Lay the
-	// quad flat against the hull where the lamp belongs, +Z pointing OUT of
-	// the surface. The shader lifts the rendered billboard half the flare's
-	// own Size along that axis so the flare's rim rests ON the hull, and
-	// the depth ZTest then cuts it only inside the texture's already-faded
-	// rim - the hard hull slice through the core is gone (2026-11-07 user
-	// request). Rotation is load-bearing: the gizmo's blue line is the
-	// check - a chip whose line points through the ship renders its flare
-	// sunk below the skin, so flip the rotation, not the size.
-	//
 	// What it is NOT: there is no bake step, no per-ship mesh asset, and no
 	// per-frame CPU anywhere in this component. Everything visual lives in
-	// OpenFrontier_NavLights.shader (billboard, resting lift, blink,
-	// occlusion); everything stateful about the owning unit lives in
+	// OpenFrontier_NavLights.shader (billboard, blink, occlusion); everything stateful about the owning unit lives in
 	// NavLightTicker, which polls on the 2s visibility cadence every other
 	// system here already rides.
 	//
@@ -54,16 +43,14 @@ namespace OpenFrontier.IP.Engine
 		public const string NavLightMaterialAssetPath = "Assets/OpenFrontier/Resources/NavLight/Nav Lights.mat";
 		public const string NavLightMaterialResourcesPath = "NavLight/Nav Lights";
 
-		// The shader renders the flare beyond the quad's own geometry
-		// (the billboard hangs half a Size over the hull at its rest) and
-		// adds the hardware z-test, so frustum culling must keep the
-		// renderer alive beyond the quad's mesh or a light pops out on
-		// cull boundaries the shader cannot see. This radius is baked into
-		// the SHARED mesh's bounds (below), so no per-instance bounds
-		// overrides and no per-instance code ever has to run for culling.
-		// 10 covers any chip size a ship will carry (rendered flare =
-		// Size wide, hung half a Size high) with margin; it previously
-		// read 100, which kept every chip a draw
+		// The billboard adds the hardware z-test, so frustum culling must
+		// keep the renderer alive beyond the quad's own geometry or a
+		// light pops out on cull boundaries the shader cannot see. This
+		// radius is baked into the SHARED mesh's bounds (below), so no
+		// per-instance bounds overrides and no per-instance code ever has
+		// to run for culling. 10 covers any chip size a ship will carry
+		// (the rendered flare is Size wide at the chip's transform) with
+		// margin; it previously read 100, which kept every chip a draw
 		// candidate up to a hundred metres past any frustum edge and also
 		// made scene-view picking meaningless - clicking anywhere near a
 		// ship returned whichever chip's 100-unit box came off the tie-break
@@ -109,7 +96,7 @@ namespace OpenFrontier.IP.Engine
 		public float ManualPhase;
 
 		[Header("Shape")]
-		[Tooltip("Chip size in world units at close range. The rendered flare rests half this size above the hull along the chip's +Z - orient chips with +Z pointing out of the surface.")]
+		[Tooltip("Chip size in world units at close range.")]
 		public float Size = 0.5f;
 
 		[Tooltip("Brightness multiplier. Push above 1 (HDR) to bloom on the quality tiers that run bloom.")]
@@ -327,19 +314,17 @@ namespace OpenFrontier.IP.Engine
 		}
 
 #if UNITY_EDITOR
-		// Game-view/scene-view markers (2026-11-07): magenta ball = the
-		// chip's anchor, the mount point the flare's rim rests on; blue
-		// line = the chip's +Z mount axis, which the shader lifts the
-		// billboard along by half the flare's Size - the line is drawn
-		// that far (plus a small distance term so the axis stays readable
-		// at the kilometre ranges these lights are seen at), ending at the
-		// flare's true centre. Authoring rule: +Z OUT of the hull. A chip
-		// whose blue line points through the ship will render its flare
-		// sunk below the skin - flip the rotation, not the size. The old
-		// z-relief gizmo read _GrowReferenceDistance/_MaxGrowWorldSize/
-		// _PushScale from the material, three properties the stripped
-		// shader no longer defines (reading them spammed the console);
-		// those knobs are gone, so the gizmo reads only the component.
+		// Game-view/scene-view marker so the "is the flare at the lamp or
+		// displaced" argument ends in observation (2026-11-08 pivot
+		// question). Magenta ball = the chip's anchor, the ONE position the
+		// billboard maths cannot displace: the flare's centre always
+		// projects here - the billboard is planted AT the transform origin,
+		// as the strip restored. Keep it cheap and honest: one sphere.
+		// (The pre-strip gizmo also drew a cyan z-relief line and read
+		// _GrowReferenceDistance/_MaxGrowWorldSize/_PushScale from the
+		// material - three properties the stripped shader no longer
+		// defines, so reading them spammed the console; that gizmo is
+		// gone with its knobs.)
 		private void OnDrawGizmos()
 		{
 			Camera cam = Camera.current;
@@ -360,15 +345,6 @@ namespace OpenFrontier.IP.Engine
 			// kilometre ranges these lights are meant to be read at.
 			Gizmos.color = Color.magenta;
 			Gizmos.DrawSphere(anchor, dist * 0.004f + 0.05f);
-
-			// The mount axis, out to the flare's true centre (rest lift =
-			// half the chip's Size along +Z). transform.forward is the
-			// chip's +Z because the Quad child is authored rotation-less
-			// (builder and self-heal alike); a chip whose line dives into
-			// the hull is a polarity mistake to fix on the rotation tool.
-			Gizmos.color = new Color(0.2f, 0.5f, 1f);
-			Gizmos.DrawLine(anchor, anchor + transform.forward *
-				(Size * 0.5f + dist * 0.002f));
 		}
 
 		// Live authoring: every inspector change lands in prefab view and in

@@ -115,9 +115,7 @@ namespace OpenFrontier.Editor
 			Debug.Log(
 				"NavLightPrefabBuilder: drag NavLight instances onto ships wherever a lamp belongs " +
 				"- port red solid, starboard green solid, tail white solid, beacons red single-flash, " +
-				"strobes white double-flash. Orient every chip +Z out of the hull (the gizmo's blue " +
-				"line) - the shader rests the flare on that axis. Chips on one ship phase together; " +
-				"ships desync.");
+				"strobes white double-flash. Chips on one ship phase together; ships desync.");
 		}
 
 		private static Mesh EnsureMeshAsset()

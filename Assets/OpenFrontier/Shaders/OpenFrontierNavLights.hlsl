@@ -9,19 +9,19 @@
 //     becomes small on screen with the ship around it, the way a real
 //     lamp does. (Bloom, on the tiers that run it, keeps a big enough
 //     chip's inner pixel visible at extreme range.)
-//   - NO knob-carried z push. How far the flare hangs off the hull is
-//     DERIVED, not authored: half the flare's own Size along the chip's
-//     +Z mount axis (see job 4), so a bigger lamp rests further off its
-//     mount and neither number is a dial. Nothing flares past an
-//     occluder by design, and nothing decides on the author's behalf.
+//   - NO z-pivot push. The billboard plane hangs exactly at the chip's
+//     transform origin, so depth comparisons are the pure truth of the
+//     geometry: at oblique angles the hull cuts the flare where the
+//     plane recedes behind the surface. That cut is what a real lamp on
+//     that surface does; nothing flares past an occluder by design.
 //   - NO ray fade, NO far fade, NO halo pass, NO round shaping. The
 //     texture is the texture, end to end, always.
 //
 // The shader therefore does exactly four things: billboard the quad at
-// the chip's rest position, scale it by the per-instance size, flash it
-// by the per-instance pattern, and multiply the texture by the
-// per-instance colour. Everything stateful about the owning unit lives
-// in NavLight.cs and NavLightTicker.cs.
+// the transform origin, scale it by the per-instance size, flash it by
+// the per-instance pattern, and multiply the texture by the per-instance
+// colour. Everything stateful about the owning unit lives in NavLight.cs
+// and NavLightTicker.cs.
 
 #ifndef OPENFRONTIER_NAV_LIGHTS_SHARED
 #define OPENFRONTIER_NAV_LIGHTS_SHARED
@@ -101,12 +101,6 @@ NavLightVaryings NavLightVert(NavLightAttributes input)
 	// contributes only its corner sign (.xy in [-0.5, 0.5]).
 	float3 anchorWS = TransformObjectToWorld(float3(0, 0, 0));
 
-	// The chip's +Z is the MOUNT AXIS (job 4 below): the author lays
-	// the chip flat on the hull with +Z pointing out of the surface,
-	// and this is the axis the flare hangs its rest along. Normalized
-	// - a scaled chip must not scale the lift.
-	float3 mountWS = TransformObjectToWorldDir(float3(0, 0, 1));
-
 	float3 camDir = anchorWS - _WorldSpaceCameraPos.xyz;
 	float dist = length(camDir);
 
@@ -131,15 +125,10 @@ NavLightVaryings NavLightVert(NavLightAttributes input)
 	half brightness = NavLightFlash(frac(_Time.y / max(flash.x, 1e-3) + frac(flash.z)),
 		flash.y);
 
-	// The plane hangs at the REST (2026-11-07, the user's "fade out
-	// into the surface" request): half its own Size off the mount
-	// along +Z, so the flare's rim touches the hull and the hull's
-	// depth slice can only land on the texture's already-faded rim -
-	// at every viewing angle the bright core is beyond the
-	// surface's reach. The in-plane offsets still carry the corner
-	// signs against Size, unchanged.
+	// The quad, planted AT the anchor. No push, no grow, no fade -
+	// the flare is exactly as large as its Size and exactly where
+	// the chip's transform is, at every distance.
 	float3 posWS = anchorWS
-		+ mountWS * (size * 0.5)
 		+ right * (input.positionOS.x * size)
 		+ up * (input.positionOS.y * size);
 

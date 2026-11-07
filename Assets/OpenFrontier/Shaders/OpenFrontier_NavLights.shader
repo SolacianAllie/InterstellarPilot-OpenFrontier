@@ -15,34 +15,20 @@
 //     offsets. The shader rebuilds each quad as a PURE billboard - plane hung
 //     perpendicular to the anchor->camera sight line, vertical pinned to world
 //     up - so a NavLight prefab can sit at any rotation and still faces you
-//     from wherever it sits on screen. The plane hangs at the chip's REST:
-//     half the flare's own Size along the chip's +Z (see job 4), so a flare
-//     is exactly as large as its Size, its rim rests ON the hull where its
-//     chip sits, at every distance.
+//     from wherever it sits on screen. The plane is planted AT the chip's
+//     transform origin: a flare is exactly as large as its Size and exactly
+//     where its chip is, at every distance.
 //  2. FLASH. Pattern comes per instance (see NavLight.cs): Solid, a single
 //     pulse or the tight double pair. Timing is _Time.y on the GPU; the CPU
 //     never touches it. frac() bounds the phase argument so a session running
 //     for hours cannot drift the pattern.
 //  3. COLOUR + TEXTURE. One texture sample, rgb*a, multiplied by the per
 //     instance colour (alpha is the brightness slot).
-//  4. OCCLUSION - THE PLAIN TRUTH, WITH THE FLARE AT REST. ZTest LEqual
-//     against everything, and the billboard plane hangs half the flare's
-//     own Size along the chip's +Z mount axis, so the flare's rim rests
-//     ON the hull where the chip sits (2026-11-07, the user's hard-cut
-//     complaint). A plane from the hull surface used to slice the flare
-//     right through its bright core at ANY oblique angle - a razor line
-//     a texture profile can never soften, because the core sits on the
-//     boundary. At the rest that cannot happen: the slice always lands
-//     in the texture's ALREADY-FADED rim (verified ~3-5% brightness in
-//     the band for any hull curve a ship has), so the light reads as
-//     fading out into the surface instead of being guillotined by it.
-//     +Z is the MOUNT AXIS: lay the chip flat on the hull, +Z pointing
-//     out of it - the NavLight gizmo draws this axis blue (a chip whose
-//     blue line points through the ship renders its flare sunk below
-//     the skin; flip the rotation, not the size). Nothing flares past a
-//     true occluder by design, and nothing decides on the author's
-//     behalf: the flare is the lamp proud of its mount, one derived
-//     offset, no dials.
+//  4. OCCLUSION - THE PLAIN TRUTH. ZTest LEqual against the hull, and the
+//     billboard plane sits AT the anchor: at oblique angles the hull cuts the
+//     flare where the plane recedes behind the surface. That cut is what a
+//     real lamp on that surface does. Nothing flares past an occluder by
+//     design, and nothing decides on the author's behalf.
 //
 // Per-instance state (colour, pattern, period, phase, size) rides the GPU
 // instancing buffer via MaterialPropertyBlock - that is what the SRP batcher
