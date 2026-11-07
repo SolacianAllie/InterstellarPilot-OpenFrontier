@@ -69,9 +69,29 @@ namespace OpenFrontier.IP.Engine.Core.Units.ActiveUnits
 			}
 			foreach (ActiveUnitThrottleControlledPart part in Parts)
 			{
+				if (part == null || part.TargetTransform == null)
+				{
+					continue;
+				}
+				if (part.ControlPosition)
+				{
+					CaptureRestPosition(part);
+					part.TargetTransform.localPosition = part.RestPosition + part.PositionOffset * lerp;
+				}
 				part.TargetTransform.localRotation = Quaternion.Euler(Vector3.Lerp(part.NormalRotation, part.TargetRotation, lerp));
 			}
 			currentLerp = lerp;
+		}
+
+		// Notes a part's rest position down on first use, before anything
+		// writes it, so lerp 0 always restores the pose it was authored in.
+		private void CaptureRestPosition(ActiveUnitThrottleControlledPart part)
+		{
+			if (!part.RestPositionCaptured)
+			{
+				part.RestPosition = part.TargetTransform.localPosition;
+				part.RestPositionCaptured = true;
+			}
 		}
 	}
 }
