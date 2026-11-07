@@ -192,14 +192,18 @@ Shader "OpenFrontier/Nav Lights"
 				// the hull pixel for pixel and ZTest LEqual bites jagged
 				// wedges out of any lamp mounted on a hull crest or seen at an
 				// oblique angle (the "not facing the camera" read: it was a
-				// depth cut, not an orientation fault). Displacing ALONG the
-				// view ray keeps every corner on the ray it was on - the
-				// projection and therefore the flare's screen footprint do
-				// not move; only the depth does, which is exactly what the
-				// LEqual test needed. The displacement is clamped near the
-				// camera, where shrinking the apparent-size denominator by
-				// the push would otherwise visibly inflate the flare.
-				float zPush = min(size * 0.5, dist * 0.05);
+				// depth cut, not an orientation fault; nav lamps mount at
+				// wingtips and crests, the strongest-curvature spots, so the
+				// cut was harsh there). Displacing ALONG the view ray keeps
+				// every corner on the ray it was on - the projection and
+				// therefore the flare's screen footprint do not move; only
+				// the depth does, which is exactly what the LEqual test
+				// needed. Three quarters of the chip's own footprint buys
+				// through the wedge these lamps live in; the apparent-size
+				// penalty (the push shrinks the projection denominator) stays
+				// under half a percent. Clamped near the camera, where the
+				// push fraction of the denominator would visibly inflate.
+				float zPush = min(size * 0.75, dist * 0.05);
 
 				float3 posWS = anchorWS
 					+ (camDir / max(dist, 1e-4)) * zPush
