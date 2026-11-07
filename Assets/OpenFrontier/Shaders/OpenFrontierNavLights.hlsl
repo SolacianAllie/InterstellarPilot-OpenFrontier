@@ -26,6 +26,12 @@ SAMPLER(sampler_FlareTex);
 // Material-wide (every chip shares the world rules), not per instance.
 float _GrowReferenceDistance;
 float _MaxGrowWorldSize;
+// The pivot multiplier (see the shader property of the same name): scales
+// the whole z relief. 0 puts the billboard plane exactly at the anchor - a
+// genuine Unity-Particle pivot-off position; 1 is the tuned default. It
+// moves DEPTH only: displacement is along the camera ray, so the flare's
+// screen centre stays pinned to the chip's origin no matter the value.
+float _PushScale;
 float _FarFadeStart;
 float _FarFadeEnd;
 
@@ -141,7 +147,7 @@ NavLightVaryings NavLightVert(NavLightAttributes input)
 	// a scoop mouth loses to local hull curvature no matter how far
 	// it shoves, and shoving farther would start poking through the
 	// NEIGHBOURING hull lines it is meant to lose to.
-	float zPush = min(coreSize * 0.75, dist * 0.05);
+	float zPush = _PushScale * min(coreSize * 0.75, dist * 0.05);
 
 	float size = coreSize;
 	half brightness = NavLightFlash(frac(_Time.y / max(flash.x, 1e-3) + frac(flash.z)),

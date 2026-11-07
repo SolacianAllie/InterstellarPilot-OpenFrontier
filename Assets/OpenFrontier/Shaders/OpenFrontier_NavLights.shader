@@ -73,6 +73,16 @@ Shader "OpenFrontier/Nav Lights"
 		// the fin silhouette, 2026-11-08). If you want the drama back,
 		// push this - but the bite returns with it.
 		_MaxGrowWorldSize("Max Grown Size (world units)", Float) = 6
+		// Unity's particle system can shift billboards toward the camera out
+		// of what should be their world position - this is ours, the z
+		// relief in the shared program ("pivot toward camera"). Scale it:
+		// 1 = as built, 0 = the billboard plane sits exactly at the chip's
+		// anchor (true position - and every hull step then z-fights the
+		// plane honestly, bites and all), 2 = push twice as far forward.
+		// DEPTH-ONLY displacement: the flare's centre always projects at
+		// the chip's origin on screen whatever this says - a flare that
+		// visually leaves the lamp is NOT this knob's doing.
+		_PushScale("Pivot Toward Camera", Float) = 1
 		// The game camera's far plane is 8500 (see ActiveUnit.SetDrawObjectsActive
 		// - it is the real bound of anything drawn). End the fade before it.
 		_FarFadeStart("Far Fade Start (m)", Float) = 7200

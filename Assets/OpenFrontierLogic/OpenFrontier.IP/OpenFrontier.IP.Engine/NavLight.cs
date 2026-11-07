@@ -309,6 +309,64 @@ namespace OpenFrontier.IP.Engine
 		}
 
 #if UNITY_EDITOR
+		// Game-view/scene-view marker so the "is the flare at the lamp or
+		// displaced" argument ends in observation (2026-11-08 pivot question).
+		// Magenta ball = the chip's anchor, the ONE position the billboard
+		// maths cannot displace: the flare's centre always projects here
+		// (the push is along the camera ray, depth-only). Cyan line = the
+		// z relief's true length toward the camera - invisible from the
+		// very camera it is pivoted toward (also a point on screen), but
+		// plainly real from any other angle, which is the point the
+		// pivot-but-only-in-depth lesson makes visually. Values mirror the
+		// shader's grow + z relief, read from the chip's material when one
+		// is attached (edit-mode-safe fallbacks otherwise).
+		private void OnDrawGizmos()
+		{
+			Camera cam = Camera.current;
+			if (cam == null)
+			{
+				return;
+			}
+
+			Vector3 anchor = transform.position;
+			Vector3 toCamera = cam.transform.position - anchor;
+			float dist = toCamera.magnitude;
+			if (dist < 1e-4f)
+			{
+				return;
+			}
+
+			// The material-wide knobs (grow distances and the pivot scale)
+			// live on the shared material; read them lazily and only in the
+			// editor - a chip without a renderer yet just uses the shader
+			// defaults. Never runs in a build (OnDrawGizmos is not called),
+			// and the #if compiles the body out entirely.
+			float growStart = 250f, maxGrow = 6f, pushScale = 1f;
+			Renderer chipRenderer = quadRenderer;
+			if (chipRenderer == null)
+			{
+				MeshFilter filter = FindQuadMeshFilter(transform);
+				chipRenderer = filter != null ? filter.GetComponent<Renderer>() : null;
+			}
+			if (chipRenderer != null && chipRenderer.sharedMaterial != null)
+			{
+				growStart = chipRenderer.sharedMaterial.GetFloat("_GrowReferenceDistance");
+				maxGrow = chipRenderer.sharedMaterial.GetFloat("_MaxGrowWorldSize");
+				pushScale = chipRenderer.sharedMaterial.GetFloat("_PushScale");
+			}
+
+			float grow = Mathf.Min(dist / Mathf.Max(growStart, 1f), maxGrow);
+			float coreSize = Mathf.Max(Mathf.Max(0.01f, Size), grow);
+			float push = pushScale * Mathf.Min(coreSize * 0.75f, dist * 0.05f);
+
+			// The bead scales with distance so it stays findable at the
+			// kilometre ranges these lights are meant to be read at.
+			Gizmos.color = Color.magenta;
+			Gizmos.DrawSphere(anchor, dist * 0.004f + 0.05f);
+			Gizmos.color = Color.cyan;
+			Gizmos.DrawLine(anchor, anchor + toCamera.normalized * push);
+		}
+
 		// Live authoring: every inspector change lands in prefab view and in
 		// play mode immediately - that is the point of a generic prefab.
 		// Deliberately does NOT create GameObjects here: OnValidate runs
