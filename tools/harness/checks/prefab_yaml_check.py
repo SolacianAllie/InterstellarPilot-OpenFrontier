@@ -95,6 +95,10 @@ MISSING_SCRIPT_RE = re.compile(r'm_Script: \{fileID: 0\}')
 
 MONOBEHAVIOUR_ID = '114'
 
+# Unity's `stripped` document marker (see parse_documents): `stripped` after
+# the fileID on the first line of a document.
+STRIPPED_RE = re.compile(r'^!u!\d+ &\d+ stripped\s*$')
+
 # Unity's documents are tagged `!u!<classId>`, which the `%TAG` directive
 # expands to `tag:unity3d.com,2011:<classId>`. Without a constructor for
 # that prefix PyYAML fails EVERY prefab with "could not determine a
@@ -128,6 +132,16 @@ def parse_documents(text):
     docs = []
     parts = re.split(r'(?m)^--- ', text)
     for part in parts[1:]:
+        # Unity's nested-prefab output re-serialises child transforms it only
+        # carries for modification bookkeeping as `--- !u!4 &<fileID> stripped`.
+        # The `stripped` token makes the root a tagged scalar instead of a
+        # mapping, which libyaml refuses outright, and there is nothing inside
+        # one to check: the body is the source-object pointer it derives from,
+        # and the raw-text regex checks above keep its fileID in the unique-id
+        # sweep regardless. First exercised here by real editor session work
+        # (nav-light chips nested on the Pioneer/Ranger, 2026-11-07).
+        if STRIPPED_RE.match(part.split('\n', 1)[0]):
+            continue
         doc = yaml.load(PROLOGUE + '--- ' + part, Loader=Loader)
         if doc:
             docs.append(doc)
