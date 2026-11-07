@@ -123,5 +123,11 @@ InitTestScene*.unity*
 openfrontier-profile.txt
 MeshExports/
 
+# Shader reference material kept in the project root but deliberately OUTSIDE
+# Assets/ - Unity must not import it and the offline harness must not build it
+# (see reference/_PoiyomiShaders: imported for dissection of its decal system
+# and shader organisation, to be recoded mobile-safe, never as-is).
+reference/
+
 # decals tool bytecode (swept-in scratch from a py_compile run)
 __pycache__/

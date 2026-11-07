@@ -9,9 +9,7 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   m_Component:
   - component: {fileID: 4730242686860875}
-  - component: {fileID: 114724804207875695}
   - component: {fileID: 114618682377417806}
-  - component: {fileID: 114703437598541787}
   m_Layer: 0
   m_Name: ShieldNHullRenderer
   m_TagString: Untagged
@@ -34,18 +32,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
---- !u!114 &114724804207875695
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1709254077376921}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
-  m_Name:
-  m_EditorClassIdentifier:
 --- !u!114 &114618682377417806
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -65,15 +51,3 @@ MonoBehaviour:
   RecreateMesh: 1
   TranslationFromUnit: {x: 0, y: 0, z: -1.2}
   Unit: {fileID: 0}
---- !u!114 &114703437598541787
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1709254077376921}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 0}
-  m_Name:
-  m_EditorClassIdentifier:

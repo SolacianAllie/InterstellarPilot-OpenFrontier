@@ -35,6 +35,23 @@ BUILD="$HERE/build"
 CHECKS="$HERE/checks"
 JOBS="${HARNESS_JOBS:-6}"
 
+# dotnet: prefer whatever is on PATH, fall back to a full dotnet 8 under the
+# Unity editor install (~/Unity/Hub/Editor/*/Editor/Data/DotNetSdk). This
+# machine can lose PATH between sessions (a machine restart dropped it: every
+# build failed "command not found" while restore was silenced), so resolve it
+# here, loudly, instead of losing every project in one run.
+DOTNET="$(command -v dotnet 2>/dev/null || true)"
+if [ -z "$DOTNET" ]; then
+  for d in ~/Unity/Hub/Editor/*/Editor/Data/DotNetSdk/dotnet; do
+    [ -x "$d" ] && DOTNET="$d" && DOTNET_ROOT="$(cd "$(dirname "$d")" && pwd)" && export DOTNET_ROOT && break
+  done
+fi
+if [ -z "$DOTNET" ]; then
+  echo "no dotnet found: neither on PATH nor under ~/Unity/Hub/Editor/*/Editor/Data/DotNetSdk" >&2
+  exit 2
+fi
+export DOTNET
+
 REGEN=0
 for arg in "$@"; do
   case "$arg" in
@@ -82,11 +99,21 @@ head1 "building $JOBS at a time"
 if [ ! -f "$BUILD/.restored" ]; then
   # Restore is only needed when the csproj set changes, which is what
   # --regen and a cold build are. After this, --no-restore is correct.
+  # A failed restore must NOT touch the marker: silenced restore output
+  # plus an unconditional marker produced a machine-local state where every
+  # later --no-restore build failed as FAIL without a single error shown.
+  RESTORE_FAILED=""
   for p in "$BUILD"/*/; do
     n="$(basename "$p")"
-    dotnet restore "$p$n.csproj" -v q --nologo >/dev/null 2>&1
+    if ! "$DOTNET" restore "$p$n.csproj" -v q --nologo >/dev/null 2>&1; then
+      RESTORE_FAILED="$RESTORE_FAILED $n"
+    fi
   done
-  touch "$BUILD/.restored"
+  if [ -n "$RESTORE_FAILED" ]; then
+    note_fail "dotnet restore failed for:$RESTORE_FAILED (marker left off, builds retried next run)"
+  else
+    touch "$BUILD/.restored"
+  fi
 fi
 
 RESULTS="$(mktemp)"
@@ -99,7 +126,7 @@ trap 'rm -f "$RESULTS" "$WORKER"' EXIT
 cat > "$WORKER" <<'WORKER_EOF'
 #!/usr/bin/env bash
 build_root="$1"; name="$2"
-out=$(dotnet build "$build_root/$name/$name.csproj" --no-restore -v q --nologo 2>&1)
+out=$("$DOTNET" build "$build_root/$name/$name.csproj" --no-restore -v q --nologo 2>&1)
 if printf '%s' "$out" | grep -q 'Build succeeded'; then
   echo "PASS $name"
 else

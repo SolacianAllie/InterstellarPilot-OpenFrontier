@@ -17,12 +17,8 @@ Material:
   - _NORMALMAP
   - _OCCLUSIONMAP
   m_InvalidKeywords:
-  - _ALPHABLEND_ON
-  - _ALPHAPREMULTIPLY_ON
-  - _DETAIL_MULX2
   - _METALLICGLOSSMAP
-  - _SURFACE_TYPE_TRANSPARENT
-  m_LightmapFlags: 1
+  m_LightmapFlags: 2
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
@@ -36,11 +32,15 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: f6b9bc5a712ddc542b64b0d587e925d4, type: 3}
+        m_Texture: {fileID: 2800000, guid: 5a59a0320a4a2e1979573af673839072, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpMap:
-        m_Texture: {fileID: 2800000, guid: b292da83dd570014eba6d4a650d1560a, type: 3}
+        m_Texture: {fileID: 2800000, guid: 32d673753d445d150a6702dc2e01acd0, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _DecalEmissionMap:
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DecalMap:
@@ -60,7 +60,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _EmissionMap:
-        m_Texture: {fileID: 2800000, guid: 9dba32a31ee30964291d589f1bfc413c, type: 3}
+        m_Texture: {fileID: 2800000, guid: ec629d051df4a94d89197e0a37dc14ec, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
@@ -68,14 +68,18 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MetallicGlossMap:
-        m_Texture: {fileID: 2800000, guid: 44f24bf77c5ee6d40a4dfffc5eb1c17c, type: 3}
+        m_Texture: {fileID: 2800000, guid: 597aa26f976058ac494b55620524302e, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _OcclusionMap:
-        m_Texture: {fileID: 2800000, guid: 13f0c0fcf56493f40b26635af8e80e40, type: 3}
+        m_Texture: {fileID: 2800000, guid: a8746b14b0732e3a7b4ca9826321370d, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _PowerDecalMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -113,10 +117,11 @@ Material:
     - _CloakWarpScale: 0.01
     - _Cull: 2
     - _Cutoff: 0.5
+    - _DecalEmissionToggle: 0
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
-    - _DstBlend: 10
-    - _DstBlendAlpha: 10
+    - _DstBlend: 0
+    - _DstBlendAlpha: 0
     - _Emission: 1
     - _EmissionLM: 0
     - _EnvironmentReflections: 1
@@ -124,9 +129,10 @@ Material:
     - _Glossiness: 0.5
     - _GlossyReflections: 1
     - _Metallic: 0
-    - _Mode: 2
+    - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
+    - _PowerDecalToggle: 0
     - _QueueOffset: 0
     - _ReceiveShadows: 1
     - _ScreenSpaceReflections: 1
@@ -136,14 +142,18 @@ Material:
     - _SpecularHighlights: 1
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
-    - _Surface: 1
+    - _Surface: 0
     - _UVSec: 0
     - _WorkflowMode: 1
     - _XRMotionVectorsPass: 1
-    - _ZWrite: 0
+    - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _DecalEmissionColor: {r: 1, g: 1, b: 1, a: 1}
+    - _DecalPrimary: {r: 1, g: 1, b: 1, a: 1}
+    - _DecalSecondary: {r: 1, g: 1, b: 1, a: 1}
+    - _DecalTertiary: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []

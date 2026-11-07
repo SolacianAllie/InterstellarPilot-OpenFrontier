@@ -154,6 +154,10 @@ C# changes are verified outside the editor with a generated .NET harness:
 
 - Regenerate: `bash tools/harness/check.sh --regen`
 - Check: `bash tools/harness/check.sh`
+- `check.sh` resolves dotnet itself (PATH, then the Unity editor's
+  `DotNetSdk` fallback); a machine restart wiping PATH no longer blanks the
+  run. If every build fails "command not found", the dotnet block in
+  `check.sh` was reverted again - restore it rather than exporting by hand.
 - **It lives IN THE REPO now** (`tools/harness/` — `gen.py`, `check.sh`,
   `checks/`). It was originally `/tmp/opencode/harness` and lost twice (a
   2026-10-10 power cut, a /tmp clear), which is why it was rebuilt in-tree on
@@ -366,6 +370,22 @@ exit 198) — the user performs all editor actions.
 
 ## Non-obvious traps
 
+- **Some broken files are deliberate tombstones - check `git log` before
+  "fixing" them.** `ComponentTradeScreen.prefab`'s YAML error is exactly that:
+  9eb88df3 had dedented the broken `m_Children` block, and 42b1ad05 (2026-10-29)
+  deliberately reverted it - "the forked-in fixes are not part of the right
+  baseline until the lost week's content is recovered". Re-applying the obvious
+  fix re-forks the baseline it is waiting for. Known tombstones are listed in
+  `prefab_yaml_check.py`'s `KNOWN_ISSUES` (printed every run as KNOWN, never
+  gating); a tombstone here that has no gate must be an entry there, not a
+  permanently red harness.
+- **Shader reference material lives OUTSIDE `Assets/`.**
+  `reference/_PoiyomiShaders` (project root, gitignored, 2026-11-07) was kept
+  for dissection of its decal system and shader organisation - to be recoded
+  mobile-safe, never used as-is. It sits in the project tree but outside
+  `Assets/` so that neither the editor nor the offline harness sees it
+  (imported under Assets it failed to compile in both and went red everywhere).
+  Moving it back into Assets re-breaks the green gate.
 - **Asmdef `Editor/` subfolders do NOT get platform editor-extension DLLs.**
   An `Editor/` folder inside an asmdef compiles into that asmdef's generated
   editor assembly, which lacks references to build-support modules — so

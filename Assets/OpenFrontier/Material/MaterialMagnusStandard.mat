@@ -25,6 +25,7 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _DECALDIRT
   - _EMISSION
   - _METALLICSPECGLOSSMAP
   - _NORMALMAP
@@ -51,12 +52,16 @@ Material:
         m_Texture: {fileID: 2800000, guid: 2be44392e6ceed2908c610796a486202, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _DecalDirtMap:
+        m_Texture: {fileID: 2800000, guid: 837a1ebfadbcc464a8b2e0b7c4f675a0, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _DecalEmissionMap:
         m_Texture: {fileID: 2800000, guid: ebff688da5b80aee3b7a008bdcca72d6, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DecalMap:
-        m_Texture: {fileID: 2800000, guid: 8d70a9a3b8be8adad8f5e4772439168b, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DetailAlbedoMap:
@@ -123,6 +128,7 @@ Material:
     - _ClearCoatSmoothness: 0
     - _Cull: 2
     - _Cutoff: 0.5
+    - _DecalDirtToggle: 1
     - _DecalEmissionToggle: 0
     - _DecalPaintStrength: 0.5
     - _DetailAlbedoMapScale: 1

@@ -52,6 +52,35 @@ CACHE = os.path.join(HERE, '.prefab-yaml-cache.json')
 
 HEADER_RE = re.compile(r'^--- !u!(\d+) &(-?\d+)', re.M)
 
+# Deliberate, documented known problems: each entry is (relative path, needles).
+# A finding whose file matches the path AND contains every needle is printed
+# every run (never swallowed) but does not gate the check. Fail-closed in both
+# directions: a DIFFERENT problem on the same file, or a problem on any other
+# file, still fails; an entry that stops matching (its problem was fixed, or
+# its message drifted) is reported so the entry cannot rot invisibly.
+#
+# ComponentTradeScreen: 9eb88df3 dedented a mis-indented m_Children block that
+# 98ec3b45 had broken, and 42b1ad05 (2026-10-29) deliberately reverted it-
+# "the forked-in fixes are not part of the right baseline until the lost
+# week's content is recovered". The broken YAML is a TOMBSTONE of that lost
+# content; fixing the file piecemeal now would clobber the eventual proper
+# recovery. The needles pin the exact break (line 14, column 15) so any new
+# or different damage on this file still fails.
+KNOWN_ISSUES = [
+    ('Assets/InterstellarPilot2/Extracted/GameObject/ComponentTradeScreen.prefab',
+     ['YAML parse error', 'line 14, column 15']),
+]
+KNOWN_HITS = set()
+
+
+def known_issue(finding):
+    for path, needles in KNOWN_ISSUES:
+        if finding.startswith(path + ':') and all(n in finding for n in needles):
+            KNOWN_HITS.add(path)
+            return True
+    return False
+
+
 # An INTERNAL reference is exactly `{fileID: N}` -- no guid, no type. Anything
 # with a guid points at another asset and is perfectly valid, so the absence
 # of `guid:` is what makes a reference checkable at all. Matching loosely with
@@ -206,13 +235,25 @@ def main():
     except OSError:
         pass
 
+    gated, knowns = [], []
     for f in findings:
+        (knowns if known_issue(f) else gated).append(f)
+
+    for f in gated:
         print(f)
-    if findings:
+    for f in knowns:
+        print('  KNOWN (not gating): %s' % f)
+    for path, _ in KNOWN_ISSUES:
+        if path not in KNOWN_HITS:
+            print('  STALE KNOWN ISSUE entry: %s no longer matches any '
+                  'finding - the problem was fixed, or the file changed; '
+                  'remove or update the entry.' % path)
+    if gated:
         print('\n%d prefab structural problem(s) across %d prefabs'
-              % (len(findings), total))
+              % (len(gated), total))
         return 1
-    print('  prefabs: %d structurally sound' % total)
+    print('  prefabs: %d structurally sound (%d known issue(s) suppressed)'
+          % (total, len(knowns)))
     return 0
 
 
