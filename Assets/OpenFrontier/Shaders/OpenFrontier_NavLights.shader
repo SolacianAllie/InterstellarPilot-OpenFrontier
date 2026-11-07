@@ -6,10 +6,10 @@
 // for a decoration:
 //
 //  1. BILLBOARD. The quad's own vertices are ignored except for their corner
-//     offsets. The shader rebuilds the quad facing the camera from the anchor
-//     (the transform origin) - so a NavLight prefab can sit at any rotation
-//     and still faces you.
-//
+//     offsets. The shader rebuilds the quad as a PURE billboard - plane hung
+//     perpendicular to the anchor->camera sight line, vertical pinned to
+//     world up (see the vertex stage) - so a NavLight prefab can sit at any
+//     rotation and still faces you from wherever it sits on screen.
 //  2. DISTANCE GROW. A light chip has a real size (a wingtip lamp), but the
 //     whole point of nav lights is reading a ship at kilometres. Past a
 //     reference distance the chip grows linearly with camera distance, capped
@@ -174,9 +174,21 @@ Shader "OpenFrontier/Nav Lights"
 				float3 camDir = anchorWS - _WorldSpaceCameraPos.xyz;
 				float dist = length(camDir);
 
-				// Billboard basis rows out of the inverse view matrix.
-				float3 right = normalize(UNITY_MATRIX_I_V._m00_m01_m02);
-				float3 up = normalize(UNITY_MATRIX_I_V._m10_m11_m12);
+				// Billboard basis out of the SIGHT LINE, pure: the plane hangs
+				// perpendicular to anchor-to-camera (a spherical billboard).
+				// The screen-parallel version built from UNITY_MATRIX_I_V
+				// rows kept looking wrong at angles - a flare that belongs to
+				// the SCREEN rotates with camera roll and reads as not
+				// belonging to the lamp's hull at oblique view. A chip whose
+				// sight line is straight up/down the world Y would make
+				// cross(worldUp, f) degenerate, so the reference axis steps
+				// aside to X there; the pop only shows on an asymmetric flare
+				// texture dead centre of a perfect pole view - wing lamps
+				// never ride that line.
+				float3 sight = camDir / max(dist, 1e-4);
+				float3 refAxis = abs(sight.y) > 0.999 ? float3(1, 0, 0) : float3(0, 1, 0);
+				float3 right = normalize(cross(refAxis, sight));
+				float3 up = cross(sight, right);
 
 				float4 tint = UNITY_ACCESS_INSTANCED_PROP(Props, _Color);
 				float4 flash = UNITY_ACCESS_INSTANCED_PROP(Props, _Flash);
@@ -187,8 +199,8 @@ Shader "OpenFrontier/Nav Lights"
 				float grow = min(dist / max(_GrowReferenceDistance, 1.0), _MaxGrowWorldSize);
 				size = max(size, grow);
 
-				// Z RELIEF. The anchor hangs ON the hull, and a screen-aligned
-				// billboard lies in a plane of CONSTANT depth - so it z-fights
+				// Z RELIEF. The anchor hangs ON the hull, and the billboard lies
+				// in a plane of CONSTANT depth - so it z-fights
 				// the hull pixel for pixel and ZTest LEqual bites jagged
 				// wedges out of any lamp mounted on a hull crest or seen at an
 				// oblique angle (the "not facing the camera" read: it was a
@@ -206,7 +218,7 @@ Shader "OpenFrontier/Nav Lights"
 				float zPush = min(size * 0.75, dist * 0.05);
 
 				float3 posWS = anchorWS
-					+ (camDir / max(dist, 1e-4)) * zPush
+					+ sight * zPush
 					+ right * (input.positionOS.x * size)
 					+ up * (input.positionOS.y * size);
 
