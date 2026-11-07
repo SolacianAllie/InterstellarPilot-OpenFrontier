@@ -12,6 +12,14 @@
 #ifndef OPENFRONTIER_NAV_LIGHTS_SHARED
 #define OPENFRONTIER_NAV_LIGHTS_SHARED
 
+// The whole program is self-sufficient: the passes only include THIS file,
+// so the URP core macros (TEXTURE2D, the space transforms, the instancing
+// buffer, _Time) arrive HERE. Core.hlsl has include guards; the passes do
+// not re-include it. (This file shipped once without it and the shader went
+// pink: "unrecognized identifier 'TEXTURE2D'" at the first line that used a
+// macro - keep the include.)
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
 TEXTURE2D(_FlareTex);
 SAMPLER(sampler_FlareTex);
 
