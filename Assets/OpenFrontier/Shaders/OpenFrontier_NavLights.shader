@@ -64,7 +64,15 @@ Shader "OpenFrontier/Nav Lights"
 		// Growth + fade are material-wide (every nav light shares the world
 		// rules), not per instance. Tune here once.
 		_GrowReferenceDistance("Grow Starts At (m)", Float) = 250
-		_MaxGrowWorldSize("Max Grown Size (world units)", Float) = 40
+		// 6 world units = several pixels of star at the fade end and about
+		// 4% of a large ship's length: readable without becoming a flare
+		// bigger than the fin it hangs on. Every extra unit here is also
+		// extra distance the billboard plane can hang BEHIND hull geometry
+		// at oblique angles, where the per-pixel depth test bites chunks
+		// out of the flare (the tail beacon that lost half its star inside
+		// the fin silhouette, 2026-11-08). If you want the drama back,
+		// push this - but the bite returns with it.
+		_MaxGrowWorldSize("Max Grown Size (world units)", Float) = 6
 		// The game camera's far plane is 8500 (see ActiveUnit.SetDrawObjectsActive
 		// - it is the real bound of anything drawn). End the fade before it.
 		_FarFadeStart("Far Fade Start (m)", Float) = 7200

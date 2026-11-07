@@ -33,7 +33,7 @@ Material:
     - _FarFadeEnd: 8300
     - _FarFadeStart: 7200
     - _GrowReferenceDistance: 250
-    - _MaxGrowWorldSize: 40
+    - _MaxGrowWorldSize: 6
     - _Round: 1
     m_Colors: []
   m_BuildTextureStacks: []
