@@ -7,7 +7,6 @@ using OpenFrontier.IP.Engine.Settings;
 using OpenFrontier.IP.Engine.UnitComponents;
 using OpenFrontier.Unity.Utils;
 using UnityEngine;
-using UnityEngine.Serialization;
 using Random = UnityEngine.Random;
 using Object = UnityEngine.Object;
 
@@ -50,11 +49,6 @@ namespace OpenFrontier.IP.Engine
 
 		private Unit unit;
 
-		[FormerlySerializedAs("CloakedRenderer")]
-		public MeshRenderer CloakOutlineRenderer;
-
-		public List<MeshRenderer> CloakOutlineRenderers;
-
 		public MeshRenderer UnitRenderer;
 
 		public List<MeshRenderer> UnitRenderers;
@@ -74,8 +68,8 @@ namespace OpenFrontier.IP.Engine
 
 		// Open Frontier: cloak-shader state. A hull whose material carries
 		// the cloak uniforms (_CloakAmount exists) is driven directly by
-		// this unit: the legacy cloak-shell and outline renderers stay
-		// dark and the hull trades itself for bent light inside the
+		// this unit: the legacy cloak-shell renderers stay dark and the
+		// hull trades itself for bent light inside the
 		// shader (OpenFrontier/Ship Cloak). Everything else keeps the old
 		// shell behaviour untouched.
 		private bool cloakCapableHullChecked;
@@ -176,7 +170,6 @@ namespace OpenFrontier.IP.Engine
 			{
 				cloakMaterialPropertyBlock = new MaterialPropertyBlock();
 			}
-			SetCloakOutlineRendererEnabled(enabled: false);
 			ApplyRenderMode();
 		}
 
@@ -208,25 +201,6 @@ namespace OpenFrontier.IP.Engine
 			{
 				wantsCloakSceneColor = false;
 				CloakBackdropRequests.Request(wants: false);
-			}
-		}
-
-		private void SetCloakOutlineRendererEnabled(bool enabled)
-		{
-			if (CloakOutlineRenderer != null)
-			{
-				CloakOutlineRenderer.enabled = enabled;
-			}
-			else
-			{
-				if (CloakOutlineRenderers.Count <= 0)
-				{
-					return;
-				}
-				foreach (MeshRenderer cloakOutlineRenderer in CloakOutlineRenderers)
-				{
-					cloakOutlineRenderer.enabled = enabled;
-				}
 			}
 		}
 
@@ -484,10 +458,10 @@ namespace OpenFrontier.IP.Engine
 
 		private void UpdateFadeMaterial()
 		{
-			// The cloak outline is gone: owned-ship visibility while
-			// construction/cloak fading belongs to the materials now (the
-			// fold shader answers its own amount; non-cloak hulls keep
-			// their shell, which was always the visible thing here).
+			// Owned-ship visibility while construction/cloak fading
+			// belongs to the materials now (the fold shader answers its
+			// own amount; non-cloak hulls keep their shell, which was
+			// always the visible thing here).
 			if (unit.IsUnderConstructionOrDismantling)
 			{
 				UpdateFadeForConstructionProgressValue(unit.Components.ConstructionProgress * unit.UnitClass.maxHealth, Unit.Faction);
@@ -864,7 +838,6 @@ namespace OpenFrontier.IP.Engine
 							UnitRenderer.enabled = true;
 						}
 					}
-					SetCloakOutlineRendererEnabled(enabled: false);
 					return;
 				}
 				if (LevelOfDetail)
@@ -889,7 +862,6 @@ namespace OpenFrontier.IP.Engine
 						UnitRenderer.enabled = true;
 					}
 				}
-				SetCloakOutlineRendererEnabled(enabled: false);
 				return;
 			}
 			if (LevelOfDetail)
@@ -913,10 +885,6 @@ namespace OpenFrontier.IP.Engine
 				{
 					UnitRenderer.enabled = activeUnitRenderMode == ActiveUnitRenderMode.Opaque;
 				}
-			}
-			if (activeUnitRenderMode != ActiveUnitRenderMode.Fade)
-			{
-				SetCloakOutlineRendererEnabled(enabled: false);
 			}
 		}
 

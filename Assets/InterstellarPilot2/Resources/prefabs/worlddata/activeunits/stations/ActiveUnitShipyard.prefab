@@ -416,8 +416,6 @@ MonoBehaviour:
   DrawRangeObjects:
   - {fileID: 1589667821646929}
   - {fileID: 1372920208702427}
-  CloakOutlineRenderer: {fileID: 0}
-  CloakOutlineRenderers: []
   UnitRenderer: {fileID: 23291844617409189}
   UnitRenderers: []
   CloakRenderer: {fileID: 23107629493147155}

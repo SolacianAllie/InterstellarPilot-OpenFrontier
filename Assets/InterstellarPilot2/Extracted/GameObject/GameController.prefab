@@ -588,8 +588,6 @@ MonoBehaviour:
   UISafeAreaRightKey: ui_safe_area_right
   GraphicsQualityLevelKey: graphics_quality_level
   DefaultQualityLevel: 2
-  RenderCloakedShipOutlinesEnabled: 1
-  RenderCloakedShipOutlinesKey: cloaked_outline_enabled
   SpaceFogEnabledKey: space_fog
   LightingFXEnabledKey: lighting_fx_enabled
   TiltControlDefaultAccelerationX: 0

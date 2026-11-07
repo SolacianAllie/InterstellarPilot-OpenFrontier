@@ -345,8 +345,6 @@ MonoBehaviour:
   - {fileID: 1587765826080250}
   - {fileID: 1709867586078768}
   - {fileID: 1589667821646929}
-  CloakOutlineRenderer: {fileID: 0}
-  CloakOutlineRenderers: []
   UnitRenderer: {fileID: 23017697238300914}
   UnitRenderers: []
   CloakRenderer: {fileID: 23089843903986396}

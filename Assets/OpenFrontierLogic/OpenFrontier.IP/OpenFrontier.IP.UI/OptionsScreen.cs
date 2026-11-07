@@ -82,8 +82,6 @@ namespace OpenFrontier.IP.UI
 
 		public Toggle SpaceFogEnabledToggle;
 
-		public Toggle RenderCloakedShipOutlinesEnabledToggle;
-
 		public Toggle WormholeAnimationToggle;
 
 		public Toggle LightingFXToggle;
@@ -170,10 +168,6 @@ namespace OpenFrontier.IP.UI
 			PreferRespawnOnDeathToggle.onValueChanged.AddListener(PreferRespawnOnDeathToggleValueChanged);
 			CalibrateTiltButton.onClick.AddListener(CalibrateTiltButton_Activated);
 			SpaceFogEnabledToggle.onValueChanged.AddListener(SpaceFogEnabledToggle_ValueChanged);
-			// The cloak outline is gone (its visibility is built into the
-			// cloak shader now): the row stays in the prefab but is hidden,
-			// its listener never wired.
-			RenderCloakedShipOutlinesEnabledToggle.gameObject.SetActive(value: false);
 			WormholeAnimationToggle.onValueChanged.AddListener(WormholeAnimationToggle_ValueChanged);
 			LightingFXToggle.onValueChanged.AddListener(LightingFXToggleValueChanged);
 			string[] names = QualitySettings.names;
