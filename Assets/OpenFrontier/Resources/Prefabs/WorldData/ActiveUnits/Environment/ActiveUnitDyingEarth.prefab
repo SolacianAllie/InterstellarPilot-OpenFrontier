@@ -66,7 +66,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 373fed2f6a03afcd191b8937f79b1c63, type: 2}
+  - {fileID: 2100000, guid: ad5b8e32f750387478d4c8fa61b91d40, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -137,7 +137,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7580e5954fe4294e1ad88aec641e3da0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  CloakDrawColor: {r: 1, g: 1, b: 1, a: 1}
   ActiveUnitClass: {fileID: 114724804207875695, guid: 13e539b5d31f4d0496fd7a0aad39c5ae, type: 3}
   CommsDialogPositioner: {fileID: 0}
   DrawRangeObjects: []
@@ -166,6 +165,10 @@ MonoBehaviour:
   PlanetRotation: 0.25
   TransformTarget: {fileID: 4061268324235159}
   BaseRotation: {x: -90, y: 0, z: 0}
+  RingSizeMultiplier: 1
+  PlanetMeshFilter: {fileID: 0}
+  RingRenderer: {fileID: 0}
+  SeedRingFromUnit: 1
 --- !u!1 &1730242686860875
 GameObject:
   m_ObjectHideFlags: 0
@@ -232,7 +235,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 7b8efae5ff880424c99d3e6e781daee9, type: 2}
+  - {fileID: 2100000, guid: 663eb6cd4050fda4092e9d705170034b, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

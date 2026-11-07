@@ -21,105 +21,105 @@ Material:
   stringTagMap: {}
   disabledShaderPasses:
   - MOTIONVECTORS
-  m_LockedProperties:
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-      _CloudNormals:
+    - _CloudNormals:
         m_Texture: {fileID: 2800000, guid: f0228c1dbe09672439e879785ebf7622, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _CloudShadows:
+    - _CloudShadows:
         m_Texture: {fileID: 2800000, guid: a8a5d7a489fd2ce46bf7f72073a95043, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _CloudSpecular:
+    - _CloudSpecular:
         m_Texture: {fileID: 2800000, guid: e3b0a2237bb37274ebfe005d4a48e166, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _Clouds:
+    - _Clouds:
         m_Texture: {fileID: 2800000, guid: 94884c16982584d4e8298b04e0405d4f, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _Emission:
+    - _Emission:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _Lights:
+    - _Lights:
         m_Texture: {fileID: 2800000, guid: 7b064cb42ec64fc4db789b765c3af2b7, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _MainTex:
-        m_Texture: {fileID: 2800000, guid: guid: c65ed8c9d072c594e8309b02118f56c9, type: 3}
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: c65ed8c9d072c594e8309b02118f56c9, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _Normals:
-        m_Texture: {fileID: 2800000, guid: guid: 9fc109ebef2b61347b256f6afb24ca48, type: 3}
+    - _Normals:
+        m_Texture: {fileID: 2800000, guid: 9fc109ebef2b61347b256f6afb24ca48, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-      _SpecMap:
-        m_Texture: {fileID: 2800000, guid: guid: 3b849a5625c698f4bb0eef490b6da87b, type: 3}
+    - _SpecMap:
+        m_Texture: {fileID: 2800000, guid: 3b849a5625c698f4bb0eef490b6da87b, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
-    m_Ints: {}
+    m_Ints: []
     m_Floats:
-      _AddPrecomputedVelocity: 0
-      _AlbedoDebug: 0
-      _AlphaClip: 0
-      _AlphaToMask: 0
-      _Blend: 0
-      _BlendModePreserveSpecular: 1
-      _BumpScale: 1
-      _CityDayFloor: 1
-      _CityDayRange: 0.15
-      _CityDayStrength: 1
-      _CityGrowth: 0
-      _CityGrowthSoftness: 0.3
-      _CityLightCloudShadow: 0.75
-      _CityLightCloudVeil: 1
-      _CityLightFloor: 0.25
-      _CityLightRange: 0.1
-      _ClearCoatMask: 0
-      _ClearCoatSmoothness: 0
-      _CloudBrightness: 1
-      _CloudCoverage: 0.5
-      _CloudEmissionThrough: 0.5
-      _CloudNightFloor: 0.3
-      _CloudNormalStrength: 1
-      _CloudParallax: 0.005
-      _CloudShadowHeight: 0.002
-      _CloudShadowSharpness: 1
-      _CloudShadowStrength: 1
-      _CloudSharpness: 1
-      _CloudSmoothness: 1
-      _CloudWrap: 0.9
-      _EmissionScale: 1
-      _HazeFalloff: 2.5
-      _HazeStrength: 0.6
-      _HazeSunAngle: 20
-      _HazeSunPower: 1.3
-      _HazeSunSpread: 35
-      _HazeSunStrength: 0.8
-      _HazeSunView: 0.85
-      _LandDetailSmoothness: 0.3
-      _LandSmoothness: 0
-      _LightScale: 1
-      _TwilightDepth: 1
-      _TwilightDim: 0.55
-      _TwilightHaze: 0.05
-      _TwilightSharpness: 0.1
-      _TwilightStrength: 0.75
-      _WaterFloor: 0
-      _WaterRange: 0.3
-      _WaterSmoothness: 0.92
+    - _AddPrecomputedVelocity: 0
+    - _AlbedoDebug: 0
+    - _AlphaClip: 0
+    - _AlphaToMask: 0
+    - _Blend: 0
+    - _BlendModePreserveSpecular: 1
+    - _BumpScale: 1
+    - _CityDayFloor: 1
+    - _CityDayRange: 0.15
+    - _CityDayStrength: 1
+    - _CityGrowth: 0
+    - _CityGrowthSoftness: 0.3
+    - _CityLightCloudShadow: 0.75
+    - _CityLightCloudVeil: 1
+    - _CityLightFloor: 0.25
+    - _CityLightRange: 0.1
+    - _ClearCoatMask: 0
+    - _ClearCoatSmoothness: 0
+    - _CloudBrightness: 1
+    - _CloudCoverage: 0.5
+    - _CloudEmissionThrough: 0.5
+    - _CloudNightFloor: 0.3
+    - _CloudNormalStrength: 1
+    - _CloudParallax: 0.005
+    - _CloudShadowHeight: 0.002
+    - _CloudShadowSharpness: 1
+    - _CloudShadowStrength: 1
+    - _CloudSharpness: 1
+    - _CloudSmoothness: 1
+    - _CloudWrap: 0.9
+    - _EmissionScale: 1
+    - _HazeFalloff: 2.5
+    - _HazeStrength: 0.6
+    - _HazeSunAngle: 20
+    - _HazeSunPower: 1.3
+    - _HazeSunSpread: 35
+    - _HazeSunStrength: 0.8
+    - _HazeSunView: 0.85
+    - _LandDetailSmoothness: 0.3
+    - _LandSmoothness: 0
+    - _LightScale: 1
+    - _TwilightDepth: 1
+    - _TwilightDim: 0.55
+    - _TwilightHaze: 0.05
+    - _TwilightSharpness: 0.1
+    - _TwilightStrength: 0.75
+    - _WaterFloor: 0
+    - _WaterRange: 0.3
+    - _WaterSmoothness: 0.92
     m_Colors:
-      _AtmoColor: {r: 0.34999996, g: 0.78, b: 1, a: 1}
-      _CityDayColour: {r: 1, g: 1, b: 1, a: 1}
-      _CloudDrift: {r: 0.0005, g: 0, b: 0, a: 0}
-      _CloudNightColor: {r: 0.54999995, g: 0.62, b: 0.8, a: 1}
-      _CloudPan: {r: 0, g: 0, b: 0, a: 0}
-      _SunRimColor: {r: 1, g: 0.62, b: 0.29999998, a: 1}
-      _SunRimDeep: {r: 1, g: 0, b: 0, a: 1}
-      _TwilightColor: {r: 1, g: 0.62, b: 0.29999998, a: 1}
+    - _AtmoColor: {r: 0.34999996, g: 0.78, b: 1, a: 1}
+    - _CityDayColour: {r: 1, g: 1, b: 1, a: 1}
+    - _CloudDrift: {r: 0.0005, g: 0, b: 0, a: 0}
+    - _CloudNightColor: {r: 0.54999995, g: 0.62, b: 0.8, a: 1}
+    - _CloudPan: {r: 0, g: 0, b: 0, a: 0}
+    - _SunRimColor: {r: 1, g: 0.62, b: 0.29999998, a: 1}
+    - _SunRimDeep: {r: 1, g: 0, b: 0, a: 1}
+    - _TwilightColor: {r: 1, g: 0.62, b: 0.29999998, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 0

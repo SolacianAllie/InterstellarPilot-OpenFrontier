@@ -143,7 +143,9 @@ Shader "OpenFrontier/Nav Lights"
 			half FlashPattern(half t, half pattern)
 			{
 				// 0 solid, 1 single pulse at cycle start,
-				// 2 a second pulse half a cycle later (aviation double flash).
+				// 2 a tight pair: the second pulse a fifth of a cycle behind
+				// the first, then DARK - two flashes, then a pause until the
+				// cycle restarts.
 				if (pattern < 0.5)
 				{
 					return 1.0;
@@ -153,7 +155,12 @@ Shader "OpenFrontier/Nav Lights"
 				{
 					return first;
 				}
-				return max(first, FlashSpike(frac(t + 0.55)));
+				// The pair: first spans [0, 0.10], second [0.20, 0.30]. The
+				// blinks sit a tenth of a cycle apart (~120 ms at the default
+				// 1.2 s period, so they read as two, not one flicker) and the
+				// remaining ~70% of the cycle is the pause. Phase-encoded, so
+				// the shape holds at any FlashPeriod.
+				return max(first, FlashSpike(frac(t + 0.80)));
 			}
 
 			Varyings vert(Attributes input)
