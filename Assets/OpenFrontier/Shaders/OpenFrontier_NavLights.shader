@@ -187,7 +187,22 @@ Shader "OpenFrontier/Nav Lights"
 				float grow = min(dist / max(_GrowReferenceDistance, 1.0), _MaxGrowWorldSize);
 				size = max(size, grow);
 
+				// Z RELIEF. The anchor hangs ON the hull, and a screen-aligned
+				// billboard lies in a plane of CONSTANT depth - so it z-fights
+				// the hull pixel for pixel and ZTest LEqual bites jagged
+				// wedges out of any lamp mounted on a hull crest or seen at an
+				// oblique angle (the "not facing the camera" read: it was a
+				// depth cut, not an orientation fault). Displacing ALONG the
+				// view ray keeps every corner on the ray it was on - the
+				// projection and therefore the flare's screen footprint do
+				// not move; only the depth does, which is exactly what the
+				// LEqual test needed. The displacement is clamped near the
+				// camera, where shrinking the apparent-size denominator by
+				// the push would otherwise visibly inflate the flare.
+				float zPush = min(size * 0.5, dist * 0.05);
+
 				float3 posWS = anchorWS
+					+ (camDir / max(dist, 1e-4)) * zPush
 					+ right * (input.positionOS.x * size)
 					+ up * (input.positionOS.y * size);
 

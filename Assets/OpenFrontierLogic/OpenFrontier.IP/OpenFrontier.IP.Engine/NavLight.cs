@@ -69,6 +69,23 @@ namespace OpenFrontier.IP.Engine
 		[Tooltip("Phases the whole ship together from its unit id, so ships desync and a ship's kit flashes as one. Turn off to set the phase yourself.")]
 		public bool AutoPhase = true;
 
+		// The explicit sync anchor (user-requested 2026-11-07): duplicating a
+		// chip to a ship's opposite wing used to shuffle its phase, because a
+		// ship without an ActiveUnit seeds the phase from the chip's own id,
+		// and a duplicate gets a fresh one. A chip that names a shared object
+		// hashes THAT object instead - drop the ship's root here once, and
+		// every chip on the ship (this one and its copies) flash as one.
+		// Authoring inside the ship prefab: reference the prefab's root - on
+		// each spawned instance that reference re-points at THAT instance's
+		// root, so ships stay desynced from each other while a ship's wings
+		// stay together. Referencing the prefab asset itself instead makes
+		// every ship of that class flash together; that is a look, not a bug.
+		// Empty falls back to the automatic order below. Anything that is a
+		// UnityEngine.Object works (a screen-space UI object, a faction root,
+		// a station) - the hash only needs anchors to point at the same thing.
+		[Tooltip("Optional sync anchor. Every chip referencing the same object flashes with the same phase - drop the ship root here so a ship's lamps (including duplicates) flash as one. Fits the ship prefab for class-wide sync. Empty = automatic.")]
+		public Object PhaseGroup;
+
 		[Tooltip("Phase in the cycle, used only when Auto Phase is off. 0.5 = starts half a cycle in.")]
 		[Range(0f, 1f)]
 		public float ManualPhase;
@@ -262,14 +279,20 @@ namespace OpenFrontier.IP.Engine
 			quadRenderer.SetPropertyBlock(propertyBlock);
 		}
 
-		// Phase in [0,1). Auto = a stable hash of the OWNING UNIT's id when
-		// there is one: all chips on one ship flash together, different
-		// ships desync, and nothing is saved or networked - the same
-		// deterministic-draw promise ShipDecals makes for paint. Unity 6 made
-		// GetInstanceID obsolete-with-error and its GetEntityId replacement
-		// returns an EntityId struct whose int cast is error-obsolete too, so
-		// the hash walks GetHashCode() - the same brand of accessor
-		// EnginePooler's entity-id dictionaries already ride.
+		// Phase in [0,1). The seed, in explicit-first order:
+		//   1. PhaseGroup - the shared anchor above (what the user asked for:
+		//      two copied wing chips pointing at one ship flash together).
+		//   2. The OWNING UNIT's id - the old automatic: all chips on one ship
+		//      flash together, different ships desync.
+		//   3. The chip's own id - the unit-less fallback (stations, bare
+		//      scene ships). These chips desync from each other by design;
+		//      the anchor is the way to opt into togetherness.
+		// Nothing is saved or networked - the same deterministic-draw promise
+		// ShipDecals makes for paint. Unity 6 made GetInstanceID
+		// obsolete-with-error and its GetEntityId replacement returns an
+		// EntityId struct whose int cast is error-obsolete too, so the hash
+		// walks GetHashCode() - the same brand of accessor EnginePooler's
+		// entity-id dictionaries already ride.
 		private float Phase()
 		{
 			if (!AutoPhase)
@@ -277,7 +300,9 @@ namespace OpenFrontier.IP.Engine
 				return ManualPhase;
 			}
 
-			EntityId seed = activeUnit != null ? activeUnit.GetEntityId() : gameObject.GetEntityId();
+			EntityId seed = PhaseGroup != null ? PhaseGroup.GetEntityId()
+				: activeUnit != null ? activeUnit.GetEntityId()
+				: gameObject.GetEntityId();
 			uint hashed = (uint)seed.GetHashCode();
 			hashed ^= hashed >> 16;
 			return (hashed & 0xFFFF) / 65536f;
