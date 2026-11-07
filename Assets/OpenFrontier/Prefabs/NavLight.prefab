@@ -50,6 +50,7 @@ MonoBehaviour:
   Pattern: 1
   FlashPeriod: 1.2
   AutoPhase: 1
+  PhaseGroup: {fileID: 0}
   ManualPhase: 0
   Size: 0.5
   Intensity: 4

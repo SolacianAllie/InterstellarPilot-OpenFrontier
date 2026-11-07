@@ -59,7 +59,7 @@ Shader "OpenFrontier/Nav Lights"
 		// round falloff on top of whatever texture it gets. A custom texture
 		// that is already a halo gets softly corner-dimmed by this; turn the
 		// toggle off for full-bleed art.
-		[Toggle(_ROUND)] _Round("Round Shaping", Float) = 1
+		[Toggle(_ROUND_ON)] _Round("Round Shaping", Float) = 1
 
 		// Growth + fade are material-wide (every nav light shares the world
 		// rules), not per instance. Tune here once.
