@@ -9,6 +9,13 @@ mapping under the class name.
 What is checked, and why each one matters here:
 
   * the file parses at all -- a truncated or hand-mangled prefab
+  * the file still carries Unity's `%YAML 1.1` / `%TAG` prologue -- the
+    per-document parse below re-adds a fresh prologue to every document,
+    so a file that has LOST the directives parses fine here and is
+    rejected by Unity outright ("File may be corrupted or was serialized
+    with a newer version of Unity"). First fired 2026-11-07: an asset
+    sweep dropped the prologue on 11 rewritten prefabs; Unity failed
+    exactly those and the offline parse passed all of them.
   * every document has a unique fileID -- a duplicate silently binds one
     object's data to another
   * every `m_Component` and `m_GameObject` reference resolves inside the
@@ -152,6 +159,15 @@ def analyse(path, text):
     """Structural findings for one prefab. Returns a list of strings."""
     rel = os.path.relpath(path, PROJECT)
     findings = []
+
+    # The per-document parse below prepends a fresh PROLOGUE to every
+    # document, which silently heals a file that has lost its own
+    # directives -- offline. Unity does not heal it: the loader refuses
+    # the whole asset. So check the file header itself.
+    if not text.startswith(PROLOGUE):
+        findings.append(
+            '%s: missing %%YAML/%%TAG prologue -- Unity rejects the file '
+            '("may be corrupted or was serialized with a newer version")' % rel)
 
     m = HEADER_RE.search(text)
     if not m:
