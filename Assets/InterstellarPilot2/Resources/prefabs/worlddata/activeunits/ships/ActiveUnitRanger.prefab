@@ -2009,8 +2009,6 @@ PrefabInstance:
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
-      propertyPath: AutoPhase
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: PhaseGroup
@@ -2115,8 +2113,6 @@ PrefabInstance:
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
-      propertyPath: AutoPhase
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: PhaseGroup
@@ -2217,8 +2213,6 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
-      propertyPath: AutoPhase
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: Intensity
@@ -2327,8 +2321,6 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
-      propertyPath: AutoPhase
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: PhaseGroup
@@ -2433,8 +2425,6 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
-      propertyPath: AutoPhase
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: PhaseGroup
@@ -2539,8 +2529,6 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
-      propertyPath: AutoPhase
-      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: PhaseGroup
@@ -2645,8 +2633,6 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
-      propertyPath: AutoPhase
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: PhaseGroup
@@ -2747,8 +2733,6 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
-      propertyPath: AutoPhase
-      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: Intensity

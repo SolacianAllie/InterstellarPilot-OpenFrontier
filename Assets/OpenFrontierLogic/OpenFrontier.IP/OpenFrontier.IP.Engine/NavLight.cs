@@ -71,9 +71,6 @@ namespace OpenFrontier.IP.Engine
 		[Tooltip("Seconds per flash cycle.")]
 		public float FlashPeriod = 1.2f;
 
-		[Tooltip("Phases the whole ship together from its unit id, so ships desync and a ship's kit flashes as one. Turn off to set the phase yourself.")]
-		public bool AutoPhase = true;
-
 		// The explicit sync anchor (user-requested 2026-11-07): duplicating a
 		// chip to a ship's opposite wing used to shuffle its phase, because a
 		// ship without an ActiveUnit seeds the phase from the chip's own id,
@@ -91,7 +88,7 @@ namespace OpenFrontier.IP.Engine
 		[Tooltip("Optional sync anchor. Every chip referencing the same object flashes with the same phase - drop the ship root here so a ship's lamps (including duplicates) flash as one. Fits the ship prefab for class-wide sync. Empty = automatic.")]
 		public Object PhaseGroup;
 
-		[Tooltip("Phase in the cycle, used only when Auto Phase is off. 0.5 = starts half a cycle in.")]
+		[Tooltip("Offset from the beat the object's sync gives - the chip flashes this fraction of a cycle AFTER the object-derived phase. 0.5 = half a cycle after it.")]
 		[Range(0f, 1f)]
 		public float ManualPhase;
 
@@ -284,7 +281,11 @@ namespace OpenFrontier.IP.Engine
 			quadRenderer.SetPropertyBlock(propertyBlock);
 		}
 
-		// Phase in [0,1). The seed, in explicit-first order:
+		// Phase in [0,1). ALWAYS derived from the object, with ManualPhase
+		// riding on top as the authored offset (user-requested 2026-11-07: the
+		// Auto Phase toggle is gone - the object's beat is unconditional, and
+		// the slider no longer replaces the phase, it offsets the time the
+		// object gives). The seed, in explicit-first order:
 		//   1. PhaseGroup - the shared anchor above (what the user asked for:
 		//      two copied wing chips pointing at one ship flash together).
 		//   2. The OWNING UNIT's id - the old automatic: all chips on one ship
@@ -292,6 +293,9 @@ namespace OpenFrontier.IP.Engine
 		//   3. The chip's own id - the unit-less fallback (stations, bare
 		//      scene ships). These chips desync from each other by design;
 		//      the anchor is the way to opt into togetherness.
+		// The hash supplies the base beat and the slider staggers chips off
+		// it, so a ship's kit keeps flashing as one while its lamps can be
+		// ordered along the wing without losing that togetherness.
 		// Nothing is saved or networked - the same deterministic-draw promise
 		// ShipDecals makes for paint. Unity 6 made GetInstanceID
 		// obsolete-with-error and its GetEntityId replacement returns an
@@ -300,17 +304,14 @@ namespace OpenFrontier.IP.Engine
 		// entity-id dictionaries already ride.
 		private float Phase()
 		{
-			if (!AutoPhase)
-			{
-				return ManualPhase;
-			}
-
 			EntityId seed = PhaseGroup != null ? PhaseGroup.GetEntityId()
 				: activeUnit != null ? activeUnit.GetEntityId()
 				: gameObject.GetEntityId();
 			uint hashed = (uint)seed.GetHashCode();
 			hashed ^= hashed >> 16;
-			return (hashed & 0xFFFF) / 65536f;
+			// The shader frac()s the phase slot (OpenFrontierNavLights.hlsl),
+			// so a sum past 1 wraps without any maths here.
+			return (hashed & 0xFFFF) / 65536f + ManualPhase;
 		}
 
 #if UNITY_EDITOR
