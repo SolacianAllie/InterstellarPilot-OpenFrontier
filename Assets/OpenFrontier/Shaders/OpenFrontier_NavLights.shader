@@ -25,17 +25,17 @@
 //  5. SPILL (the "over-render, but not entirely"). Because the anchor hangs
 //     ON the hull, depth bites jagged wedges out of lamps mounted beside
 //     hull steps, whatever the vertex push does. The SECOND pass draws the
-//     same chip with ZTest GREATER at _HaloIntensity of its brightness and
+//     chip with ZTest GREATER at _HaloIntensity of its brightness and
 //     _HaloSize times its size: GREATER passes only where something NEARER
 //     the camera sits in front of the chip - the occluded half, the bitten
-//     wedge, the far side - so the bite stops being a hole and reads as
-//     glow leaking INSIDE the silhouette, like bloom. The spill can never
-//     paint over empty space (buffer reads far there) nor over anything in
-//     front of the chip, which is what the user asked for as "not
-//     entirely"; the CORE still owns everything the camera can see of the
-//     chip. Full silhouettes ghost faintly inside the occluder's outline -
-//     the price of the leak, and what bloom on the quality tiers was
-//     already painting.
+//     wedge, the far side. The leak is the texture's CENTRAL CORE,
+//     magnified - a soft blob around the lamp - never the rays: a ray-shaped
+//     spill put oversized rays inside the hull silhouette and read as lights
+//     installed inside the ship (2026-11-07). Rays stay honest to the CORE
+//     pass and cut at the bite; what crosses the hull reads as real glare,
+//     the way bloom would spread a bright spot. The spill can never paint
+//     over empty space (buffer reads far there) nor over anything in front
+//     of the chip; the CORE still owns everything the camera can see.
 //
 // Per-instance state (colour, pattern, period, phase, size) rides the GPU
 // instancing buffer via MaterialPropertyBlock - that is what the SRP batcher
@@ -88,8 +88,12 @@ Shader "OpenFrontier/Nav Lights"
 		_FarFadeStart("Far Fade Start (m)", Float) = 7200
 		_FarFadeEnd("Far Fade End (m)", Float) = 8300
 
-		// The spill pass (job 5): quiet glow that leaks over hull edges.
-		_HaloIntensity("Spill Brightness (0 = no spill)", Range(0, 1)) = 0.35
+		// The spill pass (job 5): quiet GLARE that leaks past hull edges as a
+		// soft blob (the core, magnified) - never ray-shaped. The blob packs
+		// the old ray-leak's energy into fewer pixels, so its default
+		// brightness lands lower: 0.2 keeps the same visual weight per pixel
+		// that 0.35 ray-leak had.
+		_HaloIntensity("Spill Brightness (0 = no spill)", Range(0, 1)) = 0.2
 		_HaloSize("Spill Size Multiplier", Float) = 1.5
 
 		// Per-instance values (colour / pattern / period / phase / size) are
@@ -135,14 +139,16 @@ Shader "OpenFrontier/Nav Lights"
 			ENDHLSL
 		}
 
-		// ---- SPILL: glow that leaks inside the occluder --------------------
+		// ---- SPILL: glare that leaks past the occluder ---------------------
 		// Drawn second. ZTest GREATER is the "not entirely" contract: the
 		// spill exists ONLY where something nearer the camera occludes the
 		// chip. Over open space (depth reads far) and over anything in front
 		// of the chip it fails, so rays never cross the silhouette or hull
-		// parts that are nearer; the leak lives strictly inside the shape
-		// that culls it. Its honesties are its quietness and the same far
-		// fade the core rides.
+		// parts that are nearer. WHAT leaks is the texture's central core,
+		// magnified (see the fragment): a blob, not rays - ray-shaped leaks
+		// painted the occluded flare back at 1.5x INSIDE the hull and read as
+		// the lights being installed through the ship. Its honesties are its
+		// quietness and the same far fade the core rides.
 		Pass
 		{
 			Name "Spill"

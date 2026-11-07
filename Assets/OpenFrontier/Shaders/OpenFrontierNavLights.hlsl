@@ -182,7 +182,22 @@ NavLightVaryings NavLightVert(NavLightAttributes input)
 
 half4 NavLightFrag(NavLightVaryings input) : SV_Target
 {
+#if NAV_HALO
+	// THE LEAK READS AS GLARE, NOT AS A REPAINTED FLARE. The spill samples
+	// the texture's CENTRAL CORE, magnified (uv remapped to the middle 35%),
+	// so what continues over occluding hull is a soft blob around the lamp -
+	// never the rays. The ray-shaped spill painted the occluded flare back
+	// at _HaloSize 1.5x, which put visible oversized rays INSIDE the hull
+	// silhouette: the user's "they render inside the ship despite not being
+	// inside it" (2026-11-07). Real bloom of a bright spot spreads as a
+	// blob; rays belong to the CORE pass and stay honest - they cut at the
+	// bite. One extra tap on the spill's fill only; the core pass is
+	// untouched.
+	half4 flare = SAMPLE_TEXTURE2D(_FlareTex, sampler_FlareTex,
+		input.uv * 0.35 + 0.325);
+#else
 	half4 flare = SAMPLE_TEXTURE2D(_FlareTex, sampler_FlareTex, input.uv);
+#endif
 
 	// RGB carries the art's colour, alpha the mask; both multiply
 	// so a plain white texture or a black-background sprite both

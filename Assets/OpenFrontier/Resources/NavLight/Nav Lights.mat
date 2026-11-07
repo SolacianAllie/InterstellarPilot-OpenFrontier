@@ -33,7 +33,7 @@ Material:
     - _FarFadeEnd: 8300
     - _FarFadeStart: 7200
     - _GrowReferenceDistance: 250
-    - _HaloIntensity: 0.35
+    - _HaloIntensity: 0.2
     - _HaloSize: 1.5
     - _MaxGrowWorldSize: 6
     - _PushScale: 1
