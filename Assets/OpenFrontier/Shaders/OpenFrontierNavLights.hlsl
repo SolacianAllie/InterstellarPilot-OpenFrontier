@@ -150,10 +150,11 @@ NavLightVaryings NavLightVert(NavLightAttributes input)
 	half intensityMul = 1.0;
 
 #if NAV_HALO
-	// The spill pass: slightly larger, much quieter, never depth-cut
-	// (ZTest Always in the pass state). It is what turns the hull's
-	// bite from a hole into a leak of light over the edge. The grown
-	// size is clamped to the same cap as the core so a far chip's
+	// The spill pass: slightly larger, much quieter, tested GREATER in the
+	// pass state - it paints only where something nearer the camera sits in
+	// front of the chip, so a hull step's bite continues as a soft leak
+	// INSIDE the occluder and rays never run across the silhouette. The
+	// grown size is clamped to the same cap as the core so a far chip's
 	// spill never doubles its fill - the spill belongs to lamps at
 	// readable range, which is also where bites happen.
 	size = min(coreSize * max(_HaloSize, 1.0), _MaxGrowWorldSize);

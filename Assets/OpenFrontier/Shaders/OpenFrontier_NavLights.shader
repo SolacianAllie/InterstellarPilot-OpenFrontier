@@ -25,13 +25,16 @@
 //  5. SPILL (the "over-render, but not entirely"). Because the anchor hangs
 //     ON the hull, depth bites jagged wedges out of lamps mounted beside
 //     hull steps, whatever the vertex push does. The SECOND pass draws the
-//     same chip with ZTest ALWAYS at _HaloIntensity of its brightness and
-//     _HaloSize times its size: the bite stops being a hole and reads as the
-//     glow leaking over the edge, like bloom. The hull cut stays honest
-//     because the CORE is still what tests depth; the spill never grows past
-//     the same _MaxGrowWorldSize cap, so far chips do not double their fill.
-//     Full silhouettes do show a faint ghost spill through the ship - that is
-//     the price of the leak, and it is what bloom on the quality tiers was
+//     same chip with ZTest GREATER at _HaloIntensity of its brightness and
+//     _HaloSize times its size: GREATER passes only where something NEARER
+//     the camera sits in front of the chip - the occluded half, the bitten
+//     wedge, the far side - so the bite stops being a hole and reads as
+//     glow leaking INSIDE the silhouette, like bloom. The spill can never
+//     paint over empty space (buffer reads far there) nor over anything in
+//     front of the chip, which is what the user asked for as "not
+//     entirely"; the CORE still owns everything the camera can see of the
+//     chip. Full silhouettes ghost faintly inside the occluder's outline -
+//     the price of the leak, and what bloom on the quality tiers was
 //     already painting.
 //
 // Per-instance state (colour, pattern, period, phase, size) rides the GPU
@@ -114,10 +117,14 @@ Shader "OpenFrontier/Nav Lights"
 			ENDHLSL
 		}
 
-		// ---- SPILL: untested glow that leaks over hull edges ---------------
-		// Drawn second, always. Nothing here writes depth or tests it: its
-		// only honesties are its quietness and the same far fade the core
-		// rides.
+		// ---- SPILL: glow that leaks inside the occluder --------------------
+		// Drawn second. ZTest GREATER is the "not entirely" contract: the
+		// spill exists ONLY where something nearer the camera occludes the
+		// chip. Over open space (depth reads far) and over anything in front
+		// of the chip it fails, so rays never cross the silhouette or hull
+		// parts that are nearer; the leak lives strictly inside the shape
+		// that culls it. Its honesties are its quietness and the same far
+		// fade the core rides.
 		Pass
 		{
 			Name "Spill"
@@ -126,7 +133,7 @@ Shader "OpenFrontier/Nav Lights"
 			Blend One One
 			ColorMask RGB
 			ZWrite Off
-			ZTest Always
+			ZTest Greater
 			Cull Off
 
 			HLSLPROGRAM
