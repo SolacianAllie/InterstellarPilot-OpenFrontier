@@ -1,15 +1,15 @@
 // Open Frontier - navigation lights.
 //
 // One additive, fully unlit material for the NavLight prefab's quad, drawn in
-// TWO passes that share one program (OpenFrontierNavLights.hlsl). There is no
-// lighting model and none is wanted: a nav light is a pure emissive chip. The
-// jobs, all in the GPU so no ship ever runs an Update for a decoration:
+// ONE depth-honest pass. There is no lighting model and none is wanted: a nav
+// light is a pure emissive chip. The jobs, all in the GPU so no ship ever runs
+// an Update for a decoration:
 //
-//  1. BILLBOARD (both passes). The quad's own vertices are ignored except
-//     for their corner offsets. The shader rebuilds each quad as a PURE
-//     billboard - plane hung perpendicular to the anchor->camera sight line,
-//     vertical pinned to world up - so a NavLight prefab can sit at any
-//     rotation and still faces you from wherever it sits on screen.
+//  1. BILLBOARD. The quad's own vertices are ignored except for their corner
+//     offsets. The shader rebuilds each quad as a PURE billboard - plane hung
+//     perpendicular to the anchor->camera sight line, vertical pinned to world
+//     up - so a NavLight prefab can sit at any rotation and still faces you
+//     from wherever it sits on screen.
 //  2. DISTANCE GROW. A light chip has a real size (a wingtip lamp), but the
 //     whole point of nav lights is reading a ship at kilometres. Past a
 //     reference distance the core grows linearly with camera distance, capped
@@ -19,31 +19,37 @@
 //     pulse or the tight double pair. Timing is _Time.y on the GPU; the CPU
 //     never touches it. frac() bounds the phase argument so a session running
 //     for hours cannot drift the pattern.
-//  4. OCCLUSION + FADE. The CORE pass keeps ZTest LEqual against the hull: a
-//     light on the far side of a ship is hidden by the ship itself. The far
-//     fade ends before the game camera's 8500 far plane so a light never pops.
-//  5. SPILL (the "over-render, but not entirely"). Because the anchor hangs
-//     ON the hull, depth bites jagged wedges out of lamps mounted beside
-//     hull steps, whatever the vertex push does. The SECOND pass draws the
-//     chip with ZTest GREATER at _HaloIntensity of its brightness and
-//     _HaloSize times its size: GREATER passes only where something NEARER
-//     the camera sits in front of the chip - the occluded half, the bitten
-//     wedge, the far side. The leak is the texture's CENTRAL CORE,
-//     magnified - a soft blob around the lamp - never the rays: a ray-shaped
-//     spill put oversized rays inside the hull silhouette and read as lights
-//     installed inside the ship (2026-11-07). Rays stay honest to the CORE
-//     pass and cut at the bite; what crosses the hull reads as real glare,
-//     the way bloom would spread a bright spot. The spill can never paint
-//     over empty space (buffer reads far there) nor over anything in front
-//     of the chip; the CORE still owns everything the camera can see.
+//  4. OCCLUSION + FADE. ZTest LEqual against the hull: a light on the far
+//     side of a ship is hidden by the ship itself, and a hull step standing
+//     in front of a lamp cuts the flare where it stands. The far fade ends
+//     before the game camera's 8500 far plane so a light never pops.
+//  5. THE RAYS FADE OUT WITH RANGE. The cross texture's ray spikes belong to
+//     close range: past a fade band the fragment blends into the same
+//     texture's central core, magnified - a soft dot with no ray geometry.
+//     Every distance-breakage report of the previous two-pass system traced
+//     back to ray geometry, never to the billboard's own anchor maths, so the
+//     dot is what gets grown out to the kilometres: a pinprick star, not a
+//     four-armed signpost out-scaling the hull beside it.
+//
+// WHY THERE IS NO SECOND PASS ANYMORE (the 2026-11-07 redo of the leak).
+// The system previously drew a depth-tested CORE plus a ZTest GREATER SPILL
+// that repainted the occluded flare pieces over the hull - ray shape
+// included - as a hand-drawn stand-in for bloom. Tuning could not save it:
+// a pass whose job is to re-project a flare across an occluder prints
+// flare-shaped pieces inside the silhouette, and the user saw exactly that
+// ("they render inside the ship despite not being inside it"). The soft
+// spread past a bite is now POST-PROCESS BLOOM on the quality tiers that
+// run it - a blob, which is what real glare does - and on tiers without
+// bloom the bite stays what it is: an honest cut flare. Full silhouettes of
+// far-side chips render nothing at all, which is the correct fact a giant
+// lens-flare spill can never illustrate.
 //
 // Per-instance state (colour, pattern, period, phase, size) rides the GPU
 // instancing buffer via MaterialPropertyBlock - that is what the SRP batcher
 // cannot carry, so the batching story for these draw calls is GPU instancing,
 // not SRP batching. The material must have "Enable GPU Instancing" ticked
 // (the NavLightPrefabBuilder does it) and all lights share one quad mesh +
-// one material, which is the batch that instancing folds into ONE draw call
-// PER PASS - two per material once the spill is counted.
+// one material, which is the batch instancing folds into ONE draw call.
 //
 // This deliberately does NOT read _CameraDepthTexture. AGENTS.md: on this
 // OpenGL stack sceneZ reads ~0 behind open space and every depth-compare we
@@ -75,7 +81,7 @@ Shader "OpenFrontier/Nav Lights"
 		_MaxGrowWorldSize("Max Grown Size (world units)", Float) = 6
 		// Unity's particle system can shift billboards toward the camera out
 		// of what should be their world position - this is ours, the z
-		// relief in the shared program ("pivot toward camera"). Scale it:
+		// relief ("pivot toward camera"). Scale it:
 		// 1 = as built, 0 = the billboard plane sits exactly at the chip's
 		// anchor (true position - and every hull step then z-fights the
 		// plane honestly, bites and all), 2 = push twice as far forward.
@@ -87,14 +93,6 @@ Shader "OpenFrontier/Nav Lights"
 		// - it is the real bound of anything drawn). End the fade before it.
 		_FarFadeStart("Far Fade Start (m)", Float) = 7200
 		_FarFadeEnd("Far Fade End (m)", Float) = 8300
-
-		// The spill pass (job 5): quiet GLARE that leaks past hull edges as a
-		// soft blob (the core, magnified) - never ray-shaped. The blob packs
-		// the old ray-leak's energy into fewer pixels, so its default
-		// brightness lands lower: 0.2 keeps the same visual weight per pixel
-		// that 0.35 ray-leak had.
-		_HaloIntensity("Spill Brightness (0 = no spill)", Range(0, 1)) = 0.2
-		_HaloSize("Spill Size Multiplier", Float) = 1.5
 
 		// Per-instance values (colour / pattern / period / phase / size) are
 		// not Properties - they arrive through the instancing buffer from
@@ -113,10 +111,13 @@ Shader "OpenFrontier/Nav Lights"
 		// Above the standard transparent band (3000) so gameplay particles
 		// and lasers rate-sort in front of the chips.
 
-		// ---- CORE: depth-honest, what reads as the light -------------------
+		// ---- THE ONE PASS: depth-honest, what reads as the light ----------
+		// Blend additive, depth-tested against everything opaque before it.
+		// Nothing occluded is ever re-projected; the spread past a bite
+		// belongs to bloom.
 		Pass
 		{
-			Name "Core"
+			Name "NavLights"
 			Tags { "LightMode" = "UniversalForward" }
 
 			Blend One One
@@ -134,40 +135,6 @@ Shader "OpenFrontier/Nav Lights"
 			#pragma multi_compile_instancing
 			#pragma multi_compile _ _ROUND_ON
 
-			#define NAV_HALO 0
-			#include "OpenFrontierNavLights.hlsl"
-			ENDHLSL
-		}
-
-		// ---- SPILL: glare that leaks past the occluder ---------------------
-		// Drawn second. ZTest GREATER is the "not entirely" contract: the
-		// spill exists ONLY where something nearer the camera occludes the
-		// chip. Over open space (depth reads far) and over anything in front
-		// of the chip it fails, so rays never cross the silhouette or hull
-		// parts that are nearer. WHAT leaks is the texture's central core,
-		// magnified (see the fragment): a blob, not rays - ray-shaped leaks
-		// painted the occluded flare back at 1.5x INSIDE the hull and read as
-		// the lights being installed through the ship. Its honesties are its
-		// quietness and the same far fade the core rides.
-		Pass
-		{
-			Name "Spill"
-			Tags { "LightMode" = "UniversalForward" }
-
-			Blend One One
-			ColorMask RGB
-			ZWrite Off
-			ZTest Greater
-			Cull Off
-
-			HLSLPROGRAM
-			#pragma target 3.5
-			#pragma vertex NavLightVert
-			#pragma fragment NavLightFrag
-			#pragma multi_compile_instancing
-			#pragma multi_compile _ _ROUND_ON
-
-			#define NAV_HALO 1
 			#include "OpenFrontierNavLights.hlsl"
 			ENDHLSL
 		}

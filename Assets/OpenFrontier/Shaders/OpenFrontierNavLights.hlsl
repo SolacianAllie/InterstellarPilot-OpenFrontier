@@ -1,10 +1,24 @@
-// Open Frontier - nav light program, shared by BOTH passes of
-// OpenFrontier_NavLights.shader.
+// Open Frontier - nav light program, OpenFrontier_NavLights.shader's
+// single pass.
 //
-// NAV_HALO must be #defined before the include in each pass:
-//   0 = the depth-tested core (full brightness, hull occlusion honest)
-//   1 = the always-drawn spill (reduced brightness, slightly larger)
-// Exactly one shape story: the two passes cannot drift.
+// ARCHITECTURE (the 2026-11-07 redo of the two-pass leak system):
+// ONE depth-honest additive pass. The old design drew a depth-tested core
+// and then a ZTest GREATER spill that repainted the occluded flare pieces
+// over the hull - ray shape included, at a bigger size than the rays it
+// was healing - and every tuning round of it ended with the user seeing
+// lights installed inside the ship. The redo moves the soft spread to
+// where it belongs:
+//   - the single pass never paints over anything nearer than the chip's
+//     plane (the honest LEqual bite); nothing flare-shaped ever prints
+//     across an occluder;
+//   - the glare that continues past a bite is POST-PROCESS BLOOM on the
+//     quality tiers that run it - a soft blob against the hull edge,
+//     which is what the spill pass tried to hand-draw and could not;
+//   - the cross texture's RAYS belong at close range only: past the ray
+//     fade the fragment blends into the SAME texture's central core,
+//     magnified - a soft dot with no ray geometry to outgrow the hull.
+//     Every distance-breakage report in the old system traced back to ray
+//     geometry, never to the billboard's own anchor maths.
 //
 // Everything stateful about the owning unit lives in NavLight.cs /
 // NavLightTicker.cs; everything here is per-frame GPU maths only.
@@ -12,12 +26,11 @@
 #ifndef OPENFRONTIER_NAV_LIGHTS_SHARED
 #define OPENFRONTIER_NAV_LIGHTS_SHARED
 
-// The whole program is self-sufficient: the passes only include THIS file,
-// so the URP core macros (TEXTURE2D, the space transforms, the instancing
-// buffer, _Time) arrive HERE. Core.hlsl has include guards; the passes do
-// not re-include it. (This file shipped once without it and the shader went
-// pink: "unrecognized identifier 'TEXTURE2D'" at the first line that used a
-// macro - keep the include.)
+// The program is self-sufficient: URP core macros (TEXTURE2D, the space
+// transforms, the instancing buffer, _Time) arrive HERE. Core.hlsl has
+// include guards; the pass does not re-include it. (This file shipped
+// once without it and the shader went pink: "unrecognized identifier
+// 'TEXTURE2D'" - keep the include.)
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
 TEXTURE2D(_FlareTex);
@@ -27,18 +40,13 @@ SAMPLER(sampler_FlareTex);
 float _GrowReferenceDistance;
 float _MaxGrowWorldSize;
 // The pivot multiplier (see the shader property of the same name): scales
-// the whole z relief. 0 puts the billboard plane exactly at the anchor - a
-// genuine Unity-Particle pivot-off position; 1 is the tuned default. It
-// moves DEPTH only: displacement is along the camera ray, so the flare's
-// screen centre stays pinned to the chip's origin no matter the value.
+// the whole z relief. 0 puts the billboard plane exactly at the anchor -
+// a genuine Unity-Particle pivot-off position; 1 is the tuned default.
+// It moves DEPTH only: the flare's screen centre stays pinned to the
+// chip's origin on screen whatever the value.
 float _PushScale;
 float _FarFadeStart;
 float _FarFadeEnd;
-
-// The spill pass knobs. _HaloIntensity 0 silences the spill visually (the
-// pass still costs its fill; it is decoration budget, not simulation).
-float _HaloIntensity;
-float _HaloSize;
 
 // Per instance. Written by NavLight.ApplyInstanceData once at spawn (and on
 // inspector tweaks), never per frame.
@@ -52,6 +60,17 @@ UNITY_INSTANCING_BUFFER_START(Props)
 	UNITY_DEFINE_INSTANCED_PROP(float, _Size)
 UNITY_INSTANCING_BUFFER_END(Props)
 
+// The ray fade: past this range the cross's rays collapse into the core.
+// Bands chosen against the geometry of the old failures: the grow term
+// starts dominating at _GrowReferenceDistance (250), and ray geometry
+// over hull was what every far-range report described. Dots take over
+// well inside that band, so the grown star reads as a soft pinprick
+// wherever the hull beside it is already small on screen. Compile-time
+// constants, not knobs: the two leak passes before this lost the battle
+// with their own tuning surface.
+static const float RAY_FADE_START = 150.0;
+static const float RAY_FADE_END = 400.0;
+
 struct NavLightAttributes
 {
 	float4 positionOS : POSITION;
@@ -64,6 +83,7 @@ struct NavLightVaryings
 	float4 positionCS : SV_POSITION;
 	float2 uv : TEXCOORD0;
 	half4 color : TEXCOORD1;
+	half rayFade : TEXCOORD2;
 };
 
 // Sharp aviation-style spike: hard on, hard off, most of the cycle dark.
@@ -142,30 +162,17 @@ NavLightVaryings NavLightVert(NavLightAttributes input)
 	// the projection therefore does not move; only the depth does,
 	// which is exactly what the LEqual test needed. The bound is a
 	// few percent of apparent size at the clamp, invisible on a
-	// glow. Steps the push cannot clear belong to the SPILL pass,
-	// not a bigger push: a light tucked beside a cowling ring or in
-	// a scoop mouth loses to local hull curvature no matter how far
-	// it shoves, and shoving farther would start poking through the
-	// NEIGHBOURING hull lines it is meant to lose to.
+	// glow. Where the push loses (deep hull steps, far-range depth
+	// quantisation) the bite shows - and the bite is now the HONEST
+	// outcome: a cut flare, which bloom on the quality tiers softens.
 	float zPush = _PushScale * min(coreSize * 0.75, dist * 0.05);
 
 	float size = coreSize;
 	half brightness = NavLightFlash(frac(_Time.y / max(flash.x, 1e-3) + frac(flash.z)),
 		flash.y);
 	float farFade = 1.0 - smoothstep(_FarFadeStart, _FarFadeEnd, dist);
-	half intensityMul = 1.0;
 
-#if NAV_HALO
-	// The spill pass: slightly larger, much quieter, tested GREATER in the
-	// pass state - it paints only where something nearer the camera sits in
-	// front of the chip, so a hull step's bite continues as a soft leak
-	// INSIDE the occluder and rays never run across the silhouette. The
-	// grown size is clamped to the same cap as the core so a far chip's
-	// spill never doubles its fill - the spill belongs to lamps at
-	// readable range, which is also where bites happen.
-	size = min(coreSize * max(_HaloSize, 1.0), _MaxGrowWorldSize);
-	intensityMul = saturate(_HaloIntensity);
-#endif
+	half rayFade = smoothstep(RAY_FADE_START, RAY_FADE_END, dist);
 
 	float3 posWS = anchorWS
 		+ sight * zPush
@@ -176,28 +183,24 @@ NavLightVaryings NavLightVert(NavLightAttributes input)
 	output.positionCS = TransformWorldToHClip(posWS);
 	output.uv = input.uv;
 	output.color = half4(
-		tint.rgb * tint.a * brightness * farFade * intensityMul, 1.0);
+		tint.rgb * tint.a * brightness * farFade, 1.0);
+	output.rayFade = rayFade;
 	return output;
 }
 
 half4 NavLightFrag(NavLightVaryings input) : SV_Target
 {
-#if NAV_HALO
-	// THE LEAK READS AS GLARE, NOT AS A REPAINTED FLARE. The spill samples
-	// the texture's CENTRAL CORE, magnified (uv remapped to the middle 35%),
-	// so what continues over occluding hull is a soft blob around the lamp -
-	// never the rays. The ray-shaped spill painted the occluded flare back
-	// at _HaloSize 1.5x, which put visible oversized rays INSIDE the hull
-	// silhouette: the user's "they render inside the ship despite not being
-	// inside it" (2026-11-07). Real bloom of a bright spot spreads as a
-	// blob; rays belong to the CORE pass and stay honest - they cut at the
-	// bite. One extra tap on the spill's fill only; the core pass is
-	// untouched.
-	half4 flare = SAMPLE_TEXTURE2D(_FlareTex, sampler_FlareTex,
-		input.uv * 0.35 + 0.325);
-#else
 	half4 flare = SAMPLE_TEXTURE2D(_FlareTex, sampler_FlareTex, input.uv);
-#endif
+
+	// The dot: the same texture's core, magnified (the middle 35%
+	// remapped to full UV). The cross's rays cannot appear in it, so
+	// a chip at range glows like a star, not like a four-armed
+	// signpost out-scaling the hull beside it. The lerp also bounds
+	// what can ever cross over nearer hull: ray geometry dies with
+	// the fade, the core blob is what bloom spreads.
+	half4 core = SAMPLE_TEXTURE2D(_FlareTex, sampler_FlareTex,
+		input.uv * 0.35 + 0.325);
+	flare = lerp(flare, core, input.rayFade);
 
 	// RGB carries the art's colour, alpha the mask; both multiply
 	// so a plain white texture or a black-background sprite both
