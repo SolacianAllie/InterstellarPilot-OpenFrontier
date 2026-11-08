@@ -127,6 +127,45 @@ Intermediate folder metas under
   vendored DLLs exist now only in `PreRebuild/` and in git history (`Stable`).
   They were not deleted and not "fixed" — they are retired, not repaired.
 
+## Planet visuals live INSIDE the `Planet*` shells (folded 2026-11-08)
+
+The planet prefab family was originally SPLIT in two: gameplay shells
+(`UnitPlanet*`, no renderer at all) and rendered visuals
+(`ActiveUnits/Environment/ActiveUnit*` — sphere child scaled x900 over
+`SphereMediumPoly` plus atmosphere child x910, binding the
+`Material/Planet Surfaces` materials). The shells landed first (engine
+scripts delete-stripped); later, at the user's direction, the active
+visual children were FOLDED INTO the 13 `Planet*` shells at their
+current home `Resources/Prefabs/Units/Planets/` (the user moved them
+there from `WorldData/UnitPrefabs/`; the old path's folder metas are
+gone). Each shell is now: root GameObject + `Sphere` (scale 900,
+layer 26) + `Atmosphere` (scale 910), 8 visual docs (2x MeshFilter +
+2x MeshRenderer), engine scripts stripped, child fileIDs remapped per
+file — zero missing scripts.
+
+- `SphereMediumPoly` (GUID `078b390c…`) is the ONE mesh for all of
+  them, and for the 4 `ActiveUnitMoon*` three-script prefabs which
+  remain PreRebuild-only (unfolded). It was culled with the IP2 wipe
+  and restored verbatim out of `7650b228` to
+  `Assets/OpenFrontier/Mesh/` — mesh + meta, GUID intact. It is an
+  extraction-dump product: nothing else must reference it by hand; new
+  sphere needs should get a fresh earned asset, not a re-point.
+- Atmosphere transparency rides on its material, not the mesh.
+- Both child GOs were renamed `Sphere` in the fold (sphere was
+  `PlanetEarth` on Alpine1/DyingEarth, biome-named on the other 11; no
+  code referenced the strings). If a future engine port wants the
+  original names back, they are in `e8768437`'s diff.
+- **Scale is authored and LARGE:** silhouette radius ~9000 world units
+  (extents 10 x scale 900; ~9100 with the shell). The original seeder
+  placed planets at ~2.17-2.2x radius distances. Shells parked closer
+  will overlap catastrophically; do not "fix" the scales - the planet
+  definition work owns radius.
+- Moons: `ActiveUnitMoon*` keep 3 scripts each and none of their
+  visuals are live; folding them is a separate decision.
+- Sanctioned texture dangles on the moon materials: `e13a5d47…`
+  (shared `_Normals`) plus Moon2/3/4's own channels - those textures
+  were never saved in any baseline.
+
 ## Agent commits sweep the user's working tree
 
 When a coding agent is about to commit, it stages the user's uncommitted
