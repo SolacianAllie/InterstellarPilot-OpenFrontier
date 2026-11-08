@@ -1044,6 +1044,14 @@ namespace OpenFrontier.IP.Engine
 			{
 				mainCameraAudioSource = mainCamera.gameObject.AddComponent<AudioSource>();
 			}
+			// The new camera carries an enabled AudioListener while the menu
+			// camera's is still live too: two enabled listeners make Unity
+			// compute every sound twice and warn about it every frame for as
+			// long as they coexist. The policy ("deepest live camera keeps
+			// the ear") lives with the music director; this is the frame the
+			// second ear is born, so ask for the re-scan now rather than
+			// leaving the duplication standing until the next routine poll.
+			EngineMusic.MusicDirector.RecheckListeners();
 		}
 
 		private void Update()

@@ -140,8 +140,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		}
 
 		/// <summary>
-		/// Keeps at least one AudioListener alive, so the music is never
-		/// silently inaudible.
+		/// Listener governance: never zero ears, never two.
 		/// </summary>
 		/// <remarks>
 		/// THE CAUSE OF A SECOND-WORTH OF SILENCE ON EVERY LOAD. This project
@@ -154,14 +153,26 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		///
 		/// Unity has no "keep the last listener" behaviour, so this supplies
 		/// one - but ONLY while there is nothing else. The moment any other
-		/// live listener exists this one is switched off again, so there are
-		/// never two. Two listeners is not a quiet version of one: Unity
-		/// warns about it and the audio ends up somewhere arbitrary.
+		/// live listener exists this one is switched off again.
 		///
-		/// Re-checked on every scene load and unload, so the gap is covered
-		/// from the frame the camera goes rather than up to a poll later, and
-		/// on a slow poll after that as a backstop for listeners destroyed by
-		/// something that is not a scene event.
+		/// THE OTHER HALF, found the first time a world session was read
+		/// against: BOTH camera listeners ship enabled, and both cameras are
+		/// alive in a world (MenuCamera renders at depth -1 under the
+		/// GameCamera at 1). Unity computes every sound once per listener and
+		/// warns about the two of them every frame for as long as they
+		/// coexist - one world session logs hundreds of thousands of lines of
+		/// it. Two listeners is not a quiet version of one: the audio ends up
+		/// somewhere arbitrary. So when more than one ear is live, exactly
+		/// one survives - the deepest active camera's, because that is the
+		/// camera whose view the listener should be hearing - and the rest
+		/// stand down. A parked listener is re-mounted the moment nothing is
+		/// live, so the menu gets its own ear back when the world session
+		/// ends, before this system needs to manufacture its fallback.
+		///
+		/// Re-checked on every scene load and unload, in the frame the game
+		/// camera is created (RecheckListeners - the second ear's birth
+		/// frame), and on a slow poll after that as a backstop for listeners
+		/// destroyed by something that is not a scene event.
 		/// </remarks>
 		private void EnsureMusicStaysAudible()
 		{
@@ -174,27 +185,82 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			AudioListener[] all = Object.FindObjectsOfType<AudioListener>(true);
 
-			bool anotherLive = false;
+			// One pass to count the live ears, pick the keeper (deepest live
+			// camera's listener) and remember the deepest parked one for the
+			// re-mount case. No name matching, no scene-object hunting: every
+			// listener knows its own camera.
+			int liveCount = 0;
+			AudioListener keeper = null;
+			float keeperDepth = float.NegativeInfinity;
+			AudioListener reMount = null;
+			float reMountDepth = float.NegativeInfinity;
 
 			for (int i = 0; i < all.Length; i++)
 			{
-				if (all[i] == null || all[i] == fallbackListener)
+				AudioListener listener = all[i];
+				if (listener == null || listener == fallbackListener)
 				{
 					continue;
 				}
 
-				if (all[i].enabled && all[i].gameObject.activeInHierarchy)
+				Camera camera = listener.GetComponent<Camera>();
+				float depth = (camera != null) ? camera.depth : float.NegativeInfinity;
+
+				if (listener.enabled && listener.gameObject.activeInHierarchy)
 				{
-					anotherLive = true;
-					break;
+					liveCount++;
+					if (keeper == null || depth > keeperDepth)
+					{
+						keeper = listener;
+						keeperDepth = depth;
+					}
+				}
+				else if (listener.gameObject.activeInHierarchy && (reMount == null || depth > reMountDepth))
+				{
+					reMount = listener;
+					reMountDepth = depth;
 				}
 			}
 
-			if (anotherLive)
+			if (liveCount > 0)
 			{
 				if (fallbackListener != null && fallbackListener.enabled)
 				{
 					fallbackListener.enabled = false;
+				}
+
+				for (int i = 0; i < all.Length; i++)
+				{
+					AudioListener listener = all[i];
+					if (listener == null || listener == keeper || listener == fallbackListener)
+					{
+						continue;
+					}
+
+					if (listener.enabled && listener.gameObject.activeInHierarchy)
+					{
+						listener.enabled = false;
+						Debug.Log("Music: the deepest live camera keeps the scene's ear - "
+							+ listener.gameObject.name + "'s listener stands down while "
+							+ keeper.gameObject.name + "'s is live.");
+					}
+				}
+
+				return;
+			}
+
+			// No live ear. Re-mount the deepest camera listener that is parked
+			// (the menu camera the last world session stood down) - it is the
+			// real ear of whatever screen is running now - and only fall back
+			// to this system's own listener when no camera carries one at all,
+			// which is the LoadingScene gap this method was born to cover.
+			if (reMount != null)
+			{
+				if (!reMount.enabled)
+				{
+					reMount.enabled = true;
+					Debug.Log("Music: nothing in this scene can hear anything, so "
+						+ reMount.gameObject.name + "'s parked listener is back on.");
 				}
 
 				return;
@@ -213,6 +279,24 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 					+ " the music has supplied its own listener until one"
 					+ " exists again.");
 			}
+		}
+
+		/// <summary>
+		/// Ask for a listener re-scan right now: the next poll runs this frame.
+		/// </summary>
+		/// <remarks>
+		/// Called from the frame a new camera (and with it a new ear) comes
+		/// into being, so the exactly-one policy settles in that same frame
+		/// instead of leaving the second ear live until the next routine poll.
+		/// </remarks>
+		public static void RecheckListeners()
+		{
+			if (instance == null)
+			{
+				return;
+			}
+
+			instance.nextListenerCheck = 0f;
 		}
 
 		// Two handlers rather than one shared, because the two events do NOT
