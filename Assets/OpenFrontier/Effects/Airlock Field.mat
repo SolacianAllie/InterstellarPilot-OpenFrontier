@@ -22,12 +22,22 @@ Material:
   m_LockedProperties:
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
+    m_TexEnvs:
+    - _SimpleTex:
+        m_Texture: {fileID: 2800000, guid: b966e8a939f61f94b8a38353ca4686e1, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _AirlockFallback: 0
     - _ContactBoost: 3
     - _ContactThickness: 0.35
     - _Intensity: 1.5
+    - _NearFade: 0.6
+    - _ShimmerDepth: 0.18
+    - _ShimmerSpeed: 0.55
+    - _SweepSpeed: 0.21
+    - _SweepStrength: 0.35
     m_Colors:
     - _Color: {r: 0.25, g: 0.7, b: 1, a: 1}
   m_BuildTextureStacks: []
