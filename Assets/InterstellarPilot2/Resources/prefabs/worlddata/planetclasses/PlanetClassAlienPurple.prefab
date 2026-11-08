@@ -44,4 +44,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: acb604d1d2525471b3a750313eaeea23, type: 3}
   m_Name:
   m_EditorClassIdentifier:
-  PlanetSprite: {fileID: 21300000, guid: ede9d9bcde09bdc46aaf40a4f9ffa30d, type: 2}
+  PlanetSprite: {fileID: 21300000, guid: 48773f7ecefd761b38acd1352e1c4b68, type: 3}

@@ -1,0 +1,201 @@
+#!/usr/bin/env bash
+#
+# Offline verification for Open Frontier. Catches 99% of what would otherwise
+# wait for an editor refocus.
+#
+#   bash tools/harness/check.sh            # build + check
+#   bash tools/harness/check.sh --regen    # regenerate the csproj set first
+#   HARNESS_JOBS=12 bash tools/harness/check.sh
+#
+# This lives in the repo rather than /tmp because /tmp is wiped. It was
+# originally in /tmp/opencode/harness and lost twice to a power cut and a
+# /tmp clear, which cost a rebuild of gen.py from scratch both times.
+#
+# WHY IT IS FAST (4.6s warm, 16.6s cold in the original; if it reads 70s
+# again, one of these has been lost):
+#   1. CSafeLoader, not SafeLoader. Same parser, compiled: 6.7s -> 0.9s
+#      over 200 prefabs.
+#   2. The prefab check caches on (mtime_ns, size) and stores the MESSAGES,
+#      never just the verdict. Caching the boolean would make a second run
+#      of a failing check print "0 failures" and quietly invert the check.
+#   3. The projects build in parallel (xargs -P 6). They are independent:
+#      no generated csproj has a ProjectReference, because each references
+#      Unity's own DLLs out of Library/ScriptAssemblies rather than each
+#      other, so there is no ordering to respect. Capped at 6 because the
+#      editor is usually open and starving it to save three seconds is a
+#      bad trade.
+#   4. --no-restore on every build. NuGet restore runs whether anything
+#      changed or not: 853ms against 521ms.
+
+set -uo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT="$(cd "$HERE/../.." && pwd)"
+BUILD="$HERE/build"
+CHECKS="$HERE/checks"
+JOBS="${HARNESS_JOBS:-6}"
+
+# dotnet: prefer whatever is on PATH, fall back to a full dotnet 8 under the
+# Unity editor install (~/Unity/Hub/Editor/*/Editor/Data/DotNetSdk). This
+# machine can lose PATH between sessions (a machine restart dropped it: every
+# build failed "command not found" while restore was silenced), so resolve it
+# here, loudly, instead of losing every project in one run.
+DOTNET="$(command -v dotnet 2>/dev/null || true)"
+if [ -z "$DOTNET" ]; then
+  for d in ~/Unity/Hub/Editor/*/Editor/Data/DotNetSdk/dotnet; do
+    [ -x "$d" ] && DOTNET="$d" && DOTNET_ROOT="$(cd "$(dirname "$d")" && pwd)" && export DOTNET_ROOT && break
+  done
+fi
+if [ -z "$DOTNET" ]; then
+  echo "no dotnet found: neither on PATH nor under ~/Unity/Hub/Editor/*/Editor/Data/DotNetSdk" >&2
+  exit 2
+fi
+export DOTNET
+
+REGEN=0
+for arg in "$@"; do
+  case "$arg" in
+    --regen) REGEN=1 ;;
+    -h|--help) sed -n '2,12p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    *) echo "unknown option: $arg" >&2; exit 2 ;;
+  esac
+done
+
+cd "$PROJECT"
+
+red()   { printf '\033[31m%s\033[0m\n' "$*"; }
+green() { printf '\033[32m%s\033[0m\n' "$*"; }
+head1() { printf '\n\033[1m%s\033[0m\n' "$*"; }
+
+FAILED=0
+note_fail() { FAILED=1; red "  FAIL: $*"; }
+
+# ---------------------------------------------------------------- generate
+GEN=0
+if [ "$REGEN" = 1 ] || [ ! -d "$BUILD" ]; then
+  GEN=1
+  head1 "generating projects"
+  python3 "$HERE/gen.py" || exit 1
+fi
+# A regenerated csproj set invalidates the restore, so it is redone rather
+# than reused. Deciding this from `$BUILD` alone would skip the restore on a
+# fresh clone, because generating creates the directory first.
+if [ "$REGEN" = 1 ]; then
+  rm -f "$BUILD/.restored"
+fi
+
+# gen.py --check is the guard against a green run that compiled almost
+# nothing: it asserts the generated count matches the .asmdef files on disk,
+# and that every .cs under Assets is in some csproj. Both were verified by
+# breaking gen.py on purpose. If either fires, do NOT work around it -- the
+# harness has stopped seeing your code.
+head1 "guards"
+if ! python3 "$HERE/gen.py" --check; then
+  note_fail "gen.py --check (project count / stale .cs)"
+fi
+
+# ------------------------------------------------------------------- build
+head1 "building $JOBS at a time"
+if [ ! -f "$BUILD/.restored" ]; then
+  # Restore is only needed when the csproj set changes, which is what
+  # --regen and a cold build are. After this, --no-restore is correct.
+  # A failed restore must NOT touch the marker: silenced restore output
+  # plus an unconditional marker produced a machine-local state where every
+  # later --no-restore build failed as FAIL without a single error shown.
+  RESTORE_FAILED=""
+  for p in "$BUILD"/*/; do
+    n="$(basename "$p")"
+    if ! "$DOTNET" restore "$p$n.csproj" -v q --nologo >/dev/null 2>&1; then
+      RESTORE_FAILED="$RESTORE_FAILED $n"
+    fi
+  done
+  if [ -n "$RESTORE_FAILED" ]; then
+    note_fail "dotnet restore failed for:$RESTORE_FAILED (marker left off, builds retried next run)"
+  else
+    touch "$BUILD/.restored"
+  fi
+fi
+
+RESULTS="$(mktemp)"
+WORKER="$(mktemp)"
+trap 'rm -f "$RESULTS" "$WORKER"' EXIT
+
+# The build step lives in a file, not in an inline `sh -c` string. Inline,
+# $0 is the shell itself rather than the build directory, and a quoting slip
+# there fails in a way that looks like a compile error.
+cat > "$WORKER" <<'WORKER_EOF'
+#!/usr/bin/env bash
+build_root="$1"; name="$2"
+out=$("$DOTNET" build "$build_root/$name/$name.csproj" --no-restore -v q --nologo 2>&1)
+if printf '%s' "$out" | grep -q 'Build succeeded'; then
+  echo "PASS $name"
+else
+  echo "FAIL $name"
+  printf '%s\n' "$out" \
+    | grep -oE 'error CS[0-9]+: [^[]*' | sort -u | head -8 | sed 's|^|    |'
+fi
+WORKER_EOF
+chmod +x "$WORKER"
+
+for p in "$BUILD"/*/; do
+  printf '%s\n' "$(basename "$p")"
+done | xargs -P "$JOBS" -I{} "$WORKER" "$BUILD" {} > "$RESULTS"
+
+NPASS=0; NFAIL=0
+while read -r line; do
+  case "$line" in
+    PASS|FAIL) echo "worker emitted an empty verdict line: $line" >&2; continue ;;
+    PASS*) NPASS=$((NPASS+1)); green "  $line" ;;
+    FAIL*) NFAIL=$((NFAIL+1)); red "$line" ;;
+    # Error detail lines carry no verdict - printing them here would
+    # double-count files as failed projects (a real failure with 5 error
+    # lines reads "6 of N", and N inflates by the error-line count).
+    *) red "    $line" ;;
+  esac
+done < "$RESULTS"
+
+# A zero-count build is this harness's signature failure mode: paths wrong,
+# nothing compiled, and every test that did run passed.
+if [ "$NPASS" = 0 ]; then
+  note_fail "no project built at all -- gen.py paths are wrong"
+elif [ "$NFAIL" -gt 0 ]; then
+  note_fail "$NFAIL of $((NPASS+NFAIL)) projects failed to compile"
+else
+  green "  $NPASS projects, $(grep -ho '<Compile Include' "$BUILD"/*/*.csproj | wc -l | tr -d ' ') .cs files"
+fi
+
+# ------------------------------------------------------------------ checks
+head1 "checks"
+for c in "$CHECKS"/*.py; do
+  [ -e "$c" ] || continue
+  name="$(basename "$c" .py)"
+  if out="$(python3 "$c" 2>&1)"; then
+    printf '%s\n' "$out" | sed '/^$/d' | sed 's/^/  /'
+  else
+    printf '%s\n' "$out" | sed '/^$/d' | sed 's/^/  /'
+    note_fail "$name"
+  fi
+done
+
+# --------------------------------------------------------------- mesh export
+# tools/mesh decodes a Unity Mesh .asset and hands it to Blender's own
+# exporter, producing a binary FBX. It is NOT run by default: it is a
+# tool, not a check, and it needs blender on PATH. Run it directly --
+#   bash tools/mesh/run.sh <Mesh.asset> [out.fbx]
+# There used to be an fbx writer check here. It was removed because the
+# ASCII writer it verified could not produce a file Blender will open, and a
+# check that guards a tool nobody can use is worse than no check.
+
+# ------------------------------------------------------------------ verdict
+head1 ""
+if [ "$FAILED" = 0 ]; then
+  green "ALL CHECKS PASSED"
+  echo
+  echo "  A clean run is necessary but not sufficient: the harness does not"
+  echo "  define every symbol the editor defines, and it cannot compile HLSL."
+  echo "  Verify with:  grep -c \"error CS\" Logs/Editor.log   (after the last"
+  echo "  import line)   and   grep \"Shader error\" Logs/Editor.log"
+  exit 0
+fi
+red "CHECKS FAILED"
+exit 1

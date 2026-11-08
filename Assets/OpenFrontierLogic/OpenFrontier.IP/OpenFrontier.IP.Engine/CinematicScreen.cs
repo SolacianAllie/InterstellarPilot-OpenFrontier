@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using DigitalRubyShared;
+using OpenFrontier.Gestures;
 using OpenFrontier.IP.UI;
 using UnityEngine;
 using Input = OpenFrontier.LegacyInput;
@@ -113,13 +113,13 @@ namespace OpenFrontier.IP.Engine
 				MaximumNumberOfTouchesToTrack = 1
 			};
 			tapGesture.StateUpdated += TapGesture_StateUpdated;
-			FingersScript.Instance.AddGesture(tapGesture);
+			GestureScript.Instance.AddGesture(tapGesture);
 		}
 
 		protected override void onDisable()
 		{
 			base.onDisable();
-			FingersScript.Instance.RemoveGesture(tapGesture);
+			GestureScript.Instance.RemoveGesture(tapGesture);
 		}
 
 		private void TapGesture_StateUpdated(GestureRecognizer gesture)

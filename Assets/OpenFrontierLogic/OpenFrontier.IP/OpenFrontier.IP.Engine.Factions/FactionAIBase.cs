@@ -1070,7 +1070,22 @@ namespace OpenFrontier.IP.Engine.Factions
 			}
 		}
 
-		private void Update()
+		/// <summary>
+		/// Per-frame AI upkeep. Called by the engine, not by Unity.
+		/// </summary>
+		/// <remarks>
+		/// Was a MonoBehaviour Update(). There is one FactionAIBase per AI
+		/// faction - 1,521 of them at 1024 sectors - so this cost ~1.1ms a frame
+		/// in dispatch. EngineASX.UpdateFactions drives them from the faction
+		/// list now.
+		///
+		/// Note the body is unchanged, including UpdateLight() running every
+		/// frame while only UpdateHeavy() sits on the 3s FactionAIUpdateInterval.
+		/// Throttling UpdateLight was considered and deliberately not done here:
+		/// unitsUnderAttackProcessor and attackModule are the reactive half of
+		/// this, and cutting them to 3s is a design change, not a refactor.
+		/// </remarks>
+		public void Tick()
 		{
 			if (engine == null || !GameController.Instance.GameSettings.DebugSettings.FactionAIUpdateEnabled)
 			{

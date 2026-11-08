@@ -105,6 +105,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   ClassName: Small Satellite
   Mass: 1
+  RadarCrossSection: 22.1
   Seed: -1
   CollisionCollider: {fileID: 135709867586078768}
   Radius: 2.65

@@ -51,6 +51,8 @@ MonoBehaviour:
   - {fileID: 114724804207875695, guid: 89773f14e95899044a9ff874f77534de, type: 2}
   - {fileID: 114724804207875695, guid: 90a903ab38491f04baade6f9d59ed735, type: 2}
   DefaultSectorCount: {fileID: 114724804207875695, guid: b037922487904024287f8694dadf3da0, type: 2}
+  MobileMaxSectorCount: 128
+  ForceMobileLimit: 0
   GenerationDefaultMaxWormholes: 5
   DefaultDiscoverAllSectors: 0
   DefaultDiscoverEverything: 0

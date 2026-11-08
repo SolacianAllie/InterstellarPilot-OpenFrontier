@@ -496,6 +496,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   ClassName: Scrapyard
   Mass: 1
+  RadarCrossSection: 2846.3
   Seed: -1
   CollisionCollider: {fileID: 136371939378208658}
   Radius: 30.1

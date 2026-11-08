@@ -731,7 +731,12 @@ namespace OpenFrontier.IP.Engine
 			else if (hasGeneratedName)
 			{
 				Name = EngineASX.Instance.CharacterNames.GetName(generatedFirstNameId, generatedLastNameId);
-				ShortName = ShortenName(Name);
+				// ShortenName initialises every word but the last, so an
+				// epithet-bearing pilot would come out as "J. the Bagel Thief".
+				// CharacterNames owns that case and returns the given name
+				// instead, or null when this pilot has an ordinary surname.
+				ShortName = EngineASX.Instance.CharacterNames.GetShortName(generatedFirstNameId, generatedLastNameId)
+					?? ShortenName(Name);
 			}
 			else
 			{
@@ -762,6 +767,34 @@ namespace OpenFrontier.IP.Engine
 
 		public void AssignFirstPilotRankIfNull()
 		{
+			// Freelancers get no rank.
+			//
+			// A freelancer is a lone pilot running a single ship -
+			// Faction.IsFreelancer is AISettings.PreferSingleShip - and because
+			// they never build up the ship count PromotePilotsFromShipSeeder needs
+			// to walk them up a ladder, every single one of them sat on Ranks[0]
+			// of the Freelancer ladder, which is "Freehand". A hundred lone
+			// pirates who all carry the identical title is what reads wrong.
+			//
+			// This is not a new policy. EngineASX already excludes freelancers
+			// when it runs rank assignment:
+			//
+			//   if (!faction.IsFreelancer && faction.IsAIFactionType &&
+			//       faction.PilotRankingSystem != null)
+			//       faction.FactionAI.AssignAllPilotRanks(updateDebugInfo: true);
+			//
+			// so a freelancer's rank was written once at creation and then never
+			// maintained. Guarding here makes all seven call sites agree with that
+			// instead of leaving each of them to decide.
+			//
+			// A null Rank is already safe everywhere it is read: GetNameAndRank
+			// falls back to the bare name, FactionLeaderPicker null-checks, and
+			// the exporter writes RankId -1, which GetPilotRankById maps back to
+			// null through its TryGetValue miss.
+			if (faction != null && faction.IsFreelancer)
+			{
+				return;
+			}
 			if (!IsAutoPilot && Rank == null && faction.PilotRankingSystem != null && faction.PilotRankingSystem.Ranks.Count > 0)
 			{
 				ChangeRank(faction.PilotRankingSystem.Ranks[0].Rank);

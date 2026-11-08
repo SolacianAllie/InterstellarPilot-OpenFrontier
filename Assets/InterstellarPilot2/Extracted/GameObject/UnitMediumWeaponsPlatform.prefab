@@ -195,6 +195,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   ClassName: Medium Weapons Platform
   Mass: 0.5
+  RadarCrossSection: 102.1
   Seed: -1
   CollisionCollider: {fileID: 135372920208702427}
   Radius: 5.7

@@ -170,7 +170,27 @@ namespace OpenFrontier.IP.Engine
 			}
 			else if (ProjectileClass.IsHoming)
 			{
-				transform.rotation = sourceActiveTurret.transform.rotation;
+				// A homing missile used to leave along the turret's rotation,
+				// on the reasonable assumption that its seeker would take over
+				// within a frame or two. That assumption does not hold for a
+				// missile whose seeker may never take over at all: a Small
+				// Rocket fired with no beam on the target is a dumb rocket, and
+				// a dumb rocket has to leave the tube pointed at what it is
+				// shooting at. Before it had a seeker it did, and it must not
+				// quietly stop.
+				//
+				// Aiming at the target first costs a guided missile nothing -
+				// the seeker corrects from here within a frame - and saves an
+				// unguided one the whole difference between a hit and a wide
+				// miss.
+				if (ProjectileClass.RotateTowardsTarget && Target != null)
+				{
+					SetRotationToTarget(Target.transform.position);
+				}
+				else
+				{
+					transform.rotation = sourceActiveTurret.transform.rotation;
+				}
 			}
 			else
 			{

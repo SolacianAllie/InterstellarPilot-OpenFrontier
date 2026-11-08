@@ -46,7 +46,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   AsteroidFieldPrefabSettings: {fileID: 114724804207875695, guid: 83b70384144d4034a8b84b4b387229cd, type: 2}
   AsteroidTypeSprite: {fileID: 21300000, guid: 92ede183d174fec4aa0fae2ff6ba41ab, type: 2}
-  UniverseMapSectorTypeSprite: {fileID: 21300000, guid: 60ab893b433f0544fbc2e5abc0967177, type: 2}
+  UniverseMapSectorTypeSprite: {fileID: 21300000, guid: 4a5d3a0b0e6757df89b5240fff583594, type: 3}
   AsteroidUnitPrefabs:
   - {fileID: 114618682377417806, guid: 238f37cdeb828db43b5c8a46d1a13a68, type: 2}
   AsteroidClusterPrefabs:

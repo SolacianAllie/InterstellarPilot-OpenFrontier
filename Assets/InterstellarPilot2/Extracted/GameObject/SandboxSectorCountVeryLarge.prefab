@@ -45,5 +45,5 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier:
   Name: Very Large
-  MinCount: 64
-  MaxCount: 64
+  MinCount: 1024
+  MaxCount: 1024

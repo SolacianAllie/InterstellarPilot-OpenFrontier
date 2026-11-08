@@ -4,3 +4,26 @@ Alpha
 Beta
 Sigma
 Delta
+Gamma
+Epsilon
+Zeta
+Eta
+Theta
+Iota
+Kappa
+Lambda
+Mu
+Nu
+Xi
+Omicron
+Pi
+Rho
+Upsilon
+Phi
+Chi
+Psi
+Omega
+Alpha Minor
+Beta Major
+Tau Ceti
+Delta Minor

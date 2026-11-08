@@ -4,6 +4,7 @@ using OpenFrontier.IP.Common;
 using OpenFrontier.IP.Engine.Comms;
 using OpenFrontier.IP.Engine.Factions;
 using OpenFrontier.IP.Engine.Pathfinding;
+using OpenFrontier.IP.Engine.StationNaming;
 using OpenFrontier.IP.Engine.TargetScanning;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -173,6 +174,27 @@ namespace OpenFrontier.IP.Engine
 			if (addCargoLoadout && component.Components != null)
 			{
 				component.Components.AddDefaultCargoLoadout();
+			}
+			// Stations are named HERE, beside AutoAssignShipName above, and not in
+			// one of the factories. This is the primitive every unit goes through -
+			// FactionStationBuilder, the seeders, the mission specs,
+			// ActiveBuildStationOrder, the multiplayer commands - so putting it in a
+			// factory leaves every other path naming nothing, silently, because a
+			// station with an empty UnitName is not an error, it is just
+			// "Outpost QQ3".
+			//
+			// Bars are excluded: they are named from their owning faction's name,
+			// and that assignment happens after this call, so naming them here
+			// would be work thrown away.
+			//
+			// Salt is Seed, not the sector id. Seed is a per-unit random value set
+			// in Init, so two outposts in one sector differ; the sector id would
+			// give every same-purpose station in a sector the same name.
+			if (component.UnitClass != null && component.UnitType == UnitType.Station
+				&& component.UnitClass.StationPurpose != StationPurpose.Bar
+				&& component.UnitClass.StationPurpose != StationPurpose.None)
+			{
+				StationNamer.NameIfUnnamed(component, component.Seed);
 			}
 			return component;
 		}

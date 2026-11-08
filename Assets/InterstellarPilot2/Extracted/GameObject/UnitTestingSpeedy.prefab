@@ -159,6 +159,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   ClassName: Speedy
   Mass: 0.2
+  RadarCrossSection: 46.3
   Seed: -1
   CollisionCollider: {fileID: 135709867586078768}
   Radius: 3.84

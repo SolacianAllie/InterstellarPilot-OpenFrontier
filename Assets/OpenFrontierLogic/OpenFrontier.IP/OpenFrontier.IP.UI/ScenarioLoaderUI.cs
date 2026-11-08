@@ -1,4 +1,5 @@
 using OpenFrontier.IP.Engine;
+using OpenFrontier.IP.Engine.EngineMusic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -82,6 +83,15 @@ namespace OpenFrontier.IP.UI
 				{
 					Time.timeScale = 0f;
 					Debug.Log($"Scenario loading Scene: {loadData.ScenarioInfo.TargetSceneName} SaveGame: \"{loadData.FullSaveGamePath}\"");
+
+					// The music needs to know the moment the menu is over, and
+					// this is the only place that knows. Watching the engine
+					// for teardown does not work - it is not destroyed, the
+					// same instance carries the menu world and then the galaxy
+					// one - and watching for a scene change would cut the music
+					// every time a submenu was opened. Same assembly, so there
+					// is no reference to add and no event to subscribe to.
+					MusicDirector.ScenarioLoadCommitted();
 					if (!string.IsNullOrEmpty(loadData.ScenarioInfo.TargetSceneName))
 					{
 						QueueSceneLoad(loadData);
@@ -99,10 +109,11 @@ namespace OpenFrontier.IP.UI
 
 		private void QueueSceneLoad(ScenarioLoadData loadData)
 		{
-			if (GameController.Instance.MusicPlayer != null)
-			{
-				GameController.Instance.MusicPlayer.ClearAllTracksWithFadeOut(0.8f);
-			}
+			// No fade here. This faded the OLD player, and the equivalent for
+			// this system is ScenarioLoadCommitted, called from TryLoadScenario
+			// above - the same call, on the right system, at the moment the
+			// load is actually committed. Two fades for one event is how they
+			// ended up disagreeing about which one the player heard.
 			if (LoadingScenario != null)
 			{
 				LoadingScenario(this, queuedLoadData);

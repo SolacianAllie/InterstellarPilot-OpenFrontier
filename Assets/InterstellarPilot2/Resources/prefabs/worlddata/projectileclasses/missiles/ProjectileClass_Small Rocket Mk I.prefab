@@ -64,9 +64,15 @@ MonoBehaviour:
   HomingAquiredTargetThreshold: 0.5
   HomingCanLoseTarget: 1
   HomingLostTargetDotThreshold: 0.25
-  IsHoming: 0
+  IsHoming: 1
   IsMine: 0
   GuidanceType: 0
+  SeekerConeAngle: 25
+  SeekerReacquireAngle: 45
+  SeekerLockPersistence: 1.5
+  SeekerBlindDrift: 8
+  SeekerCheckInterval: 0.1
+  SignatureFrontFactor: 0.9
   MaxMoveRange: 4000
   MiningDamageMultiplier: 0.1
   MoveSpeed: 160
@@ -76,14 +82,17 @@ MonoBehaviour:
   SetDamageUsingEnergyCost: 0
   ShieldDamageType: 0
   ThrustPower: 200
+  LateralThrustPower: 52
+  SelfDestructDelay: 6
+  TangibleDelay: 1
+  TangibleRangeFromLauncher: 80
   MinThrust: 0.8
   TimedDestruction: 1
   TimedExplosionInaccuracy: 8
-  TurnRate: 90
+  TurnRate: 70
   InheritParentVelocity: 0
   InheritParentVelocityMultiplier: 1
   InaccuracyMultiplier: 0.8
-  MissileIntelligentGuidanceMaxDist: 200
   MissileIntelligentGuidance: 0
   MinTimeBeforeGuidanceActivation: 0
   MaxTimeBeforeGuidanceActivation: 0

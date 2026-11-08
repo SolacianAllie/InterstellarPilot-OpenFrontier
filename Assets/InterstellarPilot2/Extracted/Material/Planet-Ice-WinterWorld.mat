@@ -58,6 +58,7 @@ Material:
       _UVSec: 0
       _ZWrite: 1
     m_Colors:
+    - _AtmoColor: {r: 0.4, g: 0.9, b: 1, a: 1}
       _AtmosFar: {r: 0.5798772, g: 0.5988371, b: 0.7830189, a: 1}
       _AtmosNear: {r: 0.75294125, g: 1, b: 1, a: 1}
       _Color: {r: 1, g: 1, b: 1, a: 1}

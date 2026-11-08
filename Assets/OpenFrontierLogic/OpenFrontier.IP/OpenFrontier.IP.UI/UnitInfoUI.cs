@@ -74,7 +74,7 @@ namespace OpenFrontier.IP.UI
 					{
 						cargoLastCount = foreignUnit.CargoComponent.Quantity;
 					}
-					ClassLabel.gameObject.SetActive(isTargetAShip());
+					ClassLabel.gameObject.SetActive(ShouldShowClassLabel());
 				}
 				TargetMissileLockController.TargetUnit = foreignUnit;
 			}
@@ -128,13 +128,29 @@ namespace OpenFrontier.IP.UI
 			}
 		}
 
-		private bool isTargetAShip()
+		private bool ShouldShowClassLabel()
 		{
-			if (foreignUnit != null && foreignUnit.UnitClass.UnitType == UnitType.Ship)
+			if (foreignUnit == null)
+			{
+				return false;
+			}
+			if (foreignUnit.UnitClass.UnitType == UnitType.Ship)
 			{
 				return foreignUnit.UnitClass.ShipType == ShipType.Normal;
 			}
-			return false;
+			// Stations get their service shown here too. An unnamed station used
+			// to read "Outpost QQ3", so the type came free with the designation.
+			// Now that every station carries a generated name, "Northwind
+			// Laboratory" alone says nothing about what the place does, and the
+			// ClassText slot below the name is already there and already laid
+			// out - it was just hidden for anything that was not a ship.
+			//
+			// Bars are excluded because their name is already prefixed "Bar",
+			// and StationPurpose.None covers waypoints and other non-stations
+			// that borrow the station prefab.
+			return foreignUnit.UnitType == UnitType.Station
+				&& foreignUnit.UnitClass.StationPurpose != StationPurpose.None
+				&& foreignUnit.UnitClass.StationPurpose != StationPurpose.Bar;
 		}
 
 		private void RefreshStatic()
@@ -158,6 +174,15 @@ namespace OpenFrontier.IP.UI
 					{
 						ClassLabel.text += $" \"{foreignUnit.Components.ShipName}\"";
 					}
+				}
+				break;
+			case UnitType.Station:
+				// The service, e.g. "Laboratory", "Shipyard", "Trade Station".
+				// Same source the old designation used, so the wording matches
+				// what an unnamed station used to say.
+				if (ClassLabel != null)
+				{
+					ClassLabel.text = foreignUnit.GetClassAndSeriesName();
 				}
 				break;
 			case UnitType.Cargo:

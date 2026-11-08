@@ -79,6 +79,18 @@ namespace OpenFrontier.IP.SavedGames.V2.Model
 		Ship_PioneerA = 28000,
 		Planet_AlienOrange = 100070,
 		Planet_AlienPurple = 100080,
+		// Custom planets. These ids are NOT cosmetic: SaveGameModelExporter
+		// writes (ModelUnitClass)unitClass.UniqueID into every save, and
+		// GetUnitClassById reads it back out of unitClassMap. So this number is
+		// the planet's identity on disk, and changing one after a save has been
+		// made orphans that planet in that save -- GetUnitClassById returns
+		// null with no error, and the planet silently fails to appear.
+		//
+		// 100081 and 100082 were free: planets occupy 100000-100080 in steps of
+		// ten and moons start at 100136, so the whole 100081-100135 band is
+		// unallocated. Stepping by ten keeps that spacing for the next one.
+		Planet_Alpine1 = 100081,
+		Planet_DyingEarth = 100082,
 		Planet_DevoidOfLife = 100060,
 		Planet_Earth = 100040,
 		Planet_FrozenTundra = 100020,

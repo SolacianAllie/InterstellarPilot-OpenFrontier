@@ -41,6 +41,7 @@ Material:
       _InvFade: 1
       _LightScale: 1.63
     m_Colors:
+    - _AtmoColor: {r: 0.4, g: 0.9, b: 1, a: 1}
       _AtmosFar: {r: 0.619403, g: 0.44103613, b: 0.20800848, a: 1}
       _AtmosNear: {r: 0.92537314, g: 0.83419764, b: 0.5179327, a: 1}
       _Color: {r: 1, g: 1, b: 1, a: 1}

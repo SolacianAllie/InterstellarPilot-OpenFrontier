@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using OpenFrontier.IP.Common;
 using OpenFrontier.IP.Engine.Core.Units;
 using OpenFrontier.IP.Engine.Dialog;
@@ -25,6 +26,34 @@ namespace OpenFrontier.IP.Engine
 		private float initTime;
 
 		public float Mass = 1f;
+
+		/// <summary>
+		/// How much of this thing a radar sees, in square metres of frontal
+		/// area. Entirely separate from how hot it is.
+		/// </summary>
+		/// <remarks>
+		/// This is the quantity the reference calls RCS, and the reason it has to
+		/// be its own number is that radar and infrared are not the same
+		/// measurement of the same ship. A radar returns what is physically
+		/// there; an infrared seeker returns what is running its engines. A shut
+		/// engine changes one and not the other, and a trade station has no
+		/// engines at all and is the largest target in the game.
+		///
+		/// It has to be authored rather than derived. Mass is useless as a
+		/// proxy - every station in the game has a mass of 1, identical to a
+		/// Hauler, because mass is there for acceleration and has nothing to do
+		/// with size.
+		///
+		/// The values on the existing prefabs are the area of the unit's own
+		/// collision sphere, pi times Radius squared, which is a real
+		/// measurement of each hull rather than an invention. They run from
+		/// about thirteen square metres for a Ranger to over twelve thousand for
+		/// a trade station.
+		///
+		/// Zero means this unit has no radar signature at all, which is what an
+		/// asteroid or a piece of debris should read as.
+		/// </remarks>
+		public float RadarCrossSection;
 
 		/// <summary>
 		/// This unit's mass before any component mass is added. Only meaningful
@@ -346,8 +375,86 @@ namespace OpenFrontier.IP.Engine
 			set
 			{
 				activeUnit = value;
+				thrusterHeatCached = false;
 			}
 		}
+
+		/// <summary>
+		/// How hot this ship's thrusters make it look to an infrared seeker, at
+		/// full thrust.
+		/// </summary>
+		/// <remarks>
+		/// The sum of the particle sizes of every thruster on the model, which
+		/// is the whole measure of hull size the seeker has. Models carry
+		/// several - the Venture has twelve thruster sets, the Creon eight, a
+		/// shuttle two - so it has to be a sum over all of them and not a read
+		/// of the first, or most of a ship's signature goes missing.
+		///
+		/// Cached, because it costs a component lookup and the infrared seeker
+		/// asks every ship in the sector on every evaluation. A thruster cannot
+		/// change while the unit exists, so it is resolved once and only again if
+		/// the ActiveUnit is replaced.
+		///
+		/// Falls back to the average rather than to zero when there is no
+		/// ActiveUnit to read. A unit only gets one if it has a visual resource,
+		/// and a hull that happened to be missing its artwork must not thereby be
+		/// invisible to a heat seeker - that would be a bug that only shows up on
+		/// the ships nobody has looked at.
+		/// </remarks>
+		public float ThrusterHeat
+		{
+			get
+			{
+				if (!thrusterHeatCached)
+				{
+					float resolved = 0f;
+					if (activeUnit != null)
+					{
+						// Reused list rather than GetComponents, which allocates an
+						// array. This runs once per unit, but once per unit across
+						// a whole sector is still worth not garbage-collecting.
+						thrusterScratch.Clear();
+						activeUnit.GetComponents(thrusterScratch);
+						for (int i = 0; i < thrusterScratch.Count; i++)
+						{
+							UnitThruster thruster = thrusterScratch[i];
+							if (thruster != null && thruster.UnitThrusterClass != null)
+							{
+								resolved += thruster.UnitThrusterClass.TotalHeatSize;
+							}
+						}
+					}
+					thrusterHeat = resolved > 0f ? resolved : AverageThrusterHeat;
+					thrusterHeatCached = true;
+				}
+				return thrusterHeat;
+			}
+		}
+
+		private static readonly List<UnitThruster> thrusterScratch = new List<UnitThruster>(12);
+
+		/// <summary>
+		/// A middling thruster, used when a unit has no thruster to read. Sits
+		/// between the small and large particle sizes so a ship in that state is
+		/// neither the dimmest nor the brightest thing around.
+		/// </summary>
+		public const float AverageThrusterHeat = 1.72f;
+
+		/// <summary>
+		/// The countermeasure puff this unit is, if it is one, so a heat seeker
+		/// can find it without a component lookup per candidate.
+		/// </summary>
+		/// <remarks>
+		/// A countermeasure projectile is a Unit of type Other, which means the
+		/// infrared hunt walks straight past it - it has no engine, so it scores
+		/// as a dark ship. This is what makes an ECM's gas cloud worth locking
+		/// instead.
+		/// </remarks>
+		public Countermeasure CountermeasureCloud;
+
+		private float thrusterHeat;
+
+		private bool thrusterHeatCached;
 
 		public UnitComponentHolder Components
 		{
@@ -1373,13 +1480,22 @@ namespace OpenFrontier.IP.Engine
 		}
 
 		/// <summary>
-		/// Heat per second a ship sheds with no vents at all.
+		/// Heat per second a unit with no engine and no vents at all sheds.
 		/// </summary>
 		/// <remarks>
-		/// Without this a ship that fits no thermal vents can never cool once it
-		/// is warm, and overheat damage becomes an unrecoverable death spiral.
-		/// Small on purpose: enough that an unvented ship recovers slowly if it
-		/// stops its guns, not enough to make vents optional.
+		/// This used to be the fallback for any ship fitting no thermal vents,
+		/// and it is what stopped an unvented hull cooking - but it was wired
+		/// behind a null check on the component holder, which no ship ever has,
+		/// so it never actually ran for one. A ship with components and no vents
+		/// got an effective rate of zero and its heat climbed to the top of its
+		/// range and stayed there.
+		///
+		/// The fallback a ventless ship actually gets now lives on
+		/// <see cref="UnitComponentHolder.EffectiveVentRate"/> and is the engine's
+		/// own ThermalLoad, which is strictly better: it scales with the ship
+		/// rather than being one flat number for every hull in the game. What
+		/// remains here is for the things that have neither an engine nor a
+		/// component holder, where there is nothing better to go on.
 		/// </remarks>
 		public const float BaseVenting = 0.05f;
 
@@ -1716,6 +1832,19 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
+		// ---- planet sizing ----
+		//
+		// Planets and moons have NO size roll. A body's size is authored on
+		// its active unit prefab - the transform scale the hierarchy ships
+		// with - and every stage of the pipeline (placement, orbit, sector
+		// map) MEASURES that truth (CreatePlanetsSeeder.MeasureVisualRadius)
+		// rather than re-deriving or re-rolling it. The same prefab renders
+		// the same silhouette in every world, on every device, forever.
+		//
+		// The per-unit scaling this once did (Seed-rolled against
+		// UnitClassDisplayData VisualScaleMin/Max) is gone: sizes are
+		// decided by the prefabs, not by dice.
+
 		private void CreateActiveUnit()
 		{
 			string activeUnitResourceName = GetActiveUnitResourceName();
@@ -1879,9 +2008,182 @@ namespace OpenFrontier.IP.Engine
 			detectionRadius = CalculateDetectionRange();
 		}
 
+		/// <summary>
+		/// The constant that turns a radar cross section into a detection range.
+		/// </summary>
+		/// <remarks>
+		/// Calibrated against what the game already had. The authored
+		/// UnitClass.DetectionRange ran Ranger 700, Hornet 800, Venture 1100,
+		/// Creon 1300, Magnus 1800 - a factor of 2.57 from smallest to largest -
+		/// and the quarter power of the cross sections runs that same ladder at a
+		/// factor of 2.96. So the hand-picked numbers were already roughly
+		/// tracking size, and this makes it explicit and continuous rather than
+		/// twenty-eight separate guesses that happened to agree.
+		///
+		/// 270 puts a Ranger at about 650 and a Magnus at about 1920, which is
+		/// within a few hundred metres of what the game was doing before.
+		/// </remarks>
+		public const float RadarDetectionScale = 270f;
+
+		/// <summary>
+		/// The cross section of the smallest thing this game considers worth
+		/// seeing, used to draw the range within which everything is visible.
+		/// </summary>
+		/// <remarks>
+		/// The Ranger is 33 square metres and is the smallest hull in the game at
+		/// 28 for the Hornet, so this sits just below both. It is a floor rather
+		/// than a measurement, and it exists so the drawn circle has a definite
+		/// edge instead of being whatever the smallest class currently is.
+		/// </remarks>
+		public const float ReferenceCrossSection = 25f;
+
+		/// <summary>
+		/// How far away this hull can be picked up on a sensor, before anything
+		/// is switched off and nothing is multiplied.
+		/// </summary>
+		/// <remarks>
+		/// The same law the radar seekers use, on the same quarter power of the
+		/// same cross section, so a ship that is hard for a missile to see at
+		/// range is also hard to see at range. That is the whole point of putting
+		/// them on one number: a Creon being a large radar target is not a
+		/// property of missiles, it is a property of the Creon.
+		///
+		/// Zero cross section means no detection range at all, which is what an
+		/// asteroid or a piece of debris should read as.
+		/// </remarks>
+		public static float DetectionRangeFor(float radarCrossSection)
+		{
+			if (radarCrossSection <= 0f)
+			{
+				return 0f;
+			}
+			return RadarDetectionScale * Mathf.Pow(radarCrossSection, 0.25f);
+		}
+
+		/// <summary>
+		/// The scanner reach at which a sensor counts as ordinary and amplifies
+		/// a target's own detection range by exactly one.
+		/// </summary>
+		/// <remarks>
+		/// Deliberately the default ScanRange, so that an ordinary ship in an
+		/// ordinary game behaves as it did before any of this: one times.
+		///
+		/// This is the constant that makes sensor quality reach small targets,
+		/// which it did not used to. The scan range was a flat number added to
+		/// every target alike, so a ship with a ScanRange of 1500 and one with
+		/// 8000 differed by the same 6500 metres whether they were looking at a
+		/// fighter or a trade station. Better sensors bought range, and they
+		/// bought exactly as much of it on the small end of the ladder as on the
+		/// large, which is what made them not very good.
+		/// </remarks>
+		public const float SensorReferenceRange = 1500f;
+
+		/// <summary>
+		/// How far this unit's sensors reach, before they look at how big
+		/// anything is.
+		/// </summary>
+		/// <remarks>
+		/// A base every scanner shares plus whatever this hull adds. The base is
+		/// a gameplay constant - IntelSettings.SensorBaseRange - because the
+		/// hull's own ScanRange is 1 or 50 on almost every prefab in the game and
+		/// cannot be the thing that decides how far you can see.
+		/// </remarks>
+		public float SensorReach
+		{
+			get
+			{
+				float baseRange = GameController.Instance.GameSettings.IntelSettings.SensorBaseRange;
+				return (Components != null ? Components.ScanRange : 0f) + baseRange;
+			}
+		}
+
+		/// <summary>
+		/// How far away <paramref name="scanner"/> can see this hull, before
+		/// cloak and powered-component modifiers are applied to either side.
+		/// </summary>
+		/// <remarks>
+		/// The scanner's reach, plus this hull's own detection range amplified by
+		/// how good that scanner is relative to
+		/// <see cref="SensorReferenceRange"/>.
+		///
+		/// The two terms stay separate on purpose. A target's detection range is
+		/// a statement about the target - cloaking halves it, a ship with dead
+		/// engines loses a quarter of it, one that has just fired gets a bonus -
+		/// and none of those should change how far the scanner can reach. Only
+		/// the amplification is a function of the scanner.
+		///
+		/// The result is the trade the design is asking for. A skirmish sensor
+		/// picks out a Hornet far beyond where an ordinary sensor picks out a
+		/// trade station, so a good sensor genuinely closes the gap that being
+		/// small leaves you at.
+		/// </remarks>
+		public float VisibleRangeTo(Unit scanner)
+		{
+			float reach = scanner != null ? scanner.SensorReach : SensorReach;
+			return reach + CalculateDetectionRange() * (reach / SensorReferenceRange);
+		}
+
+		/// <summary>
+		/// The widest range any target could be seen at by a scanner with this
+		/// reach, which is what a broad-phase test has to cover.
+		/// </summary>
+		/// <remarks>
+		/// The intel scan finds candidates with a physics sphere and then tests
+		/// each one properly, so the sphere has to be at least as wide as the
+		/// widest thing a real answer could include - or a good target is culled
+		/// before the test that would have found it ever runs.
+		///
+		/// That was not a theoretical concern. The sphere was
+		/// IntelSettings.MaxScanRange plus the caller's reach, and a Magnus under
+		/// an ordinary sensor is now visible at more than three kilometres, so
+		/// the old sphere was dropping large ships on the floor.
+		///
+		/// Worth watching on a phone: this is the one place where making radar
+		/// work makes a sphere physically bigger.
+		/// </remarks>
+		public static float WidestVisibleRangeFrom(float scannerReach)
+		{
+			return scannerReach
+				+ DetectionRangeFor(LargestCrossSection) * (scannerReach / SensorReferenceRange);
+		}
+
+		/// <summary>
+		/// The cross section of the largest hull in the game, the trade station
+		/// at 12288 square metres.
+		/// </summary>
+		/// <remarks>
+		/// Used only to size a broad phase. It is the ceiling on what a scanner
+		/// can see, so anything sized against it is never too narrow.
+		/// </remarks>
+		public const float LargestCrossSection = 12288f;
+
+		/// <summary>
+		/// The range within which this unit can see anything at all, which is
+		/// what its drawn scan circle means.
+		/// </summary>
+		/// <remarks>
+		/// The edge of the circle is the smallest thing worth seeing. Anything
+		/// inside it is visible whatever it is; a battleship just outside is
+		/// visible and a fighter is not, and that is true of the map and of the
+		/// world because they are the same test.
+		///
+		/// It was a scanner's reach plus a flat 1500 pad from the HUD settings,
+		/// which was a decorative number that happened to be about the size of
+		/// the answer.
+		/// </remarks>
+		public float VisualRange
+		{
+			get
+			{
+				float reach = SensorReach;
+				return reach
+					+ DetectionRangeFor(ReferenceCrossSection) * (reach / SensorReferenceRange);
+			}
+		}
+
 		public float CalculateDetectionRange()
 		{
-			float num = unitClass.DetectionRange;
+			float num = DetectionRangeFor(RadarCrossSection);
 			if (unitGasCloud != null)
 			{
 				num *= unitGasCloud.GetDetectionRangeMultiplier();

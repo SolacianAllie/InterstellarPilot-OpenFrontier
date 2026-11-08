@@ -1,0 +1,778 @@
+Shader "OpenFrontier/Ship Cloak"
+{
+	// ---- cloaking hulls: the ship dissolves into bent light ----
+	//
+	// SHADER NAME -- SPACES ON PURPOSE (house rule, see
+	// OpenFrontier_ShipSurface.shader): "OpenFrontier/Ship Cloak" so a
+	// designer searching "ship cloak" finds it.
+	//
+	// WHAT THIS IS
+	//
+	// OpenFrontier/Ship Surface + a cloak block. Everything else is byte
+	// for byte the ship shader's contract: the same slots (_BaseMap,
+	// _BumpMap, _OcclusionMap, _MetallicGlossMap, _EmissionMap, the decal
+	// layers - pattern and superpower brand - and their emissive
+	// companion), the same keyword names
+	// (_EMISSION, _DECALEMISSION, _POWERDECAL, _METALLICSPECGLOSSMAP,
+	// _NORMALMAP, _OCCLUSIONMAP), the same trim list -- so a cloaking
+	// ship's material swaps onto this shader with its bindings and flags
+	// intact and looks IDENTICAL to its hull material. The only visual
+	// difference is what happens when ActiveUnit pushes the cloak values.
+	//
+	// It exists so the CLOAK OUTLINE becomes material state instead of a
+	// second renderer: the hull itself sinks into a bent image of the
+	// background. No CloakRenderer shell, no CloakOutlineRenderer, no
+	// settings toggle.
+	//
+	// HOW THE SLIDER READS
+	//
+	// ActiveUnit pushes two uniforms per renderer (MaterialPropertyBlock):
+	//
+	//   _CloakAmount  0..1 -- 0 decloaked, 1 fully cloaked. This is the
+	//      CloakComponent progress under the CloakAlphaPower curve, or the
+	//      construction-strobe inverse while a hull is being built.
+	//   _CloakFloor   0..1 -- how much hull material survives at amount 1.
+	//      This is the CLOAK VISIBILITY floor the video settings already
+	//      own: CloakMinAlphaForPlayer for owned and allied ships,
+	//      CloakMinAlpha for enemies (both serialized on the
+	//      VideoSettings prefab), 0 during construction and external
+	//      fades. Same numbers the old shell alpha used; not a new
+	//      tuning surface. Full cloak ships floor 0: the hull material
+	//      cedes to the bend entirely while the fold SURFACE keeps
+	//      drawing - visible as pure bent space, never as nothing. The
+	//      renderers are not toggled by visibility; the material state
+	//      alone speaks.
+	//
+	// The visible surface then trades itself for the bend:
+	//
+	//   vis = lerp(1, _CloakFloor, amount)
+	//
+	// and the fragment outputs lerp(litProfile, bentBackground, 1 - vis).
+	// That is why the floor numbers carry over unchanged: they now mean
+	// "fraction of the hull's own material left standing", which reads the
+	// same way for the player as the old alpha floors did.
+	//
+	// The bend is the post's two terms: the hull normal projected to
+	// view space (silhouette pixels bend wide, face-on pixels barely
+	// move) plus panel detail from the hull's own normal map and an
+	// organic scrolling flow -- sine products, no extra texture. The
+	// flow scales with amount; the panel detail with amount squared:
+	// the first tick of cloaking barely bends, full cloak is a living
+	// smear that never resolves into a mat of background.
+	//
+	// The V3 RETIRED the friendly tell rim (the old outline system's
+	// crutch: _CloakFriendly + _CloakTellColor, a cyan silhouette glow on
+	// owned/allied hulls). The fold itself is the visibility state now --
+	// the player sees a bent-light standing where their ship was -- and a
+	// structure rim painting OVER that read as noise. Removed from both
+	// sides: no pusher, no property, no shader reads.
+	//
+	// WHY THE HULL DRAWS OPAQUE IN GEOMETRY QUEUE (v3 -- the blog fold)
+	//
+	// v1 of this shader was opaque and went GREY: an opaque hull sampling
+	// a copy that contains its own CURRENT frame's pixels feeds on
+	// itself, and the recursion diffuses to the frame average. v2 fixed
+	// the mechanics but chose a transparent-phase hull with an
+	// opaque-queue prepass -- and lost a session to transparency sorting,
+	// alpha-share composites, and a capture feature that never recorded
+	// in the frame debugger with nothing in the log to chase.
+	//
+	// v3 copies the ORIGINAL, vfxmike's "Opaque Active Camouflage"
+	// (vfxmike.blogspot.com, 2018-06-07 -- the Ghost Recon Future
+	// Soldier fold): the copy is the PREVIOUS frame's finished image.
+	//
+	//   - Feedback still exists -- the copy contains the ship -- but its
+	//     pixels are the ship's own PREVIOUS BENT painting, which already
+	//     looks like the space behind it, so the feed converges to
+	//     background instead of to grey. GR:FS shipped exactly this and
+	//     it looked right.
+	//   - Opaque is the technique's point: the hull is SOLID and bends
+	//     the light in front of it. You never see through it. That kills
+	//     the transparent phase entirely (Blend One Zero, ZWrite On,
+	//     Geometry queue) and with it the EarlyZ self-occlusion prepass
+	//     -- the "always on at any floor" requirement is inherent now:
+	//     opaque geometry self-occludes at every settings floor by
+	//     construction, with nothing to toggle.
+	//   - The trade is a plain crossfade: rgb lerps from the hull's own
+	//     lit shading into the displaced copy at 1 - hullShare. The
+	//     _CloakFloor numbers keep their meaning -- "fraction of the hull
+	//     left standing at full cloak" -- without an alpha-share
+	//     composite to tune.
+	//
+	// One frame of lag in what bends is the technique's defining
+	// artifact (GR:FS had it too); at ship speeds it reads as purpose.
+	//
+	// V3.1 -- TWO CORRECTIONS FROM PLAYING THE V3 BUILD:
+	//
+	//   1. THE COPY COMPOSES THE SKY. The player-facing background is
+	//      not one camera (see CloakBackdropCamera): the sky's clear
+	//      comes first, the planets/sun and background-sprite cameras
+	//      draw over it, and the world rig renders last. v3's single
+	//      child camera copied only the world rig, so the fold sampled
+	//      a copy with no sky, planets or sun in it -- a cloaked hull
+	//      bent holes where the backdrop should be. The grabber now
+	//      mirrors the whole pack as a small camera stack; what bends
+	//      behind the hull is the view the player actually sees.
+	//
+	//   2. THE FOLD NEVER FEEDS ON ITSELF. v3's copy contained the
+	//      hull's own previous painting, and with a floor > 0 that
+	//      recursion's fixed point is the hull itself -- a parked ship
+	//      brightened back into view over seconds, which read as "the
+	//      cloak does not work". While the copy renders now, the
+	//      grabber raises _CloakCopyPass and every fold hull clips out
+	//      of it (see the fragment: the sampled pixels are the true
+	//      background, and parking changes nothing over time. The blog
+	//      lives with the recursion because its copy is a blit of the
+	//      finished frame; ours is a camera render and can do better.
+	//
+	// _CloakBackdropRT -- the previous frame, from a camera, not a pass
+	//
+	// Stock URP's opaque texture could not carry it: the visible backdrop
+	// (nebula and sun quads, queue 2999/3000) is transparent-phase
+	// content and never reaches the stock copy. And the v2.2 renderer
+	// feature that redrew those quads into a mid-frame snapshot turned
+	// out to be a trap: its passes never recorded, silently. So the
+	// capture now is CloakBackdropCamera -- a small camera stack childed
+	// under the main rig (v3.1): the sky base first, then the
+	// planets/sun and background-sprite cameras, the world pass last --
+	// the whole composed view, not just the world rig's slice -- at
+	// fixed 256-long-edge into a ping-pong pair, publishing whichever
+	// buffer holds the finished previous frame as the global. While it
+	// renders the grabber raises _CloakCopyPass and fold hulls clip
+	// themselves out of the copy: the sampled pixels are background,
+	// never the hull's own painting. No render features, nothing to
+	// discover in pass ordering, no silent skips -- an enabled camera
+	// draws or the console says why. Details and cost:
+	// CloakBackdropCamera.cs.
+	//
+	// Cameras other than the game's (reflection probes, previews)
+	// sample whatever the global last held -- stale but populated, not
+	// black. Accepted and documented: the game camera drives what the
+	// player sees, and probes are not cloak showcases.
+	//
+	// SHADOWS / DEPTH
+	//
+	// ShadowCaster never clips: a cloaked hull shadows exactly like a
+	// decloaked one (design call 2026-11-08, replacing the legacy
+	// clip-at-any-amount tell). The fold bends the light reaching the
+	// eye, not the star the hull already blocks - the mass keeps its
+	// shadow through the cloak. The old shadowless read came from the
+	// legacy shell, whose cloak materials simply never carried a
+	// ShadowCaster at all; nothing in the fold depends on leaving the
+	// shadow map.
+	//
+	// DepthOnly keeps the hull in the depth prepass UNCLIPPED (v3): the
+	// camo is a surface standing in the world, not a hole in it -- soft
+	// particles and every depth-driven effect occlude against the hull
+	// like against any hull, which the opaque fold IS. The v2.2
+	// CloakSelfDepth prepass (LightMode SRPDefaultUnlit) is GONE with
+	// the transparency: a ZWrite On opaque hull carries its own
+	// self-occlusion in the depth block, always, at every floor.
+	//
+	// No lightmap keywords, no _CLUSTER_LIGHT_LOOP (Forward renderer --
+	// the same documented Forward+ risk as the ship shader), no GBuffer,
+	// no DOTS. Shadow/soft-shadow/probe/fog/instancing variants kept, per
+	// the ship shader's header. One dynamic branch, zero new variants:
+	// the cloak block is uniform-scalar logic, so this stays one shader
+	// on every phone the game lives on.
+	Properties
+	{
+		// The five the ships come with + the decal layer. Identical to
+		// OpenFrontier/Ship Surface so the hull material swaps over.
+		[MainTexture] _BaseMap("Albedo", 2D) = "white" {}
+		[MainColor] _BaseColor("Albedo Tint", Color) = (1,1,1,1)
+
+		[Normal] _BumpMap("Normal Map", 2D) = "bump" {}
+		_BumpScale("Normal Strength", Float) = 1.0
+
+		_OcclusionMap("Ambient Occlusion", 2D) = "white" {}
+		_OcclusionStrength("AO Strength", Range(0.0, 1.0)) = 1.0
+
+		_MetallicGlossMap("Metallic+Smoothness (metal=R, smooth=A)", 2D) = "white" {}
+		_Metallic("Metallic", Range(0.0, 1.0)) = 0.0
+		_Smoothness("Smoothness", Range(0.0, 1.0)) = 0.5
+
+		[HDR] _EmissionColor("Luminance Color (HDR)", Color) = (0,0,0)
+		_EmissionMap("Luminance (Emission) Map", 2D) = "white" {}
+
+		// LAYER 1 -- faction pattern. Not paint, a ZONE MASK: RGB are
+		// pure channel weights (R primary / G secondary / B tertiary
+		// zones), sheet alpha the ink coverage, and the composite is
+		// a PLAIN ALPHA OVERLAY - no strength slider. Each colour's
+		// own alpha is INK TRANSLUCENCY (opaque = solid, partial =
+		// hull through the ink, 0 = zone erased); the default
+		// opaque-BLACK sheet selects no zone, unbound = inert.
+		// Contract doc: Ship Surface's header.
+		_DecalMap("Decal Pattern Mask (R/G/B zones, A ink)", 2D) = "black" {}
+		_DecalPrimary("Pattern Primary (R zones)", Color) = (1,1,1,1)
+		_DecalSecondary("Pattern Secondary (G zones)", Color) = (1,1,1,1)
+		_DecalTertiary("Pattern Tertiary (B zones)", Color) = (1,1,1,1)
+
+		// LAYER 2 -- superpower brand over the pattern: the same plain
+		// alpha overlay a second time (RGB the baked paint, A the
+		// amount), own tiling. Inert contract is the TOGGLE - with no
+		// strength slider left to gate the slot, off is how an empty
+		// brand stays inert AND free.
+		_PowerDecalMap("Superpower Brand (RGBA, overlay)", 2D) = "black" {}
+		[Toggle(_POWERDECAL)] _PowerDecalToggle("Superpower Brand", Float) = 0.0
+
+		// The emissive decal companion: same _DecalMap tiling, pixel-aligned
+		// artwork; RGBA where rgb glows and a gates it. HDR color for the
+		// per-material retune. Default black + toggle off = zero cost
+		// and zero light, exactly as on Ship Surface.
+		[HDR] _DecalEmissionColor("Decal Glow Color (HDR)", Color) = (1,1,1,1)
+		_DecalEmissionMap("Decal Glow Map (RGB col, A mask)", 2D) = "black" {}
+		[Toggle(_DECALEMISSION)] _DecalEmissionToggle("Emissive Decals", Float) = 0.0
+
+		[ToggleOff] _SpecularHighlights("Specular Highlights", Float) = 1.0
+		[ToggleOff] _EnvironmentReflections("Environment Reflections", Float) = 1.0
+
+		_Cull("Face Culling", Float) = 2.0
+
+		// ---- the cloak ----
+		// Pushed per renderer by ActiveUnit; the sliders only exist so the
+		// inspector shows what the unit is driving.
+		_CloakAmount("Cloak Amount (1 = fully cloaked)", Range(0.0, 1.0)) = 0.0
+		_CloakFloor("Cloak Floor (hull left at full cloak)", Range(0.0, 1.0)) = 0.0
+
+		// The bend, and its material-tuning side. The floor and amount are
+		// gameplay state; these are art direction per ship.
+		_CloakWarpScale("Cloak Warp Strength", Float) = 0.06
+		_CloakShimmerScale("Cloak Shimmer Strength", Float) = 0.02
+		_CloakShimmerLines("Cloak Shimmer Lines", Float) = 18.0
+		_CloakShimmerSpeed("Cloak Shimmer Speed", Float) = 1.5
+	}
+
+	SubShader
+	{
+		Tags
+		{
+			"RenderPipeline" = "UniversalPipeline"
+			"UniversalMaterialType" = "Lit"
+			// v3: plain opaque geometry, exactly like Ship Surface. The
+			// camo hull depth-writes and z-sorts like the hull it swapped
+			// with; the self-occlusion v2 carried in a transparent-phase
+			// prepass is inherent now and has nothing to toggle. (The
+			// old IP2 cloak materials ran on queue 3000 with a custom
+			// render queue pin of -1, so this retarget of the shader is
+			// what actually moves the materials.)
+			"RenderType" = "Opaque"
+			"Queue" = "Geometry"
+			"IgnoreProjector" = "True"
+		}
+
+		HLSLINCLUDE
+		#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+		#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
+		#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/SurfaceData.hlsl"
+
+		// NOTE: Do not ifdef the properties here - SRP batching cannot
+		// handle different bulk layouts between passes. Same rule as the
+		// ship shader: _Cull and the [ToggleOff] floats stay OUT of the
+		// buffer, everything the fragment reads lives in it.
+		CBUFFER_START(UnityPerMaterial)
+		float4 _BaseMap_ST;
+		float4 _DecalMap_ST;
+		float4 _PowerDecalMap_ST;
+		half4 _BaseColor;
+		half4 _EmissionColor;
+		half4 _DecalEmissionColor;
+		half4 _DecalPrimary;
+		half4 _DecalSecondary;
+		half4 _DecalTertiary;
+		half _BumpScale;
+		half _OcclusionStrength;
+		half _Metallic;
+		half _Smoothness;
+		half _CloakAmount;
+		half _CloakFloor;
+		half _CloakWarpScale;
+		half _CloakShimmerScale;
+		half _CloakShimmerLines;
+		half _CloakShimmerSpeed;
+		CBUFFER_END
+
+		TEXTURE2D(_BaseMap);          SAMPLER(sampler_BaseMap);
+		TEXTURE2D(_BumpMap);          SAMPLER(sampler_BumpMap);
+		TEXTURE2D(_OcclusionMap);     SAMPLER(sampler_OcclusionMap);
+		TEXTURE2D(_MetallicGlossMap); SAMPLER(sampler_MetallicGlossMap);
+		TEXTURE2D(_EmissionMap);      SAMPLER(sampler_EmissionMap);
+		TEXTURE2D(_DecalMap);         SAMPLER(sampler_DecalMap);
+		TEXTURE2D(_PowerDecalMap);    SAMPLER(sampler_PowerDecalMap);
+		TEXTURE2D(_DecalEmissionMap); SAMPLER(sampler_DecalEmissionMap);
+
+		// The previous-frame copy CloakBackdropCamera publishes (a global
+		// texture, exactly like _CameraOpaqueTexture always was; not a
+		// material property -- the grabber is engine state, not art state).
+		TEXTURE2D(_CloakBackdropRT);  SAMPLER(sampler_CloakBackdropRT);
+
+		// Raised by the grabber while the copy's own world pass renders;
+		// every fold hull clips itself out of the copy under it, so the
+		// copy the fold samples is the view MINUS the hulls that fold --
+		// no painting feeds back into the next frame (the blog's blit
+		// copy carries that recursion; a camera render need not). A
+		// global, not a material property: render-phase state, not art
+		// state.
+		float _CloakCopyPass;
+		ENDHLSL
+
+		Pass
+		{
+			Name "ForwardLit"
+			Tags { "LightMode" = "UniversalForward" }
+
+			// Plain opaque, like the Ship Surface shader it is a drop-in
+			// of: no Blend line (defaults One Zero) and ZWrite On. The
+			// fold never blends over anything -- it IS the hull, replacing
+			// the surface's pixels, and it occludes what stands behind it
+			// by writing depth like any lit geometry. GR:FS did exactly
+			// this; nothing about the technique needs transparency.
+			ZWrite On
+			ZTest LEqual
+			Cull [_Cull]
+
+			HLSLPROGRAM
+			#pragma vertex ShipCloakVertex
+			#pragma fragment ShipCloakFragment
+
+			#pragma shader_feature_local _NORMALMAP
+			#pragma shader_feature_local _RECEIVE_SHADOWS_OFF
+			#pragma shader_feature_local_fragment _EMISSION
+			#pragma shader_feature_local_fragment _METALLICSPECGLOSSMAP
+			#pragma shader_feature_local_fragment _OCCLUSIONMAP
+			#pragma shader_feature_local_fragment _SPECULARHIGHLIGHTS_OFF
+			#pragma shader_feature_local_fragment _ENVIRONMENTREFLECTIONS_OFF
+			// Emissive decals: on per material ([Toggle] drawer). Off by
+			// default so cloak hulls whose decals never glow pay nothing.
+			#pragma shader_feature_local_fragment _DECALEMISSION
+			#pragma shader_feature_local_fragment _POWERDECAL
+
+			#pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+			#pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+			#pragma multi_compile_fragment _ _ADDITIONAL_LIGHT_SHADOWS
+			#pragma multi_compile_fragment _ _REFLECTION_PROBE_BLENDING _REFLECTION_PROBE_BOX_PROJECTION
+			#pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
+			#include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Fog.hlsl"
+
+			#include_with_pragmas "Packages/com.unity.render-pipelines.core/ShaderLibrary/FoveatedRenderingKeywords.hlsl"
+
+			//--------------------------------------
+			// GPU Instancing (the ship materials enable it)
+			#pragma multi_compile_instancing
+
+			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+
+			struct Attributes
+			{
+				float4 positionOS   : POSITION;
+				float3 normalOS     : NORMAL;
+				float4 tangentOS    : TANGENT;
+				float2 texcoord     : TEXCOORD0;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+			};
+
+			struct Varyings
+			{
+				float2  uv          : TEXCOORD0;   // _BaseMap space
+				float2  decalUV     : TEXCOORD1;   // _DecalMap space (own ST)
+				float3  positionWS  : TEXCOORD2;
+				float3  normalWS    : TEXCOORD3;
+			#ifdef _NORMALMAP
+				half4   tangentWS   : TEXCOORD4;   // xyz tangent, w sign
+			#endif
+			#ifdef _ADDITIONAL_LIGHTS_VERTEX
+				half4   fogFactorAndVertexLight : TEXCOORD5; // x fog, yzw vertex light
+			#else
+				half    fogFactor   : TEXCOORD5;
+			#endif
+				float3  vertexSH    : TEXCOORD6;   // baked ambient
+				float2  powerUV     : TEXCOORD7;   // _PowerDecalMap space (own ST)
+				float4  positionCS  : SV_POSITION;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+				UNITY_VERTEX_OUTPUT_STEREO
+			};
+
+			// ---- the surface, ship edition (identical to Ship Surface) ----
+			void InitializeShipSurfaceData(Varyings input, out SurfaceData surfaceData)
+			{
+				surfaceData = (SurfaceData)0;
+
+				half4 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * _BaseColor;
+
+				// Both decal layers, plain alpha overlays exactly as
+				// the ship shader: the pattern mask selects its
+				// faction triad (R/G/B weights, saturate-guarded) and
+				// each colour's own alpha rides its channel as ink
+				// translucency, gating the overlay with the sheet's
+				// coverage; the superpower brand lands over it in the
+				// sheet's own baked colours behind the _POWERDECAL
+				// toggle. Painted marks keep paint through the cloak,
+				// identical to their hull material at cloak-floor.
+				half4 mask = SAMPLE_TEXTURE2D(_DecalMap, sampler_DecalMap, input.decalUV);
+				half3 triad = saturate(_DecalPrimary.rgb * mask.r
+					+ _DecalSecondary.rgb * mask.g + _DecalTertiary.rgb * mask.b);
+				half zoneA = saturate(_DecalPrimary.a * mask.r
+					+ _DecalSecondary.a * mask.g + _DecalTertiary.a * mask.b);
+				albedo.rgb = lerp(albedo.rgb, triad, mask.a * zoneA);
+
+				#ifdef _POWERDECAL
+				half4 brand = SAMPLE_TEXTURE2D(_PowerDecalMap, sampler_PowerDecalMap, input.powerUV);
+				albedo.rgb = lerp(albedo.rgb, brand.rgb, brand.a);
+				#endif
+
+				surfaceData.albedo = albedo.rgb;
+				surfaceData.alpha = 1.0h;
+
+				#ifdef _METALLICSPECGLOSSMAP
+				half4 metalSmooth = SAMPLE_TEXTURE2D(_MetallicGlossMap, sampler_MetallicGlossMap, input.uv);
+				surfaceData.metallic = metalSmooth.r;
+				surfaceData.smoothness = metalSmooth.a * _Smoothness;
+				#else
+				surfaceData.metallic = _Metallic;
+				surfaceData.smoothness = _Smoothness;
+				#endif
+
+				surfaceData.specular = half3(0, 0, 0);
+
+				#ifdef _OCCLUSIONMAP
+				half occ = SAMPLE_TEXTURE2D(_OcclusionMap, sampler_OcclusionMap, input.uv).g;
+				surfaceData.occlusion = LerpWhiteTo(occ, _OcclusionStrength);
+				#else
+				surfaceData.occlusion = 1.0h;
+				#endif
+
+				#ifdef _NORMALMAP
+				surfaceData.normalTS = UnpackNormalScale(
+					SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.uv), _BumpScale);
+				#else
+				surfaceData.normalTS = half3(0, 0, 1);
+				#endif
+
+				#ifdef _EMISSION
+				surfaceData.emission = SAMPLE_TEXTURE2D(_EmissionMap, sampler_EmissionMap, input.uv).rgb * _EmissionColor.rgb;
+				#else
+				surfaceData.emission = half3(0, 0, 0);
+				#endif
+
+				// Emissive decals: pixel-aligned with the pattern decal
+				// (same decalUV), riding _DecalMap_ST. Same layer and
+				// contract as the ship shader's; glowing parts keep
+				// their light while the hull cloaks and builds.
+				#ifdef _DECALEMISSION
+				half4 decalGlow = SAMPLE_TEXTURE2D(_DecalEmissionMap, sampler_DecalEmissionMap, input.decalUV);
+				surfaceData.emission += decalGlow.rgb * decalGlow.a * _DecalEmissionColor.rgb;
+				#endif
+			}
+
+			void InitializeShipInputData(Varyings input, half3 normalTS, out InputData inputData)
+			{
+				inputData = (InputData)0;
+
+				inputData.positionWS = input.positionWS;
+
+				half3 viewDirWS = GetWorldSpaceNormalizeViewDir(input.positionWS);
+				#ifdef _NORMALMAP
+				float sgn = input.tangentWS.w;
+				float3 bitangent = sgn * cross(input.normalWS.xyz, input.tangentWS.xyz);
+				half3x3 tangentToWorld = half3x3(input.tangentWS.xyz, bitangent.xyz, input.normalWS.xyz);
+				inputData.tangentToWorld = tangentToWorld;
+				inputData.normalWS = TransformTangentToWorld(normalTS, tangentToWorld);
+				#else
+				inputData.normalWS = input.normalWS;
+				#endif
+				inputData.normalWS = NormalizeNormalPerPixel(inputData.normalWS);
+				inputData.viewDirectionWS = viewDirWS;
+
+				#if defined(MAIN_LIGHT_CALCULATE_SHADOWS) && !defined(_RECEIVE_SHADOWS_OFF)
+				inputData.shadowCoord = TransformWorldToShadowCoord(input.positionWS);
+				#else
+				inputData.shadowCoord = float4(0, 0, 0, 0);
+				#endif
+
+				#ifdef _ADDITIONAL_LIGHTS_VERTEX
+				inputData.fogCoord = InitializeInputDataFog(float4(input.positionWS, 1.0), input.fogFactorAndVertexLight.x);
+				inputData.vertexLighting = input.fogFactorAndVertexLight.yzw;
+				#else
+				inputData.fogCoord = InitializeInputDataFog(float4(input.positionWS, 1.0), input.fogFactor);
+				#endif
+
+				inputData.bakedGI = SampleSHPixel(input.vertexSH, inputData.normalWS);
+
+				inputData.normalizedScreenSpaceUV = GetNormalizedScreenSpaceUV(input.positionCS);
+			}
+
+			Varyings ShipCloakVertex(Attributes input)
+			{
+				Varyings output = (Varyings)0;
+
+				UNITY_SETUP_INSTANCE_ID(input);
+				UNITY_TRANSFER_INSTANCE_ID(input, output);
+				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+
+				VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);
+				VertexNormalInputs normalInput = GetVertexNormalInputs(input.normalOS, input.tangentOS);
+
+				half3 vertexLight = VertexLighting(vertexInput.positionWS, normalInput.normalWS);
+
+				half fogFactor = 0;
+				#if !defined(_FOG_FRAGMENT)
+				fogFactor = ComputeFogFactor(vertexInput.positionCS.z);
+				#endif
+
+				output.uv = TRANSFORM_TEX(input.texcoord, _BaseMap);
+				output.decalUV = TRANSFORM_TEX(input.texcoord, _DecalMap);
+				output.powerUV = TRANSFORM_TEX(input.texcoord, _PowerDecalMap);
+
+				output.normalWS = normalInput.normalWS;
+				#ifdef _NORMALMAP
+				real sign = input.tangentOS.w * GetOddNegativeScale();
+				output.tangentWS = half4(normalInput.tangentWS.xyz, sign);
+				#endif
+
+				#ifdef _ADDITIONAL_LIGHTS_VERTEX
+				output.fogFactorAndVertexLight = half4(fogFactor, vertexLight);
+				#else
+				output.fogFactor = fogFactor;
+				#endif
+
+				output.vertexSH = SampleSHVertex(normalInput.normalWS);
+
+				output.positionWS = vertexInput.positionWS;
+				output.positionCS = vertexInput.positionCS;
+
+				return output;
+			}
+
+			half4 ShipCloakFragment(Varyings input) : SV_Target0
+			{
+				UNITY_SETUP_INSTANCE_ID(input);
+				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+				SurfaceData surfaceData;
+				InitializeShipSurfaceData(input, surfaceData);
+
+				InputData inputData;
+				InitializeShipInputData(input, surfaceData.normalTS, inputData);
+
+				half4 color = UniversalFragmentPBR(inputData, surfaceData);
+				color.rgb = MixFog(color.rgb, inputData.fogCoord);
+				// Opaque hull, travelling alpha is meaningless under One
+				// Zero; set it anyway so every downstream reader sees a
+				// sane value.
+				color.a = 1.0h;
+
+				// ---- the cloak: bend the frame behind the hull ----
+				// Uniform-scalar branch: decloaked hulls pay nothing past the
+				// compare, the sampler stays bound but is never read.
+				half cloak = saturate(_CloakAmount);
+				if (cloak > 0.001h)
+				{
+					// The copy must never contain this hull: the grabber
+					// raises _CloakCopyPass for the length of its world
+					// pass (see the header). Without the clip the copy
+					// held the hull's own last painting, and with a
+					// floor > 0 that recursion's fixed point is the
+					// hull -- parked ships used to brighten back into
+					// view over seconds. Clipped, the sampled pixels
+					// are true background, forever.
+					if (_CloakCopyPass > 0.5h)
+					{
+						clip(-1.0h);
+					}
+
+					// How much of the hull's own material survives. Drops from 1
+					// to the settings floor; the bend eats the remainder.
+					half hullShare = lerp(1.0h, saturate(_CloakFloor), cloak);
+
+					// The lens: the hull normal projected to view space --
+					// grazing pixels (the silhouette) project wide,
+					// face-on pixels barely move, so the copy slides
+					// AROUND the hull instead of smearing across it --
+					// light from behind the ship bending around it. On
+					// it: panel detail from the hull's own normal map
+					// (flat hulls leave (0,0) and ride the flow alone),
+					// and the post's scrolling-cloud term rebuilt from
+					// four cheap sine products in two octaves -- the
+					// product of two waves per channel reads as blobs,
+					// not bands -- so a parked hull resolves into
+					// drifting cells instead of a standing mat of
+					// background.
+					half3 viewNormal = normalize(mul((half3x3)GetWorldToViewMatrix(), inputData.normalWS));
+					float t = _Time.y * _CloakShimmerSpeed;
+					half L = _CloakShimmerLines;
+					half2 warp = viewNormal.xy * (_CloakWarpScale * 2.0h) * cloak;
+					warp += surfaceData.normalTS.xy * (_CloakWarpScale * cloak * cloak);
+					half2 flow = half2(
+						sin(input.uv.x * L + t) * sin(input.uv.y * L * 0.731h - t * 1.271h),
+						sin(input.uv.y * L * 1.129h - t * 0.811h) * sin(input.uv.x * L * 0.577h + t * 1.577h));
+					flow += half2(
+						sin(input.uv.y * L * 0.211h + t * 0.229h),
+						sin(input.uv.x * L * 0.191h - t * 0.171h)) * 0.5h;
+					warp += flow * (_CloakShimmerScale * cloak);
+
+					// The frame behind, displaced. The copy is clamped by its
+					// wrap mode (CloakBackdropCamera creates it clamped).
+					half3 bent = SAMPLE_TEXTURE2D(_CloakBackdropRT, sampler_CloakBackdropRT,
+						inputData.normalizedScreenSpaceUV + warp).rgb;
+
+					// Trade the material for the bend. The hull profile was fogged
+					// above; the copy is a finished frame of the SAME view
+					// (same projection, no post, no fog) -- both sides of the
+					// lerp are in the same space, do not fog again. And because
+					// the trade is a plain rgb crossfade over
+					// opaque geometry, the pixels at full cloak are entirely the
+					// bend: no alpha share dilutes the read (that composite bug
+					// is what v2's lensGate bandage chased). The floors keep
+					// their old meaning -- "fraction of the hull left standing
+					// at full cloak"; a construction strobe (floor 0) simply
+					// flickers between hull and bend, the same read the old
+					// alpha strobe produced.
+					color.rgb = lerp(color.rgb, bent, 1.0h - hullShare);
+				}
+
+				return color;
+			}
+			ENDHLSL
+		}
+
+		Pass
+		{
+			Name "ShadowCaster"
+			Tags { "LightMode" = "ShadowCaster" }
+
+			ZWrite On
+			ZTest LEqual
+			ColorMask 0
+			Cull [_Cull]
+
+			HLSLPROGRAM
+			#pragma target 2.0
+
+			#pragma vertex ShipCloakShadowVertex
+			#pragma fragment ShipCloakShadowFragment
+
+			#pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
+
+			//--------------------------------------
+			// GPU Instancing
+			#pragma multi_compile_instancing
+
+			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
+
+			float3 _LightDirection;
+			float3 _LightPosition;
+
+			struct ShadowAttributes
+			{
+				float4 positionOS   : POSITION;
+				float3 normalOS     : NORMAL;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+			};
+
+			struct ShadowVaryings
+			{
+				float4 positionCS   : SV_POSITION;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+			};
+
+			float4 GetShipShadowPositionHClip(ShadowAttributes input)
+			{
+				float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+				float3 normalWS = TransformObjectToWorldNormal(input.normalOS, true);
+
+				#if _CASTING_PUNCTUAL_LIGHT_SHADOW
+				float3 lightDirectionWS = normalize(_LightPosition - positionWS);
+				#else
+				float3 lightDirectionWS = _LightDirection;
+				#endif
+
+				float4 positionCS = TransformWorldToHClip(ApplyShadowBias(positionWS, normalWS, lightDirectionWS));
+				positionCS = ApplyShadowClamping(positionCS);
+				return positionCS;
+			}
+
+			ShadowVaryings ShipCloakShadowVertex(ShadowAttributes input)
+			{
+				ShadowVaryings output;
+				UNITY_SETUP_INSTANCE_ID(input);
+				UNITY_TRANSFER_INSTANCE_ID(input, output);
+				output.positionCS = GetShipShadowPositionHClip(input);
+				return output;
+			}
+
+			half4 ShipCloakShadowFragment(ShadowVaryings input) : SV_TARGET
+			{
+				UNITY_SETUP_INSTANCE_ID(input);
+				// The hull casts at every cloak amount: the fold bends the
+				// light reaching the eye, not the star the mass already
+				// blocks (design call, 2026-11-08 - the old
+				// clip-at-any-amount tell retired). Shadow geometry is
+				// pure, like the ship surface shader's.
+				return 0;
+				return 0;
+			}
+			ENDHLSL
+		}
+
+		Pass
+		{
+			Name "DepthOnly"
+			Tags { "LightMode" = "DepthOnly" }
+
+			ZWrite On
+			ColorMask R
+			Cull [_Cull]
+
+			HLSLPROGRAM
+			#pragma target 2.0
+
+			#pragma vertex ShipCloakDepthOnlyVertex
+			#pragma fragment ShipCloakDepthOnlyFragment
+
+			//--------------------------------------
+			// GPU Instancing
+			#pragma multi_compile_instancing
+
+			struct DepthAttributes
+			{
+				float4 positionOS   : POSITION;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+			};
+
+			struct DepthVaryings
+			{
+				float4 positionCS   : SV_POSITION;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+				UNITY_VERTEX_OUTPUT_STEREO
+			};
+
+			DepthVaryings ShipCloakDepthOnlyVertex(DepthAttributes input)
+			{
+				DepthVaryings output = (DepthVaryings)0;
+				UNITY_SETUP_INSTANCE_ID(input);
+				UNITY_TRANSFER_INSTANCE_ID(input, output);
+				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+				output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+				return output;
+			}
+
+			half ShipCloakDepthOnlyFragment(DepthVaryings input) : SV_TARGET
+			{
+				UNITY_SETUP_INSTANCE_ID(input);
+				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+				// No clip (v3): the camo hull is a SURFACE standing in the
+				// world, not a hole in it. It stays in the depth prepass so
+				// depth-driven effects occlude against it like any hull,
+				// which the opaque fold IS. ShadowCaster never clips
+				// either (see there): the hull keeps its own shadow while
+				// it folds - the fold bends the light reaching the eye,
+				// not the starlight the mass already blocks.
+				return input.positionCS.z;
+			}
+			ENDHLSL
+		}
+	}
+	FallBack "Hidden/Universal Render Pipeline/FallbackError"
+	// No CustomEditor, same as the ship shader: the default inspector
+	// lists every row, including the cloak block ActiveUnit drives.
+}

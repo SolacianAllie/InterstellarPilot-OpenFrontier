@@ -512,6 +512,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   ClassName: Sector HQ
   Mass: 1
+  RadarCrossSection: 1359.2
   Seed: -1
   CollisionCollider: {fileID: 135918264173551851}
   Radius: 20.8

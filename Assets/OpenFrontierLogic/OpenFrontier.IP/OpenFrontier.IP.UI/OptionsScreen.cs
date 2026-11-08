@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using OpenFrontier.IP.Engine;
+using OpenFrontier.IP.Engine.EngineMusic;
 using OpenFrontier.IP.UI.Screens;
 using OpenFrontier.IP.UI.Screens.MessageBox;
 using OpenFrontier.IP.UI.Screens.Options;
@@ -80,8 +81,6 @@ namespace OpenFrontier.IP.UI
 		public Button SaveButton;
 
 		public Toggle SpaceFogEnabledToggle;
-
-		public Toggle RenderCloakedShipOutlinesEnabledToggle;
 
 		public Toggle WormholeAnimationToggle;
 
@@ -169,7 +168,6 @@ namespace OpenFrontier.IP.UI
 			PreferRespawnOnDeathToggle.onValueChanged.AddListener(PreferRespawnOnDeathToggleValueChanged);
 			CalibrateTiltButton.onClick.AddListener(CalibrateTiltButton_Activated);
 			SpaceFogEnabledToggle.onValueChanged.AddListener(SpaceFogEnabledToggle_ValueChanged);
-			RenderCloakedShipOutlinesEnabledToggle.onValueChanged.AddListener(RenderCloakedShipOutlinesEnabledToggle_ValueChanged);
 			WormholeAnimationToggle.onValueChanged.AddListener(WormholeAnimationToggle_ValueChanged);
 			LightingFXToggle.onValueChanged.AddListener(LightingFXToggleValueChanged);
 			string[] names = QualitySettings.names;
@@ -413,13 +411,12 @@ namespace OpenFrontier.IP.UI
 				FullScreenToggle.isOn = Screen.fullScreen;
 				RefreshScreenResolutionDropdown();
 				MasterVolumeSlider.value = PlayerPrefsHelper.SafeGetFloat(GameController.Instance.MasterVolumeKey, 1f);
-				MusicVolumeSlider.value = PlayerPrefsHelper.SafeGetFloat(GameController.Instance.MusicVolumeKey, GameController.Instance.DefaultMusicVolume);
+				MusicVolumeSlider.value = MusicDirector.Volume;
 				ButtonSoundsToggle.isOn = GameController.Instance.PlayButtonSounds;
 				MissileLockSoundToggle.isOn = GameController.Instance.PlayerOptions.Audio_MissileLockSound;
 				AutoCloseInGameMenuToggle.isOn = GameController.Instance.AutoCloseInGameMenu;
 				SpaceFogEnabledToggle.isOn = GameController.Instance.SpaceFogEnabled;
 				WormholeAnimationToggle.isOn = GameController.Instance.PlayerOptions.Video_WormholeAnimationEnabled;
-				RenderCloakedShipOutlinesEnabledToggle.isOn = GameController.Instance.RenderCloakedShipOutlinesEnabled;
 				LightingFXToggle.isOn = GameController.Instance.LightingFXEnabled;
 				ForceTouchControlEnabledToggle.isOn = GameController.Instance.ForceTouchInputEnabled;
 				TiltControlEnabledToggle.isOn = GameController.Instance.TiltControlEnabled;
@@ -565,10 +562,12 @@ namespace OpenFrontier.IP.UI
 
 		private void MusicVolumeSlider_ValueChanged(float change)
 		{
-			if (GameController.Instance != null && GameController.Instance.MusicPlayer != null)
-			{
-				GameController.Instance.MusicPlayer.Volume = MusicVolumeSlider.value;
-			}
+			// Straight to the music system, which owns the value and writes it
+			// through to PlayerPrefs itself. It used to be guarded on
+			// GameController and its MusicPlayer component, so a slider moved
+			// before either existed did nothing and stayed where it was - the
+			// guard was for a player that no longer exists.
+			MusicDirector.Volume = MusicVolumeSlider.value;
 		}
 
 		private void CameraDragRotationSensitivitySliderValueChanged(float change)
@@ -637,14 +636,6 @@ namespace OpenFrontier.IP.UI
 			if (GameController.Instance != null)
 			{
 				GameController.Instance.SpaceFogEnabled = value;
-			}
-		}
-
-		private void RenderCloakedShipOutlinesEnabledToggle_ValueChanged(bool value)
-		{
-			if (GameController.Instance != null)
-			{
-				GameController.Instance.RenderCloakedShipOutlinesEnabled = value;
 			}
 		}
 
@@ -775,7 +766,33 @@ namespace OpenFrontier.IP.UI
 
 		private void Save()
 		{
-			QualitySettings.SetQualityLevel((int)GraphicsQualitySlider.value, applyExpensiveChanges: false);
+			// applyExpensiveChanges: TRUE, where the startup path
+			// (GameController.ApplyQualityLevel) already uses true.
+			//
+			// It used to be false here, which meant changing graphics settings
+			// mid-session only half took effect. The cheap half applied at once
+			// - lodBias went 0.5 -> 2 across the range, so LODs switched distance
+			// immediately - but the expensive half was deferred to the next scene
+			// load. The visible symptom was that shadowCascades and shadowDistance
+			// stayed where they were until you restarted or moved sector:
+			//
+			//   Lowest  ->  1 cascade,  15 units
+			//   Highest ->  4 cascades, 150 units
+			//
+			// plus realtimeReflectionProbes staying 0 until a reload. That is a
+			// tenfold shadow range and a fourfold cascade count, so picking
+			// Highest and seeing no change at all was correct as far as the code
+			// was concerned, and looked like the setting was broken.
+			//
+			// The hitch is real and deliberate: reallocating a 4-cascade shadow
+			// atlas at 150 units is not free. It is taken here, on
+			// onNavigatingBack - closing the screen - rather than on every
+			// slider movement, and next to ApplyAllPlayerPrefs which already
+			// does comparable work on the same event. Worth timing on the
+			// SM-T387W; if it is ugly there, the fix is to keep true but defer
+			// to a single frame so the screen transition is not blocked, NOT to
+			// go back to false.
+			QualitySettings.SetQualityLevel((int)GraphicsQualitySlider.value, applyExpensiveChanges: true);
 			GameController.Instance.CurrentQualityLevel = (int)GraphicsQualitySlider.value;
 			Debug.Log("Saving Options...", this);
 			GameController.Instance.SavePlayerPrefs();

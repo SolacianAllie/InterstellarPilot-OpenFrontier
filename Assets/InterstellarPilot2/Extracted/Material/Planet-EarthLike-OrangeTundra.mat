@@ -46,7 +46,7 @@ Material:
       _Size: 0.1
       _Transparency: 15
     m_Colors:
-      _AtmoColor: {r: 0.5, g: 0.5, b: 1, a: 1}
+      - _AtmoColor: {r: 0.3, g: 0.72, b: 1, a: 1}, a: 1}
       _AtmosFar: {r: 0.32835817, g: 0.54889727, b: 1, a: 1}
       _AtmosNear: {r: 0.12548277, g: 0.13556069, b: 0.8006993, a: 1}
       _Color: {r: 1, g: 1, b: 1, a: 1}

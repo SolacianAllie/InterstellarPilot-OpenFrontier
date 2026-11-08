@@ -27,6 +27,38 @@ namespace OpenFrontier.IP
 			return Maths.WrapValue(degrees, -180f, 180f);
 		}
 
+		/// <summary>
+		/// Whether a world point lies within <paramref name="halfAngleDegrees"/>
+		/// of the nose of <paramref name="from"/>.
+		/// </summary>
+		/// <remarks>
+		/// Bearing only, and flattened onto the combat plane. Units are
+		/// Y-frozen - RigidBodyFreezeY is true by default and three prefabs in
+		/// the whole game unfreeze it - so "below the ship" is not a direction
+		/// anything can be in, and letting a pitch term into this would only
+		/// mean a ship that drifted slightly in Y mysteriously stopped being
+		/// in front of you.
+		///
+		/// This is the question "is that ship pointing at this", which several
+		/// unrelated systems need to ask - a launcher deciding whether it may
+		/// fire, a semi-active seeker deciding whether it may hold a cloaked
+		/// contact - and each was answering it with its own copy of the same
+		/// arithmetic.
+		/// </remarks>
+		public static bool IsWithinBearing(Transform from, Vector3 worldPoint, float halfAngleDegrees)
+		{
+			Vector3 local = from.InverseTransformPoint(worldPoint);
+			Vector3 flat = new Vector3(local.x, 0f, local.z);
+			if (flat.sqrMagnitude <= 0.000001f)
+			{
+				// On top of us. There is no bearing to be outside of, and
+				// whatever minimum range the caller has is what decides it.
+				return true;
+			}
+			float bearing = WrapDegreesForBearing(Quaternion.LookRotation(flat, Vector3.up).eulerAngles.y);
+			return Mathf.Abs(bearing) <= halfAngleDegrees;
+		}
+
 		public static float? CalculateProjectileHeading(float bearingToTarget, float angleAtBow, float targetSpeed, float projectileSpeed)
 		{
 			if (targetSpeed < 0f || projectileSpeed < 0f)
@@ -53,18 +85,30 @@ namespace OpenFrontier.IP
 			float num2 = 2f * (targetVelocity.x * (target.x - sourcePosition.x) + targetVelocity.y * (target.y - sourcePosition.y) + targetVelocity.z * (target.z - sourcePosition.z));
 			float num3 = Maths.Sqr(target.x - sourcePosition.x) + Maths.Sqr(target.y - sourcePosition.y) + Maths.Sqr(target.z - sourcePosition.z);
 			float num4 = Mathf.Pow(num2, 2f) - 4f * num * num3;
-			if (num4 == 0f)
+			if (num4 <= 0f)
 			{
-				return true;
-			}
-			if (num4 < 0f)
-			{
+				// No real root, or a repeated one. Returning true here used to hand
+				// back interception = sourcePosition, which is the position the
+				// missile was fired from - so the caller was told to fly at a point
+				// behind itself, and the steering cone dutifully pointed it home.
+				// A repeated root is not a solution worth having either.
 				return false;
 			}
 			float num5 = Mathf.Sqrt(num4);
 			float num6 = 2f * num;
+			if (num6 == 0f)
+			{
+				// Target speed exactly equals missile speed and the target is not
+				// closing, so there is no time at which they meet.
+				return false;
+			}
 			float num7 = (0f - num2 + num5) / num6;
 			float num8 = (0f - num2 - num5) / num6;
+			// The larger root, which is the later of the two meetings. That is the
+			// right one to take whenever the missile is the faster of the pair,
+			// which is every combination in this game - the quadratic's two roots
+			// swap order when the coefficient goes negative, so taking the larger
+			// is what picks the positive time rather than the negative one.
 			float num9 = ((num7 < num8) ? num8 : num7);
 			if (num9 > 0f)
 			{
@@ -100,7 +144,17 @@ namespace OpenFrontier.IP
 
 		public static Vector3 RandomXZUnitVector(System.Random random)
 		{
-			return Quaternion.Euler(0f, random.NextFloat() * 360f, 0f) * Vector3.forward;
+			// Was Quaternion.Euler(0f, random.NextFloat() * 360f, 0f) * Vector3.forward.
+			//
+			// Quaternion.Euler is an extern native call, so calling it off the main
+			// thread is not safe, which made this method unusable from a worker even
+			// though everything else on the world-generation path is pure. Rotating
+			// (0,0,1) about Y by a degrees is (sin a, 0, cos a) - no quaternion, no
+			// native call, identical result.
+			//
+			// Mathf.Sin/Cos are managed wrappers over System.Math, not InternalCalls.
+			float angle = random.NextFloat() * 360f * Mathf.Deg2Rad;
+			return new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle));
 		}
 	}
 }

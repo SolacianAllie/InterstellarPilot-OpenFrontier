@@ -378,6 +378,7 @@ GameObject:
   m_Component:
   - component: {fileID: 89}
   - component: {fileID: 178}
+  - component: {fileID: 990001}
   m_Layer: 0
   m_Name: CharacterNames
   m_TagString: Untagged
@@ -5752,6 +5753,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   FirstNamesFile: {fileID: 4900000, guid: 2a61080996b2fb34e81ad1cdad2aaa39, type: 3}
   LastNamesFile: {fileID: 4900000, guid: cb3d4f648c33bc84c9812ce0461d1bef, type: 3}
+  EpithetsFile: {fileID: 4900000, guid: c8437c06aef74c5c9e2be26320ea08f5, type: 3}
 --- !u!114 &179
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7079,3 +7081,16 @@ MonoBehaviour:
   ClosingInTime: 4
   AlertHoldTime: 1.5
   ReleaseGraceTime: 0.5
+--- !u!114 &990001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 16}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f3c17d5e2b04a86b1d0c74f6a5e8392, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  NamesFile: {fileID: 4900000, guid: b7d41e2a9c5f4806a3e19d7c4b82f605, type: 3}

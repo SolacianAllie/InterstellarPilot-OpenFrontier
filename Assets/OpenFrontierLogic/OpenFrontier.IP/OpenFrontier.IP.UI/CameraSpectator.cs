@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using DigitalRubyShared;
+using OpenFrontier.Gestures;
 using OpenFrontier.IP.Engine;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -337,19 +337,19 @@ namespace OpenFrontier.IP.UI
 			OrbitScaleGesture.StateUpdated += ScaleGesture_Updated;
 			OrbitScaleGesture.ThresholdUnits = OrbitScaleGestureZoomThresholdUnits;
 			OrbitScaleGesture.PlatformSpecificView = OrbitScaleGesturePlatformSpecificView;
-			FingersScript.Instance.AddGesture(OrbitScaleGesture);
+			GestureScript.Instance.AddGesture(OrbitScaleGesture);
 			OrbitPanGesture = new PanGestureRecognizer();
 			OrbitPanGesture.StateUpdated += PanGestureUpdated;
 			OrbitPanGesture.PlatformSpecificView = OrbitScaleGesturePlatformSpecificView;
-			FingersScript.Instance.AddGesture(OrbitPanGesture);
+			GestureScript.Instance.AddGesture(OrbitPanGesture);
 		}
 
 		private void OnDisable()
 		{
-			if (FingersScript.HasInstance)
+			if (GestureScript.HasInstance)
 			{
-				FingersScript.Instance.RemoveGesture(OrbitPanGesture);
-				FingersScript.Instance.RemoveGesture(OrbitScaleGesture);
+				GestureScript.Instance.RemoveGesture(OrbitPanGesture);
+				GestureScript.Instance.RemoveGesture(OrbitScaleGesture);
 			}
 		}
 
@@ -367,8 +367,8 @@ namespace OpenFrontier.IP.UI
 				float velocityY = r.VelocityY;
 				velocityX *= RealTime.deltaTime;
 				velocityY *= RealTime.deltaTime;
-				cameraAngle.y += DeviceInfo.PixelsToUnits(velocityX) * num;
-				cameraAngle.x = Mathf.Clamp(cameraAngle.x + DeviceInfo.PixelsToUnits(velocityY) * num, 0f - MaxManualOrbitAngleX, MaxManualOrbitAngleX);
+				cameraAngle.y += GestureUnits.PixelsToUnits(velocityX) * num;
+				cameraAngle.x = Mathf.Clamp(cameraAngle.x + GestureUnits.PixelsToUnits(velocityY) * num, 0f - MaxManualOrbitAngleX, MaxManualOrbitAngleX);
 			}
 		}
 

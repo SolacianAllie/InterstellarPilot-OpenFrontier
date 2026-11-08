@@ -84,11 +84,9 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier:
   CloakDrawColor: {r: 1, g: 1, b: 1, a: 1}
-  ActiveUnitClass: {fileID: 114724804207875695, guid: b9e21a365e084e641bd6147e3af1a746, type: 2}
+  ActiveUnitClass: {fileID: 114724804207875695, guid: 13e539b5d31f4d0496fd7a0aad39c5ae, type: 2}
   CommsDialogPositioner: {fileID: 0}
   DrawRangeObjects: []
-  CloakOutlineRenderer: {fileID: 0}
-  CloakOutlineRenderers: []
   UnitRenderer: {fileID: 0}
   UnitRenderers: []
   CloakRenderer: {fileID: 0}
@@ -155,7 +153,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: f1b8cc3ccec4c9349a72cf6b77d093b1, type: 2}
+  - {fileID: 2100000, guid: 7c23a1b32552b0329b86c37179b09a63, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

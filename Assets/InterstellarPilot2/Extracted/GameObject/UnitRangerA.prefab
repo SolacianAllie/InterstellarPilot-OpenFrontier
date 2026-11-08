@@ -238,6 +238,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   ClassName: A
   Mass: 0.4
+  RadarCrossSection: 32.6
   Seed: -1
   CollisionCollider: {fileID: 135985305603660343}
   Radius: 3.22

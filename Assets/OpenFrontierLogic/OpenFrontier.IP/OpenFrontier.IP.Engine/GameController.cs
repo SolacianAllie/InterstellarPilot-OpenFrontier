@@ -10,7 +10,6 @@ using OpenFrontier.IP.Engine.SaveGame;
 using OpenFrontier.IP.Engine.SectorNaming;
 using OpenFrontier.IP.Engine.WorldGeneration.Models;
 using OpenFrontier.IP.IO;
-using OpenFrontier.IP.MusicPlayer;
 using OpenFrontier.IP.UI;
 using OpenFrontier.IP.UI.Screens;
 using OpenFrontier.IP.ZFrame;
@@ -204,7 +203,6 @@ namespace OpenFrontier.IP.Engine
 
 		public GameCombatDifficultyLevel DefaultCombatDifficultyLevel;
 
-		public float DefaultMusicVolume = 0.5f;
 
 		public GameCombatDifficultyLevel CombatDifficultyLevel;
 
@@ -273,9 +271,7 @@ namespace OpenFrontier.IP.Engine
 
 		public LayerMask DamageObjectMask;
 
-		public SimpleMusicPlayer MusicPlayer;
 
-		public string MusicVolumeKey = "music_volume";
 
 		public bool AutoCloseInGameMenu = true;
 
@@ -329,8 +325,6 @@ namespace OpenFrontier.IP.Engine
 
 		public const bool DefaultSpaceFogEnabled = true;
 
-		public const bool DefaultRenderCloakedShipOutlinesEnabled = true;
-
 		public float HypersleepTimeMultiplier = 8f;
 
 		public string HypersleepTimeMultiplierKey = "hypersleep_time_multiplier";
@@ -346,10 +340,6 @@ namespace OpenFrontier.IP.Engine
 		public string GraphicsQualityLevelKey = "graphics_quality_level";
 
 		public int DefaultQualityLevel = 2;
-
-		public bool RenderCloakedShipOutlinesEnabled = true;
-
-		public string RenderCloakedShipOutlinesKey = "cloaked_outline_enabled";
 
 		public string SpaceFogEnabledKey = "space_fog_enabled";
 
@@ -576,11 +566,9 @@ namespace OpenFrontier.IP.Engine
 		{
 			PlayerPrefs.SetInt(PlayerOptionConstants.Video_FullScreenKey, Helper.BoolTo01(Screen.fullScreen));
 			PlayerPrefs.SetFloat(MasterVolumeKey, AudioListener.volume);
-			PlayerPrefs.SetFloat(MusicVolumeKey, (MusicPlayer != null) ? MusicPlayer.Volume : DefaultMusicVolume);
 			PlayerPrefs.SetInt(PlayButtonSoundsKey, Helper.BoolTo01(PlayButtonSounds));
 			PlayerPrefs.SetInt(PlayerOptionConstants.Audio_MissileLockSoundKey, Helper.BoolTo01(PlayerOptions.Audio_MissileLockSound));
 			PlayerPrefs.SetInt(SpaceFogEnabledKey, Helper.BoolTo01(SpaceFogEnabled));
-			PlayerPrefs.SetInt(RenderCloakedShipOutlinesKey, Helper.BoolTo01(RenderCloakedShipOutlinesEnabled));
 			PlayerPrefs.SetInt(PlayerOptionConstants.Video_WormholeAnimationEnabledKey, Helper.BoolTo01(PlayerOptions.Video_WormholeAnimationEnabled));
 			PlayerPrefs.SetInt(LightingFXEnabledKey, Helper.BoolTo01(LightingFXEnabled));
 			PlayerPrefs.SetInt(PreferCameraLockKey, Helper.BoolTo01(PreferCameraLock));
@@ -625,7 +613,7 @@ namespace OpenFrontier.IP.Engine
 
 		public void SaveSandboxPlayerSettings()
 		{
-			PlayerPrefs.SetInt(SandboxPlayerSettings.GenerationNumSectorsIndexKey, SandboxPlayerSettings.GenerationNumSectorsIndex);
+			PlayerPrefs.SetInt(SandboxPlayerSettings.GenerationNumSectorsKey, SandboxPlayerSettings.GenerationNumSectors);
 			PlayerPrefs.SetInt(SandboxPlayerSettings.DiscoverAllSectorsKey, Helper.BoolTo01(SandboxPlayerSettings.DiscoverAllSectors));
 			PlayerPrefs.SetInt(SandboxPlayerSettings.DiscoverEverythingKey, Helper.BoolTo01(SandboxPlayerSettings.DiscoverEverything));
 			PlayerPrefs.SetInt(SandboxPlayerSettings.FactionSeedingBanditFactionsKey, Helper.BoolTo01(SandboxPlayerSettings.FactionSeedingBanditFactions));
@@ -744,10 +732,6 @@ namespace OpenFrontier.IP.Engine
 		public void ApplyAllPlayerPrefs()
 		{
 			Debug.Log("GameController: Applying player preferences...", this);
-			if (MusicPlayer != null)
-			{
-				MusicPlayer.Volume = PlayerPrefsHelper.SafeGetFloat(MusicVolumeKey, DefaultMusicVolume);
-			}
 			bool fullScreen = PlayerPrefs.GetInt(PlayerOptionConstants.Video_FullScreenKey, 1) > 0;
 			ApplyResolution(fullScreen);
 			AudioListener.volume = PlayerPrefsHelper.SafeGetFloat(MasterVolumeKey, 1f);
@@ -756,7 +740,6 @@ namespace OpenFrontier.IP.Engine
 			int defaultValue = CombatDifficultyLevels.IndexOf(DefaultCombatDifficultyLevel);
 			CombatDifficultyLevelIndex = Mathf.Clamp(PlayerPrefs.GetInt(CombatDifficultyLevelKey, defaultValue), 0, CombatDifficultyLevels.Length);
 			SpaceFogEnabled = PlayerPrefs.GetInt(SpaceFogEnabledKey, Helper.BoolToInt(val: true)) > 0;
-			RenderCloakedShipOutlinesEnabled = PlayerPrefs.GetInt(RenderCloakedShipOutlinesKey, Helper.BoolToInt(val: true)) > 0;
 			PlayerOptions.Video_WormholeAnimationEnabled = PlayerPrefs.GetInt(PlayerOptionConstants.Video_WormholeAnimationEnabledKey, Helper.BoolToInt(PlayerOptionConstants.Video_DefaultWormholeAnimationEnabled)) > 0;
 			LightingFXEnabled = PlayerPrefs.GetInt(LightingFXEnabledKey, Helper.BoolToInt(val: true)) > 0;
 			PreferCameraLock = PlayerPrefs.GetInt(PreferCameraLockKey, 0) > 0;
@@ -817,8 +800,27 @@ namespace OpenFrontier.IP.Engine
 
 		private void ApplySandboxSettings()
 		{
-			int value = PlayerPrefs.GetInt(SandboxPlayerSettings.GenerationNumSectorsIndexKey, GameSettings.SandboxSettings.SectorCounts.IndexOf(GameSettings.SandboxSettings.DefaultSectorCount));
-			SandboxPlayerSettings.GenerationNumSectorsIndex = Mathf.Clamp(value, 0, GameSettings.SandboxSettings.SectorCounts.Length - 1);
+			int minNumSectors = GameSettings.SandboxSettings.MinSectorCount;
+			int maxNumSectors = GameSettings.SandboxSettings.GetMaxSectorCount();
+			int value = PlayerPrefs.GetInt(SandboxPlayerSettings.GenerationNumSectorsKey, -1);
+			if (value < 0)
+			{
+				value = GameSettings.SandboxSettings.DefaultNumSectors;
+			}
+			else if (value < minNumSectors)
+			{
+				// Builds before the size slider became continuous stored an INDEX
+				// into SectorCounts, not a count. An index is always below the
+				// smallest preset's MinCount, so the two are unambiguous and we
+				// can translate rather than silently collapse the player's choice
+				// to the floor.
+				SandboxSectorCount[] sectorCounts = GameSettings.SandboxSettings.SectorCounts;
+				if (sectorCounts != null && value < sectorCounts.Length)
+				{
+					value = sectorCounts[value].MinCount;
+				}
+			}
+			SandboxPlayerSettings.GenerationNumSectors = Mathf.Clamp(value, minNumSectors, maxNumSectors);
 			SandboxPlayerSettings.DiscoverAllSectors = PlayerPrefs.GetInt(SandboxPlayerSettings.DiscoverAllSectorsKey, Helper.BoolTo01(GameSettings.SandboxSettings.DefaultDiscoverAllSectors)) > 0;
 			SandboxPlayerSettings.DiscoverEverything = PlayerPrefs.GetInt(SandboxPlayerSettings.DiscoverEverythingKey, Helper.BoolTo01(GameSettings.SandboxSettings.DefaultDiscoverEverything)) > 0;
 			SandboxPlayerSettings.FactionSpawning = PlayerPrefs.GetInt(SandboxPlayerSettings.FactionSpawningKey, Helper.BoolTo01(GameSettings.SandboxSettings.DefaultFactionSpawning)) > 0;
@@ -850,7 +852,7 @@ namespace OpenFrontier.IP.Engine
 		public void ResetSandboxPlayerSettings()
 		{
 			SandboxSettings sandboxSettings = instance.GameSettings.SandboxSettings;
-			sandboxPlayerSettings.GenerationNumSectorsIndex = sandboxSettings.SectorCounts.IndexOf(sandboxSettings.DefaultSectorCount);
+			sandboxPlayerSettings.GenerationNumSectors = sandboxSettings.DefaultNumSectors;
 			sandboxPlayerSettings.GenerationMaxWormholes = sandboxSettings.GenerationDefaultMaxWormholes;
 			sandboxPlayerSettings.DiscoverAllSectors = sandboxSettings.DefaultDiscoverAllSectors;
 			sandboxPlayerSettings.DiscoverEverything = sandboxSettings.DefaultDiscoverAllSectors;
@@ -1032,11 +1034,24 @@ namespace OpenFrontier.IP.Engine
 		private void CreateCamera()
 		{
 			mainCamera = UnityObjectHelper.InstantiateAndGetComponent(MainCameraPrefab);
+			// The cloak backdrop feature must run for THE render camera, not
+			// any game camera that happens to draw: this instantiation is
+			// the one that draws ships. The provided camera is gated on
+			// Unity-null inside the feature.
+			OpenFrontier.CloakBackdropRequests.ProvideCamera(mainCamera);
 			mainCameraAudioSource = mainCamera.GetComponent<AudioSource>();
 			if (mainCameraAudioSource == null)
 			{
 				mainCameraAudioSource = mainCamera.gameObject.AddComponent<AudioSource>();
 			}
+			// The new camera carries an enabled AudioListener while the menu
+			// camera's is still live too: two enabled listeners make Unity
+			// compute every sound twice and warn about it every frame for as
+			// long as they coexist. The policy ("deepest live camera keeps
+			// the ear") lives with the music director; this is the frame the
+			// second ear is born, so ask for the re-scan now rather than
+			// leaving the duplication standing until the next routine poll.
+			EngineMusic.MusicDirector.RecheckListeners();
 		}
 
 		private void Update()

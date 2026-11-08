@@ -1864,7 +1864,17 @@ namespace OpenFrontier.IP.Engine.Factions
 			}
 		}
 
-		private void Update()
+		/// <summary>
+		/// Per-frame faction upkeep. Called by the engine, not by Unity.
+		/// </summary>
+		/// <remarks>
+		/// Was a MonoBehaviour Update(). At 1024 sectors there are 1,523 factions
+		/// live, so that was ~1,523 dispatches a frame (~1.1ms) alongside
+		/// FactionAIBase's identical 1,521. EngineASX.UpdateFactions drives both
+		/// from the faction list now. Nothing is disabled and the schedule is
+		/// unchanged - this ran every frame and still does.
+		/// </remarks>
+		public void Tick()
 		{
 			if (!EngineASX.LoadedAndReady || !GameController.Instance.GameSettings.DebugSettings.FactionUpdateEnabled)
 			{

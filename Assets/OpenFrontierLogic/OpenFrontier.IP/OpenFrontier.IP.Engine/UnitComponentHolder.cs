@@ -152,6 +152,14 @@ namespace OpenFrontier.IP.Engine
 
 		private List<ComponentBase> unitComponents = new List<ComponentBase>(10);
 
+		/// <summary>
+		/// Utility mounts, kept beside <see cref="unitComponents"/> rather than
+		/// searched out of it. A laser missile asks its launcher for a beam ten
+		/// times a second, and walking every component on the ship to find one
+		/// would be that walk per missile per check.
+		/// </summary>
+		private readonly List<UtilityMountComponent> utilityMounts = new List<UtilityMountComponent>(2);
+
 		private CargoTrader cargoTrader;
 
 		private UnitAutoTurretModule autoTurretModule;
@@ -487,33 +495,83 @@ namespace OpenFrontier.IP.Engine
 		///
 		/// Vents sum - two of them shed twice what one does.
 		///
-		/// Nothing reads this yet, because there is no heat system. It is here
-		/// so the number exists before the thing that consumes it does, and so
-		/// that losing a vent to a lucky hit is already a loss.
+		/// Cached, because this walks every bay and it is now read per frame by
+		/// the heat tick and once per candidate by every infrared missile hunting
+		/// for something hotter - which made the hunt cost units times bays on
+		/// every evaluation. Invalidated whenever a component is registered or
+		/// deregistered, which is the only thing that can change the answer.
 		/// </remarks>
 		public float TotalVentRate
 		{
 			get
 			{
-				float total = 0f;
-
-				for (int i = 0; i < bays.Count; i++)
+				if (cachedTotalVentRate < 0f)
 				{
-					if (bays[i].InstalledComponentClass is ThermalVentClass vent)
+					float total = 0f;
+					for (int i = 0; i < bays.Count; i++)
 					{
-						total += vent.VentRate;
+						if (bays[i].InstalledComponentClass is ThermalVentClass vent)
+						{
+							total += vent.VentRate;
+						}
 					}
+					cachedTotalVentRate = total;
 				}
-
-				return total;
+				return cachedTotalVentRate;
 			}
 		}
 
+		private float cachedTotalVentRate = -1f;
+
 		/// <summary>
-		/// Total venting once the Systems pips are applied. A ship that has put
-		/// its power into engines or weapons sheds heat more slowly.
+		/// Forgets the cached vent total. Called when components change, which is
+		/// the only thing that can change it.
 		/// </summary>
-		public float EffectiveVentRate => TotalVentRate * SystemsPowerMultiplier;
+		public void InvalidateVentRate()
+		{
+			cachedTotalVentRate = -1f;
+		}
+
+		/// <summary>
+		/// How much heat per second this ship sheds, and so how much heat it is
+		/// throwing out into space.
+		/// </summary>
+		/// <remarks>
+		/// Venting is visibility. Heat in equals heat out at steady state, so a
+		/// ship radiates in proportion to how fast it can get rid of what it is
+		/// making - which makes a ship with a big radiator a bright ship and a
+		/// ship with none a dark one. That is why this is the number an infrared
+		/// seeker reads, and it is the whole reason Silent Running is worth
+		/// having: shut the radiator and nothing leaves at all.
+		///
+		/// Fitting thermal vents REMOVES the safety net. Once a ship has vents
+		/// they are the only way heat leaves it, so fitting one is a commitment
+		/// rather than an upgrade - a badly vented ship cooks, and a well vented
+		/// one is the brightest thing in the sector.
+		///
+		/// The net underneath is deliberately tiny. It has to be enough that an
+		/// unvented hull recovers rather than sitting pinned at maximum heat for
+		/// the rest of an engagement, and not enough to make fitting a vent - and
+		/// with it being seen - optional. It also used not to apply to ships at
+		/// all, being wired behind a null check on the component holder that no
+		/// ship has, which left every ventless ship unable to cool whatsoever.
+		///
+		/// The Systems multiplier is applied live rather than cached, because the
+		/// player can move power between pips at any time and that has to show up
+		/// immediately. It is a couple of field reads, unlike the bay walk.
+		/// </remarks>
+		public float EffectiveVentRate
+		{
+			get
+			{
+				float vents = TotalVentRate;
+				if (vents > 0f)
+				{
+					return vents * SystemsPowerMultiplier;
+				}
+				return Unit.BaseVenting;
+			}
+		}
 
 		/// <summary>
 		/// Sums the mass of everything fitted and hands it to the unit.
@@ -1072,13 +1130,17 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
-		public void Update()
-		{
-			if (hasInit && unit.Engine != null && unit.IsInActiveSector)
-			{
-				Tick();
-			}
-		}
+		/// <summary>
+		/// Whether this holder should tick its unit right now.
+		/// </summary>
+		/// <remarks>
+		/// This is the predicate that used to live inside Update(), preserved
+		/// verbatim so that the engine-driven loop in EngineASX.UpdateActiveSectorUnits
+		/// ticks exactly the same set it did before. hasInit is private to this
+		/// class and is only set once the holder has been fully wired up, so it
+		/// cannot be reimplemented by the caller - hence the property.
+		/// </remarks>
+		public bool ShouldTickNow => hasInit && unit != null && unit.Engine != null && unit.IsInActiveSector;
 
 		/// <summary>
 		/// Whether this copy simulates the ship, and therefore whether
@@ -1468,6 +1530,37 @@ namespace OpenFrontier.IP.Engine
 				}
 				unitComponents.Insert(i, component);
 			}
+			if (component is UtilityMountComponent mount && !utilityMounts.Contains(mount))
+			{
+				utilityMounts.Add(mount);
+			}
+			InvalidateVentRate();
+		}
+
+		/// <summary>
+		/// Every utility mount on this ship. A ship with two of them has two
+		/// beams, so there is no best one to pick and nothing to arbitrate.
+		/// </summary>
+		public List<UtilityMountComponent> UtilityMounts => utilityMounts;
+
+		/// <summary>
+		/// Puts this ship's designators onto a target, for a shot that needs one.
+		/// </summary>
+		/// <remarks>
+		/// Only homing projectiles ask, because only they can be waiting on a
+		/// beam. Every mount is asked rather than just the first, so fitting a
+		/// second one helps instead of doing nothing.
+		/// </remarks>
+		public void RequestUtilityMountDesignation(Unit target)
+		{
+			for (int i = 0; i < utilityMounts.Count; i++)
+			{
+				UtilityMountComponent mount = utilityMounts[i];
+				if (mount != null)
+				{
+					mount.Designate(target);
+				}
+			}
 		}
 
 		public void DeregisterComponent(ComponentBase component)
@@ -1476,6 +1569,11 @@ namespace OpenFrontier.IP.Engine
 			{
 				unitComponents.Remove(component);
 			}
+			if (component is UtilityMountComponent mount)
+			{
+				utilityMounts.Remove(mount);
+			}
+			InvalidateVentRate();
 		}
 
 		public void DecreaseComponentRechargePriority(ComponentBase component)
@@ -1892,6 +1990,17 @@ namespace OpenFrontier.IP.Engine
 				if (bay != null)
 				{
 					DockedInHangarBay = bay;
+					// Open Frontier: docking is the repaint moment. This
+					// is the dock primitive every dock goes through -
+					// TryDockInUnit funnels into it, and the direct hangar
+					// callers (fleet regroup, the multiplayer docked-state
+					// applier, the loader and ship-build seeders) land on
+					// this same call - so the paint check lives here, once
+					// per approved dock. The station gate and the role
+					// comparison happen inside ShipDecals; an unpainted or
+					// already-agreeing ship is a dictionary read out.
+					ShipDecals.OnDocked(unit, hangar.UnitComponents != null
+						? hangar.UnitComponents.Unit : null);
 					return true;
 				}
 			}

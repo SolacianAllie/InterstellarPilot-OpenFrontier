@@ -11,6 +11,11 @@ namespace OpenFrontier.IP.UI
 	{
 		private float lastTimeRefreshedTitleLabel = -100f;
 
+		// Frame rate shown at the head of the location label. Same counter the dev
+		// overlay uses, so the two cannot report different numbers on the same
+		// frame. Owned by OpenFrontier; OpenFrontier.IP already references it.
+		private readonly FrameRateCounter frameRateCounter = new FrameRateCounter();
+
 		public TextMeshProUGUI CreditsText;
 
 		public Image PausedActivatorImage;
@@ -163,6 +168,22 @@ namespace OpenFrontier.IP.UI
 
 		private void Update()
 		{
+			// Unscaled, so the readout stays honest while a PauseWhenShown screen
+			// has Time.timeScale at 0 - which is exactly when it is least obvious
+			// whether something is holding the framerate up. See FrameRateCounter
+			// for why the rolling mean beat the other two approaches.
+			frameRateCounter.Sample(Time.unscaledDeltaTime);
+
+			// Location label, refreshed every frame so the framerate reading moves
+			// with the display rather than jumping once a second. This used to be
+			// driven entirely by the change-detection block below, which fired
+			// when the unit, ship name or sector changed or every 2s; the framerate
+			// was averaged over 1s and sampled into that. Two things are given up
+			// for live updating: a StringBuilder.ToString() per frame, and a TMP
+			// mesh rebuild of this one label per frame. Both are small, and the
+			// feature is player-facing, so it is worth it - but if this ever needs
+			// to be cheaper, split the framerate into its own TMP element rather
+			// than rebuilding the whole label, so only the digits change.
 			if (!(Engine != null))
 			{
 				return;
@@ -181,12 +202,20 @@ namespace OpenFrontier.IP.UI
 			Unit playerUnit = Engine.PlayerUnit;
 			if (playerUnit != null)
 			{
+				if (playerUnit.IsValidAndNotDestroyed)
+				{
+					UpdateTitleLabels();
+				}
 				Unit playerRootUnit = Engine.PlayerRootUnit;
 				if (lastPlayerUnit != playerUnit || lastPlayerRootUnit != playerRootUnit || lastKnownUnitName != playerUnit.UnitName || lastKnownRootUnitName != playerRootUnit.UnitName || lastPlayerScene != Engine.ActiveSector || Time.realtimeSinceStartup > lastTimeRefreshedTitleLabel + 2f || (playerUnit != null && playerUnit.Components != null && playerUnit.Components.ShipName != lastKnownShipName))
 				{
+					// No UpdateTitleLabels() here any more - the label is now rebuilt
+					// every frame above, so calling it from here too would do the
+					// string build and the mesh rebuild twice on every change frame.
+					// This block stays for the caching it does.
 					if (playerUnit.IsValidAndNotDestroyed)
 					{
-						UpdateTitleLabels();
+						lastTimeRefreshedTitleLabel = Time.realtimeSinceStartup;
 					}
 					lastKnownUnitName = playerUnit.UnitName;
 					lastKnownRootUnitName = playerRootUnit.UnitName;
@@ -258,6 +287,30 @@ namespace OpenFrontier.IP.UI
 			Unit playerCurrentUnit = DockUI.PlayerCurrentUnit;
 			if (playerCurrentUnit != null)
 			{
+				// Frame rate prefix, e.g. "60/V-Sync - Shuttle-A "Aether", Abocleus".
+				// Measured from unscaled time so it stays true while a pause screen
+				// has stopped Time.timeScale.
+				//
+				// The denominator is whatever cap was chosen: the word V-Sync
+				// when that is the option, since the display decides and there is
+				// no number to show, and the frame rate limit row when one was
+				// picked. 0 or less on that row is the "Uncapped" option.
+				stringBuilder.Append(frameRateCounter.FramesPerSecond.ToString("0"));
+				stringBuilder.Append('/');
+				GameController gameController = GameController.Instance;
+				if (gameController != null && PlayerPrefs.GetInt(gameController.PlayerOptionConstants.Video_VSyncKey, 1) > 0)
+				{
+					stringBuilder.Append("V-Sync");
+				}
+				else if (gameController != null && gameController.UserTargetFrameRate > 0)
+				{
+					stringBuilder.Append(gameController.UserTargetFrameRate);
+				}
+				else
+				{
+					stringBuilder.Append("Uncapped");
+				}
+				stringBuilder.Append(" - ");
 				GetLocationTextNonAlloc(playerCurrentUnit, stringBuilder);
 				return stringBuilder.ToString();
 			}

@@ -23,7 +23,12 @@ namespace OpenFrontier
 		private static void Rebuild()
 		{
 			var cams = Object.FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)
-				.Where(c => c.isActiveAndEnabled)
+				// The cloak backdrop copy rig rides under the real rig and
+				// must never be swept into it: while cloaking survives a
+				// scene load, its enabled base camera would be restacked
+				// as an overlay of the real view and paint the whole
+				// background into the player's screen.
+				.Where(c => c.isActiveAndEnabled && !c.name.StartsWith("CloakBackdrop"))
 				.OrderBy(c => c.depth)
 				.ToList();
 			if (cams.Count < 2)

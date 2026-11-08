@@ -21,7 +21,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: m_default_trail1
-  m_Shader: {fileID: 4800000, guid: 3290585ab9734be6ac32005e044d31fd, type: 3}
+  m_Shader: {fileID: 4800000, guid: 62c7d73dc81f41ed9ea206c006f65f87, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []

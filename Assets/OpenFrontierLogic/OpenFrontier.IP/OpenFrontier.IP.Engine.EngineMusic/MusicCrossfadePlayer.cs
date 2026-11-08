@@ -39,6 +39,14 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		[Tooltip("How long entering or leaving a station crossfades between the two tracks.")]
 		public float StationCrossfadeSeconds = 2f;
 
+		/// <summary>How long the menu takes to fade to silence on the way out.</summary>
+		[Tooltip("How long the main menu music takes to reach silence before gameplay music starts.")]
+		public float MenuFadeSeconds = 3f;
+
+		/// <summary>How long the music takes to reach silence inside a wormhole.</summary>
+		[Tooltip("How long the music fades to nothing when entering a wormhole.")]
+		public float WormholeFadeSeconds = 1.5f;
+
 		private AudioSource currentSource;
 		private AudioSource incomingSource;
 		private MusicTimingTable.Entry currentEntry;
@@ -46,6 +54,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		private float currentStartedAt;
 		private float incomingStartedAt;
 		private float fadeStartedAt;
+		private float fadeSeconds = 1.5f;
 		private bool fadingOut;
 		private bool crossfading;
 		private float crossfadeStartedAt;
@@ -141,26 +150,22 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		}
 
 		/// <summary>
-		/// The music volume, from the existing player.
+		/// The music volume, which the director owns.
 		/// </summary>
 		/// <remarks>
-		/// Read rather than stored so that moving the volume slider in the
-		/// options takes effect immediately, which it would not if the value
-		/// were latched when a track started - a track can run for three
-		/// minutes and the player expects the slider to do something.
+		/// This used to reach across and read it off the old
+		/// SimpleMusicPlayer component, falling back to a hardcoded 0.5 when
+		/// that component was not there. Both halves of that were bad: the
+		/// old system could not be deleted while something still read it,
+		/// and the fallback was indistinguishable from a real volume of 0.5 -
+		/// which is exactly what the overlay's HasLiveMasterVolume existed to
+		/// warn about, on the property that was causing it.
+		///
+		/// Read live rather than latched when a track starts, so that moving
+		/// the slider does something. A track can run for three minutes and
+		/// the player expects the slider to work while it does.
 		/// </remarks>
-		public float MasterVolume
-		{
-			get
-			{
-				if (GameController.Instance != null && GameController.Instance.MusicPlayer != null)
-				{
-					return GameController.Instance.MusicPlayer.Volume;
-				}
-
-				return 0.5f;
-			}
-		}
+		public float MasterVolume => MusicDirector.Volume;
 
 		/// <summary>
 		/// Starts a track immediately, cutting whatever was playing.
@@ -223,7 +228,17 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			// reached, the second call would reassign the clip of a source
 			// that is mid-playback and restart it from zero, which is the
 			// skip sound this whole class exists to avoid.
-			if (incomingWaiting)
+			//
+			// REFUSE, DO NOT PROMOTE. Promoting the pending incoming is right
+			// for a transition the WORLD asked for - a dock, a wormhole - and
+			// wrong here. A handover is the system following its own plan;
+			// there is nothing to take over from, and promoting would adopt
+			// the incoming as current and then hand over again on top of it.
+			//
+			// A scripted replace put the promote block here instead of in
+			// Interrupt, because both ended in the same four lines. Read the
+			// guards in the methods you think you edited.
+			if (incomingWaiting || fadingOut || crossfading)
 			{
 				return false;
 			}
@@ -266,9 +281,48 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// heard alone - which is how a transition ends up sounding like a
 		/// mistake rather than a change of scene.
 		/// </remarks>
-		public bool Interrupt(MusicTimingTable.Entry entry)
+		public bool Interrupt(MusicTimingTable.Entry entry) =>
+			Interrupt(entry, InterruptFadeSeconds);
+
+		/// <summary>
+		/// Fades to silence over a given duration, then plays the new track.
+		/// </summary>
+		/// <remarks>
+		/// The duration is a parameter because the fades are not
+		/// interchangeable. The default is short and blunt, sized for a
+		/// wormhole where the world has already moved on and the player is
+		/// looking somewhere else. Leaving the main menu is the opposite: a
+		/// deliberate, calm exit from a five minute piece, where 1.5s sounds
+		/// like the music was cut off rather than let go.
+		///
+		/// Only the menu needs this. Everywhere else a fade out is a response
+		/// to something sudden, and a long silence after a sudden thing is
+		/// worse than a quick one.
+		/// </remarks>
+		public bool Interrupt(MusicTimingTable.Entry entry, float seconds)
 		{
 			if (entry == null)
+			{
+				return false;
+			}
+
+			// A transition to the track that is ALREADY playing is not a
+			// transition. It is a cut followed by a restart of the same music,
+			// and the log caught it doing exactly that on a wormhole:
+			//
+			//   interrupted 'Neutral Blue Giant' after 0s of 82s
+			//       - fading to silence over 1.5s,
+			//       then 'Neutral Blue Giant'
+			//
+			// Wormholes flap the state - the sector changes, the local ship
+			// goes away, combat ends - so the answer can come back as the
+			// track already playing. It was then faded to silence and started
+			// again from its first sample. To the ear that is the music
+			// suddenly ending, every time it happened.
+			//
+			// HandOver already refused this. Interrupt and Crossfade did not,
+			// and they are the two that move between places.
+			if (IsSameTrack(entry, currentEntry))
 			{
 				return false;
 			}
@@ -309,12 +363,56 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			incomingEntry = entry;
 			incomingWaiting = true;
+			crossfading = false;
+
+			if (fadingOut)
+			{
+				// Already on the way to silence. Arm the track and LEAVE THE
+				// FADE RUNNING - do not restart it.
+				//
+				// Restarting would snap the volume back to full at the moment
+				// the new world appeared: audible, and the opposite of the
+				// point, since the menu was already on its way out. The load
+				// simply finished early and there is now somewhere for the
+				// fade to arrive.
+				Debug.Log("Music: '" + entry.Name + "' is ready in time for the"
+					+ " fade already running, so it arrives behind it rather"
+					+ " than starting a second fade.");
+
+				return true;
+			}
+
+			// A HANDOVER, as opposed to a fade - and only now that the fade
+			// case above is settled.
+			//
+			// The order is the whole point. Interrupt sets incomingWaiting
+			// AND fadingOut together, so during any fade BOTH flags are true.
+			// Promoting here would adopt the incoming track that the fade is
+			// deliberately holding SILENT, stop the outgoing mid-fade, and
+			// make the quiet track audible. The fade case must be tested
+			// first, every time.
+			if (incomingWaiting)
+			{
+				// Take over: the handover's track becomes current and the
+				// transition runs from there. Its predecessor's ending is
+				// cut, which is right - a composed ending belongs to a track
+				// that ran its course, not one replaced halfway through its
+				// fade-out.
+				//
+				// Refusing instead left the outgoing playing its ending for up
+				// to 49 seconds, the longest in the library, while the caller
+				// retried every frame and was refused every frame - so a dock
+				// or a wormhole during a handover did not happen at all.
+				PromoteIncoming();
+			}
+
 			fadingOut = true;
 			fadeStartedAt = Time.realtimeSinceStartup;
+			fadeSeconds = seconds;
 
 			Debug.Log("Music: interrupted '" + currentEntry.Name + "' after "
 				+ CurrentElapsed.ToString("0") + "s of " + currentEntry.Duration.ToString("0")
-				+ "s - fading to silence over " + InterruptFadeSeconds
+				+ "s - fading to silence over " + fadeSeconds
 				+ "s, then '" + entry.Name + "' (" + entry.Category + ").");
 
 			return true;
@@ -459,9 +557,61 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return false;
 			}
 
+			// A transition to the track that is ALREADY playing is not a
+			// transition. It is a cut followed by a restart of the same music,
+			// and the log caught it doing exactly that on a wormhole:
+			//
+			//   interrupted 'Neutral Blue Giant' after 0s of 82s
+			//       - fading to silence over 1.5s,
+			//       then 'Neutral Blue Giant'
+			//
+			// Wormholes flap the state - the sector changes, the local ship
+			// goes away, combat ends - so the answer can come back as the
+			// track already playing. It was then faded to silence and started
+			// again from its first sample. To the ear that is the music
+			// suddenly ending, every time it happened.
+			//
+			// HandOver already refused this. Interrupt and Crossfade did not,
+			// and they are the two that move between places.
+			if (IsSameTrack(entry, currentEntry))
+			{
+				return false;
+			}
+
 			if (currentEntry == null || currentSource == null || !currentSource.isPlaying)
 			{
 				return Start(entry);
+			}
+
+			// A fade already running means this is not a crossfade, it is the
+			// tail of a fade with somewhere new to arrive. Unguarded it set
+			// crossfading while fadingOut stayed true, and Update checks
+			// crossfading FIRST - so the fade was stranded. The crossfade ran
+			// to completion, the next frame found fadingOut still set, and
+			// faded the brand new track away to silence.
+			if (fadingOut)
+			{
+				Debug.Log("Music: a crossfade to '" + entry.Name + "' arrived"
+					+ " during a fade, so it takes the place of the fade"
+					+ " rather than starting a second one.");
+
+				return Interrupt(entry);
+			}
+
+			// A HANDOVER, and only now the fade case is dealt with. Interrupt
+			// sets incomingWaiting AND fadingOut together, so during a fade
+			// both are true - and promoting first would adopt the very track
+			// the fade is deliberately holding silent, stop the outgoing
+			// mid-fade, and make the quiet track audible.
+			//
+			// Take over: the handover's promoted track becomes current and the
+			// crossfade runs from there. Refusing left the outgoing playing
+			// its ending for up to 49 seconds, the longest in the library,
+			// while the director retried every frame and was refused every
+			// frame - so docking during a handover did not happen at all.
+			if (incomingWaiting)
+			{
+				PromoteIncoming();
 			}
 
 			AudioClip clip = MusicLibrary.ClipFor(entry);
@@ -494,6 +644,15 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			incomingStartedAt = Time.realtimeSinceStartup;
 			incomingWaiting = true;
 			crossfading = true;
+
+			// Explicit, though the fade case returned above and so this is
+			// already false. Update checks crossfading BEFORE fadingOut, so
+			// both being true would strand the fade - the crossfade would run
+			// to completion and the next frame would find fadingOut still set
+			// and fade the brand new track away. Relying on "it cannot get
+			// here" for a flag that strands a fade is how it got stranded.
+			fadingOut = false;
+
 			crossfadeStartedAt = Time.realtimeSinceStartup;
 
 			Debug.Log("Music: crossfading from '" + currentEntry.Name + "' to '"
@@ -513,14 +672,36 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			float half = t * Mathf.PI * 0.5f;
 			float master = MasterVolume;
 
+			// Outgoing DOWN, incoming UP. Cos runs 1 -> 0 over 0..pi/2 and Sin
+			// runs 0 -> 1, so the track you are leaving starts at full and the
+			// track you are arriving at starts at nothing.
+			//
+			// THESE WERE THE OTHER WAY ROUND. Sin and Cos were swapped, so the
+			// current track snapped to silence on the first frame and then
+			// climbed back to full while the new one started loud and faded
+			// away - the exact inverse of a crossfade, and reported as "the
+			// track snaps to 0 and fades in, then stops, then the new one
+			// fades in".
+			//
+			// It survived being written, reviewed and run because the two
+			// curves are identical at the midpoint - cos and sin of pi/4 are
+			// both 0.7071 - so only the two ENDS are wrong, and the ends are
+			// where the ears are. Check the ends of a crossfade, not its
+			// middle.
+			//
+			// cos^2 + sin^2 = 1, so the summed POWER is constant across the
+			// whole ramp and the perceived loudness holds steady. That is the
+			// equal-power property, and it is why these two and not a pair of
+			// straight lines: a linear ramp sums AMPLITUDE to 1 and dips ~3 dB
+			// through the middle.
 			if (currentSource != null)
 			{
-				currentSource.volume = master * Mathf.Sin(half);
+				currentSource.volume = master * Mathf.Cos(half);
 			}
 
 			if (incomingSource != null)
 			{
-				incomingSource.volume = master * Mathf.Cos(half);
+				incomingSource.volume = master * Mathf.Sin(half);
 			}
 
 			if (t >= 1f)
@@ -536,12 +717,82 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			}
 		}
 
+		/// <summary>
+		/// Fades the current track to silence with nothing queued behind it.
+		/// </summary>
+		/// <remarks>
+		/// A fade out that is not a transition. The next track is unknown
+		/// yet, or there may not be one for some time - which is exactly the
+		/// situation when leaving the main menu, because the menu hands over
+		/// to a loading scene and the next world does not exist yet.
+		///
+		/// THE MENUS FADE COULD NOT START WITHOUT THIS. The director only
+		/// decides what to play once the world is ready, and leaving the menu
+		/// means the world is emphatically NOT ready - it is being torn down,
+		/// then a loading scene runs, then a new world is built. So the fade
+		/// began when the new world became observable, which is after the
+		/// scene change the player was watching, and 3 seconds of it played
+		/// over a world that had already loaded. Asking for the menu to fade
+		/// out BEFORE the scene change is a request for a fade that does not
+		/// have a destination yet.
+		///
+		/// Returns false when there is nothing playing or a fade is already
+		/// running, so the caller can call it every frame without guarding.
+		/// </remarks>
+		public bool FadeOutOnly(float seconds)
+		{
+			if (currentEntry == null || currentSource == null || !currentSource.isPlaying)
+			{
+				return false;
+			}
+
+			// The fadingOut guard is load-bearing, not tidiness. During a fade
+			// the track is still Playing and currentEntry is still set - it
+			// is quieter, not finished - so without this the caller's
+			// every-frame invocation would reset fadeStartedAt each frame and
+			// the fade would never complete. It would sit just below full
+			// volume forever, which is worse than not fading at all.
+			if (fadingOut)
+			{
+				return false;
+			}
+
+			// Taking over from a crossfade is allowed, and the incoming source
+			// MUST be stopped here.
+			//
+			// A crossfade in progress has its incoming track playing at
+			// whatever volume the ramp had reached. Clearing incomingEntry
+			// makes PromoteIncoming return early, so nothing else would ever
+			// stop it - it would carry on at that volume with no owner. That
+			// is two pieces of music at once, and it is the one place in this
+			// class where a spare source can be left behind.
+			if (incomingSource != null && incomingSource != currentSource)
+			{
+				incomingSource.Stop();
+				incomingSource.clip = null;
+				incomingSource.volume = 0f;
+			}
+
+			incomingEntry = null;
+			incomingWaiting = false;
+			crossfading = false;
+			fadingOut = true;
+			fadeStartedAt = Time.realtimeSinceStartup;
+			fadeSeconds = seconds;
+
+			Debug.Log("Music: letting go of '" + currentEntry.Name
+				+ "' after " + CurrentElapsed.ToString("0") + "s - fading to"
+				+ " silence over " + seconds + "s with nothing behind it.");
+
+			return true;
+		}
+
 		private void StepFadeOut()
 		{
 			float elapsed = Time.realtimeSinceStartup - fadeStartedAt;
-			float t = InterruptFadeSeconds <= 0f
+			float t = fadeSeconds <= 0f
 				? 1f
-				: Mathf.Clamp01(elapsed / InterruptFadeSeconds);
+				: Mathf.Clamp01(elapsed / fadeSeconds);
 
 			if (currentSource != null)
 			{
@@ -679,26 +930,70 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				+ " clip=" + (SourceHasClip ? currentSource.clip.name : "NONE")
 				+ " vol=" + SourceVolume.ToString("0.00")
 				+ " master=" + MasterVolume.ToString("0.00")
-				+ " from=" + (HasLiveMasterVolume ? "player" : "FALLBACK")
 				+ " listener=" + AudioListener.volume.ToString("0.00")
 				+ " loop=" + currentSource.loop
 				+ " paused=" + AudioListener.pause;
 		}
 
 		/// <summary>
-		/// Whether the master volume is the real setting or the fallback.
+		/// Both audio sources, named, with what each is actually doing.
 		/// </summary>
 		/// <remarks>
-		/// MasterVolume returns a hardcoded 0.5 when GameController or its
-		/// MusicPlayer is not there yet, which looks exactly like a real
-		/// volume and is not. Saying which one it is turns "the volume is
-		/// wrong" into a reportable fact - the menu screenshot showed
-		/// vol=0.00 while the stored preference was 1, and nothing on screen
-		/// could have said whether that was a live zero, a stale snapshot, or
-		/// a player that was not there.
+		/// The second source is included because it is SUPPOSED to be playing
+		/// during a handover and during a crossfade. Reporting only the
+		/// current one makes a perfectly correct overlap look exactly like a
+		/// second music system running - which is the mistake being made here
+		/// twice.
 		/// </remarks>
-		public bool HasLiveMasterVolume =>
-			GameController.Instance != null && GameController.Instance.MusicPlayer != null;
+		public string SourceReport()
+		{
+			return "[" + DescribeSource(currentSource, "out")
+				+ " " + DescribeSource(incomingSource, "in") + "]";
+		}
+
+		/// <summary>
+		/// Whether two entries name the same piece of music.
+		/// </summary>
+		/// <remarks>
+		/// BY NAME, not by reference, and the log is why.
+		///
+		/// A reference comparison was the original guard and the log showed it
+		/// failing: the combat sequencer handed back an entry that printed as
+		/// the track already playing - "interrupted 'Combat Medium Intensity
+		/// Engagement Section 4' after 0s of 98s, then 'Combat Medium Intensity
+		/// Engagement Section 4'" - fourteen times in a session, every one of
+		/// them a cut to silence and a restart from zero. The generated table
+		/// holds exactly one entry per name, so the two could not be the same
+		/// object, and the reference check let it through.
+		///
+		/// Whatever was carrying one reference around instead of the other, a
+		/// track is identified by which piece of music it is, and the name is
+		/// what that is. Asking the name is the question that was actually
+		/// meant, and it cannot be defeated by an object that merely looks like
+		/// the current one.
+		/// </remarks>
+		public static bool IsSameTrack(MusicTimingTable.Entry a,
+			MusicTimingTable.Entry b)
+		{
+			if (a == null || b == null)
+			{
+				return false;
+			}
+
+			return string.Equals(a.Name, b.Name, System.StringComparison.Ordinal);
+		}
+
+		private static string DescribeSource(AudioSource source, string tag)
+		{
+			if (source == null)
+			{
+				return tag + "=none";
+			}
+
+			string clip = source.clip == null ? "noclip" : source.clip.name;
+
+			return tag + "=" + clip + (source.isPlaying ? "/PLAYING" : "/stopped");
+		}
 
 		/// <summary>One line describing what is playing and why.</summary>
 		public string Describe()

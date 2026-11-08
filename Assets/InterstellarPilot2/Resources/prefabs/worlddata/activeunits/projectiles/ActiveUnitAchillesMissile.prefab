@@ -2401,8 +2401,6 @@ MonoBehaviour:
   ActiveUnitClass: {fileID: 114724804207875695, guid: 49d4427f51edca04d83033a74babe511, type: 3}
   CommsDialogPositioner: {fileID: 0}
   DrawRangeObjects: []
-  CloakOutlineRenderer: {fileID: 0}
-  CloakOutlineRenderers: []
   UnitRenderer: {fileID: 0}
   UnitRenderers: []
   CloakRenderer: {fileID: 0}

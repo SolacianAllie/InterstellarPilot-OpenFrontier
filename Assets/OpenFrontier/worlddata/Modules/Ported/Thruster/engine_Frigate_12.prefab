@@ -66,3 +66,4 @@ MonoBehaviour:
   Class: 0
   Quality: 0
   EnginePower: 24
+  ThermalLoad: 1.05

@@ -29,6 +29,6 @@ Material:
       _Size: 0.75
       _Transparency: 3
     m_Colors:
-      _AtmoColor: {r: 0.19830915, g: 0.28421843, b: 0.33216783, a: 1}
+      _AtmoColor: {r: 0.4, g: 0.9, b: 1, a: 1}
       _Color: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []

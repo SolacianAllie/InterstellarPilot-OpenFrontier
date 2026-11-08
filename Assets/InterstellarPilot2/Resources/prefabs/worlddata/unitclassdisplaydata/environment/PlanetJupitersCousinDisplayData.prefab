@@ -50,7 +50,7 @@ MonoBehaviour:
   HudCompassRadiusFudgeMultiplier: 1
   Width: 1
   Radius: 500
-  ActiveUnitClassName: Environment/ActiveUnitPlanetJupitersCousin
+  ActiveUnitClassName: Environment/ActiveUnitAlpine1
   ActiveUnitClassNameDistant:
   ThumbnailSpriteName:
   RenderIconSpriteName:
@@ -59,4 +59,4 @@ MonoBehaviour:
   ApplyThumbnailHullColor: 0
   NormalCollisionDisabled: 0
   BuildBlockerRadius: 0
-  SectorMapMinDrawSize: -1
+  SectorMapMinDrawSize: 30

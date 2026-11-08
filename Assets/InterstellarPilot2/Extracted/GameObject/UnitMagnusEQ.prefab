@@ -445,6 +445,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   ClassName: EQ
   Mass: 5.2
+  RadarCrossSection: 2564.3
   Seed: -1
   CollisionCollider: {fileID: 136711914853252429}
   Radius: 28.57

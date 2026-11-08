@@ -260,9 +260,16 @@ namespace OpenFrontier.IP.UI.Screens.UniverseSandboxSettings
 
 		private void PopulateSeedSettings(WorldSeedSettings seedSettings)
 		{
-			SandboxSectorCount currentSectorCountSetting = GetCurrentSectorCountSetting();
-			seedSettings.WorldGeneratorSettings.MinNumScenes = currentSectorCountSetting.MinCount;
-			seedSettings.WorldGeneratorSettings.MaxNumScenes = currentSectorCountSetting.MaxCount;
+			// Clamped again here, not only at the slider: a stored preference or a
+			// hand-edited setting can still ask for more sectors than the slider
+			// offers, and this is the value the generator actually receives.
+			SandboxSettings sandboxSettings = GameController.Instance.GameSettings.SandboxSettings;
+			int numSectors = Mathf.Clamp(
+				Mathf.RoundToInt(NumSectorsSlider.value),
+				sandboxSettings.MinSectorCount,
+				sandboxSettings.GetMaxSectorCount());
+			seedSettings.WorldGeneratorSettings.MinNumScenes = numSectors;
+			seedSettings.WorldGeneratorSettings.MaxNumScenes = numSectors;
 			seedSettings.WorldGeneratorSettings.MaxConnections = GetCurrentMaxWormholesSetting();
 			seedSettings.WorldGeneratorSettings.Snakiness = SnakinessSlider.value;
 			seedSettings.WorldGeneratorSettings.MinGateDistanceMultiplier = Mathf.Lerp(SectorSizeLowerValue, SectorSizeUpperValue, MinSectorSizeSlider.value);
@@ -323,7 +330,7 @@ namespace OpenFrontier.IP.UI.Screens.UniverseSandboxSettings
 			GameController.Instance.SandboxPlayerSettings.SuperchargedBanditsEnabled = SuperChargedBanditsToggle.isOn;
 			GameController.Instance.SandboxPlayerSettings.DiscoverEverything = DiscoverEverythingToggle.isOn;
 			GameController.Instance.SandboxPlayerSettings.DiscoverAllSectors = DiscoverAllSectorsToggle.isOn;
-			GameController.Instance.SandboxPlayerSettings.GenerationNumSectorsIndex = (int)NumSectorsSlider.value;
+			GameController.Instance.SandboxPlayerSettings.GenerationNumSectors = Mathf.RoundToInt(NumSectorsSlider.value);
 			GameController.Instance.SandboxPlayerSettings.GenerationMaxWormholes = Mathf.RoundToInt(MaxWormholesSlider.value);
 			GameController.Instance.SandboxPlayerSettings.GenerationSnakiness = SnakinessSlider.value;
 			GameController.Instance.SandboxPlayerSettings.GenerationMinSectorSize = MinSectorSizeSlider.value;
@@ -376,9 +383,13 @@ namespace OpenFrontier.IP.UI.Screens.UniverseSandboxSettings
 		private void InitSectorCountSlider()
 		{
 			NumSectorsSlider.wholeNumbers = true;
-			NumSectorsSlider.minValue = 0f;
-			NumSectorsSlider.maxValue = GameController.Instance.GameSettings.SandboxSettings.SectorCounts.Length - 1;
-			NumSectorsSlider.value = GameController.Instance.SandboxPlayerSettings.GenerationNumSectorsIndex;
+			SandboxSettings sandboxSettings = GameController.Instance.GameSettings.SandboxSettings;
+			NumSectorsSlider.minValue = sandboxSettings.MinSectorCount;
+			NumSectorsSlider.maxValue = sandboxSettings.GetMaxSectorCount();
+			NumSectorsSlider.value = Mathf.Clamp(
+				GameController.Instance.SandboxPlayerSettings.GenerationNumSectors,
+				sandboxSettings.MinSectorCount,
+				sandboxSettings.GetMaxSectorCount());
 		}
 
 		private void InitIntelCheckboxes()
@@ -475,15 +486,7 @@ namespace OpenFrontier.IP.UI.Screens.UniverseSandboxSettings
 
 		private string GetSectorCountText()
 		{
-			SandboxSectorCount currentSectorCountSetting = GetCurrentSectorCountSetting();
-			string text = ((currentSectorCountSetting.MinCount == currentSectorCountSetting.MaxCount) ? currentSectorCountSetting.MaxCount.ToString() : $"{currentSectorCountSetting.MinCount}-{currentSectorCountSetting.MaxCount}");
-			return currentSectorCountSetting.Name + " (" + text + ")";
-		}
-
-		private SandboxSectorCount GetCurrentSectorCountSetting()
-		{
-			int num = (int)NumSectorsSlider.value;
-			return GameController.Instance.GameSettings.SandboxSettings.SectorCounts[num];
+			return NumSectorsSlider.value.ToString("0");
 		}
 
 		private void Preview()

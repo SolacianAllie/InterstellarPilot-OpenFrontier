@@ -1,4 +1,4 @@
-using DigitalRubyShared;
+using OpenFrontier.Gestures;
 using OpenFrontier.IP.Engine;
 using UnityEngine;
 
@@ -26,14 +26,14 @@ namespace OpenFrontier.IP.UI.Screens.Hud
 			ScaleGesture.StateUpdated += ScaleGesture_Updated;
 			ScaleGesture.ThresholdUnits = ZoomThresholdUnits;
 			ScaleGesture.PlatformSpecificView = PlatformSpecificView;
-			FingersScript.Instance.AddGesture(ScaleGesture);
+			GestureScript.Instance.AddGesture(ScaleGesture);
 		}
 
 		private void OnDisable()
 		{
-			if (FingersScript.HasInstance)
+			if (GestureScript.HasInstance)
 			{
-				FingersScript.Instance.RemoveGesture(ScaleGesture);
+				GestureScript.Instance.RemoveGesture(ScaleGesture);
 			}
 		}
 

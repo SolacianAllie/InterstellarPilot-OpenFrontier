@@ -47,7 +47,19 @@ MonoBehaviour:
   UniqueId: 2000
   Name: Freelancer
   Ranks:
-  - Rank: {fileID: 114724804207875695, guid: 629859a0b9ca4c14baef1be7220d1e6c, type: 2}
+  - Rank: {fileID: 114724804207875695, guid: eb8e2cbccced4e37b8ff65af07853860, type: 2}
     RequiredPilotCount: 1
+    MinNumber: 0
+    MaxNumber: 99999
+  - Rank: {fileID: 114724804207875695, guid: 260a181f8d5b4af49a51bd2e75a3d791, type: 2}
+    RequiredPilotCount: 1
+    MinNumber: 0
+    MaxNumber: 99999
+  - Rank: {fileID: 114724804207875695, guid: 629859a0b9ca4c14baef1be7220d1e6c, type: 2}
+    RequiredPilotCount: 2
+    MinNumber: 0
+    MaxNumber: 99999
+  - Rank: {fileID: 114724804207875695, guid: 501dff9ff6034f139b470c77a3862b9d, type: 2}
+    RequiredPilotCount: 5
     MinNumber: 0
     MaxNumber: 99999

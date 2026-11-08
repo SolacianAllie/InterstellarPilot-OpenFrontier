@@ -59,4 +59,6 @@ MonoBehaviour:
   ApplyThumbnailHullColor: 0
   NormalCollisionDisabled: 0
   BuildBlockerRadius: 0
-  SectorMapMinDrawSize: -1
+  SectorMapMinDrawSize: 30
+  VisualScaleMin: 0.5
+  VisualScaleMax: 1

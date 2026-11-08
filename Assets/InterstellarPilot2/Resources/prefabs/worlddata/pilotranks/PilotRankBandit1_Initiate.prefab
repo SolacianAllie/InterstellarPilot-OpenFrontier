@@ -47,5 +47,5 @@ MonoBehaviour:
   UniqueId: 10100
   IsUsable: 1
   Name: Initiate
-  ShortName:
+  ShortName: Init
   Superiority: 1000

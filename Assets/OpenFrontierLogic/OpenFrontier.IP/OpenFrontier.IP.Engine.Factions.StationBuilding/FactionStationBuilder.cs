@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using OpenFrontier.IP.Common.Factions;
+using OpenFrontier.IP.Engine.StationNaming;
 using OpenFrontier.IP.Engine.WorldPopulation;
 using UnityEngine;
 
@@ -72,6 +73,11 @@ namespace OpenFrontier.IP.Engine.Factions.StationBuilding
 				unit.UnitName = faction.Name;
 				unit.UnitShortName = faction.ShortName;
 			}
+			// Everything else is named inside SpawnUnitAndInstallComponents, next
+			// to AutoAssignShipName. It used to be named here, which covered only
+			// stations built by this factory - the seeders, mission specs,
+			// ActiveBuildStationOrder and the multiplayer commands all build
+			// stations by other routes and were left reading "Outpost QQ3".
 			return unit;
 		}
 

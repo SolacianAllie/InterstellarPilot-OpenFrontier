@@ -1,5 +1,6 @@
 using OpenFrontier.IP.Engine.Factions;
 using OpenFrontier.IP.Engine.Hypersleep;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace OpenFrontier.IP.Engine.EngineMusic
@@ -46,8 +47,63 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 		public static MusicDirector Instance => instance;
 
+		/// <summary>Where the music volume is stored.</summary>
+		/// <remarks>
+		/// The same PlayerPrefs key the old player used, deliberately. Every
+		/// existing player's choice is already filed under this name, and
+		/// moving the storage would silently reset all of them to the default
+		/// in the very commit that deleted the thing holding it - which reads
+		/// as "the options screen broke", not as "the storage moved".
+		/// </remarks>
+		public const string VolumePrefsKey = "music_volume";
+
+		/// <summary>The music volume of a player who has never set one.</summary>
+		public const float DefaultVolume = 0.5f;
+
+		private static float volume = -1f;
+
 		/// <summary>
-		/// Installs the director and stands the old music controller down.
+		/// The music volume, and this system's to own.
+		/// </summary>
+		/// <remarks>
+		/// It used to be read out of the old SimpleMusicPlayer component on
+		/// every single frame. That is not a small coupling dressed up as a
+		/// convenience: it means the new system cannot honestly be called
+		/// removed while that component is still on the GameController prefab,
+		/// and a value read from a component that exists only to be deleted is
+		/// a dependency wearing a disguise.
+		///
+		/// Seeded from PlayerPrefs on first use rather than in Awake, because
+		/// Awake needs a component and this is called before one exists.
+		///
+		/// Written through on every set rather than at a save moment, because
+		/// the options screen moves a slider and the expectation is that the
+		/// choice survives the player switching the device off immediately.
+		/// Clamped because this multiplies an AudioSource.
+		/// </remarks>
+		public static float Volume
+		{
+			get
+			{
+				if (volume < 0f)
+				{
+					volume = PlayerPrefsHelper.SafeGetFloat(VolumePrefsKey, DefaultVolume);
+				}
+
+				return volume;
+			}
+
+			set
+			{
+				volume = Mathf.Clamp01(value);
+
+				PlayerPrefs.SetFloat(VolumePrefsKey, volume);
+			}
+		}
+
+		/// <summary>
+		/// Installs the director. Nothing is stood down; there is nothing left
+		/// to stand down.
 		/// </summary>
 		/// <remarks>
 		/// Created at startup rather than added to the EngineASX prefab, because
@@ -56,134 +112,334 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// be saved, so it survives a scene change without appearing in a
 		/// hierarchy anyone looks at.
 		///
-		/// The old EngineMusicPlayerController is disabled rather than removed.
-		/// It plays the eleven old tracks from Resources and would otherwise
-		/// talk over the top of this one - two systems deciding what the music
-		/// is, which is the exact failure this design exists to avoid.
-		///
-		/// Its SimpleMusicPlayer is left in place and still read for volume, so
-		/// the options screen keeps working with no change to it and no second
-		/// volume setting to disagree with the first.
+		/// THE OLD MUSIC SYSTEM IS GONE, not disabled. It used to be stood down
+		/// from here - FindObjectsOfType once a second, disabling
+		/// EngineMusicPlayerController and clearing its SimpleMusicPlayer -
+		/// because it lived on the EngineASX prefab and its component still
+		/// enqueued music on demand, past anything that only polled. Polling a
+		/// thing to keep it quiet is not the same as not having it, and it
+		/// cost a scene walk every second on the platform this game is built
+		/// for. The controller and the player are deleted, both prefab
+		/// components are gone, and the only thing that can now decide what the
+		/// music is, decides it.
 		/// </remarks>
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		public static void Install()
 		{
-			if (instance != null)
+			// A hidden host outlives the play session that created it in an
+			// editor configured to skip the domain reload on play - which this
+			// project's is - and a fallback listener it published rides along
+			// ENABLED and INVISIBLE: detached from every scene, so no scene
+			// scan ever reaches it, while Unity's own audio engine keeps
+			// counting it. That unseen ear is the standing "2 audio
+			// listeners" that outlived every stand-down. The Swept host is
+			// destroyed first, before a fresh one exists, because a sweep
+			// that ran after creation could not tell the new home from the
+			// old one. In a build - where Install runs once for the life of
+			// the process - this finds nothing.
+			foreach (MusicDirector stale in Resources.FindObjectsOfTypeAll<MusicDirector>())
 			{
-				return;
+				if (stale != null)
+				{
+					Object.Destroy(stale.gameObject);
+				}
 			}
+			instance = null;
 
 			GameObject host = new GameObject(ObjectName);
 			host.hideFlags = HideFlags.HideAndDontSave;
 			Object.DontDestroyOnLoad(host);
 			host.AddComponent<MusicDirector>();
 
-			// The old controller is stood down from Update rather than from
-			// here, because it lives on the EngineASX prefab and that does
-			// not exist yet at BeforeSceneLoad. Looking now finds nothing,
-			// says nothing, and leaves two systems playing music over each
-			// other for the whole session.
+			// Scene events are subscribed in Awake, not here: Install is
+			// static and cannot bind an instance handler (CS0120).
 		}
 
-		private float nextStandDownCheck;
-		private bool warnedAboutOldMusic;
-
 		/// <summary>
-		/// Disables the previous music controller, every time a new one turns
-		/// up, and stops whatever it left playing.
+		/// Listener governance: never zero ears, never two.
 		/// </summary>
 		/// <remarks>
-		/// THIS WAS A ONE-SHOT AND IT WAS WRONG. It disabled the first
-		/// EngineMusicPlayerController it found and set a flag so it would
-		/// never look again - fine exactly once per session, and wrong from
-		/// the first sector load onwards. That controller lives on the EngineASX
-		/// prefab, and every world or sector load instantiates a fresh one. The
-		/// fresh copy arrived enabled, started playing the old sector music,
-		/// and was never disabled, because the flag said the job was done.
+		/// THE CAUSE OF A SECOND-WORTH OF SILENCE ON EVERY LOAD. This project
+		/// has exactly two AudioListeners in it, on MenuCamera and GameCamera,
+		/// and NEITHER is referenced by LoadingScene.unity - so for the whole
+		/// of the load there is no listener at all, and an AudioSource with no
+		/// listener in the scene plays into nothing. The music was not being
+		/// stopped or faded; it was playing perfectly into a scene with no
+		/// ears in it, which is indistinguishable from a dropout by ear.
 		///
-		/// The visible result was a correct menu and two pieces of music in
-		/// every sector: this system's track and the old scenario music, from
-		/// two live controllers that both believed they owned the music.
+		/// Unity has no "keep the last listener" behaviour, so this supplies
+		/// one - but ONLY while there is nothing else. The moment any other
+		/// live listener exists this one is switched off again.
 		///
-		/// Disabling a controller does NOT stop what it already started.
-		/// SimpleMusicPlayer is a separate component that keeps playing and
-		/// keeps its queue, and the only code that would ever have cleared
-		/// that is inside the controller's own Update - the code just
-		/// disabled. So the queue is cleared and the track stopped too.
+		/// THE OTHER HALF, found the first time a world session was read
+		/// against: BOTH camera listeners ship enabled, and both cameras are
+		/// alive in a world (MenuCamera renders at depth -1 under the
+		/// GameCamera at 1). Unity computes every sound once per listener and
+		/// warns about the two of them every frame for as long as they
+		/// coexist - one world session logs hundreds of thousands of lines of
+		/// it. Two listeners is not a quiet version of one: the audio ends up
+		/// somewhere arbitrary. So when more than one ear is live, exactly
+		/// one survives - the deepest active camera's, because that is the
+		/// camera whose view the listener should be hearing - and the rest
+		/// stand down. A parked listener is re-mounted the moment nothing is
+		/// live, so the menu gets its own ear back when the world session
+		/// ends, before this system needs to manufacture its fallback.
 		///
-		/// Checked once a second rather than every frame: a new controller can
-		/// only appear on a world load, and FindObjectsOfType every frame for
-		/// something that happens every few minutes is waste.
+		/// Re-checked on every scene load and unload, in the frame the game
+		/// camera is created (RecheckListeners - the second ear's birth
+		/// frame), and on a slow poll after that as a backstop for listeners
+		/// destroyed by something that is not a scene event.
 		/// </remarks>
-		private void StandDownTheOldController()
+		private void EnsureMusicStaysAudible()
 		{
-			if (Time.realtimeSinceStartup < nextStandDownCheck)
+			if (Time.realtimeSinceStartup < nextListenerCheck)
 			{
 				return;
 			}
 
-			nextStandDownCheck = Time.realtimeSinceStartup + 1f;
+			nextListenerCheck = Time.realtimeSinceStartup + 0.5f;
 
-			EngineMusicPlayerController[] found =
-				Object.FindObjectsOfType<EngineMusicPlayerController>();
-
-			bool disabledAny = false;
-
+			// One enumeration covers both kinds of ear. Resources-scope finds
+			// everything FindObjectsOfType reaches (every loaded scene,
+			// inactive included) PLUS the objects detached from all scenes,
+			// which FindObjectsOfType never returns: a hidden host keeps a
+			// published listener perfectly real to Unity's audio engine and
+			// perfectly invisible here, and a "2 audio listeners" warning
+			// then survives this whole policy because the second ear was
+			// never in the list. Asset listeners - the serialized listener on
+			// a prefab definition, which belongs to no scene - are refused:
+			// they are not ears in any scene, in the editor or in a build, so
+			// they must never be counted, parked or stood down.
+			List<AudioListener> all = new List<AudioListener>();
+			AudioListener[] found = Resources.FindObjectsOfTypeAll<AudioListener>();
 			for (int i = 0; i < found.Length; i++)
 			{
-				if (found[i] != null && found[i].enabled)
+				AudioListener listener = found[i];
+				if (listener == null || listener == fallbackListener)
 				{
-					found[i].enabled = false;
-					disabledAny = true;
+					continue;
+				}
+
+				GameObject owner = listener.gameObject;
+				if (owner.scene.IsValid()
+#if UNITY_EDITOR
+					|| !UnityEditor.EditorUtility.IsPersistent(owner)
+#endif
+				)
+				{
+					all.Add(listener);
 				}
 			}
 
-			StopLeftoverOldMusic();
+#if UNITY_EDITOR
+			ReportEarRoster(all);
+#endif
 
-			if (disabledAny && !warnedAboutOldMusic)
+			// One pass to count the live ears, pick the keeper (deepest live
+			// camera's listener) and remember the deepest parked one for the
+			// re-mount case. No name matching, no scene-object hunting: every
+			// listener knows its own camera.
+			int liveCount = 0;
+			AudioListener keeper = null;
+			float keeperDepth = float.NegativeInfinity;
+			AudioListener reMount = null;
+			float reMountDepth = float.NegativeInfinity;
+
+			for (int i = 0; i < all.Count; i++)
 			{
-				warnedAboutOldMusic = true;
+				AudioListener listener = all[i];
+				if (listener == null || listener == fallbackListener)
+				{
+					continue;
+				}
 
-				Debug.Log("Music: the previous music controller has been stood"
-					+ " down, and anything it had playing has been stopped."
-					+ " It lives on the EngineASX prefab, so a new one appears on"
-					+ " every world and sector load and has to be stood down"
-					+ " again each time. Its SimpleMusicPlayer is still read for"
-					+ " volume, so the options screen is unchanged.");
+				Camera camera = listener.GetComponent<Camera>();
+				float depth = (camera != null) ? camera.depth : float.NegativeInfinity;
+
+				if (listener.enabled && IsCountedEar(listener))
+				{
+					liveCount++;
+					if (keeper == null || depth > keeperDepth)
+					{
+						keeper = listener;
+						keeperDepth = depth;
+					}
+				}
+				else if (listener.gameObject.scene.IsValid()
+					&& listener.gameObject.activeInHierarchy
+					&& (reMount == null || depth > reMountDepth))
+				{
+					reMount = listener;
+					reMountDepth = depth;
+				}
+			}
+
+			if (liveCount > 0)
+			{
+				if (fallbackListener != null && fallbackListener.enabled)
+				{
+					fallbackListener.enabled = false;
+				}
+
+				for (int i = 0; i < all.Count; i++)
+				{
+					AudioListener listener = all[i];
+					if (listener == null || listener == keeper || listener == fallbackListener)
+					{
+						continue;
+					}
+
+					if (listener.enabled && IsCountedEar(listener))
+					{
+						listener.enabled = false;
+						Debug.Log("Music: the deepest live camera keeps the scene's ear - "
+							+ listener.gameObject.name + "'s listener stands down while "
+							+ keeper.gameObject.name + "'s is live.");
+					}
+				}
+
+				return;
+			}
+
+			// No live ear. Re-mount the deepest camera listener that is parked
+			// (the menu camera the last world session stood down) - it is the
+			// real ear of whatever screen is running now - and only fall back
+			// to this system's own listener when no camera carries one at all,
+			// which is the LoadingScene gap this method was born to cover.
+			if (reMount != null)
+			{
+				if (!reMount.enabled)
+				{
+					reMount.enabled = true;
+					Debug.Log("Music: nothing in this scene can hear anything, so "
+						+ reMount.gameObject.name + "'s parked listener is back on.");
+				}
+
+				return;
+			}
+
+			if (fallbackListener == null)
+			{
+				fallbackListener = gameObject.AddComponent<AudioListener>();
+			}
+
+			if (!fallbackListener.enabled)
+			{
+				fallbackListener.enabled = true;
+
+				Debug.Log("Music: nothing in this scene can hear anything, so"
+					+ " the music has supplied its own listener until one"
+					+ " exists again.");
 			}
 		}
 
 		/// <summary>
-		/// Clears the old player's queue and stops its track.
+		/// Whether Unity's audio engine counts this ear right now.
 		/// </summary>
 		/// <remarks>
-		/// Only touches the player when it actually has something on it, so
-		/// this is a no-op in normal operation and cannot fight anything.
+		/// A scene object counts when its GameObject is active up the chain
+		/// and the component is enabled. A DETACHED object - hidden hosts are
+		/// detached from every scene - has no chain: activeInHierarchy
+		/// answers false for an object that is switched on, and Unity's audio
+		/// engine still hears it. Treating a detached ear as parked is
+		/// exactly how an enabled listener on a hidden host passes every
+		/// policy check here while the warning keeps saying there are two
+		/// listeners in the scene.
 		/// </remarks>
-		private void StopLeftoverOldMusic()
+		private static bool IsCountedEar(AudioListener listener)
 		{
-			if (GameController.Instance == null || GameController.Instance.MusicPlayer == null)
+			GameObject owner = listener.gameObject;
+			if (!owner.scene.IsValid())
+			{
+				return owner.activeSelf;
+			}
+
+			return owner.activeInHierarchy;
+		}
+
+		/// <summary>Editor-diagnostic: one line whenever the set of counted ears changes shape.</summary>
+		/// <remarks>
+		/// DIAGNOSTIC ONLY, AND DIAGNOSTIC WORK DOES NOT SHIP - compiled out
+		/// of release builds entirely. The roster answer "who did the audio
+		/// engine count, and where did that ear live" in one line that names
+		/// the GameObject: the question that could not be answered from the
+		/// two-listener warning alone.
+		/// </remarks>
+		[System.Diagnostics.Conditional("UNITY_EDITOR")]
+		private void ReportEarRoster(List<AudioListener> ears)
+		{
+			System.Text.StringBuilder builder = new System.Text.StringBuilder();
+			builder.Append("[EarRoster] ").Append(ears.Count).Append(" ear(s):");
+			for (int i = 0; i < ears.Count; i++)
+			{
+				GameObject owner = ears[i].gameObject;
+				builder.Append(" '").Append(owner.name).Append("' ")
+					.Append(ears[i].enabled ? "on" : "off")
+					.Append(owner.scene.IsValid()
+						? (owner.activeInHierarchy ? " live" : " parked")
+						: (owner.activeSelf ? " DETACHED-on" : " detached-off"));
+			}
+			string signature = builder.ToString();
+			if (signature == lastEarRosterSignature)
 			{
 				return;
 			}
 
-			OpenFrontier.IP.MusicPlayer.SimpleMusicPlayer old =
-				GameController.Instance.MusicPlayer;
-
-			if (old.QueuedTracks != null && old.QueuedTracks.Count > 0)
-			{
-				old.QueuedTracks.Clear();
-			}
-
-			if (old.PlayingTrack != null)
-			{
-				old.StopPlayingTrack();
-			}
+			lastEarRosterSignature = signature;
+			Debug.Log(signature);
 		}
+
+		private string lastEarRosterSignature = "";
+
+		/// <summary>
+		/// Ask for a listener re-scan right now: the next poll runs this frame.
+		/// </summary>
+		/// <remarks>
+		/// Called from the frame a new camera (and with it a new ear) comes
+		/// into being, so the exactly-one policy settles in that same frame
+		/// instead of leaving the second ear live until the next routine poll.
+		/// </remarks>
+		public static void RecheckListeners()
+		{
+			if (instance == null)
+			{
+				return;
+			}
+
+			instance.nextListenerCheck = 0f;
+		}
+
+		// Two handlers rather than one shared, because the two events do NOT
+		// have the same signature here: sceneLoaded passes (Scene, LoadSceneMode)
+		// and sceneUnloaded passes (Scene). Writing one handler for both
+		// produced two CS0123s that read like the event was mistyped.
+		private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene,
+			UnityEngine.SceneManagement.LoadSceneMode mode)
+		{
+			// Re-check on the next frame rather than now: at sceneLoaded the
+			// camera that brings the listener may not have run Awake yet.
+			nextListenerCheck = 0f;
+		}
+
+		private void OnSceneUnloaded(UnityEngine.SceneManagement.Scene scene)
+		{
+			// This is the one that matters. The camera carrying the listener
+			// has just been destroyed, so this is the frame the scene stopped
+			// being able to hear anything.
+			nextListenerCheck = 0f;
+		}
+
+		private AudioListener fallbackListener;
+		private float nextListenerCheck;
 
 		private void Awake()
 		{
 			instance = this;
+
+			// Scene events so the fallback listener goes in the frame the
+			// camera leaves, rather than up to half a second later.
+			UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+			UnityEngine.SceneManagement.SceneManager.sceneUnloaded += OnSceneUnloaded;
 		}
 
 		private void OnDestroy()
@@ -192,15 +448,75 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			{
 				instance = null;
 			}
+
+			// The subscriptions bind a destroyed component's handler into a
+			// static event: without the unsubscribe, an editor that skips the
+			// domain reload on play (this project's does) hands the next play
+			// session SceneManager events addressed to a dead component.
+			UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+			UnityEngine.SceneManagement.SceneManager.sceneUnloaded -= OnSceneUnloaded;
+
+			// The fallback must not outlive the session that supplied it. A
+			// published ear on this hidden host is invisible to every scene
+			// scan, survives a domain-reload-skipping play transition, and is
+			// Unity's second audio listener in the next session for as long
+			// as it stays enabled. The stale host is also destroyed on the
+			// next Install - this is the belt, that is the braces.
+			if (fallbackListener != null)
+			{
+				Object.Destroy(fallbackListener);
+			}
 		}
 
 		private MusicCrossfadePlayer player;
+
+		/// <summary>A stinger playing over the music, if one is.</summary>
+		/// <remarks>
+		/// Held here rather than left to play itself out, because the
+		/// background has to STAY stopped for as long as it does. A jingle
+		/// that faded the music out and then let the state machine start the
+		/// next track straight away would have two pieces of music over each
+		/// other for its whole length - the exact failure this system exists
+		/// to prevent, reached by a different route.
+		/// </remarks>
+		private AudioSource jingleSource;
 		private readonly MusicCombatDetector detector = new MusicCombatDetector();
 		private readonly MusicCombatSequencer sequencer = new MusicCombatSequencer();
 
 		private string currentKey = "none";
-		private bool lastDocked;
-		private bool dockedChanged;
+		// The dock is held as a STATE, not as an edge.
+		//
+		// It used to be an edge - dockedChanged, true for exactly one frame,
+		// consumed by the transition block - and that is wrong in two ways
+		// that both showed up as "the station crossfade is broken".
+		//
+		// One frame is not long enough. If Crossfade is refused on that frame
+		// because a handover is already pending, the next frame sees false,
+		// and the dock is handled as a plain interrupt. The crossfade never
+		// happens at all.
+		//
+		// More seriously, combat outranks docked in Decide. Dock while being
+		// shot at on the way in - which is most arrivals - and Decide keeps
+		// answering "Combat/...", so no transition is even attempted. Thirty
+		// seconds later the shooting stops, the transition finally happens,
+		// and the one-frame flag expired long ago. Arriving at a station
+		// under fire was therefore never crossfaded.
+		//
+		// Holding the dock state and comparing it against the dock state at
+		// the last transition that SUCCEEDED makes the request persistent: it
+		// survives a refused crossfade, and it survives combat in between,
+		// and it is answered the moment it can be.
+		private bool dockedNow;
+		private bool dockAtLastTransition;
+
+		/// <summary>How long a wormhole transit may claim to be running.</summary>
+		/// <remarks>
+		/// Generous - a transit is seconds - and only a backstop for a flag
+		/// owned by another class. See the backstop in Update.
+		/// </remarks>
+		private const float WormholeStaleSeconds = 45f;
+
+		private float wormholeSince = -1f;
 		private MusicTimingTable.Entry lastRequested;
 		private MusicCombatState lastCombat;
 
@@ -221,6 +537,85 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 				return player;
 			}
+		}
+
+		/// <summary>
+		/// Everything that could be making a sound, in one string.
+		/// </summary>
+		/// <remarks>
+		/// Added because "two music systems are playing at once" has been
+		/// wrong twice for different reasons, and both times the only way to
+		/// tell them apart was to already know the answer. It names this
+		/// system's stinger and BOTH of its audio sources - the second one
+		/// matters because during a handover or a crossfade it is supposed to
+		/// be playing, and that is indistinguishable from a bug by ear.
+		///
+		/// It used to name the old controller and the old player as well,
+		/// which is the honest reason this file spent a second of every
+		/// second walking the scene to keep them quiet. There is nothing left
+		/// to name but the sources here.
+		///
+		/// CACHED, AND THAT IS THE FIX RATHER THAN AN OPTIMISATION.
+		///
+		/// This used to run FindObjectsOfType, which walks every GameObject in
+		/// the scene and allocates an array to return. The overlay calls it
+		/// from OnGUI, and OnGUI runs at least twice per frame - once for the
+		/// Layout event, once for Repaint - so this cost two full scene scans
+		/// per frame, plus one more for the listener count. Four scans and
+		/// four array allocations, every frame, on a project whose scenes are
+		/// enormous.
+		///
+		/// It showed up as "moving the camera halves the FPS", which misleads
+		/// in a specific way: these are CPU costs competing with rendering,
+		/// so they only become visible once there IS rendering to compete
+		/// with. Standing still looked fine. The allocations also mean a
+		/// periodic garbage collection, which is the "sometimes" in
+		/// "sometimes the FPS is cut in half".
+		/// </remarks>
+		public string VoiceReport() => cachedVoiceReport;
+
+		private const float VoiceReportInterval = 0.25f;
+
+		private string cachedVoiceReport = "not sampled yet";
+		private float nextVoiceReportAt;
+
+		/// <summary>AudioListeners enabled and in an active hierarchy.</summary>
+		private static int LiveListenerCount()
+		{
+			AudioListener[] listeners = Object.FindObjectsOfType<AudioListener>();
+			int count = 0;
+
+			for (int i = 0; i < listeners.Length; i++)
+			{
+				if (listeners[i] != null && listeners[i].enabled
+					&& listeners[i].gameObject.activeInHierarchy)
+				{
+					count++;
+				}
+			}
+
+			return count;
+		}
+
+		private void RefreshVoiceReport()
+		{
+			if (Time.realtimeSinceStartup < nextVoiceReportAt)
+			{
+				return;
+			}
+
+			nextVoiceReportAt = Time.realtimeSinceStartup + VoiceReportInterval;
+
+			System.Text.StringBuilder sb = new System.Text.StringBuilder();
+
+			sb.Append("jingle ").Append(jingleSource == null ? "none"
+				: jingleSource.clip != null ? "'" + jingleSource.clip.name + "'"
+					: "NO CLIP");
+
+			sb.Append(" | mine ").Append(Player.SourceReport())
+				.Append(", listeners ").Append(LiveListenerCount());
+
+			cachedVoiceReport = sb.ToString();
 		}
 
 		/// <summary>The answer the state machine is currently giving.</summary>
@@ -244,14 +639,211 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 					EngineASX.Instance.ActiveSector.ControllingFaction,
 					EngineASX.Instance.LocalFaction);
 
+		/// <summary>
+		/// The player has committed to loading a scenario.
+		/// </summary>
+		/// <remarks>
+		/// Called from ScenarioLoaderUI.TryLoadScenario, at the moment the
+		/// load is queued. That is the earliest point at which the music can
+		/// know the menu is over - and getting it EARLIER than this is not
+		/// possible, while getting it later is what went wrong twice.
+		///
+		/// The first attempt watched for EngineASX.LoadedAndReady going
+		/// false. It never once fired: the log contains ZERO "Engine:
+		/// OnDestroy" lines, because the engine is not destroyed when you
+		/// leave the menu - the same instance carries the menu world and then
+		/// the galaxy one. LoadedAndReady stays true throughout, so the hook
+		/// was unreachable code that looked entirely plausible.
+		///
+		/// Watched for a scene change instead? No - the menu changes scene
+		/// constantly while you navigate it, and that would have cut the
+		/// music off every time you opened a submenu.
+		///
+		/// A static, called by the thing that knows, is the honest version of
+		/// this hook. Same assembly, so there is no reference to add.
+		/// </remarks>
+		public static void ScenarioLoadCommitted()
+		{
+			if (instance != null && instance.currentKey == "Menu")
+			{
+				instance.Player.FadeOutOnly(instance.Player.MenuFadeSeconds);
+			}
+		}
+
+		/// <summary>
+		/// Plays a stinger over the music, and silences the music under it.
+		/// </summary>
+		/// <remarks>
+		/// The port of the old player's last remaining job. WinAudioSourceNames
+		/// is empty on the prefab and LoseAudioSourceNames holds one track, so
+		/// in practice this is one sound - but it was going through an entire
+		/// second music system to make it, and that system is deleted, so the
+		/// call had to land somewhere.
+		///
+		/// REPLACES the background rather than layering over it, which is what
+		/// the old player did and is right: the scenario has ended, and space
+		/// music continuing under the sting of your defeat is not what that
+		/// moment is for.
+		/// </remarks>
+		/// <returns>Whether a stinger actually started.</returns>
+		public static bool PlayJingle(string audioSourceResourceName)
+		{
+			return instance != null
+				&& instance.PlayJingleInternal(audioSourceResourceName);
+		}
+
+		private bool PlayJingleInternal(string audioSourceResourceName)
+		{
+			if (string.IsNullOrEmpty(audioSourceResourceName))
+			{
+				return false;
+			}
+
+			AudioSource prefab = Resources.Load<AudioSource>(
+				"Audio/AudioSources/" + audioSourceResourceName);
+
+			if (prefab == null)
+			{
+				Debug.LogWarning("Music: the stinger '" + audioSourceResourceName
+					+ "' has no AudioSource under Resources/Audio/AudioSources, so"
+					+ " nothing plays. That name is a string on the EngineASX"
+					+ " prefab, and the prefab is not checked against the folder.");
+
+				return false;
+			}
+
+			StopJingle();
+
+			// The same fade the old player used here, so the sting does not
+			// arrive on top of a hard cut.
+			Player.FadeOutOnly(Player.InterruptFadeSeconds);
+
+			jingleSource = Instantiate(prefab, transform);
+			jingleSource.transform.localPosition = Vector3.zero;
+			jingleSource.volume = Volume;
+			jingleSource.loop = false;
+			jingleSource.Play();
+
+			Debug.Log("Music: playing the stinger '" + audioSourceResourceName
+				+ "' over silence"
+				+ (jingleSource.clip != null
+					? ", " + jingleSource.clip.length.ToString("0") + "s long."
+					: ", with no clip."));
+
+			return true;
+		}
+
+		private void StopJingle()
+		{
+			if (jingleSource != null)
+			{
+				Destroy(jingleSource.gameObject);
+
+				jingleSource = null;
+			}
+		}
+
 		private void Update()
 		{
-			StandDownTheOldController();
+			EnsureMusicStaysAudible();
+
+			// DIAGNOSTIC ONLY, AND DIAGNOSTIC WORK DOES NOT SHIP.
+			//
+			// cachedVoiceReport is read by one thing: MusicDebugOverlay, which
+			// is compiled out of release builds entirely. Two FindObjectsOfType
+			// scans every quarter second to fill a cache nobody can read is
+			// pure cost on the platform this game is designed for.
+			//
+			// Compiled out rather than guarded at runtime, so a release build
+			// does not even contain it.
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+			RefreshVoiceReport();
+#endif
 
 			EngineASX engine = EngineASX.Instance;
 
+			// INSIDE A WORMHOLE: let go of everything.
+			//
+			// The old music used to play straight through the transit and stop
+			// dead on the far side, which is the one place a hard stop is
+			// plainly wrong: the ship is somewhere that has no music, and
+			// arriving somewhere should not begin with the previous place
+			// being cut off.
+			//
+			// Deliberately ABOVE the engine check and above Decide. Deciding
+			// requires a world, and during a transit there is no world to
+			// decide about - this is the same lesson as the main menu, where
+			// the fade could not start because it was waiting for the next
+			// world to become observable.
+			//
+			// Deciding is skipped entirely rather than returning a Wormhole
+			// state, because there is nothing to play here. currentKey is left
+			// alone on purpose: when the transit ends, the new sector's key
+			// differs from it, nothing is playing, and the new track starts.
+			// If the far side is the same family the key matches instead and
+			// the "same answer, nothing playing" branch starts it. Both paths
+			// work.
+			//
+			// One property read per frame. No scene walk - this is a phone.
+			if (WormholeAnimator.Active)
+			{
+				// BACKSTOP. The flag is cleared by the animator finishing and
+				// by OnDisable, but those are two code paths owned by another
+				// class, and the failure if both are ever wrong is the music
+				// never coming back - a far worse bug than the missing fade
+				// this exists to fix. A transit that somehow lasts
+				// implausibly long is therefore treated as over.
+				if (wormholeSince < 0f)
+				{
+					wormholeSince = Time.realtimeSinceStartup;
+				}
+				else if (Time.realtimeSinceStartup - wormholeSince > WormholeStaleSeconds)
+				{
+					Debug.LogWarning("Music: a wormhole has reported itself"
+						+ " active for " + WormholeStaleSeconds + "s, which no"
+						+ " transit takes. Clearing it so the music comes back."
+						+ " The animation's own flag-clearing has missed"
+						+ " something and is worth a look.");
+
+					WormholeAnimator.ClearActive();
+					wormholeSince = -1f;
+
+					return;
+				}
+
+				Player.FadeOutOnly(Player.WormholeFadeSeconds);
+
+				return;
+			}
+
+			wormholeSince = -1f;
+
+			// A jingle owns the floor until it finishes.
+			//
+			// Deliberately ABOVE the wormhole block, and the reason is the
+			// cleanup rather than the playing: below the wormhole's return,
+			// the CLEANUP is deferred too, so a jingle that had already
+			// finished would sit on an AudioSource that is still audible for
+			// the length of the transit. A jingle is an explicit event - a
+			// scenario won or lost - and the one wired up is the defeat sting,
+			// which the player is looking at an end screen for. Entering a
+			// wormhole in the same instant is not a situation the game has.
+			if (jingleSource != null)
+			{
+				if (jingleSource.isPlaying)
+				{
+					return;
+				}
+
+				StopJingle();
+			}
+
 			if (engine == null || !EngineASX.LoadedAndReady)
 			{
+				// No music decision to make without a world. The menu used to
+				// fade out here, which was wrong twice over: the branch is
+				// effectively unreachable because the engine persists across
+				// the transition, and ScenarioLoadCommitted is the real seam.
 				return;
 			}
 
@@ -274,33 +866,161 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			// The world changed.
 			if (wantedKey != currentKey)
 			{
-				if (crossfader.Current == null)
+				// THE STATE CHANGED BUT THE TRACK DID NOT NEED TO.
+				//
+				// A wormhole flaps the state - the sector changes, the local
+				// ship goes away, combat ends - and the answer can come back
+				// as the track already playing. Passing that to Interrupt
+				// meant fading the music to silence and starting it again
+				// from its first sample: a hard ending, which is exactly
+				// what a wormhole sounded like.
+				//
+				// The player now refuses it, so the state is simply accepted
+				// here with no audio operation at all. If this did NOT
+				// acknowledge the key it would ask again next frame, be
+				// refused again, and never settle.
+				if (crossfader.Current == wanted)
+				{
+					currentKey = wantedKey;
+					dockAtLastTransition = dockedNow;
+					return;
+				}
+
+				// IS THIS WORTH CUTTING OFF A TRACK FOR?
+				//
+				// Only some changes are. Something is shooting at you, you
+				// docked, you went through a wormhole, the menu is involved -
+				// those interrupt, because something has actually happened and
+				// the music is part of it.
+				//
+				// The ENEMY COUNT is not one of those, and treating it as one
+				// is what made the music aggressive. Bandits cross sensor
+				// range constantly; the count goes over the threshold and back
+				// under it several times in a minute, and every crossing was
+				// an instant cut to a different theme and then back. A track
+				// that is cut short is worse than a track that is briefly wrong
+				// about how many ships are around.
+				//
+				// So a count-driven change is NOT taken now. It is simply left
+				// as the answer, and picked up at the next natural handover -
+				// which is the point where the track changes anyway, so the
+				// music still responds, just without a cut to do it. It also
+				// cancels itself: if the count goes back down before that
+				// handover, the answer is the one for calm again and nothing
+				// happens at all.
+				bool isEngagement = wantedKey.StartsWith("Combat/Engagement",
+					System.StringComparison.Ordinal)
+					|| currentKey.StartsWith("Combat/Engagement",
+						System.StringComparison.Ordinal);
+
+				// A change of CATEGORY, not merely of key. Two intensities of
+				// one category are the same mood with a different number
+				// attached, and cutting the music to say so is what produced
+				// the log's fourteen restarts: Medium, High, Medium, each one
+				// a hard cut and each one restarting the section from zero.
+				//
+				// The old test asked "is EITHER side Engagement", which is
+				// true of Engagement-Medium to Engagement-High - the same
+				// fight, a few ships nearer - so every intensity wobble
+				// became an interruption. The intent was engagement; the
+				// test was simply the wrong one.
+				bool isCategoryChange = CategoryOf(wantedKey) != CategoryOf(currentKey);
+
+				// BOTH sides have to be places. Comparing them with
+				// != treated every space-to-combat change as leaving a
+				// place, because a combat key is not one - which made the
+				// count crossing the threshold urgent again and undid the
+				// deferral it was supposed to have.
+				//
+				// Leaving a starport for open space is leaving a place.
+				// Leaving a starport for threat music is the same sector
+				// with more ships in it.
+				bool isPlaceChange = IsPlace(wantedKey) && IsPlace(currentKey)
+					&& wantedKey != currentKey;
+
+				// URGENT means something happened and the music is part of it:
+				//
+				//   a change of place, a dock, the menu
+				//   a change of combat CATEGORY - threat becomes engagement, or
+				//     an engagement ends and the threat theme comes back
+				//
+				// NOT urgent:
+				//
+				//   the count crossing the threshold either way: a mood, and
+				//     it waits for the next track
+				//   an intensity change within a category: the same mood with
+				//     a bigger number on it
+				bool urgent = isPlaceChange
+					|| dockedNow != dockAtLastTransition
+					|| currentKey == "Menu" || wantedKey == "Menu"
+					|| (isCategoryChange && isEngagement);
+
+				if (!urgent)
+				{
+					// Fall through to the handover below, which will arrive at
+					// `wanted` instead of the next track in the same place.
+					// currentKey is NOT updated, so the difference is still
+					// there to be noticed next frame.
+				}
+				else if (crossfader.Current == null)
 				{
 					if (crossfader.Start(wanted))
 					{
 						currentKey = wantedKey;
 						lastRequested = wanted;
+						dockAtLastTransition = dockedNow;
 					}
 				}
 				else
 				{
-					// Docking and undocking crossfade; everything else is cut.
-					// A station is somewhere you have arrived, not something
-					// that interrupted you, and a fade to silence followed by
-					// a fade up leaves a hole exactly where the player is
-					// most expecting to hear the place they just reached.
-					bool moved = dockedChanged
-						? crossfader.Crossfade(wanted)
-						: crossfader.Interrupt(wanted);
+					// How the world changed decides how the music moves.
+					//
+					// Leaving the main menu fades all the way to silence
+					// first, and takes longer doing it. It is the one place a
+					// real gap is right: the menu is its own place, and
+					// arriving in the galaxy should sound like arriving
+					// rather than like one room bleeding into the next. A
+					// crossfade here would put both at once and neither would
+					// sound like a place.
+					//
+					// Tested on EITHER side, because the menu boundary is one
+					// boundary. Coming back out of the galaxy is the same
+					// moment as going into it, and the same piece of music is
+					// being let go of.
+					//
+					// Docking crossfades - somewhere you have arrived, not
+					// something that interrupted you.
+					//
+					// Everything else is cut, sized for the suddenness of the
+					// thing that caused it.
+					bool moved;
+
+					if (currentKey == "Menu" || wantedKey == "Menu")
+					{
+						moved = crossfader.Interrupt(wanted, crossfader.MenuFadeSeconds);
+					}
+					else if (dockedNow != dockAtLastTransition)
+					{
+						moved = crossfader.Crossfade(wanted);
+					}
+					else
+					{
+						moved = crossfader.Interrupt(wanted);
+					}
 
 					if (moved)
 					{
 						currentKey = wantedKey;
 						lastRequested = wanted;
-					}
-				}
 
-				return;
+						// Latched ONLY on success. A refused crossfade leaves
+						// this false, so the next frame asks again instead of
+						// quietly giving up and cutting instead.
+						dockAtLastTransition = dockedNow;
+					}
+
+					return;
+				}
 			}
 
 			// Same answer, nothing playing. A track that failed to load, or a
@@ -315,11 +1035,24 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				return;
 			}
 
-			// The track reached its ending, and nothing has changed since.
-			// Hand over to the next one and let the old one finish.
+			// The track reached its ending. Hand over, and let the old one
+			// finish under it.
+			//
+			// If a DEFERRED change is waiting, this is where it lands: the
+			// track changes anyway, so the music has responded to the new
+			// state without anything being cut off to make room for it. When
+			// the state is unchanged the handover stays inside the current
+			// place or mood.
 			if (crossfader.ReachedEndingOnset && !crossfader.IsFadingOut)
 			{
-				MusicTimingTable.Entry next = NextFor(wantedKey, wanted);
+				MusicTimingTable.Entry next = wantedKey == currentKey
+					? NextFor(wantedKey, wanted)
+					: wanted;
+
+				if (next == null)
+				{
+					next = NextFor(currentKey, wanted);
+				}
 
 				if (next != null && crossfader.HandOver(next))
 				{
@@ -340,10 +1073,72 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		/// previous one is excluded so a track cannot hand straight over to
 		/// itself, which would sound like a skip rather than a change.
 		/// </remarks>
+		/// <summary>
+		/// Whether a key names a PLACE - somewhere the player is - rather than
+		/// a mood the sector happens to be in.
+		/// </summary>
+		/// <remarks>
+		/// Places interrupt. Moods wait for the next track.
+		///
+		/// Going from a starport to open space is somewhere you have left;
+		/// going from calm to threat music is the same sector with a
+		/// different number of ships in it.
+		/// </remarks>
+		/// <summary>
+		/// The mood a key names: a place, a combat category, hypersleep, menu.
+		/// </summary>
+		/// <remarks>
+		/// Deliberately coarse. The intensity is not part of it, because Low
+		/// and High are the same mood with a different number of ships
+		/// attached, and treating them as different categories is what turned
+		/// every wobble in the count into a cut.
+		/// </remarks>
+		private static string CategoryOf(string key)
+		{
+			if (key.StartsWith("Combat/Engagement", System.StringComparison.Ordinal))
+			{
+				return "Engagement";
+			}
+
+			if (key.StartsWith("Combat/Threat", System.StringComparison.Ordinal))
+			{
+				return "Threat";
+			}
+
+			if (IsPlace(key))
+			{
+				return "Place";
+			}
+
+			return key;
+		}
+
+		private static bool IsPlace(string key)
+		{
+			return key.StartsWith("Space/", System.StringComparison.Ordinal)
+				|| key.StartsWith("Starport/", System.StringComparison.Ordinal);
+		}
+
 		private MusicTimingTable.Entry NextFor(string key, MusicTimingTable.Entry current)
 		{
 			if (key.StartsWith("Combat/", System.StringComparison.Ordinal))
 			{
+				// A fight has ended and the threat music is being allowed to
+				// play out. When it reaches its own ending, the ordinary music
+				// goes back in - not another threat section, which would be
+				// announcing a threat that is no longer there.
+				//
+				// This is the only thing that consumes the linger, and it is
+				// what the linger is waiting for.
+				if (detector.AllClearPending)
+				{
+					detector.ConsumeAllClear();
+
+					MusicTimingTable.Entry ordinary = OrdinaryEntry();
+
+					return ordinary ?? current;
+				}
+
 				MusicTimingTable.Entry next = sequencer.Advance();
 				return next ?? current;
 			}
@@ -352,43 +1147,83 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		}
 
 		/// <summary>
-		/// What should be playing, and why.
+		/// The track that would be playing if the threat logic were not
+		/// involved.
 		/// </summary>
+		/// <remarks>
+		/// Only asked for while handing over out of a threat track, which
+		/// means never docked - docking resets the linger, so by the time this
+		/// is called there is no station state to honour.
+		/// </remarks>
+		private MusicTimingTable.Entry OrdinaryEntry()
+		{
+			EngineASX engine = EngineASX.Instance;
+
+			if (engine == null || engine.ActiveSector == null)
+			{
+				return null;
+			}
+
+			MusicFamily family = MusicFactionClassifier.FamilyOf(
+				engine.ActiveSector.ControllingFaction, engine.LocalFaction);
+
+			return MusicLibrary.RandomFrom(
+				MusicFactionClassifier.NameOf(family), PlayingOrLast());
+		}
+
+		/// <summary>
+		/// What to keep the random picker away from: the track that is
+		/// actually playing, falling back to the last one requested.
+		/// </summary>
+		/// <remarks>
+		/// lastRequested is not the same thing. After a handover, a crossfade
+		/// or an interrupted transition the two drift apart, and the picker
+		/// was then free to choose the track currently sounding - which is
+		/// how a transition came to ask for the music it was already
+		/// playing.
+		///
+		/// Refusing that in the player is the real fix, because it makes the
+		/// mistake harmless wherever it comes from. Asking the right question
+		/// here stops it being offered in the first place.
+		/// </remarks>
+		private MusicTimingTable.Entry PlayingOrLast()
+		{
+			MusicCrossfadePlayer crossfader = player;
+
+			if (crossfader != null && crossfader.Current != null)
+			{
+				return crossfader.Current;
+			}
+
+			return lastRequested;
+		}
+
 		private void Decide(out string key, out MusicTimingTable.Entry entry)
 		{
 			EngineASX engine = EngineASX.Instance;
 
 			entry = null;
 
-			if (IsMainMenu(engine))
-			{
-				// The one track, looping - not a random draw from the Menu
-				// category. See MusicLibrary.MenuTrack.
-				key = "Menu";
-				entry = MusicLibrary.MenuTrack();
-				return;
-			}
-
-			MusicCombatState combat = detector.Sample();
-
-			if (combat.InCombat)
-			{
-				key = "Combat/" + combat.Category + "/" + combat.Intensity;
-
-				if (sequencer.SetKind(combat.Category, combat.Intensity))
-				{
-					lastCombat = combat;
-					entry = sequencer.Current;
-				}
-				else
-				{
-					entry = sequencer.Current;
-				}
-
-				return;
-			}
-
-			Unit mine = engine.LocalPlayer == null || engine.LocalPlayer.Person == null
+			// Read the dock BEFORE any early return, because it is a fact
+			// about the ship and not about the music.
+			//
+			// It used to be computed after the menu and combat branches had
+			// already returned, which left dockedChanged STALE in both of
+			// them - and that is where it did its damage:
+			//
+			//  - Dock while being shot at on the way in. Decide takes the
+			//    combat branch, never reaches the dock test, and the arrival
+			//    at the station is handled as a plain interrupt. The station
+			//    crossfade appeared broken whenever you got shot at, which
+			//    is most of the times anyone docks.
+			//
+			//  - The whole main menu session kept whatever value it had on
+			//    the way out. Sitting in the menu for a minute and loading a
+			//    save started with a dock flag from a previous world, and
+			//    that is the menu transfer the crossfade was interfering
+			//    with.
+			Unit mine = engine == null || engine.LocalPlayer == null
+				|| engine.LocalPlayer.Person == null
 				? null
 				: engine.LocalPlayer.Person.CurrentUnit;
 
@@ -400,13 +1235,31 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			// key cannot be trusted to change on a dock. Docking at a station
 			// nobody owns falls back to Neutral ambience, and if the sector
 			// was unowned too then the key does not change AT ALL - the ship
-			// docked, and the music would be told nothing happened. Watching
-			// the actual dock state catches that case.
-			dockedChanged = docked != lastDocked;
-			lastDocked = docked;
+			// docked, and the music would be told nothing happened.
+			dockedNow = docked;
 
+			if (IsMainMenu(engine))
+			{
+				// The one track, looping - not a random draw from the Menu
+				// category. See MusicLibrary.MenuTrack.
+				key = "Menu";
+				entry = MusicLibrary.MenuTrack();
+				return;
+			}
+
+			// DOCKING OVERRIDES THE THREAT LOGIC, and is checked first for
+			// that reason. It used to be checked after combat, so a fight
+			// still running when you reached a station kept the combat music
+			// playing over the starport theme and the dock was inaudible as
+			// an event.
+			//
+			// Reset as well as choosing: a threat linger pending here would
+			// drop the player back into threat music on undocking, for a
+			// fight that ended several sectors ago.
 			if (docked)
 			{
+				detector.Reset();
+
 				MusicFamily owner =
 					MusicFactionClassifier.FamilyOf(DockOwner(mine), engine.LocalFaction);
 
@@ -426,14 +1279,36 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				// for an unowned sector, so docking somewhere nobody owns
 				// needs no rule of its own.
 				key = "Space/Neutral";
-				entry = MusicLibrary.RandomFrom("Neutral", lastRequested);
+				entry = MusicLibrary.RandomFrom("Neutral", PlayingOrLast());
+				return;
+			}
+
+
+			MusicCombatState combat = detector.Sample();
+
+			// Not `InCombat`, which was "one hostile is enough". The threat
+			// logic decides for itself now, and a quiet sector reads Normal.
+			if (combat.IsThreat)
+			{
+				key = "Combat/" + combat.Category + "/" + combat.Intensity;
+
+				if (sequencer.SetKind(combat.Category, combat.Intensity))
+				{
+					lastCombat = combat;
+					entry = sequencer.Current;
+				}
+				else
+				{
+					entry = sequencer.Current;
+				}
+
 				return;
 			}
 
 			if (HypersleepHelper.IsHypersleepActive())
 			{
 				key = "Hypersleep";
-				entry = MusicLibrary.RandomFrom("Hypersleep", lastRequested);
+				entry = MusicLibrary.RandomFrom("Hypersleep", PlayingOrLast());
 				return;
 			}
 
@@ -442,7 +1317,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				engine.LocalFaction);
 
 			key = "Space/" + MusicFactionClassifier.NameOf(family);
-			entry = MusicLibrary.RandomFrom(MusicFactionClassifier.NameOf(family), lastRequested);
+			entry = MusicLibrary.RandomFrom(MusicFactionClassifier.NameOf(family), PlayingOrLast());
 		}
 
 		/// <summary>The faction that owns the station this ship is docked in.</summary>

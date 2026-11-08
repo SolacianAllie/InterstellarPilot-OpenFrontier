@@ -53,8 +53,8 @@ MonoBehaviour:
   StationUnderConstructionMaxAlpha: 0.6
   StationUnderConstructionAlphaFadeRate: 1
   CloakMaxAlpha: 1
-  CloakMinAlphaForPlayer: 0.15
-  CloakMinAlpha: 0.1
+  CloakMinAlphaForPlayer: 0
+  CloakMinAlpha: 0
   CloakAlphaPower: 0.5
   VelocityTrailFullAlphaSpeed: 30
   VelocityTrailMinAlpha: 0.1

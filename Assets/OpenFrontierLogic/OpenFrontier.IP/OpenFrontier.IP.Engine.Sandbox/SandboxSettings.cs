@@ -8,6 +8,92 @@ namespace OpenFrontier.IP.Engine.Sandbox
 
 		public SandboxSectorCount DefaultSectorCount;
 
+		/// <summary>
+		/// Lowest and highest sector counts across the SectorCounts presets. The
+		/// sandbox size slider is continuous between these rather than stepping
+		/// through the presets, so the presets only define the bounds now.
+		/// </summary>
+		public int MinSectorCount
+		{
+			get
+			{
+				if (SectorCounts == null || SectorCounts.Length == 0)
+				{
+					return (DefaultSectorCount != null) ? DefaultSectorCount.MinCount : 0;
+				}
+				int min = int.MaxValue;
+				foreach (SandboxSectorCount c in SectorCounts)
+				{
+					if (c.MinCount < min)
+					{
+						min = c.MinCount;
+					}
+				}
+				return min;
+			}
+		}
+
+		public int MaxSectorCount
+		{
+			get
+			{
+				if (SectorCounts == null || SectorCounts.Length == 0)
+				{
+					return (DefaultSectorCount != null) ? DefaultSectorCount.MaxCount : 0;
+				}
+				int max = int.MinValue;
+				foreach (SandboxSectorCount c in SectorCounts)
+				{
+					if (c.MaxCount > max)
+					{
+						max = c.MaxCount;
+					}
+				}
+				return max;
+			}
+		}
+
+		/// <summary>Default absolute sector count, not an index into SectorCounts.</summary>
+		public int DefaultNumSectors
+		{
+			get
+			{
+				return (DefaultSectorCount != null) ? DefaultSectorCount.MinCount : 0;
+			}
+		}
+
+		/// <summary>
+		/// Sector-count ceiling on phones. Android and iOS are treated identically:
+		/// iOS silicon is uniformly faster but thermal-throttles sooner, so the
+		/// sustained cost of a large generated universe is the binding constraint
+		/// on both, not peak speed.
+		/// </summary>
+		public int MobileMaxSectorCount = 128;
+
+		/// <summary>
+		/// Applies the mobile ceiling regardless of platform, so the phone-sized
+		/// limit can be exercised from a desktop build without an APK round trip.
+		/// </summary>
+		public bool ForceMobileLimit;
+
+		/// <summary>
+		/// Effective upper bound for the size slider and for generation. Must be
+		/// used at both: capping only the slider still lets a stored preference or
+		/// a hand-edited setting request more sectors than the device can take.
+		/// </summary>
+		public int GetMaxSectorCount()
+		{
+			int ceiling = MaxSectorCount;
+			if (Application.isMobilePlatform || ForceMobileLimit)
+			{
+				if (MobileMaxSectorCount > 0 && MobileMaxSectorCount < ceiling)
+				{
+					ceiling = MobileMaxSectorCount;
+				}
+			}
+			return Mathf.Max(ceiling, MinSectorCount);
+		}
+
 		public int GenerationDefaultMaxWormholes = 5;
 
 		public bool DefaultDiscoverAllSectors;

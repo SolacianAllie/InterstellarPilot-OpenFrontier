@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Unity.Profiling;
 using OpenFrontier.IP.Common;
 using OpenFrontier.IP.Common.Factions;
 using OpenFrontier.IP.Engine.AI.ActiveOrders;
@@ -19,6 +20,7 @@ using OpenFrontier.IP.Engine.Core;
 using OpenFrontier.IP.Engine.Core.Units;
 using OpenFrontier.IP.Engine.Dialog;
 using OpenFrontier.IP.Engine.DitchShip;
+using OpenFrontier.IP.Engine.EngineMusic;
 using OpenFrontier.IP.Engine.Factions;
 using OpenFrontier.IP.Engine.Factions.Bounty;
 using OpenFrontier.IP.Engine.Fleets.FleetFormations;
@@ -40,7 +42,6 @@ using OpenFrontier.IP.Engine.Triggers;
 using OpenFrontier.IP.Engine.UnitComponents;
 using OpenFrontier.IP.Engine.Validation;
 using OpenFrontier.IP.Engine.Wormholes;
-using OpenFrontier.IP.MusicPlayer;
 using OpenFrontier.IP.Scenarios;
 using OpenFrontier.IP.Scenarios.RandomEvents;
 using OpenFrontier.IP.Scenarios.UniverseEventsNotifier;
@@ -485,6 +486,18 @@ namespace OpenFrontier.IP.Engine
 		private Dictionary<int, Sector> sectorIdMap = new Dictionary<int, Sector>(100);
 
 		private List<Unit> updatableUnits = new List<Unit>(2000);
+
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+		// Diagnostic only, and compiled out of release builds entirely per the
+		// project's rule that developer-facing work must not ship. These exist to
+		// answer one question: of EngineASX.Update()'s self time, how much is the
+		// engine-driven loops that replaced 13,521 MonoBehaviour Update()
+		// callbacks, and how much is the work that was always here? Guessing at
+		// that split is what this exists to replace.
+		private static readonly ProfilerMarker s_markerActiveUnits = new ProfilerMarker("EngineASX.ActiveSectorUnits");
+		private static readonly ProfilerMarker s_markerFactions = new ProfilerMarker("EngineASX.Factions");
+		private static readonly ProfilerMarker s_markerActiveFleets = new ProfilerMarker("EngineASX.ActiveSectorFleets");
+#endif
 
 		private List<int> freeUnitIndices = new List<int>(100);
 
@@ -1484,11 +1497,6 @@ namespace OpenFrontier.IP.Engine
 		public static Person LoadPerson(string name)
 		{
 			return UnityObjectHelper.Load<Person>("Prefabs/WorldData/People/" + name);
-		}
-
-		public static AudioSource LoadMusicAudioSource(string name)
-		{
-			return UnityObjectHelper.Load<AudioSource>("Audio/AudioSources/" + name);
 		}
 
 		public static Fleet LoadFleet(string name)
@@ -2962,34 +2970,33 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
+		/// <summary>
+		/// Plays the win stinger, if the game has been given one.
+		/// </summary>
+		/// <remarks>
+		/// WinAudioSourceNames is empty on the prefab, so this has always done
+		/// nothing. It is kept because the field is serialized data and an
+		/// empty list is a deliberate choice someone might fill in, not
+		/// because anything calls it meaningfully.
+		/// </remarks>
 		public void PlayWinAudio()
 		{
-			SimpleMusicPlayer musicPlayer = GameController.Instance.MusicPlayer;
-			if (musicPlayer != null)
-			{
-				string random = WinAudioSourceNames.GetRandom();
-				if (!string.IsNullOrEmpty(random))
-				{
-					musicPlayer.FadeOutIfPlaying();
-					musicPlayer.QueuedTracks.Clear();
-					musicPlayer.EnqueueTrack(random);
-				}
-			}
+			MusicDirector.PlayJingle(WinAudioSourceNames.GetRandom());
 		}
 
+		/// <summary>
+		/// Plays the lose stinger over silence.
+		/// </summary>
+		/// <remarks>
+		/// LoseAudioSourceNames holds one track, and this is the only live
+		/// user of the old audio source prefabs left in the project - which is
+		/// why they were kept rather than deleted with the rest of the old
+		/// music system. They are AudioSource prefabs wrapping a clip, and the
+		/// clip is a defeat sting this game plays.
+		/// </remarks>
 		public void PlayLoseAudio()
 		{
-			SimpleMusicPlayer musicPlayer = GameController.Instance.MusicPlayer;
-			if (musicPlayer != null)
-			{
-				string random = LoseAudioSourceNames.GetRandom();
-				if (!string.IsNullOrEmpty(random))
-				{
-					musicPlayer.FadeOutIfPlaying();
-					musicPlayer.QueuedTracks.Clear();
-					musicPlayer.EnqueueTrack(random);
-				}
-			}
+			MusicDirector.PlayJingle(LoseAudioSourceNames.GetRandom());
 		}
 
 		public void NotifyPlayerInCombat()
@@ -3921,15 +3928,50 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
-		private void Update()
+		private void FixedUpdate()
 		{
+			// The simulation tick. This was Update() and ran once per rendered
+			// frame, which made the simulation rate depend on the display: a 30fps
+			// phone simulated at 30Hz, a 144Hz monitor at 144Hz. Anything
+			// accumulating Time.deltaTime behaved differently either side of that.
+			//
+			// As FixedUpdate at a 0.0333 timestep the rate is 30Hz everywhere. A
+			// 30fps device ticks once per frame exactly as before; faster displays
+			// tick every other frame. Every time read in this method is now
+			// fixedDeltaTime for the same reason - deltaTime here would be wrong,
+			// because FixedUpdate runs zero, one or several times per frame, so
+			// accumulating the frame delta over-integrates after a hitch.
+			//
+			// Being FixedUpdate also means this stops while Time.timeScale is 0,
+			// which any ScreenBase with PauseWhenShown sets (ScreenNavigator).
+			// Intended: nothing was actually simulating behind a pause screen, but
+			// the callbacks were still being dispatched and the module work was
+			// still being walked. Multiplayer does not pause by timescale, so this
+			// does not gate a session.
+			//
+			// Presentation stays per-frame. ActiveUnitShip.Update still moves and
+			// turns the ship the player is flying, at display rate.
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+			using (s_markerActiveUnits.Auto())
+			{
+				UpdateActiveSectorUnits();
+			}
+			using (s_markerFactions.Auto())
+			{
+				UpdateFactions();
+			}
+#else
+			UpdateActiveSectorUnits();
+			UpdateFactions();
+#endif
+
 			if (IsPaused)
 			{
 				return;
 			}
 			if (IsPlayerPilot)
 			{
-				ElapsedTimeAsPilot += Time.deltaTime;
+				ElapsedTimeAsPilot += Time.fixedDeltaTime;
 			}
 			else
 			{
@@ -3979,7 +4021,7 @@ namespace OpenFrontier.IP.Engine
 			UpdateInactiveFleets();
 			UpdateInactiveGroupSpawners();
 			CleanupEmptyFleets();
-			ScenarioElapsedTime += Time.deltaTime;
+			ScenarioElapsedTime += Time.fixedDeltaTime;
 			for (int i = 0; i < destroyedUnitsToCleanup.Count; i++)
 			{
 				Unit unit = destroyedUnitsToCleanup[i];
@@ -4225,6 +4267,132 @@ namespace OpenFrontier.IP.Engine
 		/// and worth knowing about before a session grows to four players
 		/// spread across four sectors.
 		/// </remarks>
+		/// <summary>
+		/// Ticks every unit in the active sector, every frame.
+		/// </summary>
+		/// <remarks>
+		/// This used to live in UnitComponentHolder.Update(), which meant Unity
+		/// dispatched 6,308 managed->native->managed callbacks per frame to
+		/// service roughly 48 ships. The work inside was always trivial - it
+		/// checked IsInActiveSector and returned - so the cost was the dispatch
+		/// itself: ~0.34us each, ~2.1ms a frame at 1024 sectors, the single
+		/// largest item in BehaviourUpdate.
+		///
+		/// Nothing is disabled. UnitComponentHolder is still a component on every
+		/// unit prefab, still holds the unit's state, and its GameObject is still
+		/// alive and active; it simply no longer has an Update() for Unity to
+		/// call. The units themselves keep ticking - these every frame, and the
+		/// inactive ones via UpdateInactiveUnits / UpdateWatchedSectorUnits
+		/// exactly as before.
+		///
+		/// The predicate is IsInActiveSector, the same cached flag the deleted
+		/// Update() used, rather than the live Sector.IsActive. The two are the
+		/// same condition by construction (SectorObject.RefreshIsInActiveSector:
+		/// sector == EngineASX.Instance.ActiveSector), but the cached flag is
+		/// what the previous behaviour actually turned on, so using it keeps
+		/// this provably identical rather than merely equivalent.
+		///
+		/// The source of the unit list was updatableUnits, the whole world, with
+		/// an early-out. That was a reasonable second best - ~6,300 pointer
+		/// checks is two orders of magnitude cheaper than the dispatch it
+		/// replaced - but it is O(world) work to service O(active sector), and
+		/// the early-out threw away all of it for every unit not on screen.
+		///
+		/// It now reads the active sector's own per-type lists instead, which
+		/// is the same set by construction rather than by coincidence:
+		///
+		///   IsInActiveSector is true  =>  sector != null && sector == ActiveSector
+		///                             (SectorObject.RefreshIsInActiveSector)
+		///   sector != null            =>  sector.unitsByType[unit.UnitType]
+		///                             contains it (Unit.cs: Sector.AddUnit on
+		///                             every sector set, RemoveUnit on clear -
+		///                             unconditional and symmetric, so there is
+		///                             no path that puts a unit in one list and
+		///                             not the other)
+		///
+		/// Every unit type is walked, not just Ship. The earlier version only
+		/// considered ships, and the comment it replaced warned specifically
+		/// that a ship-only list "cannot miss a unit of a type the active
+		/// sector list does not cover" - stations, asteroids, cargo and gas
+		/// clouds all tick through here too.
+		///
+		/// ShouldTickNow is still applied rather than trusting the sector lists
+		/// on their own. It also checks hasInit and unit.Engine, and it reads
+		/// the cached flag, so keeping it means that even in the frame after a
+		/// sector change - where the cached flag and the sector lists can
+		/// briefly disagree - this ticks exactly what the old scan ticked.
+		/// </remarks>
+		private void UpdateActiveSectorUnits()
+		{
+			Sector activeSector = ActiveSector;
+			if (activeSector == null || unitTypes == null)
+			{
+				return;
+			}
+			for (int t = 0; t < unitTypes.Length; t++)
+			{
+				List<Unit> units = activeSector.GetUnitsByType(unitTypes[t]);
+				if (units == null)
+				{
+					continue;
+				}
+				for (int i = 0; i < units.Count; i++)
+				{
+					Unit unit = units[i];
+					if (unit == null)
+					{
+						continue;
+					}
+					UnitComponentHolder components = unit.Components;
+					if (components == null || !components.ShouldTickNow)
+					{
+						continue;
+					}
+					components.Tick();
+				}
+			}
+		}
+
+		/// <summary>
+		/// Ticks every faction and every faction's AI, every frame.
+		/// </summary>
+		/// <remarks>
+		/// Replaces two MonoBehaviour Update() methods, one on Faction and one on
+		/// FactionAIBase. At 1024 sectors that is 1,523 + 1,521 = 3,044 dispatches
+		/// a frame, roughly 1.1ms. FactionAIBase is one component per AI faction
+		/// created by FactionAIBase.CreateFactionAIType on the faction's own
+		/// transform, so Faction.FactionAI reaches it without a second list.
+		///
+		/// Above the IsPaused guard for the same reason as UpdateActiveSectorUnits:
+		/// neither old Update() had a pause check of its own, so both ran while
+		/// paused and this preserves that.
+		///
+		/// Both guards are preserved verbatim inside the moved methods, including
+		/// Authority.OwnsFaction - a client must still not run another faction's
+		/// economy. Iteration order now follows the Factions list rather than
+		/// Unity's component order; factions do not read each other's state within
+		/// a frame, and the per-faction timers (nextRecentAttacksChkTime,
+		/// NextFactionAIUpdate) are absolute Time.time comparisons, so neither is
+		/// order-dependent.
+		/// </remarks>
+		private void UpdateFactions()
+		{
+			for (int i = 0; i < Factions.Count; i++)
+			{
+				Faction faction = Factions[i];
+				if (faction == null)
+				{
+					continue;
+				}
+				faction.Tick();
+				FactionAIBase factionAi = faction.FactionAI;
+				if (factionAi != null)
+				{
+					factionAi.Tick();
+				}
+			}
+		}
+
 		private void UpdateWatchedSectorUnits()
 		{
 			for (int s = 0; s < watchedSectors.Count; s++)
@@ -4328,6 +4496,7 @@ namespace OpenFrontier.IP.Engine
 			{
 				return;
 			}
+			UpdateActiveSectorFleets();
 			int inactiveGroupUpdateCount = GetInactiveGroupUpdateCount();
 			for (int i = 0; i < inactiveGroupUpdateCount; i++)
 			{
@@ -4339,6 +4508,34 @@ namespace OpenFrontier.IP.Engine
 					{
 						fleet.Tick();
 					}
+				}
+			}
+		}
+
+		/// <summary>
+		/// Ticks every fleet in the active sector, every frame. Sits inside
+		/// UpdateInactiveFleets so the active and inactive paths read together,
+		/// and is called with the rest of the loop rather than above the pause
+		/// guard: Fleet.Tick() already returns early on engine.IsPaused, so
+		/// placement relative to that guard cannot change behaviour here.
+		/// </summary>
+		/// <remarks>
+		/// Removed 4,169 MonoBehaviour Update() dispatches per frame at 1024
+		/// sectors, ~1.20ms, in order to service the fleets in one sector. Same
+		/// reasoning as UpdateActiveSectorUnits: nothing is disabled, the Fleet
+		/// component and its GameObject are untouched, only the dispatch goes.
+		/// </remarks>
+		private void UpdateActiveSectorFleets()
+		{
+#if DEVELOPMENT_BUILD || UNITY_EDITOR
+			using (s_markerActiveFleets.Auto())
+#endif
+			for (int i = 0; i < fleets.Count; i++)
+			{
+				Fleet fleet = fleets[i];
+				if (fleet.Sector != null && fleet.Sector.IsActive)
+				{
+					fleet.Tick();
 				}
 			}
 		}

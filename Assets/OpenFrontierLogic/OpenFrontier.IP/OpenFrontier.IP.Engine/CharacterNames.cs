@@ -1,8 +1,11 @@
+using System;
 using System.Collections.Generic;
+using OpenFrontier.IP.Common;
 using OpenFrontier.IP.Engine.CharacterNaming;
 using OpenFrontier.IP.IO;
 using OpenFrontier.Unity.Utils;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace OpenFrontier.IP.Engine
 {
@@ -26,6 +29,19 @@ namespace OpenFrontier.IP.Engine
 			public CountryOrigin Country;
 		}
 
+		private struct CharacterEpithet
+		{
+			public string Value;
+
+			/// <summary>
+			/// True when the epithet applies to any gender rather than only one.
+			/// "the Baroness" must never be handed to a male pilot.
+			/// </summary>
+			public bool AnyGender;
+
+			public bool IsMale;
+		}
+
 		private class CountryOfOriginWeighting : IWeighted
 		{
 			public CountryOrigin CountryOfOrigin { get; set; }
@@ -45,6 +61,67 @@ namespace OpenFrontier.IP.Engine
 
 		public TextAsset LastNamesFile;
 
+		public TextAsset EpithetsFile;
+
+		/// <summary>
+		/// Fraction of pilots given an epithet at all.
+		/// </summary>
+		/// <remarks>
+		/// 0.14, down from 0.28. At a quarter of all pilots, "The" + noun was
+		/// the default reading for anyone who looked at more than a name or
+		/// two, which made the distinctive case the ordinary one. Half as many
+		/// puts it back where it belongs - memorable, and rare enough that
+		/// seeing one means something.
+		///
+		/// So of all pilots: about 86% an ordinary name, 7.7% inline with the
+		/// surname kept, 6.3% surname-free.
+		///
+		/// The variety note that used to live here is stale and is worth
+		/// keeping in mind as a trap. It said the epithet pool must hold ~365
+		/// rows to break even, because an epithet-bearing pilot dropped the
+		/// surname and so drew given x epithet instead of given x surname.
+		/// That only held while EVERY epithet-bearing pilot dropped it. Now
+		/// only the GivenOnly layout does, so most keep the surname and the
+		/// constraint has gone with it. At 50,954 rows the pool is far past
+		/// break-even either way, so rarity here costs nothing in variety.
+		/// </remarks>
+		private const float EpithetChance = 0.14f;
+
+		/// <summary>
+		/// Of the pilots who do get an epithet, how many read as a callsign
+		/// with no surname rather than as a person with a nickname.
+		/// </summary>
+		/// <remarks>
+		/// Two layouts, and they are opposites rather than variants:
+		///
+		///   Todd "The Blaster" McQuinn    inline, surname kept
+		///   Jeff The Asteroid Blaster      surname-free
+		///
+		/// The surname-free one is unquoted, which is what makes it read as a
+		/// callsign or a wanted poster rather than as a person with a nickname.
+		///
+		/// So of all pilots: about 12.6% surname-free, 15.4% inline, 72% with
+		/// an ordinary name.
+		///
+		/// A third layout - surname kept, epithet trailing after it, "Heinz
+		/// Metz, The Quiet Princess" - existed briefly and was cut. The
+		/// threshold below is the one it used, with the two branches swapped
+		/// rather than renumbered, so the set of pilots reading inline is
+		/// exactly the set that read inline before.
+		/// </remarks>
+		private const float GivenOnlyEpithetShare = 0.45f;
+
+		private enum EpithetLayout
+		{
+			/// Todd "The Blaster" McQuinn
+			Inline,
+
+			/// Jeff The Asteroid Blaster - given name only, no surname at all
+			GivenOnly
+		}
+
+		private List<CharacterEpithet> epithets = new List<CharacterEpithet>(400);
+
 		private List<CountryOfOriginWeighting> countryOrigins = new List<CountryOfOriginWeighting>();
 
 		private bool hasInit;
@@ -55,6 +132,7 @@ namespace OpenFrontier.IP.Engine
 			{
 				ReadFirstNames(FirstNamesFile, firstNames);
 				ReadLastNames(LastNamesFile, lastNames);
+				ReadEpithets(EpithetsFile, epithets);
 				countryOrigins.Add(new CountryOfOriginWeighting
 				{
 					CountryOfOrigin = CountryOrigin.English,
@@ -175,11 +253,152 @@ namespace OpenFrontier.IP.Engine
 			return -1;
 		}
 
+		/// <summary>
+		/// Stable per-pair value in [0,1). Deterministic, so a pilot keeps the
+		/// same epithet for the life of a save and old saves acquire one without
+		/// anything new being written.
+		/// </summary>
+		/// <remarks>
+		/// Derived from firstNameIndex and lastNameIndex only, because those are
+		/// the two values actually persisted: SaveGameWriter writes both in every
+		/// version and SaveGameModelImporter170 reads them back into
+		/// person.generatedFirstNameId / generatedLastNameId. A saved epithet id
+		/// would need a new field in the save format and would invalidate every
+		/// existing world. Hashing the pair costs nothing and needs no schema
+		/// change.
+		///
+		/// UnityEngine.Random is deliberately NOT used - it is global mutable
+		/// state, and the answer has to be the same every time the same pair is
+		/// asked about, from any call site, in any order.
+		/// </remarks>
+		/// <param name="salt">
+		/// Distinguishes independent draws from the same pair of indices.
+		/// Zero is the identity here - "h ^= 0" leaves h untouched - so the
+		/// default call is bit-for-bit what it always was, and every pilot who
+		/// already has an epithet keeps the same one after this change.
+		/// </param>
+		private static float StableHash01(int firstNameIndex, int lastNameIndex, uint salt = 0)
+		{
+			unchecked
+			{
+				uint h = (uint)(firstNameIndex + 1) * 2654435761u;
+				h ^= (uint)(lastNameIndex + 1) * 2246822519u;
+				h ^= salt;
+				h ^= h >> 15;
+				h *= 2654435761u;
+				h ^= h >> 13;
+				return (h & 0xFFFFFFu) / 16777216f;
+			}
+		}
+
+		/// <summary>
+		/// Whether this pilot's epithet sits inside the name or after it.
+		/// </summary>
+		private EpithetLayout GetEpithetLayout(int firstNameIndex, int lastNameIndex)
+		{
+			// Salted, so the layout is uncorrelated with both the gate that
+			// decided the pilot gets an epithet and the draw that chose which
+			// one. Without the salt the two would move together.
+			// The threshold is the one the trailing layout used, and the
+			// branches are swapped rather than renumbered, so the set of pilots
+			// reading inline is exactly the set that read inline before. Only
+			// the ones that read trailing move, and they have to move - that is
+			// what deleting the form means.
+			float layout = StableHash01(firstNameIndex, lastNameIndex, 0x9E3779B9u);
+			return layout < GivenOnlyEpithetShare ? EpithetLayout.GivenOnly : EpithetLayout.Inline;
+		}
+
+		/// <summary>
+		/// Which epithet, if any, belongs to this pair of name indices.
+		/// </summary>
+		/// <param name="isMale">Gender of the chosen given name, so a
+		/// gender-restricted epithet such as "the Baroness" cannot land on a
+		/// male pilot.</param>
+		private int GetEpithetIndex(int firstNameIndex, int lastNameIndex, bool isMale)
+		{
+			if (epithets.Count == 0)
+			{
+				return -1;
+			}
+
+			float h = StableHash01(firstNameIndex, lastNameIndex);
+			if (h >= EpithetChance)
+			{
+				return -1;
+			}
+
+			// A second, independent draw picks which one, so the gate and the
+			// choice are not correlated with each other.
+			int pick = (int)((h / EpithetChance) * epithets.Count) % epithets.Count;
+			CharacterEpithet candidate = epithets[pick];
+			if (!candidate.AnyGender && candidate.IsMale != isMale)
+			{
+				// Restricted and wrong gender: walk forward to the next entry
+				// that fits rather than dropping the epithet entirely.
+				for (int i = 1; i < epithets.Count; i++)
+				{
+					CharacterEpithet alt = epithets[(pick + i) % epithets.Count];
+					if (alt.AnyGender || alt.IsMale == isMale)
+					{
+						return (pick + i) % epithets.Count;
+					}
+				}
+			}
+			return pick;
+		}
+
+		/// <summary>
+		/// Whether this pair of indices carries an epithet rather than a surname.
+		/// </summary>
+		public bool HasEpithet(int firstNameIndex, int lastNameIndex)
+		{
+			return firstNameIndex > -1 && firstNameIndex < firstNames.Count &&
+				GetEpithetIndex(firstNameIndex, lastNameIndex,
+					firstNames[firstNameIndex].IsMale) >= 0;
+		}
+
 		public string GetName(int firstNameIndex, int lastNameIndex)
 		{
 			if (firstNameIndex > -1 && lastNameIndex > -1 && firstNameIndex < firstNames.Count && lastNameIndex < lastNames.Count)
 			{
-				return firstNames[firstNameIndex].Value + " " + lastNames[lastNameIndex].Value;
+				string given = firstNames[firstNameIndex].Value;
+				string surname = lastNames[lastNameIndex].Value;
+				int epithetIndex = GetEpithetIndex(firstNameIndex, lastNameIndex,
+					firstNames[firstNameIndex].IsMale);
+				if (epithetIndex >= 0)
+				{
+					string epithet = CapitaliseEpithet(epithets[epithetIndex].Value);
+					switch (GetEpithetLayout(firstNameIndex, lastNameIndex))
+					{
+						case EpithetLayout.GivenOnly:
+							// Jeff The Asteroid Blaster
+							//
+							// No surname, and unquoted. That is what makes this one
+							// read as a callsign or a wanted poster rather than as a
+							// person with a nickname.
+							//
+							// Dropping the surname is safe here where it was not safe
+							// before, because this is ONE layout of two rather than
+							// all of them - inline still keeps the surname, so the
+							// pool does not lose its largest dimension. It only
+							// gives some pilots a shorter name.
+							return given + " " + epithet;
+						default:
+							break;
+					}
+					// Quoted, and the SURNAME IS KEPT:
+					//     Todd "The Blaster" McQuinn
+					// An earlier version dropped the surname, on the reasoning
+					// that a nickname replaces one. That was wrong twice over -
+					// it cost the pool its largest dimension, and it lost the
+					// part that makes a nickname read as a nickname. Keeping it
+					// turns epithet names into given x surname x epithet rather
+					// than given x epithet, which is the difference between a
+					// pool that stays level and one that grows by three orders
+					// of magnitude.
+					return given + " \"" + epithet + "\" " + surname;
+				}
+				return given + " " + surname;
 			}
 			return null;
 		}
@@ -241,6 +460,102 @@ namespace OpenFrontier.IP.Engine
 					Debug.LogError("Found unknown country of origin in names: " + array2[1]);
 				}
 			}
+		}
+
+		/// <summary>
+		/// Reads "Epithet,Gender".
+		/// </summary>
+		/// <remarks>
+		/// Unlike the name files this one has a header and is skipped, and
+		/// unlike ReadLastNames an unknown gender is a hard drop rather than a
+		/// logged one: a missing epithet is cosmetic, so it is better to lose the
+		/// row than to spam the log once per pilot.
+		/// </remarks>
+		private void ReadEpithets(TextAsset t, List<CharacterEpithet> into)
+		{
+			if (t == null)
+			{
+				return;
+			}
+
+			foreach (string line in IOHelper.ReadAndSplitTextLines(t))
+			{
+				if (string.IsNullOrWhiteSpace(line))
+				{
+					continue;
+				}
+
+				string[] parts = line.Split(',');
+				if (parts.Length < 2)
+				{
+					continue;
+				}
+
+				if (Enum.TryParse(parts[1], out GenderChoice gender))
+				{
+					into.Add(new CharacterEpithet
+					{
+						Value = parts[0],
+						IsMale = gender != GenderChoice.Female,
+						AnyGender = gender == GenderChoice.Unspecified
+					});
+				}
+			}
+		}
+
+		/// <summary>
+		/// "the Bagel Thief" -&gt; "The Bagel Thief".
+		/// </summary>
+		/// <remarks>
+		/// The pool stores them lowercase because that is how they read standing
+		/// alone as a nickname. Inside quotation marks a leading article wants
+		/// capitalising, or it looks like the quote continues into the name.
+		/// </remarks>
+		private static string CapitaliseEpithet(string epithet)
+		{
+			if (epithet != null && epithet.StartsWith("the ", StringComparison.Ordinal))
+			{
+				return "The " + epithet.Substring(4);
+			}
+			return epithet;
+		}
+
+		/// <summary>
+		/// Short form for an epithet-bearing pilot, or null when the pilot has
+		/// an ordinary name and the caller's own shortening applies.
+		/// </summary>
+		/// <remarks>
+		/// Person.ShortenName initialises every word but the last, which would
+		/// turn Todd "The Blaster" McQuinn into T. "The Blaster" McQuinn - the
+		/// epithet would be the only thing left standing in a tight label. So the
+		/// epithet is simply dropped here and the given name kept whole:
+		/// "Todd McQuinn".
+		/// </remarks>
+		public string GetShortName(int firstNameIndex, int lastNameIndex)
+		{
+			if (firstNameIndex < 0 || firstNameIndex >= firstNames.Count ||
+				lastNameIndex < 0 || lastNameIndex >= lastNames.Count)
+			{
+				return null;
+			}
+
+			bool isMale = firstNames[firstNameIndex].IsMale;
+			if (GetEpithetIndex(firstNameIndex, lastNameIndex, isMale) < 0)
+				{
+					// Ordinary name: the caller applies its own shortening.
+					return null;
+				}
+			if (GetEpithetLayout(firstNameIndex, lastNameIndex) == EpithetLayout.GivenOnly)
+				{
+					// This pilot has no surname in their full name - "Jeff The
+					// Asteroid Blaster" - so returning one here would invent it.
+					// The given name alone is the short form; the epithet is dropped
+					// for the same reason it is dropped everywhere else, since
+					// shortening the full name would leave "J. The Asteroid
+					// Blaster" with the given name the only thing removed.
+					return firstNames[firstNameIndex].Value;
+				}
+			return firstNames[firstNameIndex].Value + " " + lastNames[lastNameIndex].Value;
 		}
 	}
 }

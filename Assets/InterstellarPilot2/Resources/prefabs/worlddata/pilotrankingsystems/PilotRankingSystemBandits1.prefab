@@ -51,8 +51,20 @@ MonoBehaviour:
     RequiredPilotCount: 1
     MinNumber: 0
     MaxNumber: 99999
+  - Rank: {fileID: 114724804207875695, guid: e6928491665a4da284715fffb3606783, type: 2}
+    RequiredPilotCount: 1
+    MinNumber: 0
+    MaxNumber: 99999
   - Rank: {fileID: 114724804207875695, guid: 08a5e2a0786ddc740aa6372a6837b4d8, type: 2}
     RequiredPilotCount: 3
+    MinNumber: 0
+    MaxNumber: 99999
+  - Rank: {fileID: 114724804207875695, guid: 577d4b9c9f7d46a28d3c022d64c24901, type: 2}
+    RequiredPilotCount: 5
+    MinNumber: 0
+    MaxNumber: 99999
+  - Rank: {fileID: 114724804207875695, guid: f45765934cee422fac12236fcbc46c84, type: 2}
+    RequiredPilotCount: 10
     MinNumber: 0
     MaxNumber: 99999
   - Rank: {fileID: 114724804207875695, guid: c0e8919484be8b947812f520a73b663b, type: 2}

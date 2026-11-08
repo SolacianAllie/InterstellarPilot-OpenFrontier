@@ -1,5 +1,83 @@
 # Notes for Coding Agents
 
+## This is a MOBILE game first, PC second
+
+Decide everything against the weakest target, not the one in front of you.
+A PC has cores to spare and desktop memory; a phone does not, and a foldable
+is worse than a desktop again. Something that is free on a PC can be the
+single largest cost in a mobile build, and the PC is not where anyone plays.
+
+Practical form of it, in the order it actually bites:
+
+- **Diagnostic work does not ship.** Anything only a developer reads - an
+  overlay, a voice report, a scan that feeds one - belongs behind
+  `DEVELOPMENT_BUILD || UNITY_EDITOR`, compiled out rather than runtime-guarded
+  so a release build does not contain it. `MusicDirector.RefreshVoiceReport`
+  ran two `FindObjectsOfType` scans every quarter second in release to fill a
+  cache that only the overlay read, and the overlay is compiled out. Removed.
+  **The rule is "only a developer reads it", not "it measures something".** The
+  dock header's framerate and V-Sync readout
+  (`DockUIHeader.GetLocationText`) is a deliberate player-facing feature - it is
+  how performance gets checked without entering dev menus - so it is NOT to be
+  gated. It accumulates `Time.unscaledDeltaTime` on purpose: `timeScale` is 0
+  behind any `PauseWhenShown` screen, and a scaled reading would report 0fps
+  exactly when something is holding the framerate up.
+- **Never put a scene-wide search on the render path.** `FindObjectsOfType`
+  walks every GameObject and allocates an array. In `OnGUI` it runs at least
+  twice per frame. If something must be watched, watch it on an event
+  (`sceneLoaded`, `sceneUnloaded`) and use a poll only as a backstop, at a
+  rate the weakest device would not notice.
+- **Per-frame work is a per-frame tax on a phone.** If it can be done at
+  2-4 Hz because nothing changes faster, it is at 2-4 Hz. "Cheap enough" is
+  judged against a budget, not against the desktop it was tested on.
+- **Look for the symptom that lies.** A CPU cost competing with rendering only
+  shows when there is rendering to compete with, so it appears as "moving the
+  camera halves the FPS" and looks like a graphics problem. Measure on the
+  target before believing what the symptom points at.
+- **Memory is budget starvation, not depth.** The same instinct applies to
+  allocations: steady small allocations
+  cause GC hitches, which read as random frame drops ("sometimes"), not as
+  the cost they are.
+
+When a feature is being designed, ask what it costs on a mid-range phone
+before asking what it costs here.
+
+## Branches: everything lands on `Dev`
+
+`Dev` is the working branch and is checked out. Commit and push **Dev**:
+
+```bash
+git commit -q -m "..."
+git push origin Dev        # never bare `git push` - see below
+```
+
+`Legacy` is the historical branch and is **frozen** at `e530dbac`. It is
+still `origin/HEAD`, which is the trap: **a bare `git push` follows
+`origin/HEAD` and pushes `Legacy`, silently leaving `Dev` behind.** Always
+name the branch. If a push reports "Everything up-to-date" while `Dev` is
+behind `Legacy`, this is why - `git push origin Legacy Dev` pushed `Legacy`
+and found `Dev` genuinely unchanged, because the new commit was only ever on
+`Legacy`.
+
+If `Dev` needs to move, fast-forward it rather than checking it out, so the
+working tree is never disturbed:
+
+```bash
+git branch -f Dev Legacy && git push origin Dev   # only if Legacy is ahead
+```
+
+## Agent commits sweep the user's working tree
+
+When a coding agent is about to commit, it stages the user's uncommitted
+working-tree state into the same commit instead of leaving files stranded
+unpushed (user-requested 2026-11-05; the old "churn, do not stage" list is
+dead). It still reads `git status` first and names in its report which
+changed files were the user's and which were its own. Anything that looks
+like scratch — temporary tooling, editor debris that is not an asset the
+user saved — gets listed and skipped in the report, never swept silently.
+LFS pointer-ization of binaries on add is expected form (checked once
+against local object presence, 2026-11-05, e2f1577d).
+
 Only non-obvious traps live here — things you cannot learn from the project
 structure. Add new ones as they are found.
 
@@ -70,18 +148,23 @@ here, first check `grep -nE "session ended|Moving to main menu|disconnect"`
 and make sure the disconnect actually followed — a session that ended without
 one is the thing to fix, not the editor.
 
-## Offline compile verification (`/tmp/opencode/harness`)
+## Offline compile verification (`tools/harness`, in the repo)
 
 C# changes are verified outside the editor with a generated .NET harness:
 
-- Regenerate: `bash /tmp/opencode/harness/check.sh --regen`
-- Check: `bash /tmp/opencode/harness/check.sh`
-- **It lives in /tmp. A power cut wipes it** — as happened on 2026-10-10. The
-  project is safe (everything is committed); only `gen.py` and `check.sh` have
-  to be written again. Everything they need survives in the project: Unity's
-  managed DLLs under `~/Unity/Hub/Editor/6000.6.4f1/Editor/Data/Managed`, the
-  package DLLs under `Library/ScriptAssemblies`, and the vendored ones under
-  `Assets/Plugins`.
+- Regenerate: `bash tools/harness/check.sh --regen`
+- Check: `bash tools/harness/check.sh`
+- `check.sh` resolves dotnet itself (PATH, then the Unity editor's
+  `DotNetSdk` fallback); a machine restart wiping PATH no longer blanks the
+  run. If every build fails "command not found", the dotnet block in
+  `check.sh` was reverted again - restore it rather than exporting by hand.
+- **It lives IN THE REPO now** (`tools/harness/` — `gen.py`, `check.sh`,
+  `checks/`). It was originally `/tmp/opencode/harness` and lost twice (a
+  2026-10-10 power cut, a /tmp clear), which is why it was rebuilt in-tree on
+  2026-10-18. Everything it needs survives in the project: Unity's managed
+  DLLs under `~/Unity/Hub/Editor/6000.6.4f1/Editor/Data/Managed`, the package
+  DLLs under `Library/ScriptAssemblies`, and the vendored ones under
+  `Assets/Plugins`. Current shape: 14 projects, one per asmdef, ~4.6s warm / ~16.6s cold.
 - **One csproj per asmdef, with that asmdef's real references.** The earlier
   harness compiled everything into everything, which meant it could not see
   the two error classes that have actually bitten:
@@ -156,6 +239,21 @@ not a real missing reference before deciding:
 The editor refocus the user does anyway rebuilds `ScriptAssemblies`, which
 clears it. `grep -c "error CS" Logs/Editor.log` is the real confirmation.
 
+**Staleness and a missing `using` look IDENTICAL in the harness — and
+staleness clears on refocus while the missing `using` never does.** The
+CloakBackdropFeatureInstaller was misdiagnosed as staleness because the
+engine project failed the same way in the same run; the real cause was the
+installer referencing `CloakBackdropFeature` with no `using OpenFrontier;`.
+The tell was in the user's console AFTER a refocus that rebuilt everything:
+the type was demonstrably in the fresh DLL (the harness went green on every
+project that referenced it), yet `Assembly-CSharp-Editor` still said CS0246 —
+that can only be namespace resolution. Diagnosing order: (1) does the
+DEFINING assembly compile clean (yes → the type exists); (2) do OTHER types
+from the same namespace resolve inside the failing file (yes → the file can
+see the assembly, so the failure is the one symbol+name spelling/using); (3)
+only then call it staleness. Formats files always import project namespaces
+explicitly — never assume the file's own namespace reaches it.
+
 ## The harness is 15x faster now, and this is how
 
 It was 70 seconds and it was not the compiler. Measured breakdown of the old
@@ -190,13 +288,46 @@ Four changes, in order of what they were worth:
 Now **4.6s warm, 16.6s cold** (a wiped cache re-parses everything). If it
 ever reads 70s again, one of these four has been lost.
 
-**The generator has a case-collision trap.** The repo tracks a lowercase
-`tools/`, the filesystem is case-insensitive, and git's index is
-case-SENSITIVE. A script written to `Tools/music/` therefore reports as
-untracked `?? Tools/music/` forever and `git ls-files Tools/` returns
-nothing, which reads exactly like "never committed" and is not the same
-question. **Always check `git ls-files tools/` in lowercase** before
-concluding anything about `Tools/`.
+**`core.ignorecase` was TRUE on a CASE-SENSITIVE filesystem — it deleted a
+tracked file through `git add -A`.** `tools/` and `Tools/` are two real
+directories here (different inodes), and git was configured to match paths
+case-insensitively. So a file written to `Tools/music/` committed as
+`tools/music/`, and the next `git add -A` found nothing at `tools/music/`,
+staged a **deletion of all 335 lines**, and declined to re-add the copy at
+`Tools/music/` because the ignorecase match said it was already tracked.
+
+The symptom is invisible: `git status` shows nothing alarming, the file is
+still on disk, and `git ls-files` for either spelling looks reasonable. 87
+generated plots sat in the repo the whole time with no script that makes
+them, and commit messages cited the absent file for several commits.
+
+Now `core.ignorecase false`, and the script lives at `tools/music/` so the
+working tree, the index and the repo agree on one spelling.
+
+**If a tracked file goes missing from `git ls-tree` while still being on
+disk, check `git config core.ignorecase` against `stat -c %i` on both
+spellings before anything else.** A case mismatch plus a wrong `ignorecase`
+deletes silently, and `git checkout` will not bring it back because git does
+not know it was ever supposed to be there.
+
+**All binaries in this repo live in Git LFS — a recovery clone must fetch them
+or Unity reports ~1890 broken assets.** `.gitattributes` routes PNG/WAV/OGG/
+MP3/FBX/DLL etc. through LFS. Cloning without fetching LFS objects leaves
+~130-byte pointer stubs on disk, which materialise as: `Could not create asset
+from …: File could not be read` for every texture/audio import, white/blank
+materials, silent audio, and (for the plugin DLLs) CS0246/CS0103 on plugin
+types. **That stub state is the real cause behind several historical
+mysteries** ("stars broken the whole time", "lost plugin dependencies") —
+check for stubs before inventing a cause:
+`grep -rl "git-lfs.github.com/spec/v1" Assets | wc -l` must be 0.
+Fix: `git lfs install` (the recovery clone had not run it — `lfs checkout`
+fails with "Git LFS is not installed" without it) → `git lfs fetch origin`
+(~5 GB, genuinely on the remote) → `git lfs checkout`. Nothing to commit
+afterwards: real bytes in the worktree while git still tracks pointers.
+Unity session edits made *while the stubs were on disk* (wiped URP global
+settings, material re-saves, rewritten `.png.meta` importer state) are
+import-of-garbage normalisation — revert them, then let Unity re-import
+against the real files.
 
 ## A green harness run can have compiled almost nothing
 
@@ -239,6 +370,22 @@ exit 198) — the user performs all editor actions.
 
 ## Non-obvious traps
 
+- **Some broken files are deliberate tombstones - check `git log` before
+  "fixing" them.** `ComponentTradeScreen.prefab`'s YAML error is exactly that:
+  9eb88df3 had dedented the broken `m_Children` block, and 42b1ad05 (2026-10-29)
+  deliberately reverted it - "the forked-in fixes are not part of the right
+  baseline until the lost week's content is recovered". Re-applying the obvious
+  fix re-forks the baseline it is waiting for. Known tombstones are listed in
+  `prefab_yaml_check.py`'s `KNOWN_ISSUES` (printed every run as KNOWN, never
+  gating); a tombstone here that has no gate must be an entry there, not a
+  permanently red harness.
+- **Shader reference material lives OUTSIDE `Assets/`.**
+  `reference/_PoiyomiShaders` (project root, gitignored, 2026-11-07) was kept
+  for dissection of its decal system and shader organisation - to be recoded
+  mobile-safe, never used as-is. It sits in the project tree but outside
+  `Assets/` so that neither the editor nor the offline harness sees it
+  (imported under Assets it failed to compile in both and went red everywhere).
+  Moving it back into Assets re-breaks the green gate.
 - **Asmdef `Editor/` subfolders do NOT get platform editor-extension DLLs.**
   An `Editor/` folder inside an asmdef compiles into that asmdef's generated
   editor assembly, which lacks references to build-support modules — so
@@ -285,14 +432,6 @@ exit 198) — the user performs all editor actions.
   clips into the skybox", worse at 1.6× size). All 338 nebula materials
   are now queue 2999 — the sun always draws after the backdrop, while
   gameplay particles (3000) still distance-sort over it correctly.
-- **Mipmap streaming is OFF for good — budget starvation, not
-  reduction depth.** This game's working set is enormous (an Instant
-  Action capital fleet ≈ 2.3GB+ of 2K maps); any mobile-sane budget
-  starves the streamer and textures sit at their smallest loaded mip
-  = "white ships". Verified matrix: OFF=fine, 256MB=white (even
-  menu), 768-2048MB=white (Instant Action), 4096MB=fine, OFF=fine.
-  Mipmaps themselves stay ON (all 746 textures) — only streaming is
-  disabled. Do not re-enable.
 - **Script GUIDs are deterministic:** `Guid(MD5(assemblyName + namespace + className))`
   (AssetRipper decompile scheme). Never regenerate .meta files; renaming
   namespaces/assemblies is safe because GUIDs live in the .meta files, but the
@@ -343,6 +482,19 @@ exit 198) — the user performs all editor actions.
   (this blacked out the wormhole transition; the anim's camera is now
   disabled in the prefab). Never spawn enabled cameras at runtime unless
   they are explicitly stacked.
+- **Profiler counters moved assembly and namespace in Unity 6000.6:**
+  `ProfilerRecorder`/`ProfilerCategory` live in `Unity.Profiling` (inside
+  `UnityEngine.CoreModule.dll` — there is NO `UnityEngine.ProfilingModule.dll`
+  in this install, whatever the docs say), while the legacy static
+  `Profiler` with the memory getters stays `UnityEngine.Profiling.Profiler`.
+  The options enum renamed too: `WrapAroundWhenOverwrite` →
+  `WrapAroundWhenCapacityReached`; graphics memory is
+  `Profiler.GetAllocatedMemoryForGraphicsDriver()` (not
+  `GetGraphicsDriverAllocatedMemoryLong`). The two namespaces coexist with
+  no name collisions, so `using UnityEngine.Profiling;` +
+  `using Unity.Profiling;` is legal. Found by reflection-probing
+  CoreModule from a throwaway csproj after two honest harness failures —
+  the harness (via the editor rsp) is right and the docs are behind.
 - **Play-mode edits to the URP asset can PERSIST in the editor:**
   `ShadowQualitySync` writes `mainLightShadowmapResolution` at runtime;
   the editor re-serialized the asset mid-session and the value stuck
@@ -371,11 +523,10 @@ exit 198) — the user performs all editor actions.
   it into touch/drag thresholds directly — it once set
   `EventSystem.pixelDragThreshold` to 0 and ate every tap on the sector map.
   Use `OpenFrontier.ScreenDpi.Value` (Screen.dpi → JNI DisplayMetrics → 200
-  fallback). Fingers.dll reads `Screen.dpi` in its Awake and falls back to
-  its serialized DefaultDPI with a red error; `FingersDpiFix` on the
-  GameController prefab's EventSystem object overrides `DeviceInfo` after
-  each scene load. The one-time red error at startup is cosmetic and cannot
-  be silenced without patching the DLL.
+  fallback). `GestureScript` feeds `GestureUnits.PixelsPerInch` from it on
+  enable, on `sceneLoaded` and on a resolution change — the old
+  `FingersDpiFix` override (and its one-time red error from the DLL) went
+  with Fingers.dll.
 - **Only `Assets/Scripts/OpenFrontier/OpenFrontier.asmdef` references
   `Unity.RenderPipelines.Universal.Runtime`** — any new script touching URP
   types (`UniversalRenderPipelineAsset`, etc.) MUST live in the OpenFrontier
@@ -400,7 +551,26 @@ exit 198) — the user performs all editor actions.
 - **`OpenFrontier.LegacyInput` is a shim over the NEW Input System**, not
   `UnityEngine.Input`: `Mouse.current` is null/stale on touch-only devices,
   so `mousePosition` must mirror the primary touch (fixed in the shim —
-  keep that behaviour when migrating the remaining ~60 call sites).
+  keep that behaviour). `Fingers.dll` was the only caller of the actual
+  legacy input module; it is gone (see the gestures note below), so
+  Active Input Handling can be, and should be, "Input System Package
+  (New)" only. Nothing in `Assets/Scripts`-era code uses
+  `UnityEngine.Input` directly any more.
+- **`OpenFrontier.Gestures` replaces Fingers.dll** (deleted 2026-10-19;
+  decompile-derived port of Tap/Pan/Scale, fed from EnhancedTouch —
+  `GestureScript` self-spawns, no prefab). Thresholds are in screen
+  INCHES via `GestureUnits` (fed from `OpenFrontier.ScreenDpi.Value`, so
+  the old `FingersDpiFix` component is gone). Mouse buttons ride as three
+  fingers with Fingers' ids and the button index in
+  `PlatformSpecificTouch` — that is what `IsRightMouseButton()` reads.
+  Two behaviours are load-bearing and easy to "fix" into bugs: a
+  recognizer reporting `Ended` re-arms to `Possible` immediately (and its
+  touches are untracked only after `TouchesEnded` returns) — so the
+  consumer's `Ended` callback is the only place `FocusX/FocusY` and
+  `TapTouches` are valid; and same-view exclusivity
+  (`AllowSimultaneousExecutionIfPlatformSpecificViewsAreDifferent = true`)
+  holds the stream for the rest of the pump frame after `Ended`, which is
+  what stops orbit-pan and pinch-scale from double-driving the camera.
 - **No Unity native calls in MonoBehaviour field initializers / static
   constructors** (`LayerMask.NameToLayer`, `Shader.Find`, etc.): type
   initialization can run during serialization, where native calls are
@@ -408,3 +578,14 @@ exit 198) — the user performs all editor actions.
   whole type (every `AddComponent` fails silently). Look them up lazily
   in Awake/OnEnable. The harness cannot catch this; check Editor.log for
   "is not allowed to be called from a MonoBehaviour constructor".
+- **A custom render feature can fail SILENTLY end to end: no pass in
+  the frame debugger, no warning, no exception.** The v2.2 cloak
+  backdrop capture (RenderGraph renderer feature) did exactly that for
+  a whole session. Beat it two ways from the first day: give the pass
+  one-line state-change diagnostics (editor-only), and when the
+  capture is a "previous frame"/ping-pong pattern anyway, prefer a
+  CHILD CAMERA over a render feature — an enabled `targetTexture`
+  camera always draws into its RT (boring tech that cannot go
+  invisible), and a disabled one costs nothing. The cloak grab now
+  ships as `OpenFrontier.CloakBackdropCamera`; the feature and its
+  installer are deleted.

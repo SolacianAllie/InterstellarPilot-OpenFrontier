@@ -67,23 +67,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!1 &1618682377417806
-GameObject:
-  serializedVersion: 6
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Component:
-  - component: {fileID: 4089843903986396}
-  - component: {fileID: 114672306508523268}
-  m_Layer: 0
-  m_Name: Jukebox
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
 --- !u!1 &1703437598541787
 GameObject:
   serializedVersion: 6
@@ -305,26 +288,8 @@ GameObject:
   - component: {fileID: 114743393880019028}
   - component: {fileID: 114094320201520353}
   - component: {fileID: 114026196548002408}
-  - component: {fileID: 114026196548002410}
   m_Layer: 0
   m_Name: EventSystem
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!1 &1977153420339851
-GameObject:
-  serializedVersion: 6
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Component:
-  - component: {fileID: 4572839542275309}
-  - component: {fileID: 114279359913592680}
-  m_Layer: 0
-  m_Name: FingersCustomScriptPrefab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -413,7 +378,6 @@ Transform:
   m_Children:
   - {fileID: 4621510681728303}
   - {fileID: 4733206282342372}
-  - {fileID: 4089843903986396}
   - {fileID: 4808113985169905}
   - {fileID: 4900271049623953}
   - {fileID: 4518489005915545}
@@ -424,7 +388,6 @@ Transform:
   - {fileID: 4722951815217645}
   - {fileID: 4215879266689626}
   - {fileID: 4043919389829319}
-  - {fileID: 4572839542275309}
   - {fileID: 4384403120170545}
   - {fileID: 4574304967836189}
   m_Father: {fileID: 0}
@@ -525,7 +488,6 @@ MonoBehaviour:
   - {r: 0.9764706, g: 0.8348186, b: 0.36378315, a: 1}
   - {r: 1, g: 0.8922655, b: 0.042452812, a: 1}
   DefaultCombatDifficultyLevel: {fileID: 114724804207875695, guid: f76c71c1d4541a64fbb7e6b97787462d, type: 2}
-  DefaultMusicVolume: 0.5
   CombatDifficultyLevel: {fileID: 114724804207875695, guid: 1ae4e94d3f5d39f4597607c226d2e357, type: 2}
   CombatDifficultyLevelKey: combat_difficulty
   CombatDifficultyLevels:
@@ -600,8 +562,6 @@ MonoBehaviour:
   DamageObjectMask:
     serializedVersion: 2
     m_Bits: 1073741824
-  MusicPlayer: {fileID: 114672306508523268}
-  MusicVolumeKey: music_volume
   AutoCloseInGameMenu: 1
   DefaultPilotName: Player
   DefaultPilotNameKey: default_pilot_name
@@ -628,8 +588,6 @@ MonoBehaviour:
   UISafeAreaRightKey: ui_safe_area_right
   GraphicsQualityLevelKey: graphics_quality_level
   DefaultQualityLevel: 2
-  RenderCloakedShipOutlinesEnabled: 1
-  RenderCloakedShipOutlinesKey: cloaked_outline_enabled
   SpaceFogEnabledKey: space_fog
   LightingFXEnabledKey: lighting_fx_enabled
   TiltControlDefaultAccelerationX: 0
@@ -1023,34 +981,6 @@ MonoBehaviour:
   InputKey: 282
   NamePrefix: screenshot_
   TargetPath: C:\dev\temp\asx\screenshots
---- !u!4 &4089843903986396
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1618682377417806}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4470112387431263}
-  m_RootOrder: 2
-  m_LocalEulerAnglesHint: {x: 0, y: -0, z: -0}
---- !u!114 &114672306508523268
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1618682377417806}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c61662824c118f56b45818bf676c05df, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  FadeOutDuration: 2
 --- !u!4 &4808113985169905
 Transform:
   m_ObjectHideFlags: 0
@@ -1636,51 +1566,6 @@ MonoBehaviour:
   referenceDPI: 100
   referencePixelDrag: 8
   runOnAwake: 1
---- !u!4 &4572839542275309
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1977153420339851}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: -3, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 4470112387431263}
-  m_RootOrder: 13
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &114279359913592680
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1977153420339851}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 1754998283, guid: 2e2fe14a2917eacc23810ac1bd40829d, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  EnableMultiTouch: 1
-  TreatMousePointerAsFinger: 1
-  TreatMouseWheelAsFingers: 1
-  SimulateMouseWithTouches: 0
-  ProcessUnityTouches: 1
-  RequireControlKeyForMouseZoom: 1
-  MouseDistanceInUnitsForScaleAndRotate: 1
-  MouseWheelDeltaMultiplier: 0.01
-  MouseWheelZoomOutSnapBack: {x: 0, y: 0}
-  PassThroughObjects: []
-  AutoAddRequiredComponents: 0
-  ShowTouches: 0
-  TouchCircles: []
-  DefaultDPI: 200
-  LevelUnloadOption: 1
-  UseFixedUpdate: 0
-  RecordTouches: 0
-  TestTouches: []
 --- !u!4 &4384403120170545
 Transform:
   m_ObjectHideFlags: 0
@@ -1884,18 +1769,6 @@ MonoBehaviour:
   Video_DefaultWormholeAnimationEnabled: 1
   Video_TargetFrameRates: 1e0000003c0000005a0000007800000090000000
   Audio_MissileLockSoundKey: audio_missile_lock_sound
---- !u!114 &114026196548002410
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1705390221481576}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f8e609c6f998415eadf3b36670dd901c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &114313026266067500
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -152,6 +152,7 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 				UnitComponents.RegisterWeaponsFire();
 			}
 			UnitComponents.anyComponentRequiresRecharge = true;
+			RequestLaserDesignation(target);
 			onFired(target);
 			if (activeTurret != null)
 			{
@@ -161,6 +162,44 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 			InactiveFire(target);
 			return true;
 		}
+
+		/// <summary>
+		/// Tells this ship's utility mounts to hold their beam on whatever this
+		/// shot is aimed at.
+		/// </summary>
+		/// <remarks>
+		/// Only a homing projectile asks, because only one can be waiting on a
+		/// beam. A gun is aimed by the shot itself and needs nothing kept on the
+		/// target afterwards, so asking for a beam it will never ride would
+		/// leave one burning for no reason.
+		///
+		/// This is also where deselection comes from, without any of it being
+		/// about the HUD: the beam follows the shots. Stop shooting at a ship,
+		/// or start shooting at a different one, and the laser moves - which is
+		/// exactly what losing it by deselection means. An AI ship designates
+		/// through the same call as a player's, because the firing code is the
+		/// firing code.
+		/// </remarks>
+		private void RequestLaserDesignation(Unit target)
+		{
+			if (target == null || !NeedsLaserDesignation)
+			{
+				return;
+			}
+			UnitComponents.RequestUtilityMountDesignation(target);
+		}
+
+		/// <summary>
+		/// Whether a shot from this turret needs a laser designator held on the
+		/// target for it to work.
+		/// </summary>
+		/// <remarks>
+		/// False for everything that is not a projectile turret. It is a
+		/// question about the round in the tube, not about the launcher - a
+		/// launcher that can fire a laser missile and a radar missile asks for
+		/// a beam only when the laser one is the one loaded.
+		/// </remarks>
+		protected virtual bool NeedsLaserDesignation => false;
 
 		public virtual void RemoveAmmoForFiring()
 		{
@@ -196,6 +235,15 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 					float distance;
 					if (target != null && target.IsValidAndNotDestroyed)
 					{
+						// The bay's own arc is answered by the activeTurret check
+						// above. This is the other half of it: whether the ship
+						// is pointing at the target at all, which for a launcher
+						// is what decides whether the missile even leaves in the
+						// right direction.
+						if (!ignoreFiringArc && !IsShipFacingTarget(target))
+						{
+							return false;
+						}
 						return IsTargetInFiringRange(target, out distance);
 					}
 					return false;
@@ -203,6 +251,37 @@ namespace OpenFrontier.IP.Engine.UnitComponents
 				return true;
 			}
 			return false;
+		}
+
+		/// <summary>
+		/// How far off the ship's nose the target must be before this turret
+		/// will fire at it, in degrees. Zero means no requirement.
+		/// </summary>
+		/// <remarks>
+		/// This is the other half of a bay's WeaponArc: the arc asks whether a
+		/// bay is rotated towards the target, this asks whether the ship is.
+		/// Both matter for a launcher and neither matters for a gun, because a
+		/// gun is aimed by the shot itself.
+		///
+		/// For a projectile turret this is not an independent number - it is the
+		/// loaded missile's own seeker cone. Nothing ever rotates an
+		/// ActiveTurret, so a homing missile launches along whatever rotation
+		/// the launcher inherits, which is the hull's, and its seeker can only
+		/// look where the missile is pointing. Letting a ship launch a missile
+		/// outside the arc that missile can even see would mean spending the
+		/// whole flight failing to acquire, so the launch requirement and the
+		/// cone are the same angle and are stored once, on the missile.
+		/// </remarks>
+		protected virtual float RequiredLaunchAngle => 0f;
+
+		private bool IsShipFacingTarget(Unit target)
+		{
+			float halfAngle = RequiredLaunchAngle;
+			if (halfAngle <= 0f)
+			{
+				return true;
+			}
+			return Geometry.IsWithinBearing(Unit.transform, target.transform.position, halfAngle);
 		}
 
 		public bool IsUnitReadyToFire()

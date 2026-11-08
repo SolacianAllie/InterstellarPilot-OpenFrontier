@@ -653,6 +653,7 @@ namespace OpenFrontier.IP.Engine.SaveGame
 				return;
 			}
 			engine.World.CreatedVersion = Versioning.Version;
+			Dictionary<Unit, int> dictionary = new Dictionary<Unit, int>();
 			foreach (Sector sector in EngineASX.Instance.Sectors)
 			{
 				List<Unit> unitsByType = sector.GetUnitsByType(UnitType.Planet);
@@ -665,11 +666,29 @@ namespace OpenFrontier.IP.Engine.SaveGame
 					Moon component = item.GetComponent<Moon>();
 					if (component != null)
 					{
-						CreatePlanetsSeeder.RandomizeMoon(component, GameController.Instance.GameSettings.DefaultWorldSeedSettings.CreatePlanetsSeederSettings);
+						// Same pipeline the seeder uses, on an old save being
+						// dragged up to it: size the orbit to the two
+						// bodies standing at their prefab sizes (none is
+						// rescaled). A moon whose planet is null measures
+						// 0 and RandomizeMoon falls back to the settings
+						// pair inside. The ring is the moon's ordinal
+						// around its host (ladder spans the whole pass),
+						// so even a multi-moon migration staggers instead
+						// of stacking on one band.
+						int num2 = 0;
+						if (component.OrbitingAroundUnit != null)
+						{
+							if (dictionary.TryGetValue(component.OrbitingAroundUnit, out var value))
+							{
+								num2 = value;
+							}
+							dictionary[component.OrbitingAroundUnit] = num2 + 1;
+						}
+						CreatePlanetsSeeder.RandomizeMoon(component, GameController.Instance.GameSettings.DefaultWorldSeedSettings.CreatePlanetsSeederSettings, CreatePlanetsSeeder.MeasureVisualRadius(component.OrbitingAroundUnit), CreatePlanetsSeeder.MeasureVisualRadius(item), num2);
 					}
 					else
 					{
-						item.transform.localPosition = CreatePlanetsSeeder.GetRandomPlanetLocalPosition(item.Sector, GameController.Instance.GameSettings.DefaultWorldSeedSettings.CreatePlanetsSeederSettings);
+						item.transform.localPosition = CreatePlanetsSeeder.GetRandomPlanetLocalPosition(item.Sector, GameController.Instance.GameSettings.DefaultWorldSeedSettings.CreatePlanetsSeederSettings, CreatePlanetsSeeder.MeasureVisualRadius(item));
 					}
 				}
 			}
@@ -778,7 +797,14 @@ namespace OpenFrontier.IP.Engine.SaveGame
 							component.OffsetFromPlanet = moon.OffsetFromPlanet.ToVector3();
 							if (unitByid.ActiveUnit != null)
 							{
-								unitByid.ActiveUnit.GetComponent<ActiveUnitMoon>().Reposition();
+								// A moon active-unit that lost its behaviour (rip-recovered
+								// prefab with an unbindable script ref) must not abort the
+								// whole load: degrade to "the moon stays put" instead.
+								ActiveUnitMoon moonBehaviour = unitByid.ActiveUnit.GetComponent<ActiveUnitMoon>();
+								if (moonBehaviour != null)
+								{
+									moonBehaviour.Reposition();
+								}
 							}
 						}
 					}
