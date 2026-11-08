@@ -1,78 +1,101 @@
-# Assets — the blank-slate layout (2026-11-08)
+# Assets — blank-slate layout, second pass (2026-11-08)
 
-`Assets/` now carries **raw content only**. All game code, scenes, prefabs,
-materials, shaders, authored data, vendored DLLs and the derived extraction
-dumps were moved to `PreRebuild/` at the project root — outside `Assets/`, so
-Unity never imports or compiles them. `PreRebuild/` is tracked in git (not
-ignored); its metas travelled with every file, so restoring is a move, not a
-rebuild.
+`Assets/` carries raw content and the first rebuilt pieces only. The full
+legacy game — code, scenes, prefabs, materials, shaders, authored data,
+vendored DLLs, extraction dumps — still mirrors its old paths under
+`PreRebuild/` at the project root, outside `Assets/`: Unity never imports or
+compiles it. `PreRebuild/` is tracked in git (not ignored) and every file's
+`.meta` travelled with it, so restoring from there is a move, not a rebuild.
+
+## Where things stand now
 
 ```
 Assets/
-  InterstellarPilot2/Extracted/   AudioClip/  Mesh/  Sprite/  Texture2D/   (raw)
-  OpenFrontier/                   AudioClip/  Font/  Mesh/  Sprite/  Textures/
+  OpenFrontier/
+    AudioClip/ Font/ Mesh/ Sprite/ Textures/    raw project content (first pass)
+    Textures/FX/                                + particle_128, smoke — the two
+                                                particle maps the FX closure uses
+    Shaders/                                    OpenFrontier_ShipSurface,
+                                                OpenFrontier_ShipCloak,
+                                                OpenFrontier_LegacyParticle_{
+                                                Additive,AlphaBlended},
+                                                OpenFrontierLegacyParticles.cginc
+    Settings/                                   OpenFrontier-URP + renderer asset
+                                                + the three Build Profiles
+    Effects/                                    Blue/Orange/Purple Engine Flare
+                                                (user-made LensFlareDataSRP data)
+    Resources/{Materials,Prefabs}               working session (uncommitted):
+                                                Ship Standard/Cloak + Glass, the
+                                                grabbed thruster/smoke prefab copies
+    Ships/                                      working session (uncommitted): ship
+                                                art and materials, and
+                                                ActiveUnitRanger.prefab — a
+                                                grab-and-strip reference (missing
+                                                mesh/material/script refs by design)
+  UniversalRenderPipelineGlobalSettings.asset   regenerated in place; stays the
+                                                wired global settings
 ```
 
-`InterstellarPilot2/Extracted/` keeps the extraction dump's raw substance:
-56+10 audio clips, 215 textures, 219 mesh `.asset`s and 191 sprite `.asset`s.
-`Mesh/`/`Sprite/` are Unity-native `.asset` data — geometry and sprite frames,
-not prefabs — so they count as raw here. `OpenFrontier/` keeps the project's
-own art: 1,020 textures, 7 source meshes (fbx), 10 ogg clips, the font, and
-`README.md`. Two intentional strays stay with their kept folders (Font's
-default font material; Mesh's material) — harmless, unused, wanted there for
-coherence with the assets they belong to.
+**`Assets/InterstellarPilot2/` is gone** — deleted in the second pass after
+the user grabbed the thruster FX they wanted into
+`OpenFrontier/Resources/Prefabs/`. Its former content lives on only in
+`PreRebuild/InterstellarPilot2/` at the old paths.
 
-**Already-copied exceptions:** `OpenFrontier/Shaders/OpenFrontier_ShipSurface.shader`
-and `OpenFrontier/Shaders/OpenFrontier_ShipCloak.shader` were copied back from
-`PreRebuild/` on 2026-11-08 **with their original `.meta` files**, so the GUIDs every
-ship-hull and cloaked-hull material references (`0c7559b00079d89961773603f874bf92`,
-`c9f2d8847ba14e6d9b03a55f21c76e04`) are unchanged. While the originals stay outside
-`Assets/` the duplicate GUIDs are invisible to Unity, but a wholesale restore of
-`PreRebuild/OpenFrontier/Shaders/` must delete these copies first or the same-GUID
-metas collide. Both are self-contained: every `#include` is a URP/Core package path;
-no project-local dependencies, no CustomEditor. **Also restored 2026-11-08:**
-`InterstellarPilot2/Settings/` wholesale — `OpenFrontier-URP.asset` +
-`OpenFrontier-URP-Renderer.asset` (URP pipeline, referenced by GraphicsSettings and
-every quality level) plus the three Build Profiles — original metas, so the previous
-build's settings resolve again; a wholesale restore of that PreRebuild folder later
-must delete these copies first (same-GUID rule). All renderer external references
-resolve inside the URP package; the regenerated root
-`UniversalRenderPipelineGlobalSettings.asset` stays the wired global settings.
+## Restored exceptions (all with original metas, GUIDs unchanged)
 
-Everything else from the old layout mirrors its old paths under `PreRebuild/`:
-`PreRebuild/OpenFrontierLogic/` (all twelve assemblies), `PreRebuild/Editor/`,
-`PreRebuild/OpenFrontier/{Editor,Discord,Material,Prefabs,Resources,Scenes,
-Shaders,worlddata}/`, `PreRebuild/InterstellarPilot2/{Plugins,Resources,
-Scripts,Settings,StreamingAssets,TextMesh Pro,UI Toolkit}/` plus the URP
-global settings, and `PreRebuild/InterstellarPilot2/Extracted/{GameObject,
-LightingSettings,Material,MonoBehaviour,PhysicMaterial,Shader,TextAsset}/`.
+- `OpenFrontier/Shaders/OpenFrontier_ShipSurface.shader` and
+  `OpenFrontier_ShipCloak.shader` — copied back from PreRebuild in the first
+  pass. URP-only (`ShaderLab` passes `LightMode = UniversalForward`); pink is
+  the Built-in fallback signature, not an error.
+- `OpenFrontier/Settings/` — moved out of `InterstellarPilot2/Settings`
+  immediately before that tree was deleted. `GraphicsSettings` and every
+  quality level reference its pipeline asset by GUID (`dc538db0…`), which the
+  move preserved — `ProjectSettings/` needed no edits at all.
+- The legacy-particle closure of the grabbed FX prefabs, moved as a set:
+  `Shaders/OpenFrontier_LegacyParticle_{Additive,AlphaBlended}.shader` +
+  `OpenFrontierLegacyParticles.cginc` (both shaders `#include` it by name,
+  so shader and include stay together),
+  `Resources/Materials/m_additive_128.mat` and `m_smoke_alphablend.mat`
+  (referenced by every grabbed thruster/smoke prefab), and their maps
+  `Textures/FX/particle_128.png` + `smoke.png`. The retired FX-driving
+  scripts stay retired: grabbed prefabs import them as missing components —
+  visuals intact, the new core will drive them.
+- `OpenFrontier/Effects/* Engine Flare.asset` — the three user-made engine
+  flare data assets, copied in from PreRebuild. Self-contained: their only
+  reference is the URP core package's `LensFlareDataSRP` script. The
+  component-side flare objects still live on the retired ship prefabs in
+  PreRebuild (see the `ActiveUnitRanger.prefab` reference copy under
+  `Ships/Ranger/`).
 
----
+## Same-GUID caveat (unchanged rule)
+
+Every restored/moved copy shares its GUID with the un-relocated original in
+`PreRebuild/`. Invisible while the original sits outside `Assets/` — but a
+wholesale restore of any PreRebuild folder must first delete the matching
+in-Assets copy, or the duplicate metas collide.
 
 ## The meta rule (timeless)
 
-Assets are identified by the GUID inside their `.meta` file. Move an asset and
-its `.meta` together and every reference survives — scene to script, prefab to
-mesh, material to shader. Move an asset *without* its meta and it becomes a
-new asset; every reference to it dangles. Folder rules follow the same rule at
-folder depth (each folder's `.meta` sits beside the folder).
+Assets are identified by the GUID inside their `.meta` file. Move an asset
+and its `.meta` together and every reference survives — move it without the
+meta and it becomes a new asset with every reference dangling. Folder rules
+are the same rule at folder depth.
 
-## Two by-path traps that matter on restore
+## By-path traps on restore
 
-- **`InterstellarPilot2/Resources/` is loaded by path, not GUID.** The old
-  tree's `Resources.Load` call sites used names like `Textures/Backgrounds/<x>`,
-  `Prefabs/WorldData/AsteroidTypes`, EngineResources, avatars. If it ever
-  returns to `Assets/`, it must return to its original path — a Resources tree
-  restored anywhere else loads empty.
-- **`ProjectSettings/EditorBuildSettings.asset` listed scenes by path *and*
-  guid.** Both dangled after the migration (expected). The new core re-adds its
-  own scenes when it brings them; do not chase the old list.
+- The legacy `Resources.Load` tree loads BY PATH. If
+  `PreRebuild/InterstellarPilot2/Resources/` ever returns, it returns to
+  `Assets/InterstellarPilot2/Resources/` — same-path restore only.
+- The re-homed pieces under `OpenFrontier/` (Settings, particle shaders/
+  materials/textures, flares) are now their GUIDs' live home. A wholesale
+  PreRebuild restore must not recreate their old-path copies alongside them.
+- `ProjectSettings/EditorBuildSettings.asset` still lists retired scenes by
+  path+guid; they stay retired — the new core re-adds its own scenes when it
+  brings them.
 
 ## The harness in this state
 
-Zero `.asmdef` / zero `.cs` under `Assets/` is a deliberate state: `check.sh`
-purges any stale generated project set and reports green with a loud "build
-gate idle" note instead of building. It returns to strict mode the moment the
-first `.asmdef` lands under `Assets/`. See AGENTS.md ("The rebuild blank
-slate") for the ProjectSettings consequences and the frozen
-`Library/ScriptAssemblies`.
+Zero `.asmdef` / zero `.cs` under `Assets/` remains deliberate: `check.sh`
+purges stale generated projects and reports green with a loud "build gate
+idle" note, and re-arms strict the moment the first `.asmdef` lands under
+`Assets/`. See AGENTS.md ("The rebuild blank slate") for the session law.

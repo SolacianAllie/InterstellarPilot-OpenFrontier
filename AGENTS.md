@@ -70,20 +70,33 @@ git branch -f Dev Stable && git push origin Dev   # merge commits travel with it
 
 2026-11-08: all game code, scenes, prefabs, materials, shaders, authored data,
 vendored DLLs and derived extraction dumps moved OUT of `Assets/` to
-`PreRebuild/` (project root; tracked, NOT gitignored). What remains is raw
-content only, at its original paths:
-`OpenFrontier/{AudioClip,Font,Mesh,Sprite,Textures,README.md}` and
-`InterstellarPilot2/Extracted/{AudioClip,Mesh,Sprite,Texture2D}` — art, audio,
-fonts, geometry (219 mesh `.asset`s) and sprite data (191 `.asset`s), kept so
-the new core can reference them later. Two intentional strays stay with their
-kept folders (Font's default font material, Mesh's material).
+`PreRebuild/` (project root; tracked, NOT gitignored). Second pass, later the
+same day: after the user grabbed the thruster FX they wanted, **the
+`Assets/InterstellarPilot2/` tree was deleted outright**, and its
+100 % load-bearing survivors were MOVED (not re-restored) into
+`Assets/OpenFrontier/` with their metas — `Settings/` (URP pipeline + Build
+Profiles), the two `OpenFrontier_LegacyParticle_{Additive,AlphaBlended}`
+shaders + `OpenFrontierLegacyParticles.cginc`, the `m_additive_128` /
+`m_smoke_alphablend` materials their grabbed prefabs reference, their maps
+(`particle_128.png`, `smoke.png`), and the three user-made engine flares →
+`OpenFrontier/Effects/`. An `ActiveUnitRanger.prefab` copy sits under
+`OpenFrontier/Ships/Ranger/` as a grab-and-strip reference (missing refs by
+design). What remains besides that is raw content:
+`OpenFrontier/{AudioClip,Font,Mesh,Sprite,Textures,README.md}` — plus the
+user's working-session rebuild content (Ships/, Scenes/, Resources/ grabs).
+Two intentional strays stay with their kept folders (Font's default font
+material, Mesh's material).
 
 - Every `.meta` moved with its asset, so every GUID is unchanged. **Restore =
   move the folder back to its ORIGINAL path under Assets.** The old
   `InterstellarPilot2/Resources/` tree is loaded by path (`Resources.Load`:
   EngineResources, AsteroidTypes, NebulaAssets, avatars...) and
   `ProjectSettings/EditorBuildSettings.asset` listed scenes by path *and*
-  guid — same-path restore is the only restore. Intermediate folder metas under
+  guid — same-path restore is the only restore, EXCEPT the pieces re-homed
+under `OpenFrontier/` (Settings, particle shaders/ materials/textures,
+engine flares): those are their GUIDs' live home now, and a wholesale
+PreRebuild restore must not recreate their old-path copies alongside them.
+Intermediate folder metas under
   `PreRebuild/` were not migrated (they hold little: folder GUIDs are rarely
   referenced); recreating them is fine.
 - `PreRebuild/` is outside Unity: never imported, never compiled, invisible to
@@ -95,10 +108,11 @@ kept folders (Font's default font material, Mesh's material).
   mode the moment the first `.asmdef` lands under `Assets/`. `codec-test`'s
   `sync.py` still links pre-migration paths — regenerate it when the first new
   code arrives, before trusting its green.
-- ProjectSettings consequences of the move (expected, do not "fix" silently):
-  `GraphicsSettings` custom render pipeline GUID dangles → the editor falls
-  back to the Built-in pipeline until the new core brings its own URP assets;
-  the build scene list dangles; `Library/ScriptAssemblies` stays frozen at the
+- ProjectSettings consequences of the move: the `GraphicsSettings` /
+  `QualitySettings` custom pipeline references RESOLVE again — the URP asset
+  lives at `Assets/OpenFrontier/Settings/` (moved there with its metas
+  before the IP2 deletion; ProjectSettings needed no edits). The build scene
+  list still dangles; `Library/ScriptAssemblies` stays frozen at the
   last pre-migration build — treat every DLL in it as stale forever (the usual
   staleness doctrine, now standing).
 - First editor reopen after the migration: a large re-integration. Prefer a
