@@ -17,11 +17,11 @@ the field is filled, which is done for all 24 units.
 
 | Prefab | Fold material | Unsigned location |
 |---|---|---|
-| ActiveUnitAres | MaterialAresFade | `InterstellarPilot2/Extracted/Material/` |
-| ActiveUnitBar2 | space_station_4_fade | `InterstellarPilot2/Extracted/Material/` |
-| ActiveUnitCreon | MaterialCreonFade | `InterstellarPilot2/Extracted/Material/` |
-| ActiveUnitDrake | MaterialDrakeFade | `InterstellarPilot2/Extracted/Material/` |
-| ActiveUnitFactory | space_station_4_fade | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitAres | MaterialAresCloaked | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitBar2 | space_station_4_cloaked | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitCreon | MaterialCreonCloaked | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitDrake | MaterialDrakeCloaked | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitFactory | space_station_4_cloaked | `InterstellarPilot2/Extracted/Material/` |
 | ActiveUnitFlyer | MaterialFlyerCloaked | `InterstellarPilot2/Extracted/Material/` |
 | ActiveUnitHauler | MaterialHaulerCloaked | `InterstellarPilot2/Extracted/Material/` |
 | ActiveUnitHornet | HornetCloakedMaterial | `InterstellarPilot2/Extracted/Material/` |
@@ -29,18 +29,18 @@ the field is filled, which is done for all 24 units.
 | ActiveUnitMagnusPirateBlack | MaterialMagnusCloakedPirateBlack | **`OpenFrontier/Material/`** |
 | ActiveUnitOverlord | MaterialOverlordCloaked | **`OpenFrontier/Material/`** |
 | ActiveUnitPioneer | MaterialPioneerCloaked | **`OpenFrontier/Material/`** |
-| ActiveUnitRanger | MaterialRangerFade | **`OpenFrontier/Material/`** |
-| ActiveUnitRaptor | MaterialRaptorFade | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitRanger | MaterialRangerCloaked | **`OpenFrontier/Material/`** |
+| ActiveUnitRaptor | MaterialRaptorCloaked | `InterstellarPilot2/Extracted/Material/` |
 | ActiveUnitRefinery | refinery_cloaked | `InterstellarPilot2/Extracted/Material/` |
-| ActiveUnitShipyard | Shipyard_fade | `InterstellarPilot2/Extracted/Material/` |
-| ActiveUnitShuttle | MaterialShuttleFade | `InterstellarPilot2/Extracted/Material/` |
-| ActiveUnitSmallOutpost | space_station_tower_2_fade | `InterstellarPilot2/Extracted/Material/` |
-| ActiveUnitSmallSatellite | MaterialSmallSatelliteFade | `InterstellarPilot2/Extracted/Material/` |
-| ActiveUnitStorageLocker | ResourceContainerFade | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitShipyard | Shipyard_cloaked | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitShuttle | MaterialShuttleCloaked | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitSmallOutpost | space_station_tower_2_cloaked | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitSmallSatellite | MaterialSmallSatelliteCloaked | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitStorageLocker | ResourceContainerCloaked | `InterstellarPilot2/Extracted/Material/` |
 | ActiveUnitThunder | MaterialThunderCloaked | **`OpenFrontier/Material/`** |
-| ActiveUnitTradeStation | trade_station_fade | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitTradeStation | trade_station_cloaked | `InterstellarPilot2/Extracted/Material/` |
 | ActiveUnitVenture | MaterialVentureCloaked | **`OpenFrontier/Material/`** |
-| ActiveUnitWeaponsPlatform | MaterialWeaponsPlatformFade | `InterstellarPilot2/Extracted/Material/` |
+| ActiveUnitWeaponsPlatform | MaterialWeaponsPlatformCloaked | `InterstellarPilot2/Extracted/Material/` |
 
 ## The name-twin trap
 

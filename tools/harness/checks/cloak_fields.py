@@ -23,8 +23,9 @@ Findings use the same shapes as the runtime probe:
   FAIL  invariant broken - the field describes an asset the unit was not
         authored to wear, or a material that cannot fold. The runtime
         cannot self-heal either.
-  WARN  shells fold-capable while no field is set (transitional), or one
-        unit authored with several different slot-0 folds across LODs.
+  WARN  shells fold-capable while no field is set (transitional), one
+        unit wearing several different slot-0 folds across LODs, or a
+        fold-capable material whose basename says nothing about cloaking.
   INFO  same-named materials across trees, so the twin population stays
         visible while the IP2 reliance is being wound down.
 """
@@ -78,6 +79,20 @@ for g, (_nm, rel) in mat_info.items():
     m = re.search(r"m_Shader: \{[^}]*guid: ([0-9a-f]{32})", read(os.path.join(ASSETS, rel)))
     if m:
         mat_shader[g] = m.group(1)
+
+# naming convention: a fold-capable material says so. The *Fade names came
+# from the old extracted convention and stopped meaning anything once this
+# project's cloak became a material property instead of a mesh toggle; after
+# the 2026-11 renames every fold reads *Cloaked / *_cloaked / *Cloak*. The
+# advisory keeps the population honest the moment someone authors the next
+# stray fold into differently-named material.
+naming_warns = []
+for g, sg in mat_shader.items():
+    if sg in shader_fold and shader_fold[sg]:
+        nm = mat_info[g][0]
+        if "cloak" not in nm.lower():
+            naming_warns.append(f"fold-capable material '{nm}' says nothing about cloaking")
+
 
 
 def slot_states(guids):
@@ -195,7 +210,7 @@ if fails:
     for line in fails:
         print("FAIL " + line)
     sys.exit(1)
-for line in warns:
+for line in sorted(warns + naming_warns):
     print("WARN " + line)
 twins = sorted(
     nm for nm, sites in name_sites.items()
