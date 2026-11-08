@@ -12,7 +12,7 @@ PluginImporter:
   validateReferences: 1
   platformData:
     Android:
-      enabled: 1
+      enabled: 0
       settings: {}
     Any:
       enabled: 0
