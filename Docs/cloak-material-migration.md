@@ -48,14 +48,15 @@ Several material names exist in BOTH trees as different assets (different
 guids): `MaterialMagnusCloaked`, `MaterialMagnusCloakedPirateBlack`,
 `MaterialMagnusStandard`, `MaterialMagnusStandardPirateBlack`,
 `MaterialOverlord`, `MaterialOverlordCloaked`, `Moon1`–`Moon4`. The
-OpenFrontier copy is the migrated/current one. **Never fill the Cloak Material
+OpenFrontier copy is the migrated/current one. Never fill the Cloak Material
 field by picking a material from a Project-window search** — it can return the
-IP2 twin. The census script enforces the safe rule:
+IP2 twin. The census enforces the safe rule:
 
-    python3 /tmp/opencode/cloakmap.py
+    python3 tools/harness/checks/cloak_fields.py
 
-Every field must print `match` against its own shell renderers. Zero
-`FIELD-NE-SHELL` / `NEEDS-FIELD` lines = the assignment set is sound. Re-run it
+and runs automatically inside `tools/harness/check.sh` (exit 1 on any
+misassigned field or non-fold field material). Every unit must come out
+0 misassigned. Re-run it
 after moving any prefab or material between trees — as long as `.meta` files
 move together, guids survive the move and the field stays valid.
 
