@@ -85,7 +85,7 @@ Shader "OpenFrontier/Airlock"
 		[Header(Boil)]
 		_ShimmerDepth("Boil Depth", Range(0.0, 1.0)) = 0.18
 		_ShimmerScale("Boil Scale", Float) = 1.0
-		_ShimmerSpeed("Boil Speed", Float) = 0.55
+		_ShimmerSpeed("Boil Speed", Float) = 0.25
 
 		[Header(Fading)]
 		_NearFade("Near Fade", Float) = 0.6

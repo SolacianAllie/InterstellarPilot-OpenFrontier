@@ -120,12 +120,14 @@ half AirlockHash(float3 cell)
 // through. Slicing - not translating - the third axis is what makes the
 // pattern evolve with no marching direction: features press out, dissolve
 // and reform from every side.
+// Slow the washes everywhere: the lattice eases with a quintic (C2) curve,
+// so blob interiors swell and recede without visible cell boundaries.
 half AirlockBoil(float3 p)
 {
 	p -= 8.0 * floor(p * 0.125);
 	float3 i = floor(p);
 	float3 f = p - i;
-	float3 u = f * f * (3.0 - 2.0 * f);
+	float3 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
 	half c000 = AirlockHash(i);
 	half c100 = AirlockHash(i + float3(1.0, 0.0, 0.0));
 	half c010 = AirlockHash(i + float3(0.0, 1.0, 0.0));
@@ -164,8 +166,19 @@ half4 AirlockFrag(AirlockVaryings input) : SV_Target
 	// axis, so a symmetric door churns symmetric: no centre seam. The
 	// lattice period-wraps at 8 cells on every axis, so the loop is true
 	// and the hash arguments stay bounded at any session length.
+	// The detail octave rides at 1.8x (not 2.6x) and only 0.22 weight: it
+	// is the fastest-winking layer and the prime flash source at speed.
 	float3 boil = float3(abs(input.osEye.xy) * _ShimmerScale, _Time.y * _ShimmerSpeed);
-	half churn = 0.65 * AirlockBoil(boil) + 0.35 * AirlockBoil(boil * 2.6 + 17.31);
+	//
+	// The flash cure (2026-11-08): raw value noise spans the full 0-1
+	// range, so even its weakest churn dipped the glow all over, every
+	// frame - an all-over twinkle. Now the churn passes a SOFT FLOOR
+	// (bottom 45% of the range = zero dip) and eases on quadratically:
+	// dips come only from blob cores, rare and smooth, like pressure
+	// bulbs breathing rather than a membrane strobing.
+	half n = 0.78 * AirlockBoil(boil) + 0.22 * AirlockBoil(boil * 1.8 + 17.31);
+	half churn = saturate(n - 0.45) / 0.55;
+	churn *= churn;
 
 	// One uniform dose: the boil dips the base glow wherever the churn
 	// happens, no positional escalation. (A border-driven "seal" ramp

@@ -36,7 +36,7 @@ Material:
     - _NearFade: 0.6
     - _ShimmerDepth: 0.18
     - _ShimmerScale: 1
-    - _ShimmerSpeed: 0.55
+    - _ShimmerSpeed: 0.25
     m_Colors:
     - _Color: {r: 0.25, g: 0.7, b: 1, a: 1}
   m_BuildTextureStacks: []
