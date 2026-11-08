@@ -41,8 +41,12 @@
 //
 // The complex tier's furniture needs no UVs, no depth read and no textures:
 // a view-angle rim so the silhouette glows like a held-in boundary, a
-// frac-bounded travelling shimmer (NavLights doctrine: hours-long sessions
-// cannot drift the phase) and a slow sweep band. The fallback tier is the
+// two-octave value-noise churn mirrored across the door axes and crawling
+// INWARD FROM THE MESH BORDERS (+time on the noise coordinates), lattice
+// period-wrapped at 8 cells so hours-long sessions loop without drift, and
+// a slow sweep band. The shimmer reads "energy born at the edges": the crawl
+// is diagonal inward, not per-edge-normal (that would need baked edge
+// distances per mesh); the rim + seam glow anchor the borders so it plays. The fallback tier is the
 // only consumer of UVs - an unwritten UV slot costs it alone.
 //
 // NEAR FADE. The whole output (seam included) scales by
@@ -59,10 +63,11 @@
 // depth After Opaques so the transparent band reads this-frame depth. The
 // fallback tier is the cheapest shape in the family: fetch, tint, fade.
 //
-// KNOBS - colour, brightness, contact response, the animation's four
-// speeds/strengths, the near fade and the fallback's texture. The rim
-// power/intensity and the shimmer's geometric frequencies are constants in
-// the program half; ask and any of them becomes a property.
+// KNOBS - colour, brightness, contact response, the animation's shapes,
+// speeds/strengths (shimmer depth/scale/speed, sweep strength/speed), the
+// near fade and the fallback's texture. The rim power/intensity and the
+// octave balance inside the churn are constants in the program half; ask
+// and any of them becomes a property.
 
 Shader "OpenFrontier/Airlock"
 {
@@ -78,6 +83,7 @@ Shader "OpenFrontier/Airlock"
 
 		[Header(Animation)]
 		_ShimmerDepth("Shimmer Depth", Range(0.0, 1.0)) = 0.18
+		_ShimmerScale("Shimmer Scale", Float) = 1.0
 		_ShimmerSpeed("Shimmer Speed", Float) = 0.55
 		_SweepStrength("Sweep Strength", Float) = 0.35
 		_SweepSpeed("Sweep Speed", Float) = 0.21

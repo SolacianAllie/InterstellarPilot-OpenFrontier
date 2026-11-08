@@ -35,6 +35,7 @@ Material:
     - _Intensity: 1.5
     - _NearFade: 0.6
     - _ShimmerDepth: 0.18
+    - _ShimmerScale: 1
     - _ShimmerSpeed: 0.55
     - _SweepSpeed: 0.21
     - _SweepStrength: 0.35

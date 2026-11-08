@@ -30,6 +30,7 @@ CBUFFER_START(UnityPerMaterial)
 	half _ContactBoost;
 	float _ContactThickness;
 	half _ShimmerDepth;
+	half _ShimmerScale;
 	half _ShimmerSpeed;
 	half _SweepStrength;
 	half _SweepSpeed;
@@ -106,7 +107,31 @@ half AirlockContact(float4 ndc, float eyeDepth, half contactBoost, float contact
 	return saturate(1.0 - diff / max(contactThickness, 1e-3)) * step(1e-4, diff);
 }
 
+// The shimmer's hash and lattice. Both wrap at a strict 8-cell period with a
+// floor-based modulus (sign-safe), so corner indices join seamlessly across
+// the boundary AND the hash arguments can never exceed single digits - no
+// sin() precision cliff at any session length (NavLights phase doctrine).
+half AirlockHash(float2 cell)
+{
+	cell -= 8.0 * floor(cell * 0.125);
+	return frac(sin(dot(cell, float2(12.9898, 78.233))) * 43758.5453);
+}
+
+half AirlockValueNoise(float2 p)
+{
+	p -= 8.0 * floor(p * 0.125);
+	float2 i = floor(p);
+	float2 f = p - i;
+	float2 u = f * f * (3.0 - 2.0 * f);
+	half a = AirlockHash(i);
+	half b = AirlockHash(i + float2(1.0, 0.0));
+	half c = AirlockHash(i + float2(0.0, 1.0));
+	half d = AirlockHash(i + float2(1.0, 1.0));
+	return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+}
+
 #endif // !_AIRLOCK_FALLBACK
+
 
 half4 AirlockFrag(AirlockVaryings input) : SV_Target
 {
@@ -122,13 +147,18 @@ half4 AirlockFrag(AirlockVaryings input) : SV_Target
 	// COMPLEX TIER ------------------------------------------------------
 	half3 glow = _Color.rgb * _Intensity;
 
-	// Shimmer: one travelling wave, frac-bounded so an hours-long session
-	// cannot drift the phase (NavLights phase doctrine). The wave runs
-	// diagonally across the field in OBJECT space metres, so it belongs to
-	// the door, not to the camera.
-	float diag = dot(input.osEye.xy, float2(0.55, 0.85));
-	float phase = frac(diag * 0.35 + _Time.y * _ShimmerSpeed) * 6.2831853;
-	half shimmer = 1.0 - _ShimmerDepth * (0.5 + 0.5 * sin(phase));
+	// Shimmer - the churn. The first revision swept sine bands along one
+	// diagonal (one frequency, one direction: smooth but stripey). This is a
+	// proper two-octave value noise, mirrored across each object axis via
+	// abs() - the doorway's symmetry holds with no centre seam - and the
+	// time drift is +t on BOTH coordinates: a growing argument means a
+	// fixed feature's position in cells falls, so the pattern reads as
+	// energy born at the mesh borders crawling inward. Both noise octaves
+	// period-wrap at 8 lattice cells, so the churn loops and the hash
+	// inputs stay bounded at any session length.
+	float2 q = abs(input.osEye.xy) * _ShimmerScale + _ShimmerSpeed * _Time.y;
+	half churn = 0.65 * AirlockValueNoise(q) + 0.35 * AirlockValueNoise(q * 2.6 + 17.31);
+	half shimmer = 1.0 - _ShimmerDepth * churn;
 
 	// Sweep: a soft band wanders across the field, strength and rate from
 	// the material.
