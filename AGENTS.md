@@ -51,19 +51,19 @@ git commit -q -m "..."
 git push origin Dev        # never bare `git push` - see below
 ```
 
-`Legacy` is the historical branch and is **frozen** at `e530dbac`. It is
-still `origin/HEAD`, which is the trap: **a bare `git push` follows
-`origin/HEAD` and pushes `Legacy`, silently leaving `Dev` behind.** Always
-name the branch. If a push reports "Everything up-to-date" while `Dev` is
-behind `Legacy`, this is why - `git push origin Legacy Dev` pushed `Legacy`
-and found `Dev` genuinely unchanged, because the new commit was only ever on
-`Legacy`.
+`Stable` (renamed from `Legacy` on 2026-11-08, when PR #24 merged `Dev`
+into it) is the merged safe reset point. `origin/HEAD` is `Stable`, so
+the naming habit stands for the reason it always did: **never bare
+`git push` - always name the branch**, because a push without an
+explicit upstream can follow the default (`Stable`) and land on the
+wrong branch.
 
-If `Dev` needs to move, fast-forward it rather than checking it out, so the
+If `Dev` is behind `Stable` (something landed there directly), move
+`Dev` fast-forward from `Stable` rather than checking it out, so the
 working tree is never disturbed:
 
 ```bash
-git branch -f Dev Legacy && git push origin Dev   # only if Legacy is ahead
+git branch -f Dev Stable && git push origin Dev   # merge commits travel with it
 ```
 
 ## Agent commits sweep the user's working tree
