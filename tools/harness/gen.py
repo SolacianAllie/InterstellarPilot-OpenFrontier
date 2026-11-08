@@ -327,9 +327,10 @@ def write_csproj(path, name, sources, refs, defines=()):
 
 def generate():
     asmdefs = find_asmdefs()
-    if not asmdefs:
-        fail('no .asmdef found under Assets/ -- gen.py paths are wrong')
-
+    # It is legitimate for Assets to carry no code at all: since the
+    # 2026-11-08 blank-slate migration the legacy game material lives in
+    # PreRebuild/, outside Assets. generate() then simply writes nothing;
+    # the idle state is asserted loudly in check().
     roots = [asmdef_root(p) for p, _ in asmdefs]
     unresolved = set()
     projects = []
@@ -411,6 +412,9 @@ def generate():
     for r in sorted(unresolved):
         sys.stderr.write('gen.py: WARNING unresolved asmdef reference: %s\n' % r)
 
+    if not projects:
+        print('  0 sections to generate: Assets carries no code '
+              '(legacy material lives in PreRebuild/, outside Unity)')
     return projects
 
 
@@ -432,6 +436,13 @@ def check():
     on_disk += 1 if os.path.isdir(os.path.join(PROJECT, 'Assets', 'Editor')) else 0
     generated = len(glob.glob(os.path.join(BUILD, '*', '*.csproj')))
 
+    # Blank-slate idle state: no code under Assets/ at all. This is expected
+    # and green (loudly), NOT a masking pass for a stale generated set -- a
+    # leftover project from the pre-migration layout fails the count below.
+    if on_disk == 0 and generated == 0:
+        print('  build gate idle: no code under Assets/ (legacy material '
+              'lives in PreRebuild/, outside Unity)')
+        return
     if generated == 0:
         fail('no csproj generated -- gen.py paths are wrong, and a green '
              'run would mean nothing compiled')

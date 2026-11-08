@@ -66,6 +66,49 @@ working tree is never disturbed:
 git branch -f Dev Stable && git push origin Dev   # merge commits travel with it
 ```
 
+## The rebuild blank slate: legacy lives in `/PreRebuild/`
+
+2026-11-08: all game code, scenes, prefabs, materials, shaders, authored data,
+vendored DLLs and derived extraction dumps moved OUT of `Assets/` to
+`PreRebuild/` (project root; tracked, NOT gitignored). What remains is raw
+content only, at its original paths:
+`OpenFrontier/{AudioClip,Font,Mesh,Sprite,Textures,README.md}` and
+`InterstellarPilot2/Extracted/{AudioClip,Mesh,Sprite,Texture2D}` — art, audio,
+fonts, geometry (219 mesh `.asset`s) and sprite data (191 `.asset`s), kept so
+the new core can reference them later. Two intentional strays stay with their
+kept folders (Font's default font material, Mesh's material).
+
+- Every `.meta` moved with its asset, so every GUID is unchanged. **Restore =
+  move the folder back to its ORIGINAL path under Assets.** The old
+  `InterstellarPilot2/Resources/` tree is loaded by path (`Resources.Load`:
+  EngineResources, AsteroidTypes, NebulaAssets, avatars...) and
+  `ProjectSettings/EditorBuildSettings.asset` listed scenes by path *and*
+  guid — same-path restore is the only restore. Intermediate folder metas under
+  `PreRebuild/` were not migrated (they hold little: folder GUIDs are rarely
+  referenced); recreating them is fine.
+- `PreRebuild/` is outside Unity: never imported, never compiled, invisible to
+  the editor and the harness. Unity/LFS `.gitattributes` still applies to it —
+  every attribute rule is extension-based, so nothing re-buckets when files move.
+- The harness is LOUD-IDLE here: 0 `.asmdef` / 0 `.cs` under Assets makes
+  `check.sh` purge any stale generated project set and report green with an
+  explicit "build gate idle" note instead of building. It returns to strict
+  mode the moment the first `.asmdef` lands under `Assets/`. `codec-test`'s
+  `sync.py` still links pre-migration paths — regenerate it when the first new
+  code arrives, before trusting its green.
+- ProjectSettings consequences of the move (expected, do not "fix" silently):
+  `GraphicsSettings` custom render pipeline GUID dangles → the editor falls
+  back to the Built-in pipeline until the new core brings its own URP assets;
+  the build scene list dangles; `Library/ScriptAssemblies` stays frozen at the
+  last pre-migration build — treat every DLL in it as stale forever (the usual
+  staleness doctrine, now standing).
+- First editor reopen after the migration: a large re-integration. Prefer a
+  full Unity restart over refocusing an open editor — focus-in-while-importing
+  is the known segfault shape above.
+- Story-baked scenario scene files (incl. `unchartered_space.unity`), the
+  `ComponentTradeScreen.prefab` tombstone, the sector payload prefabs and the
+  vendored DLLs exist now only in `PreRebuild/` and in git history (`Stable`).
+  They were not deleted and not "fixed" — they are retired, not repaired.
+
 ## Agent commits sweep the user's working tree
 
 When a coding agent is about to commit, it stages the user's uncommitted

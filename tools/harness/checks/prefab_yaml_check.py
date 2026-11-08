@@ -74,8 +74,13 @@ HEADER_RE = re.compile(r'^--- !u!(\d+) &(-?\d+)', re.M)
 # recovery. The needles pin the exact break (line 14, column 15) so any new
 # or different damage on this file still fails.
 KNOWN_ISSUES = [
-    ('Assets/InterstellarPilot2/Extracted/GameObject/ComponentTradeScreen.prefab',
-     ['YAML parse error', 'line 14, column 15']),
+    # Tombstone moved to PreRebuild/InterstellarPilot2/Extracted/GameObject/
+    # in the 2026-11-08 blank-slate migration, and this check only walks
+    # Assets/ -- so a live entry would print STALE forever. Re-add the entry
+    # below (with its needles) if/when the tombstone returns under Assets;
+    # the full narrative stays in AGENTS.md's tombstone trap.
+    # ('Assets/InterstellarPilot2/Extracted/GameObject/ComponentTradeScreen.prefab',
+    #  ['YAML parse error', 'line 14, column 15']),
 ]
 KNOWN_HITS = set()
 

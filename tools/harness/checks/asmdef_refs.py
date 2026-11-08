@@ -75,8 +75,10 @@ def owner(root, asmdefs):
 def main():
     asmdefs = project_assemblies()
     if not asmdefs:
-        print('  asmdef-refs: no asmdefs found under Assets/', file=sys.stderr)
-        return 1
+        # Expected in the blank-slate state (legacy lives in PreRebuild/,
+        # outside Assets). The check resumes when the first .asmdef lands.
+        print('  asmdef-refs: idle -- no asmdefs under Assets/')
+        return 0
 
     # namespace -> assemblies that declare it EXACTLY.
     #

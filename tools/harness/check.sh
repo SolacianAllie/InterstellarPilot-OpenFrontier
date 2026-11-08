@@ -63,6 +63,23 @@ done
 
 cd "$PROJECT"
 
+# -- blank-slate idle state ---------------------------------------------------
+# Assets carries no code since the 2026-11-08 migration: the legacy game
+# material lives in PreRebuild/, outside Unity. A stale generated project set
+# from the old layout would either fail on missing source paths or build
+# against frozen Library DLLs -- the former is noise, the latter is the
+# lying-green shape this harness exists to prevent. So the idle state purges
+# the generated set and skips the build with a loud note, while every other
+# check still runs (and idles green with its own note).
+IDLE=no
+if [ "$(find Assets -name '*.asmdef' 2>/dev/null | wc -l)" = 0 ] &&
+   [ "$(find Assets -name '*.cs' 2>/dev/null | wc -l)" = 0 ]; then
+  IDLE=yes
+  if [ -d "$BUILD" ]; then
+    rm -rf "$BUILD"
+  fi
+fi
+
 red()   { printf '\033[31m%s\033[0m\n' "$*"; }
 green() { printf '\033[32m%s\033[0m\n' "$*"; }
 head1() { printf '\n\033[1m%s\033[0m\n' "$*"; }
@@ -96,6 +113,9 @@ fi
 
 # ------------------------------------------------------------------- build
 head1 "building $JOBS at a time"
+if [ "$IDLE" = yes ]; then
+  green "  skipped (idle): Assets carries no code; legacy lives in PreRebuild/"
+else
 if [ ! -f "$BUILD/.restored" ]; then
   # Restore is only needed when the csproj set changes, which is what
   # --regen and a cold build are. After this, --no-restore is correct.
@@ -163,6 +183,7 @@ elif [ "$NFAIL" -gt 0 ]; then
 else
   green "  $NPASS projects, $(grep -ho '<Compile Include' "$BUILD"/*/*.csproj | wc -l | tr -d ' ') .cs files"
 fi
+fi  # closes the idle-state else
 
 # ------------------------------------------------------------------ checks
 head1 "checks"

@@ -1,109 +1,61 @@
-# Assets — what is here, and what must not move
+# Assets — the blank-slate layout (2026-11-08)
 
-Three things live here, and the top level says which is which:
+`Assets/` now carries **raw content only**. All game code, scenes, prefabs,
+materials, shaders, authored data, vendored DLLs and the derived extraction
+dumps were moved to `PreRebuild/` at the project root — outside `Assets/`, so
+Unity never imports or compiles them. `PreRebuild/` is tracked in git (not
+ignored); its metas travelled with every file, so restoring is a move, not a
+rebuild.
 
 ```
 Assets/
-  InterstellarPilot2/    the original game, exactly as it came out of extraction
-  OpenFrontier/          assets written or commissioned to replace the above
-  OpenFrontierLogic/     this project's twelve assemblies
+  InterstellarPilot2/Extracted/   AudioClip/  Mesh/  Sprite/  Texture2D/   (raw)
+  OpenFrontier/                   AudioClip/  Font/  Mesh/  Sprite/  Textures/
 ```
 
-`InterstellarPilot2/` is the extraction dump. The tool wrote everything by
-*asset type* rather than by what it is, which is why it has folders called
-`Texture2D/`, `Mesh/` and `Sprite/` instead of `ships/`, `stations/` and
-`music/`. `Scripts/Assembly-CSharp` inside it is the original game's own loose
-scripts; the twelve assemblies under `OpenFrontierLogic/` are this project's.
+`InterstellarPilot2/Extracted/` keeps the extraction dump's raw substance:
+56+10 audio clips, 215 textures, 219 mesh `.asset`s and 191 sprite `.asset`s.
+`Mesh/`/`Sprite/` are Unity-native `.asset` data — geometry and sprite frames,
+not prefabs — so they count as raw here. `OpenFrontier/` keeps the project's
+own art: 1,020 textures, 7 source meshes (fbx), 10 ogg clips, the font, and
+`README.md`. Two intentional strays stay with their kept folders (Font's
+default font material; Mesh's material) — harmless, unused, wanted there for
+coherence with the assets they belong to.
 
-That split is the point. A file is either the old game's or ours, and never
-ambiguously both.
-
----
-
-## Two folders must never be moved or renamed
-
-This is the part worth knowing before anyone tidies up.
-
-**`Assets/InterstellarPilot2/Resources/`** — 2,541 files, loaded **by path**, not by
-GUID. Move anything inside it and the `Resources.Load` call that names it
-stops finding it, silently, at runtime rather than at compile time. Seven call
-sites, including sector data:
-
-| Call site | Path it loads |
-|---|---|
-| `EngineResources.cs:37` | `Textures/Backgrounds/<name>` |
-| `MainMenuWorldController.cs:256` | `Prefabs/WorldData/AsteroidTypes` |
-| `EngineDialogEvents.cs:67` | `GameController.DialogEventsPath` |
-| `SpaceConstructor.cs:56,67` | `SpaceUnity/Prefabs/NebulaAssets`, `StarsAssets` |
-| `NebulaConstructor.cs:20`, `StarsConstructor.cs:14` | materials and textures by name |
-| `RandomShipImage.cs:64` | `ThumbnailsPath` |
-| `AvatarResourceLoader.cs:100`, `UnityObjectHelper.cs:43,115` | avatars and misc |
-
-**`Assets/InterstellarPilot2/Scenes/`** — referenced **by path** in
-`ProjectSettings/EditorBuildSettings.asset`. That file lists
-`Assets/Scenes/ui/menu/LandingScene.unity` and its siblings as text, so moving
-a scene drops it out of the build with no error anywhere.
+Everything else from the old layout mirrors its old paths under `PreRebuild/`:
+`PreRebuild/OpenFrontierLogic/` (all twelve assemblies), `PreRebuild/Editor/`,
+`PreRebuild/OpenFrontier/{Editor,Discord,Material,Prefabs,Resources,Scenes,
+Shaders,worlddata}/`, `PreRebuild/InterstellarPilot2/{Plugins,Resources,
+Scripts,Settings,StreamingAssets,TextMesh Pro,UI Toolkit}/` plus the URP
+global settings, and `PreRebuild/InterstellarPilot2/Extracted/{GameObject,
+LightingSettings,Material,MonoBehaviour,PhysicMaterial,Shader,TextAsset}/`.
 
 ---
 
-## Everything else *can* be reorganised, with one rule
+## The meta rule (timeless)
 
-The type-named folders inside `InterstellarPilot2/` are referenced **only by
-GUID**. Nothing loads them by name.
+Assets are identified by the GUID inside their `.meta` file. Move an asset and
+its `.meta` together and every reference survives — scene to script, prefab to
+mesh, material to shader. Move an asset *without* its meta and it becomes a
+new asset; every reference to it dangles. Folder rules follow the same rule at
+folder depth (each folder's `.meta` sits beside the folder).
 
-Unity identifies an asset by the GUID inside its `.meta` file, and keeps that
-relationship wherever the file sits. So a folder can move and every reference
-survives — **provided the `.meta` moves with it in the same breath.**
+## Two by-path traps that matter on restore
 
-If the asset moves and its `.meta` does not, Unity notices a new file, invents
-a new GUID, and every prefab, scene and material that pointed at the old one
-now points at nothing. It fails **silently**: the inspector shows *Missing*,
-and a prefab edited by hand will quietly drop a field. That has happened here
-before — see `AGENTS.md` on prefabs.
+- **`InterstellarPilot2/Resources/` is loaded by path, not GUID.** The old
+  tree's `Resources.Load` call sites used names like `Textures/Backgrounds/<x>`,
+  `Prefabs/WorldData/AsteroidTypes`, EngineResources, avatars. If it ever
+  returns to `Assets/`, it must return to its original path — a Resources tree
+  restored anywhere else loads empty.
+- **`ProjectSettings/EditorBuildSettings.asset` listed scenes by path *and*
+  guid.** Both dangled after the migration (expected). The new core re-adds its
+  own scenes when it brings them; do not chase the old list.
 
-So the rule for any future move:
+## The harness in this state
 
-```
-git mv path/to/asset.ext path/to/newplace/asset.ext
-git mv path/to/asset.ext.meta path/to/newplace/asset.ext.meta
-```
-
-Together, always, and then `bash /tmp/opencode/harness/check.sh`, which runs
-the prefab null-reference check.
-
----
-
-## Why the type-named folders were left alone
-
-They could be regrouped by meaning — `Ships/`, `Stations/`, `World/`, `Music/`,
-`UI/`, `VFX/` — and the split by old-versus-new is now clear enough to do it
-inside `InterstellarPilot2/` without crossing the line.
-
-It was not done because the filenames do not support it. `128mm_shell.png` is a
-weapon, `AlienAshyGreenPlanetIcon.asset` is world data, `ArchiveIcon.asset` is
-UI, and `Allie Logo.png` is branding — all in the same folder, all different
-things. Anything that sorted those automatically would be guessing, and a
-folder that is confidently wrong is worse than one that is merely full.
-
-Per-file decisions, or a Unity tool that knows what each prefab references,
-would do it properly. Until then the type-named layout stands on its own.
-
----
-
-## Also here, and not assets
-
-- `Library/`, `Temp/`, `Logs/`, `obj/`, `UserSettings/` — Unity's own working
-  directories. Generated; never edit, never commit. They are in `.gitignore`.
-- `Docs/` — plans and documentation. Outside `Assets/` on purpose, so Unity
-  neither imports it nor writes `.meta` files next to it.
-
----
-
-## The offline harness follows this layout
-
-`/tmp/opencode/harness` compiles each assembly separately against the editor's
-real DLLs, and it used to hardcode `Assets/Scripts/`. It now points at
-`Assets/OpenFrontierLogic/` and `Assets/InterstellarPilot2/Scripts/`, and the
-codec tests' `sync.py` links from there too. If the layout changes again,
-those two files are what will silently report "0 problems across 0 files" —
-which looks exactly like passing.
+Zero `.asmdef` / zero `.cs` under `Assets/` is a deliberate state: `check.sh`
+purges any stale generated project set and reports green with a loud "build
+gate idle" note instead of building. It returns to strict mode the moment the
+first `.asmdef` lands under `Assets/`. See AGENTS.md ("The rebuild blank
+slate") for the ProjectSettings consequences and the frozen
+`Library/ScriptAssemblies`.
