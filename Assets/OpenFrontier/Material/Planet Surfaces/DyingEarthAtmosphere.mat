@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: DyingEarthAtmosphere
+  m_Shader: {fileID: 4800000, guid: 7ce3ae8da28347de84a61d3a7ec53637, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties:
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: {}
+    m_Ints: {}
+    m_Floats:
+      _AtmoGlow: 1.5
+      _Density: 3
+      _Falloff: 2
+      _ForwardBias: 1
+      _ForwardRange: 1
+      _NightGlow: 0.005
+      _ScaleHeight: 0.006
+      _Size: 0.75
+      _SunBleed: 1
+      _SunBleedPower: 1
+      _SunEclipseExtinction: 0.9
+      _SunExtinction: 0.25
+      _SunReddening: 0.4
+      _SunRimBoost: 2
+      _Transparency: 3
+      _TwilightReach: 0.3
+    m_Colors:
+      _AtmoColor: {r: 0.2627451, g: 0.44705883, b: 0.3647059, a: 1}
+      _SunRimColor: {r: 1, g: 0.62, b: 0.29999998, a: 1}
+      _SunRimDeep: {r: 1, g: 0.29999998, b: 0.11999995, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 0
