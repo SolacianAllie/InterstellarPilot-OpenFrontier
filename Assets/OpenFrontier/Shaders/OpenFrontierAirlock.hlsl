@@ -86,18 +86,11 @@ AirlockVaryings AirlockVert(AirlockAttributes input)
 #if !defined(_AIRLOCK_FALLBACK)
 
 // Contact: how deep the nearest recorded surface sits BEHIND this fragment,
-// shaped for soft approaches rather than a crisp rim (see the shader
-// header's SHAPE, NOT EDGE):
-//   - the core ramp runs over `_ContactThickness` metres and arrives at
-//     full brightness TANGENTIALLY (x * (2 - x): slope zero at the seam, so
-//     no visible tip line when a ship's hull sweeps across the field);
-//   - a broad faint halo rides at a sixth of the response over THREE times
-//     the thickness, painting the glow's neighbourhood in a gradient
-//     instead of ending at a boundary;
-//   - the sign guard multiplies the whole shaped response: only a
-//     POSITIVE, small diff (surface just behind the field) lights anything
-//     - the dead open-space read (diff NEGATIVE here) and a live-but-far
-//     depth (diff LARGE) both still saturate to "no contact", halo included.
+// ramped to zero across `_ContactThickness` metres. The sign guard is the
+// house doctrine in one multiply: only a POSITIVE, small diff (surface just
+// behind the field) lights the seam. The dead open-space read parks the diff
+// NEGATIVE on this OpenGL stack, and a live-but-far scene depth parks it
+// LARGE POSITIVE - both saturate cleanly to "no contact".
 half AirlockContact(float4 ndc, float eyeDepth, half contactBoost, float contactThickness)
 {
 	if (contactBoost <= 0.0)
@@ -109,14 +102,7 @@ half AirlockContact(float4 ndc, float eyeDepth, half contactBoost, float contact
 
 	float sceneEye = LinearEyeDepth(SampleSceneDepth(ndc.xy / ndc.w), _ZBufferParams);
 	float diff = sceneEye - eyeDepth;
-	half gate = step(1e-4, diff);
-
-	half core = saturate(1.0 - diff / max(contactThickness, 1e-3));
-	core *= 2.0 - core;   // tangential arrival: soft at the contact point
-	half halo = saturate(1.0 - diff / max(contactThickness * 3.0, 1e-3));
-	halo *= 2.0 - halo;   // the wide band eases the same way
-
-	return (core + halo * 0.1667) * gate;
+	return saturate(1.0 - diff / max(contactThickness, 1e-3)) * step(1e-4, diff);
 }
 
 // The boil's hash and lattice. All three axes (x, y, time) wrap at a strict
