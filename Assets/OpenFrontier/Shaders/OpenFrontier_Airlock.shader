@@ -25,6 +25,14 @@
 //      `m_RequireDepthTexture: 1` binds a real texture over real geometry),
 //      the ring fires honestly at the seam.
 //
+// SHAPE, NOT EDGE. The seam is eased so ships passing through the field do
+// not paint a harsh line: the core ramp arrives at full brightness
+// TANGENTIALLY (x * (2 - x): slope zero at the peak, no visible tip), and a
+// broad faint halo spreads three times the thickness at a sixth of the
+// boost, so a ship crossing the field glides through a gradient rather
+// than clipping across a crisp rim. The sign guard multiplies the whole
+// shaped response - the dead read still ends at zero, halo included.
+//
 // The degrade contract is therefore: worst case the field loses its seam
 // highlight, it NEVER gains a false one. The hardware Z test stays the whole
 // truth for occlusion, exactly as on the nav lights.
