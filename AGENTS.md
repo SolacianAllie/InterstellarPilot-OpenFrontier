@@ -532,6 +532,29 @@ exit 198) — the user performs all editor actions.
   clips into the skybox", worse at 1.6× size). All 338 nebula materials
   are now queue 2999 — the sun always draws after the backdrop, while
   gameplay particles (3000) still distance-sort over it correctly.
+- **SpaceUnity backdrop is ported, engine wiring is not.**
+  `Assets/OpenFrontier/Resources/SpaceUnity/` holds the families: 338
+  `NebulaAsset` data prefabs + the matching 338 materials (queue 2999,
+  `_BaseMap` nebula textures) + 10 `StarsAsset` count prefabs + 10
+  `StaticStars-00N` star-field textures + noise, all GUID-preserved. The
+  folder names are engine-CASE (`SpaceUnity/Prefabs/NebulaAssets`,
+  `Materials/Nebulas`, `Textures/Stars`) because SpaceConstructor/
+  StarsConstructor load those exact strings — the rip's lowercase dir names
+  would fail on every case-sensitive platform. The compile classes
+  (`OpenFrontier.IP.SpaceUnity[.Nebulas/.Stars]`, `OpenFrontier.IP.Common`
+  flag enums) are loose `.cs` with the decompiled GUIDs, so prefab
+  components bind today; the rest of the machinery lives in
+  OpenFrontierLogic still: `SpaceConstructor` (filters assets by flag
+  combos), `NebulaConstructor` (instantiates the `Nebula` quad template,
+  swaps material by asset name), `StarsConstructor` (picks ONE star
+  texture by `starsAsset.name`) and the Imphenzia `StaticStars` DLL
+  component (star cube, origin-pinned, 20000 units). The template's
+  original quad mesh guid `f3b909a6…` never landed in this repo, so the
+  ported template binds the builtin Quad mesh instead. Materials carry a
+  URP `AssetVersion` MonoBehaviour pseudo-block whose guid belongs to the
+  URP package — not a project dangle. Drop the `Nebula.prefab` template
+  from `Prefabs/SpaceSceneElements/` into a scene for a hand-placed quad
+  today.
 - **Script GUIDs are deterministic:** `Guid(MD5(assemblyName + namespace + className))`
   (AssetRipper decompile scheme). Never regenerate .meta files; renaming
   namespaces/assemblies is safe because GUIDs live in the .meta files, but the
