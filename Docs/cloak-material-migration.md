@@ -60,34 +60,24 @@ misassigned field or non-fold field material). Every unit must come out
 after moving any prefab or material between trees — as long as `.meta` files
 move together, guids survive the move and the field stays valid.
 
-## Remaining prefab cleanup (editor, per ship)
+## Shell mesh deletion (automated, done)
 
-1. Delete the duplicate `*Cloaked*` / `*Fade*` shell meshes (children plus their
-   renderers).
-2. Clear `Cloak Renderer(s)` on the ActiveUnit component (no dangling refs).
-3. Keep `Cloak Material` filled — it now carries the fold going forward.
+The 138 shell GameObjects are deleted from all 25 field-based prefabs by a
+script driven by the units' own serialized shell lists (not GO names):
+GO+transform+filter+renderer blocks removed, parents' children trimmed,
+Thunder's LODGroup trimmed of its shell renderers (the other 16 groups
+referenced only shells and were removed whole), shells dropped from
+DrawRangeObjects, and `Cloak Renderer(s)` reset.
 
-Then watch one play session's `[CloakProbe]` lines (editor-only): each unit
-prints its hull renderers **with the material every slot now wears**, so a
-silent adoption failure turns into an obvious `transposed False`.
+Editor re-save will lighten the files further (Unity keeps serialized
+`CloakRenderers: []` lines until the prefab is touched; they are inert).
 
-### Known exceptions
+## Final code prune (done)
 
-- **Drake LOD5** was authored with the fold on *slot 1* of a two-slot far-LOD
-  shell pair. The field covers slot 0 only; if Drakes show an unfolded hull at
-  extreme range while cloaked, the LOD5 shell stays, or a second slot-1 field
-  is added. The probe lines will say.
-- **Orion** is now wired to its authored `orion_cloak` (`OpenFrontier/Material/`)
-  as the hand-assigned field — its shells' `orion_transparent` carries an
-  imported shader we cannot verify from source, so the field (never the shell)
-  is Orion's fold source. Orion folds for the first time; verify the hull
-  still looks right at amount 0 on the next play session.
-- `ActiveUnitRangerTest.prefab` is an empty stub: nothing to do.
-
-## Final code prune (after prefab cleanup)
-
-Once every shell mesh is deleted and the lists cleared, one more commit
-removes: the `CloakRenderer`/`CloakRenderers` serialized fields, the shell
-reading in `FoldMaterialForSlot` (slot > 0 path), and ShipDecals' shell
-painting. Until then that code stays: it is the fold source for hulls whose
-field alone cannot cover every slot.
+`ActiveUnit` reads no shell state any more: the `CloakRenderer` /
+`CloakRenderers` fields, `FoldMaterialFromRenderer` and the shell-disabling
+loops are gone; `FoldMaterialForSlot` is the hand-assigned `CloakMaterial`
+(slot 0, `_CloakAmount`-gated) or nothing. `ShipDecals` paints hulls only.
+The harness check now FAILS when a unit has no fold source, since none
+besides the field exists. The per-ship `[CloakProbe]` line remains the
+runtime witness.

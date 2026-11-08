@@ -13,19 +13,20 @@ prefab:
 
   For every serialized ActiveUnit, the CloakMaterial guid must describe the
   same asset the unit's own shell renderers carry at slot 0 - matched the
-  way FoldMaterialForSlot matches them at runtime: any shell whose slot
-  count equals the hull renderer's supplies the fold. A unit whose shells
-  are gone (per-ship cleanup) has no shell-derived guid; for those the
-  field is the sole source and the pair check is skipped. Either way the
-  field material must carry _CloakAmount, or it can never be a fold.
+  way FoldMaterialForSlot used to adopt them at runtime (any shell whose
+  slot count equals the hull renderer's, folding at slot 0). The shell
+  pools are deleted from the code and the prefabs, so the field is the
+  sole fold source; either way the field material must carry
+  _CloakAmount, or it can never be a fold.
 
 Findings use the same shapes as the runtime probe:
   FAIL  invariant broken - the field describes an asset the unit was not
-        authored to wear, or a material that cannot fold. The runtime
+        authored to wear, or rather material that cannot fold. The runtime
         cannot self-heal either.
-  WARN  shells fold-capable while no field is set (transitional), one
-        unit wearing several different slot-0 folds across LODs, or a
-        fold-capable material whose basename says nothing about cloaking.
+  WARN  stale shell lists left in the prefab (Unity drops them on the
+        next re-save), or one unit wearing several different slot-0 folds
+        across LODs, or a fold-capable material whose basename says
+        nothing about cloaking.
   INFO  same-named materials across trees, so the twin population stays
         visible while the IP2 reliance is being wound down.
 """
@@ -186,7 +187,12 @@ for base, dirs, files in os.walk(ASSETS):
                 counts["hull"] += 1
             elif fold_guids:
                 counts["needs-field"] += 1
-                warns.append(f"{rel}: shells carry fold at slot 0 but Cloak Material is unset")
+                fails.append(
+                    f"{rel}: shells carry fold at slot 0 but Cloak Material is unset - "
+                    f"the runtime reads only the field now, this unit cannot cloak")
+            if shells:
+                warns.append(f"{rel}: stale shell list ({len(shells)} entr(ies)) - "
+                             f"the shell pools are deleted; re-save the prefab in the editor")
 
             if field and field in mat_info:
                 sg = mat_shader.get(field)

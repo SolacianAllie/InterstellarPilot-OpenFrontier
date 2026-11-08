@@ -214,20 +214,6 @@ namespace OpenFrontier.IP.Engine
 					}
 				}
 			}
-			if (activeUnit.CloakRenderer != null)
-			{
-				yield return activeUnit.CloakRenderer;
-			}
-			if (activeUnit.CloakRenderers != null)
-			{
-				foreach (MeshRenderer renderer in activeUnit.CloakRenderers)
-				{
-					if (renderer != null)
-					{
-						yield return renderer;
-					}
-				}
-			}
 		}
 
 		// ---- material layer -----------------------------------------------------

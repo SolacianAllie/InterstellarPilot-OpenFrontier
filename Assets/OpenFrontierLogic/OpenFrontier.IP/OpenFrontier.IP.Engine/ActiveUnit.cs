@@ -53,18 +53,16 @@ namespace OpenFrontier.IP.Engine
 
 		public List<MeshRenderer> UnitRenderers;
 
-		public MeshRenderer CloakRenderer;
-
-		public List<MeshRenderer> CloakRenderers;
-
 		private MaterialPropertyBlock cloakMaterialPropertyBlock;
 
-		// Open Frontier: explicit cloak material for hulls whose legacy shell
-		// meshes have been deleted. The probe below pairs the shell pool's
-		// fold materials onto the hull by itself; once a prefab is cleaned
-		// (shells gone), this field carries the mapping the shells used to
-		// hold. Slot 0 only - the body slot in every authored hull; the
-		// deeper slots (glass, engine bits) stay authored on both pools.
+		// Open Frontier: the fold source. After the endgame migration every
+		// unit wears its fold on the hull itself; this hand-assigned material
+		// is where a hull that was not authored fold-capable gets it from.
+		// The shell pools and their renderer lists are deleted - shader
+		// property gates verify the assignment so a wrong material can lose
+		// the field nothing but the cloak itself. Slot 0 only - the body slot
+		// in every authored hull; the deeper slots (glass, engine bits) stay
+		// authored as-is.
 		public Material CloakMaterial;
 
 		public bool ApplyTeamColours;
@@ -169,17 +167,7 @@ namespace OpenFrontier.IP.Engine
 
 		public void Awake()
 		{
-			if (LevelOfDetail)
-			{
-				if (CloakRenderers.Count > 0)
-				{
-					cloakMaterialPropertyBlock = new MaterialPropertyBlock();
-				}
-			}
-			else if (CloakRenderer != null)
-			{
-				cloakMaterialPropertyBlock = new MaterialPropertyBlock();
-			}
+			cloakMaterialPropertyBlock = new MaterialPropertyBlock();
 			ApplyRenderMode();
 		}
 
@@ -448,7 +436,7 @@ namespace OpenFrontier.IP.Engine
 				{
 					continue;
 				}
-				Material foldMaterial = FoldMaterialForSlot(slot, materials.Length);
+				Material foldMaterial = FoldMaterialForSlot(slot);
 				if (foldMaterial != null && foldMaterial != slotMaterial)
 				{
 					materials[slot] = foldMaterial;
@@ -462,50 +450,13 @@ namespace OpenFrontier.IP.Engine
 			return edited;
 		}
 
-		private Material FoldMaterialForSlot(int slot, int slotCount)
+		private Material FoldMaterialForSlot(int slot)
 		{
 			// The hand-assigned material carries the fold by being a real
 			// cloak material; a misassignment must not claim capability for
 			// the whole hull, so the property check is the gate.
-			if (slot == 0 && CloakMaterial != null && CloakMaterial.HasProperty("_CloakAmount"))
-			{
-				return CloakMaterial;
-			}
-			if (LevelOfDetail)
-			{
-				for (int i = 0; i < CloakRenderers.Count; i++)
-				{
-					Material fold = FoldMaterialFromRenderer(CloakRenderers[i], slot, slotCount);
-					if (fold != null)
-					{
-						return fold;
-					}
-				}
-			}
-			else if (CloakRenderer != null)
-			{
-				return FoldMaterialFromRenderer(CloakRenderer, slot, slotCount);
-			}
-			return null;
-		}
-
-		private static Material FoldMaterialFromRenderer(MeshRenderer shellRenderer, int slot, int slotCount)
-		{
-			if (shellRenderer == null)
-			{
-				return null;
-			}
-			Material[] materials = shellRenderer.sharedMaterials;
-			if (materials.Length != slotCount || slot >= materials.Length)
-			{
-				return null;
-			}
-			Material material = materials[slot];
-			if (material != null && material.HasProperty("_CloakAmount"))
-			{
-				return material;
-			}
-			return null;
+			return (slot == 0 && CloakMaterial != null && CloakMaterial.HasProperty("_CloakAmount"))
+				? CloakMaterial : null;
 		}
 
 		private void UpdateCloakMaterial()
@@ -937,57 +888,36 @@ namespace OpenFrontier.IP.Engine
 
 		public void ApplyRenderMode()
 		{
+			// The cloak shader owns hull visibility through _CloakAmount;
+			// outlines stay dark for good, the hull draws until nothing is
+			// left to draw (ApplyCloakToUnitRenderers toggles it per frame).
+			// Non-capable units have no fold anywhere, so their visibility is
+			// the render mode alone.
 			if (IsCloakCapableHull())
 			{
-				// The cloak shader owns visibility through _CloakAmount: shells
-				// and outlines stay dark for good, the hull draws until nothing
-				// is left to draw (ApplyCloakToUnitRenderers toggles it per
-				// frame).
 				if (LevelOfDetail)
 				{
-					foreach (MeshRenderer cloakRenderer in CloakRenderers)
-					{
-						cloakRenderer.enabled = false;
-					}
 					foreach (MeshRenderer unitRenderer in UnitRenderers)
 					{
 						unitRenderer.enabled = true;
 					}
 				}
-				else
+				else if (UnitRenderer != null)
 				{
-					if (CloakRenderer != null)
-					{
-						CloakRenderer.enabled = false;
-					}
-					if (UnitRenderer != null)
-					{
-						UnitRenderer.enabled = true;
-					}
+					UnitRenderer.enabled = true;
 				}
 				return;
 			}
 			if (LevelOfDetail)
 			{
-				foreach (MeshRenderer cloakRenderer in CloakRenderers)
-				{
-					cloakRenderer.enabled = activeUnitRenderMode == ActiveUnitRenderMode.Fade;
-				}
 				foreach (MeshRenderer unitRenderer in UnitRenderers)
 				{
 					unitRenderer.enabled = activeUnitRenderMode == ActiveUnitRenderMode.Opaque;
 				}
 			}
-			else
+			else if (UnitRenderer != null)
 			{
-				if (CloakRenderer != null)
-				{
-					CloakRenderer.enabled = activeUnitRenderMode == ActiveUnitRenderMode.Fade;
-				}
-				if (UnitRenderer != null)
-				{
-					UnitRenderer.enabled = activeUnitRenderMode == ActiveUnitRenderMode.Opaque;
-				}
+				UnitRenderer.enabled = activeUnitRenderMode == ActiveUnitRenderMode.Opaque;
 			}
 		}
 
