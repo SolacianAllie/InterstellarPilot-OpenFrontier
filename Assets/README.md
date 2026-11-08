@@ -22,14 +22,15 @@ own art: 1,020 textures, 7 source meshes (fbx), 10 ogg clips, the font, and
 default font material; Mesh's material) — harmless, unused, wanted there for
 coherence with the assets they belong to.
 
-**Already-copied exception:** `OpenFrontier/Shaders/OpenFrontier_ShipSurface.shader`
-was copied back from `PreRebuild/` on 2026-11-08 **with its original `.meta`**, so its
-GUID (`0c7559b00079d89961773603f874bf92`, the one every ship-hull material references)
-is unchanged. While the original stays outside `Assets/` the duplicate GUID is
-invisible to Unity, but a wholesale restore of `PreRebuild/OpenFrontier/Shaders/`
-must delete this copy first or the two same-GUID metas collide. The shader is
-self-contained: every `#include` is a URP/Core package path; no project-local
-dependencies, no CustomEditor.
+**Already-copied exceptions:** `OpenFrontier/Shaders/OpenFrontier_ShipSurface.shader`
+and `OpenFrontier/Shaders/OpenFrontier_ShipCloak.shader` were copied back from
+`PreRebuild/` on 2026-11-08 **with their original `.meta` files**, so the GUIDs every
+ship-hull and cloaked-hull material references (`0c7559b00079d89961773603f874bf92`,
+`c9f2d8847ba14e6d9b03a55f21c76e04`) are unchanged. While the originals stay outside
+`Assets/` the duplicate GUIDs are invisible to Unity, but a wholesale restore of
+`PreRebuild/OpenFrontier/Shaders/` must delete these copies first or the same-GUID
+metas collide. Both are self-contained: every `#include` is a URP/Core package path;
+no project-local dependencies, no CustomEditor.
 
 Everything else from the old layout mirrors its old paths under `PreRebuild/`:
 `PreRebuild/OpenFrontierLogic/` (all twelve assemblies), `PreRebuild/Editor/`,
