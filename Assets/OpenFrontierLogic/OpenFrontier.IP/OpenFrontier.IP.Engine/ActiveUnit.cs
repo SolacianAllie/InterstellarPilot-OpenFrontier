@@ -74,10 +74,12 @@ namespace OpenFrontier.IP.Engine
 
 		// Open Frontier: cloak-shader state. A hull whose material carries
 		// the cloak uniforms (_CloakAmount exists) is driven directly by
-		// this unit: the legacy cloak-shell renderers stay dark and the
-		// hull trades itself for bent light inside the
-		// shader (OpenFrontier/Ship Cloak). Everything else keeps the old
-		// shell behaviour untouched.
+		// this unit - the hull trades itself for bent light inside the
+		// shader (OpenFrontier/Ship Cloak). There are no shell renderers
+		// any more: the duplicate cloak meshes are deleted from the
+		// prefabs, every fold lives on the hull (v5 wear state below), and
+		// a hull that answers neither fold source never fades - the
+		// render mode alone governs its visibility.
 		private bool cloakCapableHullChecked;
 		private bool cloakCapableHull;
 		// v3 shell-driven routing, retired: some ship families (the Magnus
@@ -87,16 +89,42 @@ namespace OpenFrontier.IP.Engine
 		// "Cloak" meshes carry the fold material. For those the old routing
 		// parked the hull and drew the shell; that whole route is gone.
 		// Today every fold lives on the hull itself: either the hull's
-		// authored material carries the cloak uniforms, or the one-shot
-		// transpose below writes a fold material into the hull renderer's
-		// slots -- sourced from the authored shells still in the prefab, or
-		// from the hand-assigned Cloak Material for hulls whose shell meshes
-		// are gone. A hull that answers neither simply does not cloak.
-		// v4 material transpose: true when the probe folded the shell pool's
-		// materials onto the hull itself. The hull IS the cloak mesh
-		// afterwards - only one mesh set ever draws, which is the point:
-		// the duplicate authoring was pure waste on a phone.
+		// authored material carries the cloak uniforms, or the capture
+		// below records a fold material for the hull renderer's body
+		// slot -- the hand-assigned Cloak Material for hulls whose shell
+		// meshes are gone. A hull that answers neither simply does not cloak.
+		// v5 reversible wear (was the v4 one-shot transpose): true when the
+		// probe found a fold for the hull. The fold is a WEAR STATE now, not
+		// a transplant: the hull keeps exactly one mesh set (only one ever
+		// draws, still -- the duplicate authoring was pure waste on a phone)
+		// and changes WHAT its body slot wears as the cloak amount crosses
+		// zero. Fully decloaked, the slot wears the prefab's authored body
+		// material again; cloaked at any amount, it wears the fold. The two
+		// sources agree 1:1 at amount 0 in every pass -- look, decals,
+		// ShadowCaster and DepthOnly now that the fold materials run their
+		// whole pass list -- so the wear switch trades nothing but
+		// ownership: a decloaked hull self-shadows with its own material,
+		// which is what the shadow hunt was after.
 		private bool cloakMaterialAdopted;
+
+		// One hull renderer's two wear sources for slot 0. When the hull is
+		// authored fold-capable, Ship and Fold are the same reference and
+		// the wear switch is a no-op for that renderer.
+		private sealed class HullWear
+		{
+			public Material Ship;
+			public Material Fold;
+		}
+
+		private readonly Dictionary<MeshRenderer, HullWear> hullWear =
+			new Dictionary<MeshRenderer, HullWear>();
+
+		// What the hull currently wears. Deliberately NOT reset by
+		// OnEnable/ResetCloakMaterialState: a re-enabled renderer still
+		// wears what it wore on disable, so the flag describes reality -- and
+		// the first wear decision after re-enable corrects any amount drift,
+		// because lastCloakAmount is forced stale there.
+		private bool hullWearFolded;
 		private float lastCloakAmount = -1f;
 		private float lastCloakFloor = -1f;
 		private bool wantsCloakSceneColor;
@@ -280,12 +308,13 @@ namespace OpenFrontier.IP.Engine
 
 		public void SetFadeAlpha(float alpha, Faction owner)
 		{
-			// The cloak shader is the single fade authority (the renamed
-			// Cloaked materials carry it, and every shell is cloak-driven):
-			// alpha is visibility, the shader gets the complement as its
-			// amount with no persistent floor, so the wanted alpha is
-			// exactly the alpha shown. Units with no cloak-capable material
-			// never had a ghost of their own - their shells were empty no-ops.
+			// The cloak shader is the single fade authority (every fold
+			// material carries it - the renamed Cloaked set, sitting on the
+			// hull through the v5 wear): alpha is visibility, the shader
+			// gets the complement as its amount with no persistent floor,
+			// so the wanted alpha is exactly the alpha shown. Units with no
+			// cloak-capable material never had a ghost of their own - this
+			// call is a no-op for them and stays one.
 			if (IsCloakCapableHull())
 			{
 				ApplyCloakToUnitRenderers(1f - Mathf.Clamp01(alpha), 0f);
@@ -297,29 +326,30 @@ namespace OpenFrontier.IP.Engine
 			if (!cloakCapableHullChecked)
 			{
 				cloakCapableHullChecked = true;
-				// One probe at first use: the hulls' materials are fixed per
-				// prefab (UpdateOpaqueMaterial was an empty stub, nothing swaps
-				// them at runtime), so this verdict never goes stale. The one
-				// mutation the probe performs is the v4 transpose below, which
-				// is also one-shot and idempotent.
+				// One probe at first use: the hulls' authored materials are
+				// fixed per unit (UpdateOpaqueMaterial was an empty stub,
+				// nothing swapped them at runtime; ShipDecals later repaints
+				// slot 0 through clones and reads nothing back), so this
+				// verdict never goes stale. The v5 capture below writes no
+				// material: it records the two wear sources per renderer,
+				// and the wear itself is decided per cloak amount, not at
+				// probe time.
 				MeshRenderer meshRenderer = (LevelOfDetail && UnitRenderers.Count > 0) ? UnitRenderers[0] : UnitRenderer;
 				Material hullMaterial = ((meshRenderer != null) ? meshRenderer.sharedMaterial : null);
 				cloakCapableHull = ((hullMaterial != null) && hullMaterial.HasProperty("_CloakAmount"));
 				if (!cloakCapableHull)
 				{
-					// v4 material transpose. A hull that does not already
-					// wear the fold adopts it once, here, onto itself: the
-					// fold materials come from the authored shells the
-					// prefab still carries (same slot index, matching slot
-					// count), or from the hand-assigned Cloak Material for
-					// hulls whose shell meshes are gone. The fold shader
-					// was built so a hull material can simply WEAR it (see
-					// OpenFrontier_ShipCloak.shader: a Ship Surface
-					// material transposed onto Ship Cloak keeps its
-					// bindings and flags intact and looks IDENTICAL at
-					// amount 0), so the hull becomes the ship's only
-					// clothed mesh from then on, and the per-frame cloak
-					// flow underneath is unchanged.
+					// v5 wear capture. A hull that does not already wear
+					// the fold records it once, here: the fold material
+					// comes from the hand-assigned Cloak Material for the
+					// hull, gated to slot 0 (FoldMaterialForSlot). The
+					// authored-shell route retired with the shell meshes
+					// themselves - the field is the sole fold source now.
+					// The fold shader was built so a hull material can
+					// simply WEAR it (see OpenFrontier_ShipCloak.shader:
+					// material-wearing hulls keep their bindings and flags
+					// intact and look IDENTICAL at amount 0), and the wear
+					// now follows the cloak amount exactly.
 					cloakMaterialAdopted = TryAdoptCloakMaterialOnHull();
 					if (cloakMaterialAdopted)
 					{
@@ -331,10 +361,11 @@ namespace OpenFrontier.IP.Engine
 			return cloakCapableHull;
 		}
 
-		// One print per unit, and it is the POST-transpose state: the hull
-		// renderers with the material each slot now wears. The pre-state
-		// names ('MaterialShuttle' and friends) say nothing about whether
-		// the fold actually landed - the verdict does. Editor-only.
+		// One print per unit, at the probe verdict: the hull renderers with
+		// the material each slot wears NOW (the capture writes nothing, so
+		// this is the authored state the wear switch returns to). The names
+		// ('MaterialShuttle' and friends) say nothing about whether the
+		// fold actually landed - the verdict does. Editor-only.
 		[System.Diagnostics.Conditional("UNITY_EDITOR")]
 		private void ReportCloakProbe()
 		{
@@ -352,7 +383,7 @@ namespace OpenFrontier.IP.Engine
 				AppendRendererProbe(builder, UnitRenderer);
 			}
 			builder.Append(" -> capable ").Append(cloakCapableHull)
-				.Append(", transposed ").Append(cloakMaterialAdopted);
+				.Append(", captured ").Append(cloakMaterialAdopted);
 			Debug.Log(builder.ToString());
 		}
 
@@ -376,11 +407,12 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
-		// v4 material transpose. The evidence this encodes, read off every
-		// shell-issued prefab in the repo (Ares, Creon, Drake, Flyer, Hauler,
-		// Hornet, Magnus and its variants, Overlord, Pioneer, Ranger, Raptor,
-		// Shuttle, Thunder, Venture, Satellite, StorageLocker, Bar2, Factory,
-		// Refinery, Shipyard, SmallOutpost, TradeStation, WeaponsPlatform):
+		// v5 wear capture (was the v4 material transpose). The evidence this
+		// encodes, read off every shell-issued prefab in the repo (Ares,
+		// Creon, Drake, Flyer, Hauler, Hornet, Magnus and its variants,
+		// Overlord, Pioneer, Ranger, Raptor, Shuttle, Thunder, Venture,
+		// Satellite, StorageLocker, Bar2, Factory, Refinery, Shipyard,
+		// SmallOutpost, TradeStation, WeaponsPlatform):
 		//
 		//   - hulls and shells reference the SAME mesh assets; the shell set
 		//     is a duplicate renderer pass wearing the fold materials
@@ -388,36 +420,41 @@ namespace OpenFrontier.IP.Engine
 		//   - second slots (Glass Golden and friends) are identical materials
 		//     on both pools and never carry the fold
 		//
-		// So pairing is structural, not by name: a hull material slot adopts
-		// the fold that the authored shells wore at the SAME slot index of a
-		// shell renderer with the SAME slot count. Glass stays glass, body
-		// goes fold, and even Drake's odd LOD5 pair (fold on slot 1 there)
-		// reproduces the authored look exactly, because that is the shell
-		// itself speaking. Any slot with no fold to adopt stays authored,
-		// which is also what those slots render in the legacy shell path.
+		// So pairing is structural, not by name: the fold the hull adopts is
+		// the fold the authored shells wore at its body slot. Glass stays
+		// glass, body goes fold. Any slot with no fold to adopt stays
+		// authored - which is also what those slots render in the legacy
+		// shell path.
 		//
 		// A hand-assigned CloakMaterial (for prefab-cleaned hulls whose shell
 		// meshes are gone) wins for slot 0 - the body slot in every hull,
-		// verified across all of the above. Runs once, per unit, at probe
-		// time; the per-frame cloak flow is untouched underneath.
+		// verified across all of the above. Recorded once, per unit, at
+		// probe time, and it writes NO material: the wear itself happens in
+		// the cloak flow underneath (ApplyCloakToUnitRenderers ->
+		// SetHullWear), so a hull that never cloaks keeps the authored body
+		// material on its renderers, painted exactly as ShipDecals left it.
 		private bool TryAdoptCloakMaterialOnHull()
 		{
-			bool changed = false;
+			bool adopted = false;
 			if (LevelOfDetail)
 			{
 				for (int i = 0; i < UnitRenderers.Count; i++)
 				{
-					changed |= TransposeHullRenderer(UnitRenderers[i]);
+					adopted |= CaptureHullWear(UnitRenderers[i]);
 				}
 			}
 			else
 			{
-				changed = TransposeHullRenderer(UnitRenderer);
+				adopted = CaptureHullWear(UnitRenderer);
 			}
-			return changed;
+			return adopted;
 		}
 
-		private bool TransposeHullRenderer(MeshRenderer hullRenderer)
+		// One hull renderer's capture. Stores the two slot-0 wear sources
+		// and leaves the renderer untouched; when the hull is authored
+		// fold-capable the two sources are the same reference, which makes
+		// the wear switch a no-op for that renderer by construction.
+		private bool CaptureHullWear(MeshRenderer hullRenderer)
 		{
 			if (hullRenderer == null)
 			{
@@ -428,26 +465,69 @@ namespace OpenFrontier.IP.Engine
 			{
 				return false;
 			}
-			bool edited = false;
-			for (int slot = 0; slot < materials.Length; slot++)
+			// Only slot 0 can gain a fold: the sole runtime fold source is
+			// the hand-assigned material, gated to the body slot (see
+			// FoldMaterialForSlot), decided by the same "_CloakAmount"
+			// property check the probe used.
+			Material shipSource = materials[0];
+			Material foldSource = shipSource != null && shipSource.HasProperty("_CloakAmount")
+				? shipSource
+				: FoldMaterialForSlot(0);
+			bool edited = foldSource != null && foldSource != shipSource;
+			hullWear[hullRenderer] = new HullWear
 			{
-				Material slotMaterial = materials[slot];
-				if (slotMaterial != null && slotMaterial.HasProperty("_CloakAmount"))
+				Ship = shipSource,
+				Fold = edited ? foldSource : shipSource,
+			};
+			return edited;
+		}
+
+		// The wear switch, called from ApplyCloakToUnitRenderers as the
+		// cloak amount crosses zero. Writes land only on the boundary:
+		// the changed-guard in the caller fires per frame during a fade,
+		// and the bool here turns those calls into no-ops.
+		private void SetHullWear(bool folded)
+		{
+			if (folded == hullWearFolded)
+			{
+				return;
+			}
+			hullWearFolded = folded;
+			foreach (KeyValuePair<MeshRenderer, HullWear> pair in hullWear)
+			{
+				if (pair.Key == null)
 				{
 					continue;
 				}
-				Material foldMaterial = FoldMaterialForSlot(slot);
-				if (foldMaterial != null && foldMaterial != slotMaterial)
-				{
-					materials[slot] = foldMaterial;
-					edited = true;
-				}
+				// A hull whose body slot never had an authored material (the
+				// prefab-cleaned hulls that only carry a hand-assigned fold)
+				// has no decloaked look to return to: the fold stays on the
+				// slot at zero, or the ship would vanish with the paint.
+				bool wearFold = folded || pair.Value.Ship == null;
+				WearSlotMaterial(pair.Key, wearFold ? pair.Value.Fold : pair.Value.Ship);
 			}
-			if (edited)
+		}
+
+		// One hull renderer, one wear decision. The paint resolves through
+		// ShipDecals the moment the slot changes material, from the source
+		// the slot is about to wear - so decloaking cannot return an
+		// unpainted hull, which is what taking the slot off a painted
+		// material would otherwise do. The renderer's array is only
+		// rewritten when slot 0 actually changes.
+		private void WearSlotMaterial(MeshRenderer hullRenderer, Material source)
+		{
+			if (hullRenderer == null)
 			{
-				hullRenderer.sharedMaterials = materials;
+				return;
 			}
-			return edited;
+			Material want = ShipDecals.PaintedWearFor(unit, source);
+			Material[] materials = hullRenderer.sharedMaterials;
+			if (materials.Length == 0 || materials[0] == want)
+			{
+				return;
+			}
+			materials[0] = want;
+			hullRenderer.sharedMaterials = materials;
 		}
 
 		private Material FoldMaterialForSlot(int slot)
@@ -488,14 +568,20 @@ namespace OpenFrontier.IP.Engine
 		private void ApplyCloakToUnitRenderers(float cloakAmount, float visibleFloor)
 		{
 			// _CloakFloor is how much hull material survives at amount 1
-			// (0 = the hull fully cedes to the bend). Appearance is the
-			// material's state alone: the fold surface is never toggled by
-			// visibility, so at full cloak the silhouette keeps drawing as
-			// pure bent space instead of turning into nothing.
+			// (0 = the hull fully cedes to the bend). The fold surface is
+			// never toggled by visibility: at full cloak the silhouette
+			// keeps drawing as pure bent space instead of turning into
+			// nothing. What follows visibility is the WEAR (v5): the fold
+			// owns the body slot while any amount is in play, the authored
+			// hull material takes the slot back at zero. At amount 0 the
+			// two wear sources agree 1:1 in every pass - look, livery,
+			// ShadowCaster and DepthOnly - so the swap is invisible in all
+			// but the bookkeeping.
 			if (cloakAmount != lastCloakAmount || visibleFloor != lastCloakFloor)
 			{
 				lastCloakAmount = cloakAmount;
 				lastCloakFloor = visibleFloor;
+				SetHullWear(cloakAmount > 0f);
 				if (cloakMaterialPropertyBlock == null)
 				{
 					cloakMaterialPropertyBlock = new MaterialPropertyBlock();
@@ -545,8 +631,10 @@ namespace OpenFrontier.IP.Engine
 		{
 			// Owned-ship visibility while construction/cloak fading
 			// belongs to the materials now (the fold shader answers its
-			// own amount; non-cloak hulls keep their shell, which was
-			// always the visible thing here).
+			// own amount through SetFadeAlpha). For non-cloak-capable
+			// hulls every road here ends in that no-op: they never faded,
+			// and the shells that faintly drew for them are deleted with
+			// the whole duplicate-mesh era.
 			if (unit.IsUnderConstructionOrDismantling)
 			{
 				UpdateFadeForConstructionProgressValue(unit.Components.ConstructionProgress * unit.UnitClass.maxHealth, Unit.Faction);
@@ -888,11 +976,13 @@ namespace OpenFrontier.IP.Engine
 
 		public void ApplyRenderMode()
 		{
-			// The cloak shader owns hull visibility through _CloakAmount;
-			// outlines stay dark for good, the hull draws until nothing is
-			// left to draw (ApplyCloakToUnitRenderers toggles it per frame).
-			// Non-capable units have no fold anywhere, so their visibility is
-			// the render mode alone.
+			// The cloak shader owns hull visibility through _CloakAmount, so
+			// its hull renderers stay enabled and the look grades only by
+			// cloak amount - the v5 wear swap lives in
+			// ApplyCloakToUnitRenderers, on the zero boundary, not here.
+			// The outline glow system that used to hold hull renderers
+			// dark in fade mode is deleted. Non-capable units have no fold
+			// anywhere, so their visibility is the render mode alone.
 			if (IsCloakCapableHull())
 			{
 				if (LevelOfDetail)

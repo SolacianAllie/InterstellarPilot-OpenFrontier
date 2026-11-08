@@ -9,9 +9,9 @@ has. Two fold sources remain, checked in this order at init:
    serialized field; assigned below for every unit that needs it).
 
 A hull that answers neither simply does not cloak. The authored shell meshes
-inside the prefabs are now only a *material source* (read once at init, in the
-matching-slot-count order) plus duplicated draw weight — safe to delete after
-the field is filled, which is done for all 24 units.
+inside the prefabs were - until their deletion below - only a *material
+source* (read once at init, in the matching-slot-count order) plus duplicated
+draw weight. The field now routes around them for all 25 field-based units.
 
 ## Assigned fields (shell-derived guids, verified against each prefab's own shells)
 
@@ -28,6 +28,7 @@ the field is filled, which is done for all 24 units.
 | ActiveUnitMagnus | MaterialMagnusCloaked | **`OpenFrontier/Material/`** |
 | ActiveUnitMagnusPirateBlack | MaterialMagnusCloakedPirateBlack | **`OpenFrontier/Material/`** |
 | ActiveUnitOverlord | MaterialOverlordCloaked | **`OpenFrontier/Material/`** |
+| ActiveUnitOrion | orion_cloak | **`OpenFrontier/Material/`** |
 | ActiveUnitPioneer | MaterialPioneerCloaked | **`OpenFrontier/Material/`** |
 | ActiveUnitRanger | MaterialRangerCloaked | **`OpenFrontier/Material/`** |
 | ActiveUnitRaptor | MaterialRaptorCloaked | `InterstellarPilot2/Extracted/Material/` |
@@ -81,3 +82,30 @@ loops are gone; `FoldMaterialForSlot` is the hand-assigned `CloakMaterial`
 The harness check now FAILS when a unit has no fold source, since none
 besides the field exists. The per-ship `[CloakProbe]` line remains the
 runtime witness.
+
+## Shadow reconciliation (2026-11-08, the cure)
+
+The fold materials shipped from the legacy shell era with `SHADOWCASTER` and
+`DepthOnly` inside `disabledShaderPasses`. Harmless while hulls wore Ship
+Surface and the shells commanded the cloak look - but under material-state
+cloaking the fold sits on the hull at amount 0 too, so every decloaked hull
+stopped casting and receiving its own shadow, and the pass list of the
+worn-over material, not the shader's content, was the whole story.
+
+- The passes are re-enabled on all 24 fold materials (MOTIONVECTORS stays
+  disabled, exactly as on the Ship Surface materials).
+- The v4 one-shot transpose is retired for the **v5 reversible wear**: the
+  probe captures two slot-0 sources per hull renderer (the authored look and
+  the fold) and `ApplyCloakToUnitRenderers` swaps the body slot between them
+  as the cloak amount crosses zero; fully decloaked, a hull wears exactly
+  what the prefab authored. Each source resolves painted through
+  `ShipDecals.PaintedWearFor`, so the livery rides both looks and the paint
+  cache still batches - decloaking cannot return an unpainted hull.
+- The shader's ShadowCaster no longer clips at any cloak amount (design
+  call: a cloaked hull keeps its own shadow - the fold bends light reaching
+  the eye, not the starlight the mass already blocks).
+- Verified downstream: suns cast (`defaultsector/menu` Soft, from the
+  earlier 2026-11-08 sun fix), URP renderer feature list clean, and the
+  offline harness green (14/14 projects, `cloak_fields` 25 field-based,
+  0 misassigned).
+

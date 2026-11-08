@@ -152,12 +152,14 @@ Shader "OpenFrontier/Ship Cloak"
 	//
 	// SHADOWS / DEPTH
 	//
-	// ShadowCaster clips on cloakAmount > 0.02: hulls cast no shadow from
-	// the first tick of cloaking on. That matches the old shell exactly
-	// (the old cloak materials ran with the ShadowCaster pass disabled),
-	// and a cloaked ship leaving a crisp shadow would betray it -- so the
-	// binary clip is the design, not an approximation. Until then an
-	// unclipped hull shadows 1:1 with its hull profile.
+	// ShadowCaster never clips: a cloaked hull shadows exactly like a
+	// decloaked one (design call 2026-11-08, replacing the legacy
+	// clip-at-any-amount tell). The fold bends the light reaching the
+	// eye, not the star the hull already blocks - the mass keeps its
+	// shadow through the cloak. The old shadowless read came from the
+	// legacy shell, whose cloak materials simply never carried a
+	// ShadowCaster at all; nothing in the fold depends on leaving the
+	// shadow map.
 	//
 	// DepthOnly keeps the hull in the depth prepass UNCLIPPED (v3): the
 	// camo is a surface standing in the world, not a hole in it -- soft
@@ -701,9 +703,12 @@ Shader "OpenFrontier/Ship Cloak"
 			half4 ShipCloakShadowFragment(ShadowVaryings input) : SV_TARGET
 			{
 				UNITY_SETUP_INSTANCE_ID(input);
-				// Cloaked hulls cast no shadow (see header): any cloaking past
-				// a sliver and the silhouette is out of the light's view.
-				clip(0.02h - _CloakAmount);
+				// The hull casts at every cloak amount: the fold bends the
+				// light reaching the eye, not the star the mass already
+				// blocks (design call, 2026-11-08 - the old
+				// clip-at-any-amount tell retired). Shadow geometry is
+				// pure, like the ship surface shader's.
+				return 0;
 				return 0;
 			}
 			ENDHLSL
@@ -758,9 +763,10 @@ Shader "OpenFrontier/Ship Cloak"
 				// No clip (v3): the camo hull is a SURFACE standing in the
 				// world, not a hole in it. It stays in the depth prepass so
 				// depth-driven effects occlude against it like any hull,
-				// which the opaque fold IS. Only shadows clip (see
-				// ShadowCaster): no-shadow-while-cloaked is the tell the old
-				// shell had, and a light reveal would betray the ship.
+				// which the opaque fold IS. ShadowCaster never clips
+				// either (see there): the hull keeps its own shadow while
+				// it folds - the fold bends the light reaching the eye,
+				// not the starlight the mass already blocks.
 				return input.positionCS.z;
 			}
 			ENDHLSL

@@ -162,6 +162,42 @@ namespace OpenFrontier.IP.Engine
 			}
 		}
 
+		// The wear resolver for the ActiveUnit cloak wear gate (v5): an
+		// in-world hull can change the material its body slot wears after
+		// Init (the reversible fold wear, model swaps later, anything else
+		// that moves slot 0 at runtime), and every such material must
+		// arrive painted by the same rules ApplyToUnit paints by, not by
+		// its own ad-hoc copy of them. Returns the painted variant of
+		// `source`, or `source` itself when it cannot be painted (no
+		// faction yet, no decal slots on the shader, no sheet for its
+		// ship token) - the caller wears what it gets, exactly the same
+		// untouched look ApplyToUnit leaves on a hull it cannot paint.
+		// The clone cache keeps the painted looks one-instance-per-key:
+		// a decloaked hull and its cloaked neighbour batch into the same
+		// material as any other painted hull does.
+		public static Material PaintedWearFor(Unit unit, Material source)
+		{
+			Faction faction = unit != null ? unit.Faction : null;
+			if (source == null || faction == null)
+			{
+				return source;
+			}
+			// The same gate shape ApplyToUnit walks: only a material whose
+			// shader actually carries the decal slots can wear a paint, and
+			// the sheet follows the MATERIAL's ship token, never the
+			// faction alone.
+			if (!source.HasProperty(PropDecalMap))
+			{
+				return source;
+			}
+			Texture2D sheet = SheetFor(unit, source.name);
+			if (sheet == null)
+			{
+				return source;
+			}
+			return AcquireClone(source, faction, sheet, PaletteFor(faction));
+		}
+
 		// The repaint station. Called from UnitComponentHolder.
 		// TryDockInHangar - the dock primitive every approved dock goes
 		// through (TryDockInUnit funnels into it; fleet regroup, the
@@ -197,9 +233,12 @@ namespace OpenFrontier.IP.Engine
 
 		private static IEnumerable<MeshRenderer> RenderersOf(ActiveUnit activeUnit)
 		{
-			// Hulls first (both pools, whichever the prefab authored),
-			// then the cloak shells so the paint rides the fold. The
-			// outline glow renderers are deliberately not walked.
+			// The hull renderers only, both pools (whichever the prefab
+			// authored). This used to walk the cloak shells after the
+			// hulls so the paint rode the fold, and deliberately skipped
+			// the outline glow renderers - both of those are deleted with
+			// the duplicate-mesh era; a hull wears its fold through the
+			// v5 wear swap, and either way slot 0 is what gets painted.
 			if (activeUnit.UnitRenderer != null)
 			{
 				yield return activeUnit.UnitRenderer;
