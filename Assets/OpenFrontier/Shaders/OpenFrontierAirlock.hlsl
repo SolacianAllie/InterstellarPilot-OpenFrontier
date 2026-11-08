@@ -32,8 +32,6 @@ CBUFFER_START(UnityPerMaterial)
 	half _ShimmerDepth;
 	half _ShimmerScale;
 	half _ShimmerSpeed;
-	float4 _FieldSize;
-	half _SealGlow;
 	half _NearFade;
 	half _AirlockFallback;
 CBUFFER_END
@@ -169,17 +167,11 @@ half4 AirlockFrag(AirlockVaryings input) : SV_Target
 	float3 boil = float3(abs(input.osEye.xy) * _ShimmerScale, _Time.y * _ShimmerSpeed);
 	half churn = 0.65 * AirlockBoil(boil) + 0.35 * AirlockBoil(boil * 2.6 + 17.31);
 
-	// The seal - where the field meets the hull it works hardest. The L-in
-	// finity distance (field-local metres over the mesh's half extents)
-	// reads border proximity without any baked data: the churn dose deepens
-	// toward the frame and a bright ramp presses outward from it, while the
-	// middle keeps only a gentle dose - the passage reads calm, passable.
-	// _FieldSize is authored per door; the 0.1 clamps keep an unset
-	// property from dividing anything away.
-	float2 over = abs(input.osEye.xy) / max(_FieldSize.xy, float2(0.1, 0.1));
-	half border = saturate(max(over.x, over.y));
-	half shimmer = 1.0 - _ShimmerDepth * churn * (0.4 + 0.6 * border);
-	half seal = pow(border, 2.0);
+	// One uniform dose: the boil dips the base glow wherever the churn
+	// happens, no positional escalation. (A border-driven "seal" ramp
+	// shipped for one revision and was removed at the user's direction -
+	// the depth contact seam and the rim carry the boundary instead.)
+	half shimmer = 1.0 - _ShimmerDepth * churn;
 
 	// - Rim: grazing view angles brighten, on BOTH faces (abs() folds the
 	// - backface normal), reading as the boundary of a held-in field.
@@ -189,7 +181,6 @@ half4 AirlockFrag(AirlockVaryings input) : SV_Target
 
 	rgb = glow * shimmer;
 	rgb += glow * (rim * 0.5);
-	rgb += glow * (seal * _SealGlow);
 	rgb += glow * (AirlockContact(input.ndc, input.osEye.z, _ContactBoost, _ContactThickness) * _ContactBoost);
 #endif
 

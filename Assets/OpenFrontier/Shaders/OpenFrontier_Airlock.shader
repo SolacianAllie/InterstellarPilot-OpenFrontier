@@ -40,16 +40,14 @@
 // feature), so a script can pick the tier per device with confidence.
 //
 // The complex tier's furniture needs no UVs, no depth read and no textures.
-// THE STORY it draws is a field that keeps the atmosphere in while leaving
-// a passable opening: the pattern BOILS (3D value noise sliced through the
-// time axis - it morphs everywhere with no marching direction), the churn
-// dose deepens and a bright ramp presses toward the mesh border - the SEAL,
-// where the field works hardest against the hull - while the middle stays
-// calm, the passable space. The boundary story completes outside the field's
-// own geometry: rim glow on the silhouette, and the depth-driven contact
-// seam at the hull opening. The boil's lattice is period-wrapped at 8 cells
-// so hours-long sessions loop without drift, mirrored per axis so a
-// symmetric door reads symmetric. The fallback tier is the
+// The field BOILS (3D value noise sliced through the time axis - it morphs
+// everywhere with no marching direction) under a mostly-clear membrane; the
+// boundary story lives OUTSIDE the field's own geometry: rim glow on the
+// silhouette, and the depth-driven contact seam where the field meets the
+// hull opening. (A border-pressure "seal" ramp shipped for one revision and
+// was removed at the user's direction.) The boil's lattice is
+// period-wrapped at 8 cells so hours-long sessions loop without drift,
+// mirrored per axis so a symmetric door reads symmetric. The fallback tier is the
 // only consumer of UVs - an unwritten UV slot costs it alone.
 //
 // NEAR FADE. The whole output (seam included) scales by
@@ -67,11 +65,10 @@
 // fallback tier is the cheapest shape in the family: fetch, tint, fade.
 //
 // KNOBS - colour, brightness, contact response, the boil (depth/scale/
-// speed), the seal (the mesh's half extents in metres, seal glow strength),
-// the near fade and the fallback's texture. There is no sweep: the boil is
-// the motion, and it does not march. The rim power/intensity and the octave
-// balance inside the churn are constants in the program half; ask and any
-// of them becomes a property.
+// speed), the near fade and the fallback's texture. There is no sweep: the
+// boil is the motion, and it does not march. The rim power/intensity and
+// the octave balance inside the churn are constants in the program half;
+// ask and any of them becomes a property.
 
 Shader "OpenFrontier/Airlock"
 {
@@ -89,10 +86,6 @@ Shader "OpenFrontier/Airlock"
 		_ShimmerDepth("Boil Depth", Range(0.0, 1.0)) = 0.18
 		_ShimmerScale("Boil Scale", Float) = 1.0
 		_ShimmerSpeed("Boil Speed", Float) = 0.55
-
-		[Header(Seal)]
-		_FieldSize("Field Size (metres, XY half extents)", Vector) = (2, 2, 0, 0)
-		_SealGlow("Seal Glow", Float) = 1.0
 
 		[Header(Fading)]
 		_NearFade("Near Fade", Float) = 0.6
