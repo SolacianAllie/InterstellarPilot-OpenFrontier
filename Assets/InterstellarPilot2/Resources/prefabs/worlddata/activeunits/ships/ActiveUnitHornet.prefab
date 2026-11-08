@@ -3443,7 +3443,7 @@ PrefabInstance:
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: PhaseGroup
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1709254077376921}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: FlashPeriod
       value: 1.5
@@ -3549,7 +3549,7 @@ PrefabInstance:
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: PhaseGroup
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1709254077376921}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: FlashPeriod
       value: 1.5
@@ -3655,7 +3655,7 @@ PrefabInstance:
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: PhaseGroup
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1709254077376921}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: FlashPeriod
       value: 1.5
@@ -3761,7 +3761,7 @@ PrefabInstance:
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: PhaseGroup
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1709254077376921}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: FlashPeriod
       value: 1.5
@@ -4079,7 +4079,7 @@ PrefabInstance:
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: PhaseGroup
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 1709254077376921}
     - target: {fileID: 7368065156630811171, guid: 3de1c6fd3754316e390b97cf12925eca, type: 3}
       propertyPath: FlashPeriod
       value: 1.5
