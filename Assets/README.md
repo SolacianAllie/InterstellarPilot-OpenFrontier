@@ -22,6 +22,15 @@ own art: 1,020 textures, 7 source meshes (fbx), 10 ogg clips, the font, and
 default font material; Mesh's material) — harmless, unused, wanted there for
 coherence with the assets they belong to.
 
+**Already-copied exception:** `OpenFrontier/Shaders/OpenFrontier_ShipSurface.shader`
+was copied back from `PreRebuild/` on 2026-11-08 **with its original `.meta`**, so its
+GUID (`0c7559b00079d89961773603f874bf92`, the one every ship-hull material references)
+is unchanged. While the original stays outside `Assets/` the duplicate GUID is
+invisible to Unity, but a wholesale restore of `PreRebuild/OpenFrontier/Shaders/`
+must delete this copy first or the two same-GUID metas collide. The shader is
+self-contained: every `#include` is a URP/Core package path; no project-local
+dependencies, no CustomEditor.
+
 Everything else from the old layout mirrors its old paths under `PreRebuild/`:
 `PreRebuild/OpenFrontierLogic/` (all twelve assemblies), `PreRebuild/Editor/`,
 `PreRebuild/OpenFrontier/{Editor,Discord,Material,Prefabs,Resources,Scenes,
