@@ -1,5 +1,6 @@
 using OpenFrontier.IP.Engine.Factions;
 using OpenFrontier.IP.Engine.Hypersleep;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace OpenFrontier.IP.Engine.EngineMusic
@@ -125,10 +126,25 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		public static void Install()
 		{
-			if (instance != null)
+			// A hidden host outlives the play session that created it in an
+			// editor configured to skip the domain reload on play - which this
+			// project's is - and a fallback listener it published rides along
+			// ENABLED and INVISIBLE: detached from every scene, so no scene
+			// scan ever reaches it, while Unity's own audio engine keeps
+			// counting it. That unseen ear is the standing "2 audio
+			// listeners" that outlived every stand-down. The Swept host is
+			// destroyed first, before a fresh one exists, because a sweep
+			// that ran after creation could not tell the new home from the
+			// old one. In a build - where Install runs once for the life of
+			// the process - this finds nothing.
+			foreach (MusicDirector stale in Resources.FindObjectsOfTypeAll<MusicDirector>())
 			{
-				return;
+				if (stale != null)
+				{
+					Object.Destroy(stale.gameObject);
+				}
 			}
+			instance = null;
 
 			GameObject host = new GameObject(ObjectName);
 			host.hideFlags = HideFlags.HideAndDontSave;
@@ -183,7 +199,41 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 
 			nextListenerCheck = Time.realtimeSinceStartup + 0.5f;
 
-			AudioListener[] all = Object.FindObjectsOfType<AudioListener>(true);
+			// One enumeration covers both kinds of ear. Resources-scope finds
+			// everything FindObjectsOfType reaches (every loaded scene,
+			// inactive included) PLUS the objects detached from all scenes,
+			// which FindObjectsOfType never returns: a hidden host keeps a
+			// published listener perfectly real to Unity's audio engine and
+			// perfectly invisible here, and a "2 audio listeners" warning
+			// then survives this whole policy because the second ear was
+			// never in the list. Asset listeners - the serialized listener on
+			// a prefab definition, which belongs to no scene - are refused:
+			// they are not ears in any scene, in the editor or in a build, so
+			// they must never be counted, parked or stood down.
+			List<AudioListener> all = new List<AudioListener>();
+			AudioListener[] found = Resources.FindObjectsOfTypeAll<AudioListener>();
+			for (int i = 0; i < found.Length; i++)
+			{
+				AudioListener listener = found[i];
+				if (listener == null || listener == fallbackListener)
+				{
+					continue;
+				}
+
+				GameObject owner = listener.gameObject;
+				if (owner.scene.IsValid()
+#if UNITY_EDITOR
+					|| !UnityEditor.EditorUtility.IsPersistent(owner)
+#endif
+				)
+				{
+					all.Add(listener);
+				}
+			}
+
+#if UNITY_EDITOR
+			ReportEarRoster(all);
+#endif
 
 			// One pass to count the live ears, pick the keeper (deepest live
 			// camera's listener) and remember the deepest parked one for the
@@ -195,7 +245,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			AudioListener reMount = null;
 			float reMountDepth = float.NegativeInfinity;
 
-			for (int i = 0; i < all.Length; i++)
+			for (int i = 0; i < all.Count; i++)
 			{
 				AudioListener listener = all[i];
 				if (listener == null || listener == fallbackListener)
@@ -206,7 +256,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 				Camera camera = listener.GetComponent<Camera>();
 				float depth = (camera != null) ? camera.depth : float.NegativeInfinity;
 
-				if (listener.enabled && listener.gameObject.activeInHierarchy)
+				if (listener.enabled && IsCountedEar(listener))
 				{
 					liveCount++;
 					if (keeper == null || depth > keeperDepth)
@@ -215,7 +265,9 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 						keeperDepth = depth;
 					}
 				}
-				else if (listener.gameObject.activeInHierarchy && (reMount == null || depth > reMountDepth))
+				else if (listener.gameObject.scene.IsValid()
+					&& listener.gameObject.activeInHierarchy
+					&& (reMount == null || depth > reMountDepth))
 				{
 					reMount = listener;
 					reMountDepth = depth;
@@ -229,7 +281,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 					fallbackListener.enabled = false;
 				}
 
-				for (int i = 0; i < all.Length; i++)
+				for (int i = 0; i < all.Count; i++)
 				{
 					AudioListener listener = all[i];
 					if (listener == null || listener == keeper || listener == fallbackListener)
@@ -237,7 +289,7 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 						continue;
 					}
 
-					if (listener.enabled && listener.gameObject.activeInHierarchy)
+					if (listener.enabled && IsCountedEar(listener))
 					{
 						listener.enabled = false;
 						Debug.Log("Music: the deepest live camera keeps the scene's ear - "
@@ -280,6 +332,64 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 					+ " exists again.");
 			}
 		}
+
+		/// <summary>
+		/// Whether Unity's audio engine counts this ear right now.
+		/// </summary>
+		/// <remarks>
+		/// A scene object counts when its GameObject is active up the chain
+		/// and the component is enabled. A DETACHED object - hidden hosts are
+		/// detached from every scene - has no chain: activeInHierarchy
+		/// answers false for an object that is switched on, and Unity's audio
+		/// engine still hears it. Treating a detached ear as parked is
+		/// exactly how an enabled listener on a hidden host passes every
+		/// policy check here while the warning keeps saying there are two
+		/// listeners in the scene.
+		/// </remarks>
+		private static bool IsCountedEar(AudioListener listener)
+		{
+			GameObject owner = listener.gameObject;
+			if (!owner.scene.IsValid())
+			{
+				return owner.activeSelf;
+			}
+
+			return owner.activeInHierarchy;
+		}
+
+		/// <summary>Editor-diagnostic: one line whenever the set of counted ears changes shape.</summary>
+		/// <remarks>
+		/// DIAGNOSTIC ONLY, AND DIAGNOSTIC WORK DOES NOT SHIP - compiled out
+		/// of release builds entirely. The roster answer "who did the audio
+		/// engine count, and where did that ear live" in one line that names
+		/// the GameObject: the question that could not be answered from the
+		/// two-listener warning alone.
+		/// </remarks>
+		[System.Diagnostics.Conditional("UNITY_EDITOR")]
+		private void ReportEarRoster(List<AudioListener> ears)
+		{
+			System.Text.StringBuilder builder = new System.Text.StringBuilder();
+			builder.Append("[EarRoster] ").Append(ears.Count).Append(" ear(s):");
+			for (int i = 0; i < ears.Count; i++)
+			{
+				GameObject owner = ears[i].gameObject;
+				builder.Append(" '").Append(owner.name).Append("' ")
+					.Append(ears[i].enabled ? "on" : "off")
+					.Append(owner.scene.IsValid()
+						? (owner.activeInHierarchy ? " live" : " parked")
+						: (owner.activeSelf ? " DETACHED-on" : " detached-off"));
+			}
+			string signature = builder.ToString();
+			if (signature == lastEarRosterSignature)
+			{
+				return;
+			}
+
+			lastEarRosterSignature = signature;
+			Debug.Log(signature);
+		}
+
+		private string lastEarRosterSignature = "";
 
 		/// <summary>
 		/// Ask for a listener re-scan right now: the next poll runs this frame.
@@ -337,6 +447,24 @@ namespace OpenFrontier.IP.Engine.EngineMusic
 			if (instance == this)
 			{
 				instance = null;
+			}
+
+			// The subscriptions bind a destroyed component's handler into a
+			// static event: without the unsubscribe, an editor that skips the
+			// domain reload on play (this project's does) hands the next play
+			// session SceneManager events addressed to a dead component.
+			UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+			UnityEngine.SceneManagement.SceneManager.sceneUnloaded -= OnSceneUnloaded;
+
+			// The fallback must not outlive the session that supplied it. A
+			// published ear on this hidden host is invisible to every scene
+			// scan, survives a domain-reload-skipping play transition, and is
+			// Unity's second audio listener in the next session for as long
+			// as it stays enabled. The stale host is also destroyed on the
+			// next Install - this is the belt, that is the braces.
+			if (fallbackListener != null)
+			{
+				Object.Destroy(fallbackListener);
 			}
 		}
 
