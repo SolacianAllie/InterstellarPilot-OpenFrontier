@@ -77,9 +77,11 @@ silent adoption failure turns into an obvious `transposed False`.
   shell pair. The field covers slot 0 only; if Drakes show an unfolded hull at
   extreme range while cloaked, the LOD5 shell stays, or a second slot-1 field
   is added. The probe lines will say.
-- **Orion** has no fold-capable material anywhere (its shell carries an
-  imported shader we cannot verify from source) — field left empty; it cloaks
-  nothing today, exactly as before.
+- **Orion** is now wired to its authored `orion_cloak` (`OpenFrontier/Material/`)
+  as the hand-assigned field — its shells' `orion_transparent` carries an
+  imported shader we cannot verify from source, so the field (never the shell)
+  is Orion's fold source. Orion folds for the first time; verify the hull
+  still looks right at amount 0 on the next play session.
 - `ActiveUnitRangerTest.prefab` is an empty stub: nothing to do.
 
 ## Final code prune (after prefab cleanup)
