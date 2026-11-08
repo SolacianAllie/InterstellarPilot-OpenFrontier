@@ -102,10 +102,14 @@ Intermediate folder metas under
 - `PreRebuild/` is outside Unity: never imported, never compiled, invisible to
   the editor and the harness. Unity/LFS `.gitattributes` still applies to it —
   every attribute rule is extension-based, so nothing re-buckets when files move.
-- The harness is LOUD-IDLE here: 0 `.asmdef` / 0 `.cs` under Assets makes
+- The harness is LOUD-IDLE here: 0 `.asmdef` under Assets (one loose `.cs`,
+  nothing assembled) makes
   `check.sh` purge any stale generated project set and report green with an
   explicit "build gate idle" note instead of building. It returns to strict
-  mode the moment the first `.asmdef` lands under `Assets/`. `codec-test`'s
+  mode the moment the first `.asmdef` lands under `Assets/`; until then,
+  loose `.cs` files compile in the EDITOR only (Assembly-CSharp) — the
+  harness cannot see them, so `Logs/Editor.log` is that code's gate.
+  `codec-test`'s
   `sync.py` still links pre-migration paths — regenerate it when the first new
   code arrives, before trusting its green.
 - ProjectSettings consequences of the move: the `GraphicsSettings` /

@@ -95,7 +95,11 @@ are the same rule at folder depth.
 
 ## The harness in this state
 
-Zero `.asmdef` / zero `.cs` under `Assets/` remains deliberate: `check.sh`
+Zero `.asmdef` under `Assets/` keeps the harness loud-idle: `check.sh`
 purges stale generated projects and reports green with a loud "build gate
 idle" note, and re-arms strict the moment the first `.asmdef` lands under
-`Assets/`. See AGENTS.md ("The rebuild blank slate") for the session law.
+`Assets/`. Loose `.cs` files (first: `OpenFrontier/Scripts/NavLight.cs`,
+2026-11-08) compile into `Assembly-CSharp` editor-side only — the harness
+cannot compile them, so the editor plus
+`grep -c "error CS" Logs/Editor.log` is their real gate.
+See AGENTS.md ("The rebuild blank slate") for the session law.
