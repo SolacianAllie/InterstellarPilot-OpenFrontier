@@ -13,18 +13,14 @@ namespace OpenFrontier.IP.Engine.Core.Units.ActiveUnits
 
 		public float ChangeRate = 1f;
 
-		private float lastTimeThrottleZerod = float.MinValue;
-
-		private bool lastThrottleActive;
-
 		private void OnEnable()
 		{
-			SetLerp(GetDesiredLerp());
+			SetLerp(IsMoving() ? 1f : 0f);
 		}
 
 		private void Update()
 		{
-			float desiredLerp = GetDesiredLerp();
+			float desiredLerp = IsMoving() ? 1f : 0f;
 			if (desiredLerp != currentLerp)
 			{
 				float lerp = Mathf.MoveTowards(currentLerp, desiredLerp, ChangeRate * Time.deltaTime);
@@ -32,33 +28,26 @@ namespace OpenFrontier.IP.Engine.Core.Units.ActiveUnits
 			}
 		}
 
-		private float GetDesiredLerp()
+		// Parts deploy on motion now: out while the hull is above zero
+		// speed, in the moment it stops. Two old triggers are gone - turning
+		// used to deploy the parts on its own (a parked ship could sit there
+		// with nozzles out), and a closed throttle held them open for an
+		// eight second count before folding. Neither survives: only the
+		// hull's actual movement moves them.
+		//
+		// The throttle clause backs the speed read up, because a speed read
+		// cannot answer for every unit: a null rigidbody reads as stopped,
+		// and a remote ship's motion is written by UnitInterpolator straight
+		// onto the transform, not into its rigidbody. GetEffectiveThrottle
+		// answers zero for a dead engine, so a ship with the throttle pushed
+		// up but no power never shows deployed parts.
+		private bool IsMoving()
 		{
-			bool flag = IsThrottleActive();
-			if (flag)
+			if (ActiveUnit.Unit != null && ActiveUnit.Unit.CurrentSpeed > 0f)
 			{
-				lastThrottleActive = flag;
-				return 1f;
+				return true;
 			}
-			if (flag != lastThrottleActive)
-			{
-				lastTimeThrottleZerod = Time.time;
-			}
-			lastThrottleActive = flag;
-			if (Time.time - lastTimeThrottleZerod > 8f)
-			{
-				return 0f;
-			}
-			return 1f;
-		}
-
-		private bool IsThrottleActive()
-		{
-			if (ActiveUnit.GetCurrentTurn() == 0f)
-			{
-				return ActiveUnit.GetEffectiveThrottle() > 0f;
-			}
-			return true;
+			return ActiveUnit.GetEffectiveThrottle() > 0f;
 		}
 
 		public void SetLerp(float lerp)
