@@ -82,6 +82,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7580e5954fe4294e1ad88aec641e3da0, type: 3}
   m_Name:
   m_EditorClassIdentifier:
+  CloakMaterial: {fileID: 2100000, guid: de1e949a224cecd4e816d6819865b20a, type: 2}
   CloakDrawColor: {r: 1, g: 1, b: 1, a: 1}
   ActiveUnitClass: {fileID: 114724804207875695, guid: 1c6470d8c6bf51540a68ceccbbff1848, type: 2}
   CommsDialogPositioner: {fileID: 0}

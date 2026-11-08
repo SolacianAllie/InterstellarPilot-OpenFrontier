@@ -1457,6 +1457,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7580e5954fe4294e1ad88aec641e3da0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  CloakMaterial: {fileID: 2100000, guid: 23010c87864d1214f9b6a4934b7a4ce9, type: 2}
   ActiveUnitClass: {fileID: 114724804207875695, guid: 5f08e0b9decad3b4587f5c610d64c2ee, type: 3}
   CommsDialogPositioner: {fileID: 1642988549198181}
   DrawRangeObjects: []
