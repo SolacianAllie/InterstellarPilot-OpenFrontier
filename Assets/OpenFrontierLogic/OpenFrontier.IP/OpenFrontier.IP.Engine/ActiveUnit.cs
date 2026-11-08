@@ -59,6 +59,14 @@ namespace OpenFrontier.IP.Engine
 
 		private MaterialPropertyBlock cloakMaterialPropertyBlock;
 
+		// Open Frontier: explicit cloak material for hulls whose legacy shell
+		// meshes have been deleted. The probe below pairs the shell pool's
+		// fold materials onto the hull by itself; once a prefab is cleaned
+		// (shells gone), this field carries the mapping the shells used to
+		// hold. Slot 0 only - the body slot in every authored hull; the
+		// deeper slots (glass, engine bits) stay authored on both pools.
+		public Material CloakMaterial;
+
 		public bool ApplyTeamColours;
 
 		public bool LevelOfDetail;
@@ -89,6 +97,13 @@ namespace OpenFrontier.IP.Engine
 		// the hull stands in exactly decloaked, and no grey shell ever
 		// exists again.
 		private bool cloakDrivenByShells;
+		// v4 material transpose: true when the probe folded the shell pool's
+		// materials onto the hull itself instead of routing through the
+		// shells. The hull IS the cloak mesh afterwards - only one mesh set
+		// ever draws, which is the point: the duplicate authoring was pure
+		// waste on a phone. The legacy shell branch stays only for hulls the
+		// transpose could not resolve.
+		private bool cloakMaterialAdopted;
 		private float lastCloakAmount = -1f;
 		private float lastCloakFloor = -1f;
 		private bool wantsCloakSceneColor;
@@ -301,7 +316,9 @@ namespace OpenFrontier.IP.Engine
 				cloakCapableHullChecked = true;
 				// One probe at first use: the hulls' materials are fixed per
 				// prefab (UpdateOpaqueMaterial was an empty stub, nothing swaps
-				// them at runtime), so this verdict never goes stale.
+				// them at runtime), so this verdict never goes stale. The one
+				// mutation the probe performs is the v4 transpose below, which
+				// is also one-shot and idempotent.
 				MeshRenderer meshRenderer = (LevelOfDetail && UnitRenderers.Count > 0) ? UnitRenderers[0] : UnitRenderer;
 				Material hullMaterial = ((meshRenderer != null) ? meshRenderer.sharedMaterial : null);
 				cloakCapableHull = ((hullMaterial != null) && hullMaterial.HasProperty("_CloakAmount"));
@@ -309,7 +326,26 @@ namespace OpenFrontier.IP.Engine
 				Material shellMaterial = null;
 				if (!cloakCapableHull)
 				{
-					// No fold material on the hull: fall back to the authored
+					// v4 material transpose. The shell-driven routing below
+					// keeps the duplicate-mesh authoring alive in the render
+					// path: a full second clothed mesh set per ship, per draw
+					// cycle, on a phone. But the fold shader was built so a
+					// hull material can simply WEAR it (see
+					// OpenFrontier_ShipCloak.shader: a Ship Surface material
+					// transposed onto Ship Cloak keeps its bindings and flags
+					// intact and looks IDENTICAL at amount 0). So the hull
+					// adopts the shells' fold materials directly, once, and
+					// becomes the ship's only clothed mesh from then on. The
+					// per-frame cloak flow underneath is unchanged.
+					cloakMaterialAdopted = TryAdoptCloakMaterialOnHull();
+					if (cloakMaterialAdopted)
+					{
+						cloakCapableHull = true;
+					}
+				}
+				if (!cloakCapableHull)
+				{
+					// No fold material adopted: fall back to the authored
 					// legacy shells when THEY carry it (see cloakDrivenByShells).
 					// Shells that are still legacy grey stay legacy -- this only
 					// routes when the material state genuinely exists.
@@ -337,7 +373,124 @@ namespace OpenFrontier.IP.Engine
 			string hullMaterialName = hullMaterial != null ? hullMaterial.name : "<none>";
 			string shellName = shellRepresentative != null ? shellRepresentative.name : "<none>";
 			string shellMaterialName = shellMaterial != null ? shellMaterial.name : "<none>";
-			Debug.Log($"[CloakProbe] '{name}': hull '{hullName}'/{hullMaterialName}, shell '{shellName}'/{shellMaterialName} -> capable {cloakCapableHull}, shell-driven {cloakDrivenByShells}");
+			Debug.Log($"[CloakProbe] '{name}': hull '{hullName}'/{hullMaterialName}, shell '{shellName}'/{shellMaterialName} -> capable {cloakCapableHull}, transposed {cloakMaterialAdopted}, shell-driven {cloakDrivenByShells}");
+		}
+
+		// v4 material transpose. The evidence this encodes, read off every
+		// shell-issued prefab in the repo (Ares, Creon, Drake, Flyer, Hauler,
+		// Hornet, Magnus and its variants, Overlord, Pioneer, Ranger, Raptor,
+		// Shuttle, Thunder, Venture, Satellite, StorageLocker, Bar2, Factory,
+		// Refinery, Shipyard, SmallOutpost, TradeStation, WeaponsPlatform):
+		//
+		//   - hulls and shells reference the SAME mesh assets; the shell set
+		//     is a duplicate renderer pass wearing the fold materials
+		//   - every ship wears ONE distinct fold-capable material
+		//   - second slots (Glass Golden and friends) are identical materials
+		//     on both pools and never carry the fold
+		//
+		// So pairing is structural, not by name: a hull material slot adopts
+		// the fold that the authored shells wore at the SAME slot index of a
+		// shell renderer with the SAME slot count. Glass stays glass, body
+		// goes fold, and even Drake's odd LOD5 pair (fold on slot 1 there)
+		// reproduces the authored look exactly, because that is the shell
+		// itself speaking. Any slot with no fold to adopt stays authored,
+		// which is also what those slots render in the legacy shell path.
+		//
+		// A hand-assigned CloakMaterial (for prefab-cleaned hulls whose shell
+		// meshes are gone) wins for slot 0 - the body slot in every hull,
+		// verified across all of the above. Runs once, per unit, at probe
+		// time; the per-frame cloak flow is untouched underneath.
+		private bool TryAdoptCloakMaterialOnHull()
+		{
+			bool changed = false;
+			if (LevelOfDetail)
+			{
+				for (int i = 0; i < UnitRenderers.Count; i++)
+				{
+					changed |= TransposeHullRenderer(UnitRenderers[i]);
+				}
+			}
+			else
+			{
+				changed = TransposeHullRenderer(UnitRenderer);
+			}
+			return changed;
+		}
+
+		private bool TransposeHullRenderer(MeshRenderer hullRenderer)
+		{
+			if (hullRenderer == null)
+			{
+				return false;
+			}
+			Material[] materials = hullRenderer.sharedMaterials;
+			if (materials.Length == 0)
+			{
+				return false;
+			}
+			bool edited = false;
+			for (int slot = 0; slot < materials.Length; slot++)
+			{
+				Material slotMaterial = materials[slot];
+				if (slotMaterial != null && slotMaterial.HasProperty("_CloakAmount"))
+				{
+					continue;
+				}
+				Material foldMaterial = FoldMaterialForSlot(slot, materials.Length);
+				if (foldMaterial != null && foldMaterial != slotMaterial)
+				{
+					materials[slot] = foldMaterial;
+					edited = true;
+				}
+			}
+			if (edited)
+			{
+				hullRenderer.sharedMaterials = materials;
+			}
+			return edited;
+		}
+
+		private Material FoldMaterialForSlot(int slot, int slotCount)
+		{
+			if (slot == 0 && CloakMaterial != null)
+			{
+				return CloakMaterial;
+			}
+			if (LevelOfDetail)
+			{
+				for (int i = 0; i < CloakRenderers.Count; i++)
+				{
+					Material fold = FoldMaterialFromRenderer(CloakRenderers[i], slot, slotCount);
+					if (fold != null)
+					{
+						return fold;
+					}
+				}
+			}
+			else if (CloakRenderer != null)
+			{
+				return FoldMaterialFromRenderer(CloakRenderer, slot, slotCount);
+			}
+			return null;
+		}
+
+		private static Material FoldMaterialFromRenderer(MeshRenderer shellRenderer, int slot, int slotCount)
+		{
+			if (shellRenderer == null)
+			{
+				return null;
+			}
+			Material[] materials = shellRenderer.sharedMaterials;
+			if (materials.Length != slotCount || slot >= materials.Length)
+			{
+				return null;
+			}
+			Material material = materials[slot];
+			if (material != null && material.HasProperty("_CloakAmount"))
+			{
+				return material;
+			}
+			return null;
 		}
 
 		private void UpdateCloakMaterial()
