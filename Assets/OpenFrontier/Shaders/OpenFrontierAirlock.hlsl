@@ -32,8 +32,8 @@ CBUFFER_START(UnityPerMaterial)
 	half _ShimmerDepth;
 	half _ShimmerScale;
 	half _ShimmerSpeed;
-	half _SweepStrength;
-	half _SweepSpeed;
+	float4 _FieldSize;
+	half _SealGlow;
 	half _NearFade;
 	half _AirlockFallback;
 CBUFFER_END
@@ -107,27 +107,40 @@ half AirlockContact(float4 ndc, float eyeDepth, half contactBoost, float contact
 	return saturate(1.0 - diff / max(contactThickness, 1e-3)) * step(1e-4, diff);
 }
 
-// The shimmer's hash and lattice. Both wrap at a strict 8-cell period with a
-// floor-based modulus (sign-safe), so corner indices join seamlessly across
-// the boundary AND the hash arguments can never exceed single digits - no
-// sin() precision cliff at any session length (NavLights phase doctrine).
-half AirlockHash(float2 cell)
+// The boil's hash and lattice. All three axes (x, y, time) wrap at a strict
+// 8-cell period with a floor-based modulus (sign-safe), corner indices join
+// seamlessly across the boundary, and the hash arguments can never exceed
+// single digits at any session length - no sin() precision cliff at 2 a.m.
+// on day three of a session (NavLights phase doctrine).
+half AirlockHash(float3 cell)
 {
 	cell -= 8.0 * floor(cell * 0.125);
-	return frac(sin(dot(cell, float2(12.9898, 78.233))) * 43758.5453);
+	return frac(sin(dot(cell, float3(12.9898, 78.233, 37.719))) * 43758.5453);
 }
 
-half AirlockValueNoise(float2 p)
+// 3D value noise: (x, y) from the field geometry, z is TIME, sliced
+// through. Slicing - not translating - the third axis is what makes the
+// pattern evolve with no marching direction: features press out, dissolve
+// and reform from every side.
+half AirlockBoil(float3 p)
 {
 	p -= 8.0 * floor(p * 0.125);
-	float2 i = floor(p);
-	float2 f = p - i;
-	float2 u = f * f * (3.0 - 2.0 * f);
-	half a = AirlockHash(i);
-	half b = AirlockHash(i + float2(1.0, 0.0));
-	half c = AirlockHash(i + float2(0.0, 1.0));
-	half d = AirlockHash(i + float2(1.0, 1.0));
-	return lerp(lerp(a, b, u.x), lerp(c, d, u.x), u.y);
+	float3 i = floor(p);
+	float3 f = p - i;
+	float3 u = f * f * (3.0 - 2.0 * f);
+	half c000 = AirlockHash(i);
+	half c100 = AirlockHash(i + float3(1.0, 0.0, 0.0));
+	half c010 = AirlockHash(i + float3(0.0, 1.0, 0.0));
+	half c110 = AirlockHash(i + float3(1.0, 1.0, 0.0));
+	half c001 = AirlockHash(i + float3(0.0, 0.0, 1.0));
+	half c101 = AirlockHash(i + float3(1.0, 0.0, 1.0));
+	half c011 = AirlockHash(i + float3(0.0, 1.0, 1.0));
+	half c111 = AirlockHash(i + float3(1.0, 1.0, 1.0));
+	half x00 = lerp(c000, c100, u.x);
+	half x10 = lerp(c010, c110, u.x);
+	half x01 = lerp(c001, c101, u.x);
+	half x11 = lerp(c011, c111, u.x);
+	return lerp(lerp(x00, x10, u.y), lerp(x01, x11, u.y), u.z);
 }
 
 #endif // !_AIRLOCK_FALLBACK
@@ -147,33 +160,36 @@ half4 AirlockFrag(AirlockVaryings input) : SV_Target
 	// COMPLEX TIER ------------------------------------------------------
 	half3 glow = _Color.rgb * _Intensity;
 
-	// Shimmer - the churn. The first revision swept sine bands along one
-	// diagonal (one frequency, one direction: smooth but stripey). This is a
-	// proper two-octave value noise, mirrored across each object axis via
-	// abs() - the doorway's symmetry holds with no centre seam - and the
-	// time drift is +t on BOTH coordinates: a growing argument means a
-	// fixed feature's position in cells falls, so the pattern reads as
-	// energy born at the mesh borders crawling inward. Both noise octaves
-	// period-wrap at 8 lattice cells, so the churn loops and the hash
-	// inputs stay bounded at any session length.
-	float2 q = abs(input.osEye.xy) * _ShimmerScale + _ShimmerSpeed * _Time.y;
-	half churn = 0.65 * AirlockValueNoise(q) + 0.35 * AirlockValueNoise(q * 2.6 + 17.31);
-	half shimmer = 1.0 - _ShimmerDepth * churn;
+	// Boil - the field's metabolism. A three-dimensional value noise whose
+	// third axis is TIME, sliced through: the pattern morphs in place with
+	// no marching direction anywhere. abs() mirrors x and y per object
+	// axis, so a symmetric door churns symmetric: no centre seam. The
+	// lattice period-wraps at 8 cells on every axis, so the loop is true
+	// and the hash arguments stay bounded at any session length.
+	float3 boil = float3(abs(input.osEye.xy) * _ShimmerScale, _Time.y * _ShimmerSpeed);
+	half churn = 0.65 * AirlockBoil(boil) + 0.35 * AirlockBoil(boil * 2.6 + 17.31);
 
-	// Sweep: a soft band wanders across the field, strength and rate from
-	// the material.
-	float bandPhase = frac(input.osEye.y * 0.23 - _Time.y * _SweepSpeed);
-	half band = smoothstep(0.0, 0.12, bandPhase) * (1.0 - smoothstep(0.22, 0.34, bandPhase));
+	// The seal - where the field meets the hull it works hardest. The L-in
+	// finity distance (field-local metres over the mesh's half extents)
+	// reads border proximity without any baked data: the churn dose deepens
+	// toward the frame and a bright ramp presses outward from it, while the
+	// middle keeps only a gentle dose - the passage reads calm, passable.
+	// _FieldSize is authored per door; the 0.1 clamps keep an unset
+	// property from dividing anything away.
+	float2 over = abs(input.osEye.xy) / max(_FieldSize.xy, float2(0.1, 0.1));
+	half border = saturate(max(over.x, over.y));
+	half shimmer = 1.0 - _ShimmerDepth * churn * (0.4 + 0.6 * border);
+	half seal = pow(border, 2.0);
 
-	// Rim: grazing view angles brighten, on BOTH faces (abs() folds the
-	// backface normal), reading as the boundary of a held-in field.
+	// - Rim: grazing view angles brighten, on BOTH faces (abs() folds the
+	// - backface normal), reading as the boundary of a held-in field.
 	half3 viewDir = _WorldSpaceCameraPos.xyz - input.positionWS;
 	half nv = abs(dot(normalize(input.normalWS), viewDir / max(length(viewDir), 1e-4)));
 	half rim = pow(saturate(1.0 - nv), 3.0);
 
 	rgb = glow * shimmer;
-	rgb += glow * (band * _SweepStrength);
 	rgb += glow * (rim * 0.5);
+	rgb += glow * (seal * _SealGlow);
 	rgb += glow * (AirlockContact(input.ndc, input.osEye.z, _ContactBoost, _ContactThickness) * _ContactBoost);
 #endif
 

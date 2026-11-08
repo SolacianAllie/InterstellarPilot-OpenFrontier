@@ -34,12 +34,12 @@ Material:
     - _ContactThickness: 0.35
     - _Intensity: 1.5
     - _NearFade: 0.6
+    - _SealGlow: 1
     - _ShimmerDepth: 0.18
     - _ShimmerScale: 1
     - _ShimmerSpeed: 0.55
-    - _SweepSpeed: 0.21
-    - _SweepStrength: 0.35
     m_Colors:
     - _Color: {r: 0.25, g: 0.7, b: 1, a: 1}
+    - _FieldSize: {r: 2, g: 2, b: 0, a: 0}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
