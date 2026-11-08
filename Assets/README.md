@@ -30,7 +30,14 @@ ship-hull and cloaked-hull material references (`0c7559b00079d89961773603f874bf9
 `Assets/` the duplicate GUIDs are invisible to Unity, but a wholesale restore of
 `PreRebuild/OpenFrontier/Shaders/` must delete these copies first or the same-GUID
 metas collide. Both are self-contained: every `#include` is a URP/Core package path;
-no project-local dependencies, no CustomEditor.
+no project-local dependencies, no CustomEditor. **Also restored 2026-11-08:**
+`InterstellarPilot2/Settings/` wholesale — `OpenFrontier-URP.asset` +
+`OpenFrontier-URP-Renderer.asset` (URP pipeline, referenced by GraphicsSettings and
+every quality level) plus the three Build Profiles — original metas, so the previous
+build's settings resolve again; a wholesale restore of that PreRebuild folder later
+must delete these copies first (same-GUID rule). All renderer external references
+resolve inside the URP package; the regenerated root
+`UniversalRenderPipelineGlobalSettings.asset` stays the wired global settings.
 
 Everything else from the old layout mirrors its old paths under `PreRebuild/`:
 `PreRebuild/OpenFrontierLogic/` (all twelve assemblies), `PreRebuild/Editor/`,
