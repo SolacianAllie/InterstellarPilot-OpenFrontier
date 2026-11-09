@@ -46,19 +46,19 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 100
-  spriteBorder: {x: 64, y: 64, z: 64, w: 64}
+  spriteBorder: {x: 25, y: 25, z: 25, w: 25}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
   spriteTessellationMethod: 0
-  spriteTessellationDetail: -1
-  spriteGeometrySubdivision: -1
+  spriteTessellationDetail: 0
+  spriteGeometrySubdivision: 0
   textureType: 8
   textureShape: 1
   singleChannelComponent: 0
@@ -123,12 +123,12 @@ TextureImporter:
         width: 256
         height: 256
       alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 64, y: 64, z: 64, w: 64}
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 29, y: 26, z: 27, w: 26}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
       spriteID: 9b20cf2a66c813c00800000000000000
       internalID: 878637774762934969
@@ -140,8 +140,8 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
-    internalID: 0
+    spriteID: 7496ac97ed932a72e9097b1631b09670
+    internalID: -244970496
     vertices: []
     indices: 
     edges: []

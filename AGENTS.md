@@ -127,6 +127,20 @@ Intermediate folder metas under
   vendored DLLs exist now only in `PreRebuild/` and in git history (`Stable`).
   They were not deleted and not "fixed" — they are retired, not repaired.
 
+### New UI is authored, not restored (2026-11-09)
+
+The rebuild ships **new** UI screens, designed fresh; PreRebuild's UI code is
+**reference-only** - read it to learn what each screen exposed and which engine
+primitives it drove, never queued for wholesale re-landing. Read a screen's old
+class for: (1) the features it had to carry, (2) the engine entry points it
+called - those are the real contract any new screen must satisfy, (3) splits
+between what was engine logic and what was layout, so only (2) ever gets
+ported. Old layout and flow are suggestions, not spec. New menu code so far
+lives loose under `Assets/OpenFrontier/Scripts/MainMenu/` (editor-only,
+Assembly-CSharp; `Logs/Editor.log` is its gate): `QuitGameButton`,
+`SelectableTextColor`, `VersionLabel` - Unity-native first, one small scoped
+script only where stock uGUI cannot do a job it earns.
+
 ## Planet visuals live INSIDE the `Planet*` shells (folded 2026-11-08)
 
 The planet prefab family was originally SPLIT in two: gameplay shells
