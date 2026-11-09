@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -22,6 +23,16 @@ namespace OpenFrontier.MainMenu
 	/// or this. Deliberately a small enhancement, per the UI description: Unity
 	/// native first, custom scripting only where it earns its place.
 	///
+	/// One button may own several labels (a News card's title + body): wire the
+	/// additional ones into ExtraTargets. The tint rides the canvas renderer's
+	/// color channel, which multiplies onto each label's authored base color, so
+	/// static two-tone hierarchies (bright title, dim body) survive state changes
+	/// without per-label color blocks.
+	///
+	/// Embedded Images that must respond with DIFFERENT colors than the text get
+	/// the twin component SelectableImageColor instead - separate ColorBlock,
+	/// separate wiring, so the two never have to agree.
+	///
 	/// State resolution matches Selectable's priority: Disabled beats everything
 	/// (the polled <c>interactable</c> check), then Pressed, Highlighted, Selected,
 	/// Normal. Reacts to events, not per-frame simulation: the only Update work is
@@ -39,6 +50,9 @@ namespace OpenFrontier.MainMenu
 	{
 		[Tooltip("The label whose color follows the states. Empty finds the first Text child of this button.")]
 		public Graphic Target;
+
+		[Tooltip("Extra labels that follow the same states - drag each additional Text/TMP child that should tint (multi-label buttons like the News panel: title + body). Labels left unwired keep their authored colors; the tint multiplies, so static per-label colors stay intact.")]
+		public List<Graphic> ExtraTargets = new List<Graphic>();
 
 		[Tooltip("Label color per state. Same fields as the Button's own Colors block.")]
 		public ColorBlock TextColors = ColorBlock.defaultColorBlock;
@@ -176,13 +190,12 @@ namespace OpenFrontier.MainMenu
 
 		private void Apply(LabelState state, bool instant)
 		{
-			if (Target == null)
+			if (Target == null && ExtraTargets.Count == 0)
 			{
 				return;
 			}
 
 			Color color;
-
 			switch (state)
 			{
 				case LabelState.Disabled:
@@ -210,13 +223,37 @@ namespace OpenFrontier.MainMenu
 			color.b = Mathf.Clamp01(color.b * TextColors.colorMultiplier);
 			color.a = Mathf.Clamp01(color.a * TextColors.colorMultiplier);
 
+			ApplyTo(Target, color, instant);
+
+			for (int i = 0; i < ExtraTargets.Count; i++)
+			{
+				// Wired into both lists is authoring shorthand for "primary" -
+				// skipping keeps it from being double-faded per state change.
+				if (ExtraTargets[i] == Target)
+				{
+					continue;
+				}
+
+				ApplyTo(ExtraTargets[i], color, instant);
+			}
+		}
+
+		private void ApplyTo(Graphic target, Color color, bool instant)
+		{
+			if (target == null)
+			{
+				// A null entry (deleted label, half-wired slot) must not error
+				// out a state change for the targets that did make it.
+				return;
+			}
+
 			if (instant)
 			{
-				Target.canvasRenderer.SetColor(color);
+				target.canvasRenderer.SetColor(color);
 			}
 			else
 			{
-				Target.CrossFadeColor(color, TextColors.fadeDuration, true, true);
+				target.CrossFadeColor(color, TextColors.fadeDuration, true, true);
 			}
 		}
 	}

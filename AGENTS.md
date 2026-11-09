@@ -138,8 +138,30 @@ between what was engine logic and what was layout, so only (2) ever gets
 ported. Old layout and flow are suggestions, not spec. New menu code so far
 lives loose under `Assets/OpenFrontier/Scripts/MainMenu/` (editor-only,
 Assembly-CSharp; `Logs/Editor.log` is its gate): `QuitGameButton`,
-`SelectableTextColor`, `VersionLabel` - Unity-native first, one small scoped
-script only where stock uGUI cannot do a job it earns.
+`SelectableTextColor` (text labels; `SelectableImageColor` is its twin for
+embedded icon Graphics that tint with their own block), `VersionLabel`,
+`SafeAreaFitter` - Unity-native first,
+one small scoped script only where stock uGUI cannot do a job it earns.
+
+The image twin's greyscale runs on
+`Assets/OpenFrontier/Shaders/OpenFrontier_UISaturation.shader`
+(`OpenFrontier/UI Saturation`, stock TMP-Sprite body with a saturation knob on
+the texture sample, before the tint multiply; verified against the engine's
+installed `UnityUI.cginc`): one material instance per target image - the
+batching break is the measured cost - and under a Mask the stencil-variant
+clone the draw actually uses gets the float relayed via
+`CanvasRenderer.GetMaterial()` as well.
+
+### UI prefab strategy (2026-11-09)
+
+Prefab-per-screen stays the architecture (it matches the ScreenNavigator
+spawn-on-demand / destroy-on-back shape), but the prefabs are **editor-authored
+only** - never hand-edited YAML - built from shared blocks first (MenuButton
+prefab before any screen prefab), scene-first then prefab. **Blank-slate UI
+prefabs DO live under Resources/**
+(`Assets/OpenFrontier/Resources/Prefabs/UIX/`): an earlier plan said "not under
+Resources/" and the user reversed it on 2026-11-09, so spawn-on-demand screens
+can `Resources.Load` their UI directly.
 
 ## Planet visuals live INSIDE the `Planet*` shells (folded 2026-11-08)
 
@@ -685,6 +707,15 @@ exit 198) — the user performs all editor actions.
   any hit-test radius authored in "pixels" must be multiplied by
   `Canvas.scaleFactor` or it shrinks physically on high-DPI screens (see
   `SectorMapUnitSelector`).
+- **Device Simulator's yellow Safe Area overlay is an editor-view
+  visualization; `SafeAreaFitter` clamps only in play.** On a fold device's
+  EDIT view the authored layout (safe roots at anchors 0..1) inevitably
+  overlaps the hinge inset, and only fold devices show it - notch-less
+  devices have zero insets, so unclamped and clamped look identical there.
+  That overlap is the authored state, not a fitter defect: the fold clamp is
+  exercised at runtime (Editor.log prints each one as
+  `[SafeAreaFitter] ... -> anchors`). Verify the aspect ladder in PLAY mode
+  on the simulator, never in edit.
 - **`OpenFrontier.LegacyInput` is a shim over the NEW Input System**, not
   `UnityEngine.Input`: `Mouse.current` is null/stale on touch-only devices,
   so `mousePosition` must mirror the primary touch (fixed in the shim —
