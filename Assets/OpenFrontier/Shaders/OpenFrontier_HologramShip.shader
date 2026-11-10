@@ -32,7 +32,16 @@ Shader "OpenFrontier/Hologram Ship"
 	//     over the bump map lights every seam and speckles every
 	//     greeble (the reference look's line detail). Gated on
 	//     _NORMALMAP + _HOLOEDGES; ships without a bump bound fall back
-	//     to fill + contour, smooth but whole.
+	//     to fill + contour, smooth but whole. All bump taps pin mip 0
+	//     EXPLICITLY (2026-11-10): implicit derivative mip selection
+	//     climbed levels at grazing camera angles, blurring the normals
+	//     and starving the deltas - measured as whole regions fading
+	//     with the view and inverting when the camera crossed sides.
+	//     With a fixed LOD the tracer ignores the camera entirely; the
+	//     cost is possible minification shimmer when a ship renders
+	//     small/far - loading rigs show ships large, and a real
+	//     small-ship need earns a clamped-LOD knob later. The rim rides
+	//     the UNPERTURBED hull normal for the same reason.
 	//   - SILHOUETTE CONTOUR: an inverted-hull pass - the mesh grown
 	//     along its normals, back faces only. The ring pokes past the
 	//     object's own silhouette; everything else hides behind the
@@ -328,30 +337,26 @@ Shader "OpenFrontier/Hologram Ship"
 
 				float3 viewDir = GetWorldSpaceNormalizeViewDir(input.positionWS);
 				float3 geometryNormal = normalize(input.normalWS);
-				half3 n = (half3)geometryNormal;
 
 				// The scan field's Y (the hull turns through this
 				// fixed-space field - see the header).
 				float scanY = input.positionWS.y;
 
 				#if defined(_NORMALMAP)
-					float3x3 tangentToW = float3x3(
-						normalize(input.tangentWS.xyz),
-						cross(geometryNormal, input.tangentWS.xyz) * input.tangentWS.w,
-						geometryNormal);
-					half3 nTS = UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.uv0), _BumpScale);
-					n = normalize(mul((half3x3)tangentToW, nTS));
+					half3 nTS = UnpackNormalScale(SAMPLE_TEXTURE2D_LOD(_BumpMap, sampler_BumpMap, input.uv0, 0.0), _BumpScale);
 
 					#if defined(_HOLOEDGES)
 						// The blueprint tracer: panel seams are normal
 						// discontinuities, so neighbour-tap deltas light
 						// every seam - and speckle every greeble - with
-						// four samples on ship-sized triangles.
+						// four samples on ship-sized triangles. All five
+						// taps pin mip 0 EXPLICITLY (see header): the
+						// tracer is camera-independent by construction.
 						float2 texel = _BumpMap_TexelSize.xy;
-						half3 nX = UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.uv0 + float2(texel.x, 0.0)), _BumpScale)
-								 - UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.uv0 - float2(texel.x, 0.0)), _BumpScale);
-						half3 nY = UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.uv0 + float2(0.0, texel.y)), _BumpScale)
-								 - UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.uv0 - float2(0.0, texel.y)), _BumpScale);
+						half3 nX = UnpackNormalScale(SAMPLE_TEXTURE2D_LOD(_BumpMap, sampler_BumpMap, input.uv0 + float2(texel.x, 0.0), 0.0), _BumpScale)
+								 - UnpackNormalScale(SAMPLE_TEXTURE2D_LOD(_BumpMap, sampler_BumpMap, input.uv0 - float2(texel.x, 0.0), 0.0), _BumpScale);
+						half3 nY = UnpackNormalScale(SAMPLE_TEXTURE2D_LOD(_BumpMap, sampler_BumpMap, input.uv0 + float2(0.0, texel.y), 0.0), _BumpScale)
+								 - UnpackNormalScale(SAMPLE_TEXTURE2D_LOD(_BumpMap, sampler_BumpMap, input.uv0 - float2(0.0, texel.y), 0.0), _BumpScale);
 						half edges = saturate((length(nX) + length(nY)) * kEdgeGain) * _EdgeStrength;
 					#else
 						half edges = 0;
@@ -364,10 +369,14 @@ Shader "OpenFrontier/Hologram Ship"
 					half edges = 0;
 				#endif
 
-				// View-only rim: grazing surfaces brighten toward the
-				// camera edge. The camera is the only direction this
-				// shader knows - no world light exists to react to.
-				half rim = pow((half)saturate(1.0 - saturate(dot(n, viewDir))), _RimPower) * _RimStrength;
+				// View-only rim, on the UNPERTURBED hull normal: fresnel
+				// spikes riding bumped normals (orange-peel rings)
+				// relocated glare with the camera - measured alongside
+				// the mip fade. Geometry-level rim is angle-stable;
+				// detail belongs to the tracer above. The camera is the
+				// only direction this shader knows - no world light
+				// exists to react to.
+				half rim = pow((half)saturate(1.0 - saturate(dot(geometryNormal, viewDir))), _RimPower) * _RimStrength;
 
 				// The reading field: thin bright bands every 1/_ScanDensity
 				// metre of world height.
