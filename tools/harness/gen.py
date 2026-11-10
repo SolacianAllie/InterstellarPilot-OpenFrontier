@@ -403,6 +403,16 @@ def generate():
                 hit = resolve_reference(data.get('name', ''))
                 if hit:
                     refs.append(hit)
+        # ...and Assembly-CSharp itself - the loose-script assembly under the
+        # Assets root / Scripts directories. Unity's real editor RSP always
+        # references it; the mirror missed it until the first Assets/Editor
+        # script used a type from there (CS0246 on MenuScreen). Same staleness
+        # rule as every other ScriptAssemblies reference: a type added a
+        # minute ago is not in the stale DLL until the user's next editor
+        # refocus rebuilds it.
+        hit = resolve_reference('Assembly-CSharp')
+        if hit:
+            refs.append(hit)
         refs = dedupe(refs)
         out = os.path.join(BUILD, 'Assembly-CSharp-Editor',
                            'Assembly-CSharp-Editor.csproj')
