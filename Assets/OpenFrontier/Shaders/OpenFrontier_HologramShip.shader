@@ -8,33 +8,60 @@ Shader "OpenFrontier/Hologram Ship"
 	//
 	// WHAT IT IS
 	//
-	// An unlit, additive shell for the curated "Hologram" ship prefabs the
-	// loading screens show. It never touches gameplay ships or their
-	// materials: OpenFrontier/Ship Surface keeps flying the hulls, and this
-	// shader paints curated copies of the SAME hull meshes as projected
-	// holograms. The whole look is procedural - no albedo, no emission map
-	// to bind - because a hologram is geometry speaking, not texture:
+	// The curated "Hologram" ship prefab projection for the loading
+	// screens, matched to the agreed reference look (2026-11-10): a DIM
+	// body fill, PANEL LINES traced bright, and a strong OUTER SILHOUETTE
+	// contour - light that behaves like a solid object, never an X-ray.
+	// It never touches gameplay ships or their materials:
+	// OpenFrontier/Ship Surface keeps flying the hulls; this shader paints
+	// curated copies of the SAME hull meshes. The look is procedural:
 	//
-	//   - BASE FILM: a low constant so the silhouette never fully
-	//     vanishes between effects.
-	//   - RELIEF: a FIXED light direction no renderer ever sees, folded
-	//     in as a smoothstepped N . L. It is not a light - every hull
-	//     receives the same constant vector - so panels and greebles
-	//     gain depth definition from the ship's own normal map at the
-	//     cost of one dot product.
-	//   - RIM: fresnel off the (normal-perturbed) normal, so bevels,
-	//     hardpoints and chamfers catch brightness at grazing views
-	//     instead of the hull reading as one smooth blob.
-	//   - SCANLINES: bright line bands sampled on WORLD Y. World Y is
-	//     the deliberate choice over UV space: the hull ROTATES through
-	//     a stationary line field (the rig's HoloSpinner is always
-	//     turning), and a field the hull moves through is what reads as
-	//     a scan; UV lines would whirl with the ship instead. The bumped
-	//     normal tips the sampling so lines visibly wrap over panels
-	//     rather than painting a flat grid on a silhouette.
-	//   - SWEEP: one slow bright band drifting up the same world-Y
-	//     field - the classic hologram announcement band.
+	//   - BODY FILL: a very low constant plus a damped relief shading
+	//     (fixed never-seen light vector), so the silhouette reads but
+	//     stays dark - the lines carry the picture.
+	//   - PANEL EDGES: the ships' own NORMAL MAPS are the blueprint.
+	//     Panel seams are normal discontinuities, so a 4-tap edge trace
+	//     over the bump map lights every seam and speckles every
+	//     greeble (the reference look's line detail). Gated on
+	//     _NORMALMAP + _HOLOEDGES; ships without a bump bound fall back
+	//     to fill + contour, smooth but whole.
+	//   - SILHOUETTE CONTOUR: an inverted-hull pass - the mesh grown
+	//     along its normals, back faces only. The ring pokes past the
+	//     object's own silhouette; everything else hides behind the
+	//     solid depth. The fresnel-rim approach committed earlier
+	//     (d4121fbe) produced blotchy wash on bevels instead of contour,
+	//     so fresnel is demoted to a subtle floor (RimStrength default
+	//     0.35) and the contour pass owns the outline.
+	//   - SCANLINES + SWEEP: faint world-Y energy field the hull rotates
+	//     through (world Y chosen over UV: a field the hull moves
+	//     through reads as a scan; UV lines would whirl with the ship).
 	//   - FLICKER: a cheap sum-of-sines amplitude wobble.
+	//
+	// WHY THREE PASSES -- the measured saga (2026-11-10)
+	//
+	// Attempt 1 (additive, ZWrite Off) X-rayed: every hull part added
+	// light over every other part. Attempt 2 (ZWrite On) still X-rayed,
+	// and the reason is worth keeping: with additive blending, a far
+	// fragment that rasterizes FIRST has already added its light - a
+	// nearer fragment can win the depth test afterwards, but a depth
+	// write cannot RECALL light already in the framebuffer. Per-pixel
+	// raster order is luck, and the open hulls (cockpit, engine
+	// channels) roll it constantly. So depth only works if it exists
+	// BEFORE any colour is written:
+	//
+	//   PASS 1 "Solid Depth" (untagged -> SRPDefaultUnlit): ColourMask 0,
+	//           ZWrite On - the hull writes solid depth and nothing else.
+	//   PASS 2 "Forward":    additive colour, ZTest LEqual against that
+	//           solid depth, ZWrite Off - interiors show ONLY through
+	//           true openings (cockpit glass, engine mouths) and exhaust
+	//           sections genuinely past the silhouette still show.
+	//   PASS 3 "Outline":    inverted hull, Cull Front, tested against the
+	//           same depth - the ring outside the silhouette shows, the
+	//           rest fails behind the solid.
+	//
+	// Order-independent and deterministic on any hull. Cross-object too:
+	// each object's prepass runs before its own colour, so two ships in
+	// one rig occlude each other correctly.
 	//
 	// TIME CONTRACT -- THE TRAP THIS SHADER EXISTS TO AVOID
 	//
@@ -44,27 +71,23 @@ Shader "OpenFrontier/Hologram Ship"
 	// freezes silently in exactly the place freeze is most likely.
 	// Nothing here reads _Time: everything animates on the
 	// _OpenFrontierHoloTime GLOBAL, which HoloSpinner (on the rig's ship
-	// holder) pushes every frame from Time.unscaledTime. The same
-	// unscaled contract the legacy LoadingWidgetUI honoured by
-	// animating on realtimeSinceStartup while the world sat paused.
-	// No HoloSpinner instance? The global stays 0 and the hologram
-	// loses its drift - visible, never silent.
+	// holder) pushes every frame from Time.unscaledTime. No HoloSpinner
+	// instance? The global stays 0 and the hologram loses its drift -
+	// visible, never silent.
 	//
-	// NORMAL MAPS -- depth information, not decoration
+	// NORMAL MAPS AND MATERIALS
 	//
-	// Reads _BumpMap on UV0, the same slot and the same _NORMALMAP
-	// keyword NAME stock Lit uses, so an extracted ship material
-	// carries its bump binding and keyword straight across a shader
-	// swap. Normals live on materials, so one material cannot serve
-	// every ship: the PARENT material ("Hologram Ship", in
+	// Reads _BumpMap on UV0 with the same slot and the same _NORMALMAP
+	// keyword NAME stock Lit uses, so an extracted ship material carries
+	// its bump binding and keyword straight across a shader swap.
+	// Normals live on materials, so one material cannot serve every
+	// ship: the PARENT material ("Hologram Ship", in
 	// Resources/Materials) holds every tuning, and per-ship copies are
-	// MATERIAL VARIANTS of it that override only the normal map
-	// (rarely the colour). Tuning the parent retunes the entire
-	// hologram fleet. Without a bump binding the shader_feature strips
-	// to flat geometric normals - a plain ship looks smooth, never
-	// broken. The keyword set is deliberately just _NORMALMAP:
-	// build cost lives in keyword combinations, and every knob below
-	// is a uniform the variants set for free.
+	// MATERIAL VARIANTS of it overriding the normal map (and rarely the
+	// colour). Tuning the parent retunes the entire fleet. Two notes:
+	// keep _BumpScale above 0 (the edge tracer reads the scaled
+	// normals - 0 flattens the lines away), and the normal map needs
+	// mesh tangents (FBX "Generate Tangents" default is on).
 	//
 	// RENDER SHAPE (mobile-first)
 	//
@@ -72,30 +95,14 @@ Shader "OpenFrontier/Hologram Ship"
 	// shadow caster (a hologram casts no shadow by definition) and no
 	// pipeline keyword forest. Additive over the loading screens'
 	// near-black backgrounds - adding is the honest blend for light
-	// that arrives, and it makes RT-side black edges invisible.
-	//
-	// SELF-OCCLUSION -- ZWrite ON, deliberately (2026-11-10)
-	//
-	// Additive WITHOUT depth is the X-ray trap: every part of the ship
-	// adds over every other part, and a complex hull reads as
-	// fluorescent gauze - wing panels visible through the fuselage,
-	// engine channel guts glowing through the nose (measured on the
-	// first curated ship: "ship is visible through itself").
-	// ZWrite On costs one depth write and buys nearest-shell-wins: the
-	// near hull hides the far hull. It still READS as light, because
-	// blending stays additive - only the depth behaves solid. Interior
-	// detail then shows exactly where it truly can - through open
-	// cockpit glass and engine mouths - and exhaust sections that
-	// genuinely stick past the silhouette still show. One curation
-	// note: near-coincident inner liners (cockpit pods directly behind
-	// shell panels) can faintly double-add at openings - fade or strip
-	// the liner per ship if it glares; a code fix would be machinery
-	// for one mesh. The vestigial DepthOnly pass below matters even
-	// less now, kept to complete the URP pass table for the day a
-	// depth-prepassing camera looks at a rig. The ACCENT
-	// material ("Hologram Ship Accent", a variant of the parent)
-	// serves curated highlights (wing strips, engine channels) that
-	// deserve their own finer shimmer.
+	// that arrives, and it makes RT-side black edges invisible. Three
+	// passes cost two extra vertex-only runs (prepass, outline) plus
+	// four texture taps when edges are on - a loading-screen-scoped
+	// spend, and the keyword set stays deliberately tiny (_NORMALMAP,
+	// _HOLOEDGES): build cost lives in keyword combinations, every other
+	// knob is a uniform variants set for free. The ACCENT material
+	// ("Hologram Ship Accent", a variant of the parent) serves curated
+	// highlights and may switch _HOLOEDGES off for a cleaner shimmer.
 	//
 	// No CustomEditor on purpose (same rule as Ship Surface): the
 	// default inspector lists every property in declaration order - a
@@ -104,17 +111,26 @@ Shader "OpenFrontier/Hologram Ship"
 	Properties
 	{
 		[HDR] _BaseColor("Hologram Colour", Color) = (0.25, 0.85, 1.0, 1.0)
-		_Intensity("Overall Intensity", Range(0, 4)) = 1.3
+		_Intensity("Overall Intensity", Range(0, 4)) = 1.0
 
+		// The old fill weights, damped for the line-art balance.
 		_RimPower("Rim Power", Range(0.25, 8)) = 2.4
-		_RimStrength("Rim Strength", Range(0, 4)) = 1.7
-		_Relief("Relief Depth", Range(0, 1)) = 0.45
+		_RimStrength("Rim Strength", Range(0, 4)) = 0.35
+		_Relief("Relief Depth", Range(0, 1)) = 0.25
 
 		_ScanDensity("Scanlines per Metre", Float) = 6.0
-		_ScanStrength("Scanline Strength", Range(0, 1)) = 0.4
+		_ScanStrength("Scanline Strength", Range(0, 1)) = 0.25
 		_SweepSpeed("Sweep Speed", Float) = 0.35
-		_SweepStrength("Sweep Strength", Range(0, 2)) = 0.8
+		_SweepStrength("Sweep Strength", Range(0, 2)) = 0.5
 		_Flicker("Flicker", Range(0, 0.5)) = 0.08
+
+		// The line-art pair: panel seams traced from the normal map.
+		[Toggle(_HOLOEDGES)] _EdgeToggle("Normal-Map Edges", Float) = 1.0
+		_EdgeStrength("Edge Strength", Range(0, 8)) = 2.0
+
+		// The outline ring: metres of world-space normal growth.
+		_OutlineWidth("Silhouette Outline Width", Float) = 0.05
+		_OutlineStrength("Silhouette Outline Strength", Range(0, 4)) = 1.0
 
 		// Same keyword name, same slot pair as stock Lit, so extracted
 		// materials swap into this shader with nothing rebound.
@@ -144,16 +160,16 @@ Shader "OpenFrontier/Hologram Ship"
 		HLSLINCLUDE
 		#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 		#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl"
-		// Explicit: UnityPerMaterial's copy of UnpackNormalScale must not
-		// depend on whoever reorganises Core.hlsl next release. Core.hlsl
+		// Explicit: UnpackNormalScale and _BumpMap_TexelSize consumers must
+		// not depend on whoever reorganises Core.hlsl next release. Core.hlsl
 		// also includes Packing.hlsl today (verified line 25), but the
 		// house rule is that no pass ever has to prove the chain.
 		#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
 
 		// NOTE: do not ifdef the properties here - SRP batching cannot
 		// handle different bulk layouts between passes (house rule from
-		// Ship Surface). _NormalMapToggle drives the keyword only and
-		// _Cull is consumed by the render state; both stay out of the
+		// Ship Surface). _NormalMapToggle/_EdgeToggle drive keywords only
+		// and _Cull is consumed by the render state; they stay out of the
 		// buffer the same way stock Lit keeps its toggles out.
 		CBUFFER_START(UnityPerMaterial)
 		half4 _BaseColor;
@@ -166,7 +182,11 @@ Shader "OpenFrontier/Hologram Ship"
 		half _SweepSpeed;
 		half _SweepStrength;
 		half _Flicker;
+		half _EdgeStrength;
+		half _OutlineWidth;
+		half _OutlineStrength;
 		half _BumpScale;
+		float4 _BumpMap_TexelSize;
 		CBUFFER_END
 
 		TEXTURE2D(_BumpMap); SAMPLER(sampler_BumpMap);
@@ -175,20 +195,79 @@ Shader "OpenFrontier/Hologram Ship"
 		// identical for every hull and every curated variant.
 		static const half3 kReliefLightDir = normalize(half3(-0.35, 0.85, 0.45));
 
+		// Pair-seam pickup for the edge tracer.
+		static const half kEdgeGain = 16.0;
+
 		// Shader ground the loading rigs advance: see the header's TIME
 		// CONTRACT. Script side: HoloSpinner.HoloTimeId.
-		// (Declared as a uniform here so the compiler never constant-
-		// folds it away when someone screenshots an idle第一时间 rig.)
 		half _OpenFrontierHoloTime;
 		ENDHLSL
 
+		// ---- PASS 1: solid depth (untagged -> SRPDefaultUnlit) ----
+		//
+		// The self-occlusion referendum, written BEFORE any colour exists
+		// (see the header's WHY THREE PASSES). ColourMask 0: nothing is
+		// drawn, depth becomes solid. ZWrite On is the point of the pass.
+		Pass
+		{
+			Name "Solid Depth"
+
+			ColorMask 0
+			ZWrite On
+			ZTest LEqual
+			Cull [_Cull]
+
+			HLSLPROGRAM
+			#pragma vertex HoloDepthVertex
+			#pragma fragment HoloDepthFragment
+
+			#pragma multi_compile_instancing
+
+			struct Attributes
+			{
+				float4 positionOS : POSITION;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+			};
+
+			struct Varyings
+			{
+				float4 positionCS : SV_POSITION;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+				UNITY_VERTEX_OUTPUT_STEREO
+			};
+
+			Varyings HoloDepthVertex(Attributes input)
+			{
+				Varyings output = (Varyings)0;
+				UNITY_SETUP_INSTANCE_ID(input);
+				UNITY_TRANSFER_INSTANCE_ID(input, output);
+				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+				output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+				return output;
+			}
+
+			half HoloDepthFragment(Varyings input) : SV_TARGET
+			{
+				UNITY_SETUP_INSTANCE_ID(input);
+				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+				return 0;
+			}
+			ENDHLSL
+		}
+
+		// ---- PASS 2: the projection itself ----
+		//
+		// Additive colour, tested against the solid depth from PASS 1 -
+		// interiors survive ONLY through true openings, exhaust sections
+		// genuinely past the silhouette survive, and no raster order can
+		// X-ray the hull. Depth already solid: this pass never writes it.
 		Pass
 		{
 			Name "Forward"
 			Tags { "LightMode" = "UniversalForward" }
 
 			Blend One One
-			ZWrite On
+			ZWrite Off
 			ZTest LEqual
 			Cull [_Cull]
 
@@ -196,10 +275,12 @@ Shader "OpenFrontier/Hologram Ship"
 			#pragma vertex HoloVertex
 			#pragma fragment HoloFragment
 
-			// Material keywords - just the one, _NORMALMAP (stock Lit's
-			// name). Everything visual is a uniform, so per-ship material
-			// variants cost buffer writes, never variant combinations.
+			// Material keywords - the pair: _NORMALMAP (stock Lit's name,
+			// bindings survive the swap) and the edge tracer's
+			// _HOLOEDGES. Everything visual is a uniform, so per-ship
+			// material variants cost buffer writes, never combinations.
 			#pragma shader_feature_local_fragment _NORMALMAP
+			#pragma shader_feature_local_fragment _HOLOEDGES
 
 			#pragma multi_compile_instancing
 
@@ -257,19 +338,36 @@ Shader "OpenFrontier/Hologram Ship"
 						geometryNormal);
 					half3 nTS = UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.uv0), _BumpScale);
 					n = normalize(mul((half3x3)tangentToW, nTS));
+
+					#if defined(_HOLOEDGES)
+						// The blueprint tracer: panel seams are normal
+						// discontinuities, so neighbour-tap deltas light
+						// every seam - and speckle every greeble - with
+						// four samples on ship-sized triangles.
+						float2 texel = _BumpMap_TexelSize.xy;
+						half3 nX = UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.uv0 + float2(texel.x, 0.0)), _BumpScale)
+								 - UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.uv0 - float2(texel.x, 0.0)), _BumpScale);
+						half3 nY = UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.uv0 + float2(0.0, texel.y)), _BumpScale)
+								 - UnpackNormalScale(SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, input.uv0 - float2(0.0, texel.y)), _BumpScale);
+						half edges = saturate((length(nX) + length(nY)) * kEdgeGain) * _EdgeStrength;
+					#else
+						half edges = 0;
+					#endif
+
 					// Tangent-space X deflection tips the sampled field:
 					// scanlines conform over bevels and panel steps.
 					scanY += nTS.x * 0.35f;
+				#else
+					half edges = 0;
 				#endif
 
-				// Depth definition from the never-seen fixed light.
+				// Damped fill: silhouette presence only, lines carry the
+				// picture (the reference look's balance).
 				half relief = smoothstep((half)0.10, (half)0.95, dot(n, kReliefLightDir)) * _Relief;
-
-				// Silhouette and bevels catch the grazing view.
 				half rim = pow((half)saturate(1.0 - saturate(dot(n, viewDir))), _RimPower) * _RimStrength;
 
 				// The reading field: thin bright bands every 1/_ScanDensity
-				// metre of world height, duty cycle tuned at smoothstep.
+				// metre of world height.
 				half scan = smoothstep((half)0.90, (half)1.0, (half)frac(scanY * (float)_ScanDensity)) * _ScanStrength;
 
 				// The announcement band: period 4 m of world height,
@@ -282,62 +380,68 @@ Shader "OpenFrontier/Hologram Ship"
 
 				// The base film keeps the silhouette present even when
 				// every effect finishes a trough together.
-				half energy = (half)0.12 + relief + rim + scan + band;
+				half energy = (half)0.06 + relief + rim + edges + scan + band;
 
 				return half4(_BaseColor.rgb * (_Intensity * energy * flicker), 1.0);
 			}
 			ENDHLSL
 		}
 
-		// Vestigial depth pass: the URP pass table stays complete (ship
-		// holograms take no part in depth-based effects today; keep what
-		// would not surprise a future depth-prepassing camera). Writes no
-		// depth: additive transparent hides nothing.
+		// ---- PASS 3: the silhouette contour ----
+		//
+		// Inverted hull: the mesh grown along its normals, back faces
+		// only. The ring that pokes past the object's own silhouette
+		// shows against empty depth; everything else fails behind the
+		// solid from PASS 1. Metres, not object scale, so one width
+		// serves ships of every size.
 		Pass
 		{
-			Name "DepthOnly"
-			Tags { "LightMode" = "DepthOnly" }
+			Name "Outline"
 
+			Blend One One
 			ZWrite Off
-			ColorMask 0
-			Cull [_Cull]
+			ZTest LEqual
+			Cull Front
 
 			HLSLPROGRAM
-			#pragma target 2.0
-
-			#pragma vertex HoloDepthVertex
-			#pragma fragment HoloDepthFragment
+			#pragma vertex HoloOutlineVertex
+			#pragma fragment HoloOutlineFragment
 
 			#pragma multi_compile_instancing
 
-			struct DepthAttributes
+			struct Attributes
 			{
 				float4 positionOS : POSITION;
+				float3 normalOS   : NORMAL;
 				UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
 
-			struct DepthVaryings
+			struct Varyings
 			{
 				float4 positionCS : SV_POSITION;
 				UNITY_VERTEX_INPUT_INSTANCE_ID
 				UNITY_VERTEX_OUTPUT_STEREO
 			};
 
-			DepthVaryings HoloDepthVertex(DepthAttributes input)
+			Varyings HoloOutlineVertex(Attributes input)
 			{
-				DepthVaryings output = (DepthVaryings)0;
+				Varyings output = (Varyings)0;
 				UNITY_SETUP_INSTANCE_ID(input);
 				UNITY_TRANSFER_INSTANCE_ID(input, output);
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
-				output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+				float3 positionWS = TransformObjectToWorld(input.positionOS.xyz);
+				// Grow along the WORLD normal: metres, identical meaning
+				// on every ship regardless of authored import scale.
+				positionWS += TransformObjectToWorldDir(input.normalOS) * (float)_OutlineWidth;
+				output.positionCS = TransformWorldToHClip(positionWS);
 				return output;
 			}
 
-			half HoloDepthFragment(DepthVaryings input) : SV_TARGET
+			half4 HoloOutlineFragment(Varyings input) : SV_TARGET
 			{
 				UNITY_SETUP_INSTANCE_ID(input);
 				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
-				return input.positionCS.z;
+				return half4(_BaseColor.rgb * (_Intensity * _OutlineStrength), 1.0);
 			}
 			ENDHLSL
 		}
