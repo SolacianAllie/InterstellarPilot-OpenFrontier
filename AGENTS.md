@@ -163,6 +163,19 @@ prefabs DO live under Resources/**
 Resources/" and the user reversed it on 2026-11-09, so spawn-on-demand screens
 can `Resources.Load` their UI directly.
 
+- **Editor scripts cannot restructure a loaded prefab asset's hierarchy in
+  Unity 6000.6.** `SetParent` through a loaded asset root refuses with
+  *"Transform resides in a Prefab asset and cannot be set to prevent data
+  corruption"* (`AddComponent` on the root is fine; transforms are not).
+  Programmatic hierarchy edits go
+  `PrefabUtility.LoadPrefabContents` → edit → `SaveAsPrefabAsset` →
+  `UnloadPrefabContents` — existing nodes keep their fileIDs, so scene
+  override tables stay linked; new children get fresh IDs. And a script
+  must verify against the RELOADED file before printing success: the first
+  MenuScaffoldInstaller reported a complete spine Unity had actually
+  refused (deleted after verification, 2026-11-10). Logging records intents,
+  disk records facts.
+
 ## Planet visuals live INSIDE the `Planet*` shells (folded 2026-11-08)
 
 The planet prefab family was originally SPLIT in two: gameplay shells

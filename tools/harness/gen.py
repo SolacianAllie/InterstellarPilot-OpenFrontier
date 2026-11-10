@@ -31,6 +31,7 @@ import glob
 import json
 import os
 import re
+import shutil
 import sys
 import xml.etree.ElementTree as ET
 
@@ -421,6 +422,26 @@ def generate():
 
     for r in sorted(unresolved):
         sys.stderr.write('gen.py: WARNING unresolved asmdef reference: %s\n' % r)
+
+    # Purge obsolete generated projects. Source trees can vanish from disk
+    # (Assets/Editor emptied when one-shot tooling is removed, an asmdef
+    # deleted outright); a leftover csproj mis-counts check()'s project set
+    # and breaks its own build with CS2001 on the missing sources. The
+    # writer cleans: regen removes what it no longer generates, and --check
+    # (read-only) keeps failing loudly on stale sets instead.
+    keep = set()
+
+    for entry in projects:
+        keep.add(os.path.basename(os.path.dirname(entry[1])))
+
+    for obj in glob.glob(os.path.join(BUILD, '*')):
+        leaf = os.path.basename(obj)
+
+        if os.path.isdir(obj) and leaf not in keep and \
+                os.path.isfile(os.path.join(obj, leaf + '.csproj')):
+            shutil.rmtree(obj)
+            print('  purged orphaned generated project: %s (its sources '
+                  'left the tree)' % leaf)
 
     if not projects:
         print('  0 sections to generate: Assets carries no code '

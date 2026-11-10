@@ -23,7 +23,13 @@ compiles them as the `Assembly-CSharp` project too):
 
 Shared art + authoring blocks live under `Assets/OpenFrontier/Resources/Prefabs/UIX/`
 (`Fullscreen Menu.prefab` = blank screen scaffold: Backdrop/Background/Title/
-Subtitle/Separator/SafeAreaRoot/Version chrome) and `Assets/OpenFrontier/Textures/UIX/`.
+Subtitle/Separator/SafeAreaRoot/Version chrome — plus, since 2026-11-10, the
+**auto-layout spine** `SafeAreaRoot → Scroll → Viewport → Content`
+(ScrollRect clamped + RectMask2D + VerticalLayoutGroup + ContentSizeFitter;
+row spacing 8, padding 16/24) and `MenuScreen` + `CanvasGroup` baked on the
+root, so instances arrive pre-marked and fade-ready. `Background`/`Quit` sit
+*beside* the spine — fixed chrome, never rows; only children of `Content` are
+stacked) and `Assets/OpenFrontier/Textures/UIX/`.
 
 The Main Menu scene is currently a **single screen** (SidebarMenu with
 New Game / Load Game / Multiplayer / Tutorials / News / Options / Quit).
@@ -59,8 +65,10 @@ screen costs one prefab and zero code.
    self-contained, then break nothing that points at the scaffold — author
    content *inside the copy*, never edit the scaffold to special-case one
    screen (it is a template by agreement).
-2. **Mark it.** `Add Component → MenuScreen` on the screen root (CanvasGroup
-   needed only if you want fade).
+2. **Identity is baked.** `MenuScreen` + `CanvasGroup` ship on the scaffold
+   root (since 2026-11-10) — the instance arrives pre-marked and
+   fade-ready; no marking step. `EntryScreen` is ticked only on the screen
+   the scene opens on.
 3. **Deactivate it.** Save the scene with exactly the entry screen visible.
 4. **Wire in.** On the opener's button: `Add Component → OpenScreenButton`,
    drag the new screen root into `Target`. On the new screen's Back button:
@@ -118,7 +126,7 @@ exception, because propagation to that screen silently stops for that node.
 (Same doctrine as "never edit the scaffold to special-case one screen", from
 the other side.)
 
-### The auto-layout spine (stock uGUI; bakes into the scaffold body)
+### The auto-layout spine (landed 2026-11-10; constants live in the prefab)
 
 Under `SafeAreaRoot`, along the vertical the screens actually read:
 
