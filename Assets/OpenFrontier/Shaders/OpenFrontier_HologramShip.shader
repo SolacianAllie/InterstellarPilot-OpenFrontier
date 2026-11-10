@@ -16,9 +16,17 @@ Shader "OpenFrontier/Hologram Ship"
 	// OpenFrontier/Ship Surface keeps flying the hulls; this shader paints
 	// curated copies of the SAME hull meshes. The look is procedural:
 	//
-	//   - BODY FILL: a very low constant plus a damped relief shading
-	//     (fixed never-seen light vector), so the silhouette reads but
-	//     stays dark - the lines carry the picture.
+	//   - BODY FILL: a very low constant, so the silhouette reads but
+	//     stays dark - the lines carry the picture. There is NO
+	//     directional shading of any kind: the pass is unlit and reads
+	//     no light, no ambient, no probe - the ONLY direction it knows
+	//     is the camera's. An earlier draft folded a fixed
+	//     "never-seen light vector" into the fill; measured on the
+	//     first curated ship, its up-bias reproduced scene sun/sky
+	//     lighting ("rim seems based too much on scene lighting"), so
+	//     the term is gone (2026-11-10): depth information lives in
+	//     the traced EDGES and the fresnel is view-only, by
+	//     construction incapable of reacting to the scene.
 	//   - PANEL EDGES: the ships' own NORMAL MAPS are the blueprint.
 	//     Panel seams are normal discontinuities, so a 4-tap edge trace
 	//     over the bump map lights every seam and speckles every
@@ -113,10 +121,10 @@ Shader "OpenFrontier/Hologram Ship"
 		[HDR] _BaseColor("Hologram Colour", Color) = (0.25, 0.85, 1.0, 1.0)
 		_Intensity("Overall Intensity", Range(0, 4)) = 1.0
 
-		// The old fill weights, damped for the line-art balance.
+		// The grazing-surface shading, damped for the line-art balance.
+		// VIEW-ONLY by definition: fresnel needs nothing but the camera.
 		_RimPower("Rim Power", Range(0.25, 8)) = 2.4
 		_RimStrength("Rim Strength", Range(0, 4)) = 0.35
-		_Relief("Relief Depth", Range(0, 1)) = 0.25
 
 		_ScanDensity("Scanlines per Metre", Float) = 6.0
 		_ScanStrength("Scanline Strength", Range(0, 1)) = 0.25
@@ -176,7 +184,6 @@ Shader "OpenFrontier/Hologram Ship"
 		half _Intensity;
 		half _RimPower;
 		half _RimStrength;
-		half _Relief;
 		half _ScanDensity;
 		half _ScanStrength;
 		half _SweepSpeed;
@@ -190,10 +197,6 @@ Shader "OpenFrontier/Hologram Ship"
 		CBUFFER_END
 
 		TEXTURE2D(_BumpMap); SAMPLER(sampler_BumpMap);
-
-		// The one fixed relief vector: not a light, tuned once here,
-		// identical for every hull and every curated variant.
-		static const half3 kReliefLightDir = normalize(half3(-0.35, 0.85, 0.45));
 
 		// Pair-seam pickup for the edge tracer.
 		static const half kEdgeGain = 16.0;
@@ -361,9 +364,9 @@ Shader "OpenFrontier/Hologram Ship"
 					half edges = 0;
 				#endif
 
-				// Damped fill: silhouette presence only, lines carry the
-				// picture (the reference look's balance).
-				half relief = smoothstep((half)0.10, (half)0.95, dot(n, kReliefLightDir)) * _Relief;
+				// View-only rim: grazing surfaces brighten toward the
+				// camera edge. The camera is the only direction this
+				// shader knows - no world light exists to react to.
 				half rim = pow((half)saturate(1.0 - saturate(dot(n, viewDir))), _RimPower) * _RimStrength;
 
 				// The reading field: thin bright bands every 1/_ScanDensity
@@ -379,8 +382,9 @@ Shader "OpenFrontier/Hologram Ship"
 				half flicker = 1.0 - _Flicker * (half)(0.5 + 0.5 * sin((float)_OpenFrontierHoloTime * 13.7f) * sin((float)_OpenFrontierHoloTime * 31.3f + 1.9f));
 
 				// The base film keeps the silhouette present even when
-				// every effect finishes a trough together.
-				half energy = (half)0.06 + relief + rim + edges + scan + band;
+				// every effect finishes a trough together. No relief term:
+				// directional shading was measured out (see the header).
+				half energy = (half)0.06 + rim + edges + scan + band;
 
 				return half4(_BaseColor.rgb * (_Intensity * energy * flicker), 1.0);
 			}
