@@ -430,6 +430,8 @@ GameObject:
   - component: {fileID: 7351737710128361964}
   - component: {fileID: 199698163687317506}
   - component: {fileID: 3370641437629578402}
+  - component: {fileID: 6443329433342865563}
+  - component: {fileID: 2350226561204685891}
   m_Layer: 5
   m_Name: Fullscreen Menu
   m_TagString: Untagged
@@ -521,6 +523,32 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!114 &6443329433342865563
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6306376081190385229}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75829547dc46862573ee5ed4a677d01a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OpenFrontier.MainMenu.MenuScreen
+  EntryScreen: 0
+  FadeDuration: 0.15
+--- !u!225 &2350226561204685891
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6306376081190385229}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &6498787216882847422
 GameObject:
   m_ObjectHideFlags: 0
