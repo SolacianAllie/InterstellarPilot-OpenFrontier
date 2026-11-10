@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Hologram Ship Accent
+  m_Name: Hologram Ship Ranger
   m_Shader: {fileID: 4800000, guid: 5c7e2b1a9d044f387c2b6e91a3d05f47, type: 3}
   m_Parent: {fileID: 2100000, guid: d2a9f04b3c614e5798dcb0274e5fa163, type: 2}
   m_ModifiedSerializedProperties: 0
@@ -19,7 +19,7 @@ Material:
   m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses: []
-  m_LockedProperties:
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs: []

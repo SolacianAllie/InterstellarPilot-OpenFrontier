@@ -72,9 +72,27 @@ Shader "OpenFrontier/Hologram Ship"
 	// shadow caster (a hologram casts no shadow by definition) and no
 	// pipeline keyword forest. Additive over the loading screens'
 	// near-black backgrounds - adding is the honest blend for light
-	// that arrives, and it makes RT-side black edges invisible. The
-	// vestigial DepthOnly pass keeps the URP pass table complete for
-	// the day a depth-prepassing camera looks at a rig. The ACCENT
+	// that arrives, and it makes RT-side black edges invisible.
+	//
+	// SELF-OCCLUSION -- ZWrite ON, deliberately (2026-11-10)
+	//
+	// Additive WITHOUT depth is the X-ray trap: every part of the ship
+	// adds over every other part, and a complex hull reads as
+	// fluorescent gauze - wing panels visible through the fuselage,
+	// engine channel guts glowing through the nose (measured on the
+	// first curated ship: "ship is visible through itself").
+	// ZWrite On costs one depth write and buys nearest-shell-wins: the
+	// near hull hides the far hull. It still READS as light, because
+	// blending stays additive - only the depth behaves solid. Interior
+	// detail then shows exactly where it truly can - through open
+	// cockpit glass and engine mouths - and exhaust sections that
+	// genuinely stick past the silhouette still show. One curation
+	// note: near-coincident inner liners (cockpit pods directly behind
+	// shell panels) can faintly double-add at openings - fade or strip
+	// the liner per ship if it glares; a code fix would be machinery
+	// for one mesh. The vestigial DepthOnly pass below matters even
+	// less now, kept to complete the URP pass table for the day a
+	// depth-prepassing camera looks at a rig. The ACCENT
 	// material ("Hologram Ship Accent", a variant of the parent)
 	// serves curated highlights (wing strips, engine channels) that
 	// deserve their own finer shimmer.
@@ -170,7 +188,7 @@ Shader "OpenFrontier/Hologram Ship"
 			Tags { "LightMode" = "UniversalForward" }
 
 			Blend One One
-			ZWrite Off
+			ZWrite On
 			ZTest LEqual
 			Cull [_Cull]
 
