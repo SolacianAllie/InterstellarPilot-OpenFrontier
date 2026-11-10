@@ -779,3 +779,14 @@ exit 198) — the user performs all editor actions.
   invisible), and a disabled one costs nothing. The cloak grab now
   ships as `OpenFrontier.CloakBackdropCamera`; the feature and its
   installer are deleted.
+- **Shader `_Time` follows `Time.timeScale` — anything visible while
+  loading/paused must animate on a script-pushed global instead.**
+  Loading screens run while the world is frozen (`timeScale = 0`, the
+  legacy `LoadingScreenUI` shape), so scanlines/sweeps driven by
+  `_Time` freeze silently exactly where freeze is most likely — a
+  frozen hologram reads as a hang, not a pause.
+  `OpenFrontier/Hologram Ship` animates on the `_OpenFrontierHoloTime`
+  global, pushed every frame from `Time.unscaledTime` by `HoloSpinner`
+  (on the rig's ship holder; no instance anywhere = the global stays 0
+  and the drift stops visibly). The dock header's fps readout already
+  obeyed the same unscaled rule.

@@ -19,7 +19,11 @@ compiles them as the `Assembly-CSharp` project too):
 | `SelectableTextColor` | label tint follows Button states (+ `ExtraTargets` for multi-label buttons) | scene + scaffold |
 | `SelectableImageColor` | same, for embedded icon Graphics with their own ColorBlock | scene only |
 | `VersionLabel` | fills `Versioning.Version` (+ StageTag) | scene + scaffold |
+| `HologramShip` | marker: which prefabs count as holograms — the folder IS the manifest | **no users yet** |
+| `HoloSpinner` | smooth unscaled ship-holder spin + pushes `_OpenFrontierHoloTime` (hologram shaders' clock) | **no users yet** |
+| `LoadingSpinner` | simple loading screen's stepped shield-orbit pivot (legacy `LoadingWidgetUI` rebuild) | **no users yet** |
 | `OpenFrontier_UISaturation.shader` | greyscale-on-unfocused image tint | scene only |
+| `OpenFrontier_HologramShip.shader` | unlit additive hologram shell, normal-mapped depth; time rides `_OpenFrontierHoloTime` global, never `_Time` | **no users yet** |
 
 Shared art + authoring blocks live under `Assets/OpenFrontier/Resources/Prefabs/UIX/`
 (`Fullscreen Menu.prefab` = blank screen scaffold: Backdrop/Background/Title/
@@ -38,6 +42,41 @@ The Main Menu scene is currently a **single screen** (SidebarMenu with
 New Game / Load Game / Multiplayer / Tutorials / News / Options / Quit).
 Nothing switches yet — the two navigation scripts were built to make the
 first switch the cheapest possible editor operation.
+
+### Loading screens come FIRST — two of them (2026-11-10)
+
+The build order is deliberate: landing/boot flow before menu screens. Two
+clearly separate screens, neither a `MenuScreen` projector screen (no nav,
+no back-stack — nothing is interruptible on a loading screen), spine not
+applicable because nothing scrolls, still one `SafeAreaFitter` at the
+canvas root:
+
+- **SIMPLE** — black, a ship sprite, one shield segment orbiting it in
+  fixed `-60°`/0.1 s unscaled steps (`LoadingSpinner` on the pivot; the
+  legacy `LoadingWidgetUI` contract verbatim).
+- **HOLOGRAM** — a real 3D ship rotating as a projection, random tips
+  under it. The machinery:
+  - *Folder-manifest curation:* `Resources/Prefabs/Holograms/<ship>.prefab`,
+    root marked `HologramShip`. A prefab dropped in joins the rotation, one
+    removed leaves it — no inspector list anywhere, no runtime material
+    swapping (the prefab is the hologram, curated in prefab mode).
+  - *Material family:* ONE parent (`Resources/Materials/Hologram Ship.mat`,
+    `OpenFrontier/Hologram Ship`) holds every tuning; per-ship copies are
+    MATERIAL VARIANTS overriding only the normal map (`_BumpMap` on UV0 —
+    stock Lit's slot *and* keyword name, so extracted bindings survive the
+    shader swap; no bump = flat-normal fallback, never broken).
+    `Hologram Ship Accent` (a variant of the parent) is the highlight
+    shimmer for curated parts. Rings/grids are canvas art in the screens,
+    never prefab children — the shared look lives once.
+  - *Time:* `OpenFrontier/Hologram Ship` animates on the
+    `_OpenFrontierHoloTime` global, pushed every frame from
+    `Time.unscaledTime` by `HoloSpinner` — shader `_Time` follows
+    `timeScale`, and loading runs frozen, so `_Time` would freeze every
+    scanline silently exactly where a hang is least acceptable.
+  - *Assignment (proposed, confirm at build):* SIMPLE for the cold boot
+    (models may not be loaded yet, and it is the heaviest frame spike),
+    HOLOGRAM for every in-session load once ships exist — and the same
+    scene serves as the future additive mid-game load overlay.
 
 ## The three concepts (the whole navigation system)
 
