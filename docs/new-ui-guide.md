@@ -163,12 +163,17 @@ block prefabs instead of sixty screens × their elements — that delta IS the
 
 ### Real auto-population (data → rows) when earned
 
-The first list screen (Options is the likely first — a save list is close
-behind) earns a small ListPopulator: row prefab + data hook, instantiating
-rows into the Content spine at enable; the layout spine means even
-runtime-spawned rows need zero layout
-code. Until then, placeholder rows in the scene are the workflow — WYSIWYG,
-no authoring pass through logs.
+Decided 2026-11-10: **static selections stay hand-authored blocks.** The
+Singleplayer screen's card trio is below the break-even — dragging three
+Card instances is faster than a populator and keeps edit-mode truth
+(WYSIWYG, no hidden runtime-spawn state). A ListPopulator lands WITH the
+first genuinely runtime-fed list — the Load Game screen's save slots, whose
+data source is whatever the save system hands over — and only that one
+earns it. When built: row prefab + data hook, instantiating rows into the
+Content spine at enable; the spine means runtime-spawned rows need zero
+layout code, and a static-entries mode is a small proven-pattern extension
+if a static list ever outgrows hand authoring (before that, the answer is
+no).
 
 ### What NOT to build
 
