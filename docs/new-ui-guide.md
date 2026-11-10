@@ -24,12 +24,15 @@ compiles them as the `Assembly-CSharp` project too):
 Shared art + authoring blocks live under `Assets/OpenFrontier/Resources/Prefabs/UIX/`
 (`Fullscreen Menu.prefab` = blank screen scaffold: Backdrop/Background/Title/
 Subtitle/Separator/SafeAreaRoot/Version chrome — plus, since 2026-11-10, the
-**auto-layout spine** `SafeAreaRoot → Scroll → Viewport → Content`
+**auto-layout spine** `Body → Scroll → Viewport → Content`
 (ScrollRect clamped + RectMask2D + VerticalLayoutGroup + ContentSizeFitter;
 row spacing 8, padding 16/24) and `MenuScreen` + `CanvasGroup` baked on the
 root, so instances arrive pre-marked and fade-ready. `Background`/`Quit` sit
 *beside* the spine — fixed chrome, never rows; only children of `Content` are
-stacked) and `Assets/OpenFrontier/Textures/UIX/`.
+stacked. There is NO fitter inside the prefab: every screen clamps through
+its host canvas' single `SafeAreaRoot` — nested fitters double-apply the
+same fractions and shrink margins twice, invisible until a notched device)
+and `Assets/OpenFrontier/Textures/UIX/`.
 
 The Main Menu scene is currently a **single screen** (SidebarMenu with
 New Game / Load Game / Multiplayer / Tutorials / News / Options / Quit).
@@ -131,8 +134,8 @@ the other side.)
 Under `SafeAreaRoot`, along the vertical the screens actually read:
 
 ```
-SafeAreaRoot            SafeAreaFitter (already there)
- └─ Scroll              ScrollRect + Mask (viewport clips; scrolled on phones)
+Body (no fitter — the host canvas' SafeAreaRoot clamps everything above)
+ └─ Scroll              ScrollRect (viewport clips; scrolled on phones)
      └─ Content         VerticalLayoutGroup (child force expand) + ContentSizeFitter
          ├─ MenuButton  (block instance)
          ├─ MenuButton  ...
@@ -225,3 +228,11 @@ Add these the first time a need appears, in this order; not before.
 - Editor log is the real gate for loose scripts; harness is necessary-not-sufficient.
 - Mobile-first: nothing per-frame that a deactivated sibling sweep does;
   the whole system's steady-state cost is zero (inactive GOs build nothing).
+- **One `SafeAreaFitter` per canvas, at the canvas-root `SafeAreaRoot`.**
+  Screens never carry their own: the fitter writes `Screen.safeArea` as
+  fractions of its PARENT-relative anchors (safe px ÷ screen px), so a
+  nested fitter re-applies identical fractions inside an already-inset
+  parent — margins shrink twice. Notchless devices and the editor view show
+  nothing (zero insets are identity both ways); notched/folded play sessions
+  are where it bites. The scaffold's inner fitter was removed 2026-11-10
+  when the screens unified under the menu canvas' root.

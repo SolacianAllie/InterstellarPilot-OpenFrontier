@@ -175,6 +175,15 @@ can `Resources.Load` their UI directly.
   MenuScaffoldInstaller reported a complete spine Unity had actually
   refused (deleted after verification, 2026-11-10). Logging records intents,
   disk records facts.
+- **One `SafeAreaFitter` per canvas, at the canvas-root `SafeAreaRoot`.**
+  Its apply divides screen-space insets by the screen size and writes them
+  as PARENT-relative anchor fractions — a second fitter nested inside an
+  already-clamped subtree re-applies the same fractions (double shrink).
+  The failure is silent on notchless devices and absent in EDIT views;
+  only notched/folded play sessions surface it. Screens unified under the
+  menu canvas' root fitter (2026-11-10): the prefab's inner one comes out,
+  and a future solo-spawned screen's host canvas carries exactly one
+  fitter of its own.
 
 ## Planet visuals live INSIDE the `Planet*` shells (folded 2026-11-08)
 
