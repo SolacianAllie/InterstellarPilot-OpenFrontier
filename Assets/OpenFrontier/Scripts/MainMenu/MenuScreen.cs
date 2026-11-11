@@ -29,7 +29,7 @@ namespace OpenFrontier.MainMenu
 	/// so there is no per-frame cost while a screen rests.
 	/// </summary>
 	[DisallowMultipleComponent]
-	public class MenuScreen : MonoBehaviour
+	public class MenuScreen : MonoBehaviour, ICancelHandler
 	{
 		[Tooltip("Checked: at play start every sibling menu screen is closed so this one is the only one active. Mark the screen the scene opens on; the scene's saved visible state supplies the entry screen itself.")]
 		public bool EntryScreen;
@@ -38,8 +38,11 @@ namespace OpenFrontier.MainMenu
 		[Min(0f)]
 		public float FadeDuration = 0.15f;
 
-		[Tooltip("Optional defacto default: the button focused when this page opens while the controller is the scheme actively in use (the player's last input was a gamepad's), or when a first controller input takes over an unlit page. Empty = the page's first enabled, interactable button in hierarchy order. Set explicitly to choose a different anchor; runtime-created rows cannot be referenced, so pick a static one (e.g. Back). Touch, mouse and keyboard use clear focus instead of lighting it.")]
+		[Tooltip("Optional defacto default: the button focused when this page opens while the controller is the scheme actively in use (the player's last input was a gamepad's), or when a first controller input takes over an unlit page. Empty = the page's first enabled, interactable BUTTON in hierarchy order. Set explicitly to choose a different anchor; runtime-created rows cannot be referenced, so pick a static one (e.g. Back). Touch, mouse and keyboard use clear focus instead of lighting it.")]
 		public Selectable FirstSelection;
+
+		[Tooltip("Optional back button: the UI module's Cancel action (Xbox B / PS Circle) auto-presses it whenever anything on this page is focused and the player presses Cancel. Drag the page's back button here. Empty = Cancel does nothing on this page (and a first B on an unlit page lights the default instead of backing out - takeover lights before it navigates).")]
+		public Button BackButton;
 
 		private CanvasGroup group;
 
@@ -119,6 +122,31 @@ namespace OpenFrontier.MainMenu
 			}
 
 			SelectFirstIfIdle();
+		}
+
+		/// <summary>
+		/// Cancel = back. The UI module raises cancel only against something
+		/// SELECTED, and the event bubbles up the hierarchy from that button -
+		/// which is why this lives on the screen root: the focused button never
+		/// consumes it (uGUI Buttons have no cancel handler), so the walk
+		/// reaches this MenuScreen. Under the scheme model a controller
+		/// session always has a selection (pages light their default on open
+		/// and on takeover), so B always reaches here when it matters; the
+		/// unlit-page case stays takeover-light-the-default. B/Circle is one
+		/// binding - the module's Cancel action covers every pad layout.
+		/// </summary>
+		public void OnCancel(BaseEventData eventData)
+		{
+			if (BackButton == null || !BackButton.interactable)
+			{
+				return;
+			}
+
+			// onClick.Invoke runs the same listeners a physical click would -
+			// the serialized Hide/Show pair, an OpenScreenButton's switch -
+			// without re-running pointer press visuals the pad never produced.
+			eventData.Use();
+			BackButton.onClick.Invoke();
 		}
 
 		/// <summary>
@@ -219,7 +247,9 @@ namespace OpenFrontier.MainMenu
 
 		/// <summary>
 		/// Auto-anchor when no FirstSelection was authored: the first active,
-		/// interactable Selectable in the page's hierarchy order. Runs once per
+		/// interactable Selectable in the page's hierarchy order, preferring
+		/// BUTTONS - a scrollbar or other non-button selectable that happens
+		/// to sort first is never the defacto default. Runs once per
 		/// establishment - on open, on a scheme flip, or on a held-navigation
 		/// frame - always behind the scheme/selection gates, so the single
 		/// allocation of the child scan never touches a phone.
@@ -227,6 +257,7 @@ namespace OpenFrontier.MainMenu
 		private Selectable FindFirstSelectable()
 		{
 			Selectable[] candidates = GetComponentsInChildren<Selectable>(false);
+			Selectable firstNonButton = null;
 
 			for (int i = 0; i < candidates.Length; i++)
 			{
@@ -234,11 +265,19 @@ namespace OpenFrontier.MainMenu
 
 				if (candidate.isActiveAndEnabled && candidate.interactable)
 				{
-					return candidate;
+					if (candidate is Button)
+					{
+						return candidate;
+					}
+
+					if (firstNonButton == null)
+					{
+						firstNonButton = candidate;
+					}
 				}
 			}
 
-			return null;
+			return firstNonButton;
 		}
 
 		private void DeactivateSiblingScreens()
