@@ -19,11 +19,11 @@ compiles them as the `Assembly-CSharp` project too):
 | `SelectableTextColor` | label tint follows Button states (+ `ExtraTargets` for multi-label buttons) | scene + scaffold |
 | `SelectableImageColor` | same, for embedded icon Graphics with their own ColorBlock | scene only |
 | `VersionLabel` | fills `Versioning.Version` (+ StageTag) | scene + scaffold |
-| `HologramShip` | marker: which prefabs count as holograms — the folder IS the manifest | **no users yet** |
-| `HoloSpinner` | smooth unscaled ship-holder spin + pushes `_OpenFrontierHoloTime` (hologram shaders' clock) | **no users yet** |
+| `HologramShip` | marker: which prefabs count as holograms — the folder IS the manifest | `RangerHOLO.prefab` (the manifest's first member) |
+| `HoloSpinner` | smooth unscaled ship-holder spin + pushes `_OpenFrontierHoloTime` (hologram shaders' clock) | `RangerHOLO` rig, instanced by the Main Menu scene |
 | `LoadingSpinner` | simple loading screen's stepped shield-orbit pivot (legacy `LoadingWidgetUI` rebuild) | **no users yet** |
 | `OpenFrontier_UISaturation.shader` | greyscale-on-unfocused image tint | scene only |
-| `OpenFrontier_HologramShip.shader` | unlit additive hologram shell, normal-mapped depth; time rides `_OpenFrontierHoloTime` global, never `_Time` | **no users yet** |
+| `OpenFrontier_HologramShip.shader` | unlit additive hologram shell (bump-traced panel seams + geometric fold edge glow + drifting scan field); time rides `_OpenFrontierHoloTime` global, never `_Time` | parent + Ranger/Overlord variants, live on the loading rig |
 
 Shared art + authoring blocks live under `Assets/OpenFrontier/Resources/Prefabs/UIX/`
 (`Fullscreen Menu.prefab` = blank screen scaffold: Backdrop/Background/Title/
@@ -68,6 +68,16 @@ canvas root:
     `Hologram Ship Accent` (a variant of the parent) is the highlight
     shimmer for curated parts. Rings/grids are canvas art in the screens,
     never prefab children — the shared look lives once.
+  - *The look (2026-11-10 reference):* a dim fill the lines carry —
+    panel seams traced bright from the ships' own normal maps (4-tap
+    bump tracer), folds and silhouette lit by a geometric edge glow
+    (a screen-space derivative of the hull normal: light drawn ON
+    the mesh, no bump needed — the grown-ring contour that drew
+    BEYOND the hull was measured bad and retired same-day), and a
+    scan field crawling upward on the holo clock. A solid-depth
+    prepass under the additive colour keeps it light-behaves-like-a-
+    solid-object, never X-ray. Full measured saga in the shader
+    header.
   - *Time:* `OpenFrontier/Hologram Ship` animates on the
     `_OpenFrontierHoloTime` global, pushed every frame from
     `Time.unscaledTime` by `HoloSpinner` — shader `_Time` follows

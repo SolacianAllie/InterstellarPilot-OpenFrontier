@@ -275,6 +275,15 @@ this session than any bug did. Concretely, on one feature:
 A cheap read is minutes. A wrong assumption costs a two-person rebuild and a
 play session, and leaves a log that cannot explain itself.
 
+- **Holo screen-space edge detector postmortem (RenderGraph renderer feature, deleted same-day 2026-11-10 - the lessons stay):**
+  - `Blit.hlsl`'s `TEXTURE2D_X` needs URP's `ShaderLibrary/Core.hlsl` included BEFORE it (the exact order of URP's own `Blit.shader`) - a blit-only include dies on vulkan with "unrecognized identifier".
+  - Every shader `HLSLPROGRAM` compiles alone: structs/vertices are never shared across passes (borrow PASS 2's `Varyings` in PASS 4 = "unrecognized identifier 'Varyings'").
+  - `line` (and `triangle`, `point`, ...) is an HLSL RESERVED WORD - never a variable name ("unexpected token 'line'").
+  - `Object.GetInstanceID()` is obsolete-as-error in 6000.6 (CS0619); a renderer feature's `m_RendererFeatureMap` wants the SUB-ASSET's local file id from `AssetDatabase.TryGetGUIDAndLocalFileIdentifier(feature, out var guid, out long localId)`, not an instance/id/entity value.
+  - A `TextureHandle -> RTHandle` cast is valid ONLY inside `SetRenderFunc` - storing the implicit cast in pass-data at record time throws `Current Render Graph Resource Registry is not set` EVERY FRAME in play. Shipped shape (SSR TemporalFiltering): `TextureHandle` in pass data; `Blitter.BlitTexture(cmd, handle, Vector2.one, material, pass)` casts inside.
+  - A ScriptableRendererData feature added through the API must be a sub-asset (`AddObjectToAsset`) with the `m_RendererFeatures`/`m_RendererFeatureMap` array pair grown together - hand-editing the renderer asset's YAML to remove one is the same surgery in reverse (block + pair entries).
+  - The feature itself was cut (loading-screen-only scope did not earn the failure surface); the hologram's mesh ring (PASS 3) ships instead - full saga in the hologram shader header.
+
 ## The editor's focus-in segfault is Unity's, not ours
 
 `signo:11 code:1`, 33 frames, all native, zero managed. Identical twice:
@@ -785,8 +794,37 @@ exit 198) — the user performs all editor actions.
   legacy `LoadingScreenUI` shape), so scanlines/sweeps driven by
   `_Time` freeze silently exactly where freeze is most likely — a
   frozen hologram reads as a hang, not a pause.
-  `OpenFrontier/Hologram Ship` animates on the `_OpenFrontierHoloTime`
-  global, pushed every frame from `Time.unscaledTime` by `HoloSpinner`
-  (on the rig's ship holder; no instance anywhere = the global stays 0
-  and the drift stops visibly). The dock header's fps readout already
+  `OpenFrontier/Hologram Ship` animates on the
+  `_OpenFrontierHoloTime` global, pushed every frame from
+  `Time.unscaledTime` by `HologramShip` (the marker component on
+  every hologram prefab - it is also the clock: multiple pushers
+  are harmless same-frame writes; no instance anywhere = the
+  global stays 0 and the drift stops visibly). The turntable is a
+  separate component: `HoloSpinner` only spins (unscaled, yaw-only)
+  and never touches the shader clock. The dock header's fps readout already
   obeyed the same unscaled rule.
+
+## Reasoning routing: gauge the question before spending tokens
+
+Every model call costs the user context and usage. Judge how much reasoning a
+request actually needs BEFORE working, then take the cheapest capable route:
+
+- **Lookup / search / "where is X" / trivial factual / one-line mechanical
+  edit** → do NOT reason inline. Spawn the `quick` subagent (low reasoning,
+  step-capped; defined in `~/.config/opencode/agents/quick.md`) with a
+  self-contained prompt: the goal, the relevant paths, and exactly what the
+  answer must contain.
+- **Exploratory sweeps across many files** (mapping a subsystem, finding all
+  usages of something) → spawn the built-in `explore` subagent instead of
+  grepping and reading in the main thread.
+- **Hard diagnosis, design, multi-step changes** → full reasoning in the main
+  session, or the `deep` subagent for isolated heavy analysis.
+- Launch independent subagents in parallel.
+- When the user says "cheap", "fast", or "save usage", always prefer the
+  low-reasoning route even if slower to be certain.
+- If the harness has no subagent tooling, apply the same principle inline:
+  grep first, read only the lines needed (offset/limit, never whole large
+  files), and never re-verify facts the user or this file already states.
+- Keep subagent prompts self-contained so the child never has to rediscover
+  context. The main session's tokens are the expensive ones — spend them on
+  judgment, not on bulk reading.
