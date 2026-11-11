@@ -1,5 +1,8 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 namespace OpenFrontier.MainMenu
 {
@@ -35,6 +38,9 @@ namespace OpenFrontier.MainMenu
 		[Min(0f)]
 		public float FadeDuration = 0.15f;
 
+		[Tooltip("Optional focus anchor when this page shows while a gamepad is present and nothing is selected - Navigate needs a selected Selectable to walk from. Empty = the first enabled, interactable button on the page, in hierarchy order. Set explicitly to choose a different anchor; runtime-created rows cannot be referenced, so pick a static one (e.g. Back). Touch-only devices never auto-select, so nothing changes on phones.")]
+		public Selectable FirstSelection;
+
 		private CanvasGroup group;
 
 		private void Awake()
@@ -52,6 +58,7 @@ namespace OpenFrontier.MainMenu
 			gameObject.SetActive(true);
 			DeactivateSiblingScreens();
 			StopAllCoroutines();
+			SelectFirstIfIdle();
 
 			if (group != null)
 			{
@@ -73,6 +80,69 @@ namespace OpenFrontier.MainMenu
 		public void Hide()
 		{
 			gameObject.SetActive(false);
+		}
+
+		private void Start()
+		{
+			// Entry screen only: boot straight into the menu, grab the stick,
+			// and the first Navigate press already has somewhere to walk from.
+			if (EntryScreen)
+			{
+				SelectFirstIfIdle();
+			}
+		}
+
+		/// <summary>
+		/// Focuses the page's first button when a gamepad is present and nothing
+		/// is selected. The sibling walk just before this in Show() may have
+		/// cleared the selection (deactivated pages lose it), which is exactly
+		/// the state this repairs - it must run AFTER that walk, never before.
+		/// The gamepad check comes before any work: on touch-only devices this
+		/// is a two-null-test no-op, never a hierarchy scan.
+		/// </summary>
+		private void SelectFirstIfIdle()
+		{
+			EventSystem eventSystem = EventSystem.current;
+
+			if (eventSystem == null || eventSystem.currentSelectedGameObject != null)
+			{
+				return;
+			}
+
+			if (Gamepad.current == null)
+			{
+				return;
+			}
+
+			Selectable target = FirstSelection != null ? FirstSelection : FindFirstSelectable();
+
+			if (target != null)
+			{
+				eventSystem.SetSelectedGameObject(target.gameObject);
+			}
+		}
+
+		/// <summary>
+		/// Auto-anchor when no FirstSelection was authored: the first active,
+		/// interactable Selectable in the page's hierarchy order. Runs at most
+		/// once per Show()/entry, gamepad-only - the single allocation of the
+		/// child scan never touches a phone.
+		/// </summary>
+		private Selectable FindFirstSelectable()
+		{
+			Selectable[] candidates = GetComponentsInChildren<Selectable>(false);
+
+			for (int i = 0; i < candidates.Length; i++)
+			{
+				Selectable candidate = candidates[i];
+
+				if (candidate.isActiveAndEnabled && candidate.interactable)
+				{
+					return candidate;
+				}
+			}
+
+			return null;
 		}
 
 		private void DeactivateSiblingScreens()

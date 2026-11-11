@@ -43,8 +43,12 @@ namespace OpenFrontier.MainMenu
 				return;
 			}
 
-			Target.Show();
+			// Hide FIRST: hiding the own page deactivates it, which clears the
+			// EventSystem selection - so a gamepad focus Target.Show() would
+			// set is wiped one statement later if Show ran first. This order
+			// lets the focus survive the switch (see MenuScreen.FirstSelection).
 			FindOwnScreen()?.Hide();
+			Target.Show();
 		}
 
 		/// <summary>

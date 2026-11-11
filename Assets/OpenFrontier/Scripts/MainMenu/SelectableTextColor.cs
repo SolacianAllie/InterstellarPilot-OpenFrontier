@@ -101,6 +101,22 @@ namespace OpenFrontier.MainMenu
 		{
 			// Re-assert the current state instantly: no fade-in from whatever color
 			// the label was last left with.
+			//
+			// But never TRUST the flags across an enable. The page this button
+			// lives on gets deactivated while hidden, and Unity clears
+			// EventSystem selection for a deactivated object WITHOUT running
+			// OnDeselect on its handlers - so a stale isSelected survived the
+			// hide/show round trip and the label came back tinted with the
+			// selected color (the "black text after returning" bug). Recompute
+			// every flag from live state: selection from the EventSystem,
+			// pointer flags from nothing (a page re-appearing under a resting
+			// cursor reads Normal until the next pointer event, which is also
+			// correct for touch, where hover does not exist).
+			pointerInside = false;
+			pointerDown = false;
+			EventSystem eventSystem = EventSystem.current;
+			GameObject selected = eventSystem != null ? eventSystem.currentSelectedGameObject : null;
+			isSelected = selected != null && selected == gameObject && selected.activeInHierarchy;
 			cachedInteractable = selectable == null || selectable.interactable;
 			Apply(ComputeState(), instant: true);
 		}
