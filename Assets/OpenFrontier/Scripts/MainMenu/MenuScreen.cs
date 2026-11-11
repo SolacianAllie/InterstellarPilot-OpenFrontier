@@ -38,7 +38,7 @@ namespace OpenFrontier.MainMenu
 		[Min(0f)]
 		public float FadeDuration = 0.15f;
 
-		[Tooltip("Optional defacto default: the button focused when this page opens while a gamepad is present (or when focus is re-established on first navigation input). Empty = the page's first enabled, interactable button in hierarchy order. Set explicitly to choose a different anchor; runtime-created rows cannot be referenced, so pick a static one (e.g. Back). Touch-only devices never auto-select.")]
+		[Tooltip("Optional defacto default: the button focused when this page opens while the controller is the scheme actively in use (the player's last input was a gamepad's), or when a first controller input takes over an unlit page. Empty = the page's first enabled, interactable button in hierarchy order. Set explicitly to choose a different anchor; runtime-created rows cannot be referenced, so pick a static one (e.g. Back). Touch, mouse and keyboard use clear focus instead of lighting it.")]
 		public Selectable FirstSelection;
 
 		private CanvasGroup group;
@@ -46,6 +46,16 @@ namespace OpenFrontier.MainMenu
 		private void Awake()
 		{
 			group = GetComponent<CanvasGroup>();
+		}
+
+		private void OnEnable()
+		{
+			ActiveInput.SchemeChanged += OnSchemeChanged;
+		}
+
+		private void OnDisable()
+		{
+			ActiveInput.SchemeChanged -= OnSchemeChanged;
 		}
 
 		/// <summary>
@@ -85,7 +95,8 @@ namespace OpenFrontier.MainMenu
 		private void Start()
 		{
 			// Entry screen only: boot straight into the menu, and the default
-			// is already lit before the player's first input.
+			// is already lit before the player's first input - when the
+			// controller is the scheme in use.
 			if (EntryScreen)
 			{
 				SelectFirstIfIdle();
@@ -93,15 +104,33 @@ namespace OpenFrontier.MainMenu
 		}
 
 		/// <summary>
-		/// The defacto default: when a gamepad is present, an opening page
-		/// selects its anchor (or first button) immediately, so a single stick
-		/// push navigates from a known place instead of first having to WAKE
-		/// the menu - which is what the pure input-watching variant required,
-		/// and short taps could be missed entirely. The sibling walk just
-		/// before this in Show() may have cleared the selection (deactivated
-		/// pages lose it), which is exactly the state this repairs - it must
-		/// run AFTER that walk, never before. Touch-only devices fail the
-		/// gamepad check and never auto-select.
+		/// The controller taking over lights the current page's default right
+		/// away: ANY controller input counts, not just navigation. Safe from
+		/// accidental activation - Input System action callbacks (the module's
+		/// Submit/Cancel) run before MonoBehaviour Update, so by the time this
+		/// flip lands, the frame's Submit already resolved against an empty
+		/// selection; a single A press lights the default without clicking it.
+		/// </summary>
+		private void OnSchemeChanged(InputScheme scheme)
+		{
+			if (scheme != InputScheme.Gamepad)
+			{
+				return;
+			}
+
+			SelectFirstIfIdle();
+		}
+
+		/// <summary>
+		/// The defacto default: when the CONTROLLER is the scheme actively in
+		/// use - the player's last observed input was a gamepad's, not merely
+		/// that a gamepad is connected - an opening page selects its anchor
+		/// (or first button) immediately, so a single stick push navigates
+		/// from a known place. The sibling walk just before this in Show() may
+		/// have cleared the selection (deactivated pages lose it), which is
+		/// exactly the state this repairs - it must run AFTER that walk, never
+		/// before. Every other scheme (and the boot-time Unknown) leaves pages
+		/// unlit: touch, mouse and keyboard never auto-select.
 		/// </summary>
 		private void SelectFirstIfIdle()
 		{
@@ -112,7 +141,7 @@ namespace OpenFrontier.MainMenu
 				return;
 			}
 
-			if (Gamepad.current == null)
+			if (ActiveInput.Scheme != InputScheme.Gamepad)
 			{
 				return;
 			}
@@ -127,14 +156,12 @@ namespace OpenFrontier.MainMenu
 
 		private void Update()
 		{
-			// Backstop, not the primary path: Show()/Start() establish the
-			// default the moment a page opens (SelectFirstIfIdle). This only
-			// matters when the selection is lost anyway - a controller that
-			// connects after boot, a page whose anchor was deactivated by
-			// something else - and re-grabs it on the next held navigation
-			// input. The selection gate comes first: when anything is focused
-			// this is a single-null-test no-op, and on touch-only devices the
-			// input check is two more.
+			// Establisher for held NAVIGATION input (stick/d-pad, arrows/WASD)
+			// on an unlit page - the scheme-flip event (OnSchemeChanged)
+			// covers every other first controller input. Runs only while this
+			// page is active, and the selection gate comes first: when
+			// anything is focused this is a single-null-test no-op, and on
+			// devices without those controls the input check is two more.
 			EventSystem eventSystem = EventSystem.current;
 
 			if (eventSystem == null || eventSystem.currentSelectedGameObject != null)
@@ -193,9 +220,9 @@ namespace OpenFrontier.MainMenu
 		/// <summary>
 		/// Auto-anchor when no FirstSelection was authored: the first active,
 		/// interactable Selectable in the page's hierarchy order. Runs once per
-		/// establishment - on open, or on the backstop frame - always behind
-		/// the gamepad check, so the single allocation of the child scan never
-		/// touches a phone.
+		/// establishment - on open, on a scheme flip, or on a held-navigation
+		/// frame - always behind the scheme/selection gates, so the single
+		/// allocation of the child scan never touches a phone.
 		/// </summary>
 		private Selectable FindFirstSelectable()
 		{
