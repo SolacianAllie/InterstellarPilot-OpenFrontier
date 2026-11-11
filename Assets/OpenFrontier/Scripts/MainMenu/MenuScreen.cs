@@ -38,7 +38,7 @@ namespace OpenFrontier.MainMenu
 		[Min(0f)]
 		public float FadeDuration = 0.15f;
 
-		[Tooltip("Optional focus anchor for gamepad/keyboard navigation. Pages open with nothing selected; the first navigation input while nothing is selected (stick, d-pad, arrows, WASD) focuses this button - or the page's first enabled, interactable button in hierarchy order if empty. Set explicitly to choose a different anchor; runtime-created rows cannot be referenced, so pick a static one (e.g. Back). Touch-only devices never auto-select.")]
+		[Tooltip("Optional defacto default: the button focused when this page opens while a gamepad is present (or when focus is re-established on first navigation input). Empty = the page's first enabled, interactable button in hierarchy order. Set explicitly to choose a different anchor; runtime-created rows cannot be referenced, so pick a static one (e.g. Back). Touch-only devices never auto-select.")]
 		public Selectable FirstSelection;
 
 		private CanvasGroup group;
@@ -58,6 +58,7 @@ namespace OpenFrontier.MainMenu
 			gameObject.SetActive(true);
 			DeactivateSiblingScreens();
 			StopAllCoroutines();
+			SelectFirstIfIdle();
 
 			if (group != null)
 			{
@@ -81,15 +82,59 @@ namespace OpenFrontier.MainMenu
 			gameObject.SetActive(false);
 		}
 
+		private void Start()
+		{
+			// Entry screen only: boot straight into the menu, and the default
+			// is already lit before the player's first input.
+			if (EntryScreen)
+			{
+				SelectFirstIfIdle();
+			}
+		}
+
+		/// <summary>
+		/// The defacto default: when a gamepad is present, an opening page
+		/// selects its anchor (or first button) immediately, so a single stick
+		/// push navigates from a known place instead of first having to WAKE
+		/// the menu - which is what the pure input-watching variant required,
+		/// and short taps could be missed entirely. The sibling walk just
+		/// before this in Show() may have cleared the selection (deactivated
+		/// pages lose it), which is exactly the state this repairs - it must
+		/// run AFTER that walk, never before. Touch-only devices fail the
+		/// gamepad check and never auto-select.
+		/// </summary>
+		private void SelectFirstIfIdle()
+		{
+			EventSystem eventSystem = EventSystem.current;
+
+			if (eventSystem == null || eventSystem.currentSelectedGameObject != null)
+			{
+				return;
+			}
+
+			if (Gamepad.current == null)
+			{
+				return;
+			}
+
+			Selectable target = FirstSelection != null ? FirstSelection : FindFirstSelectable();
+
+			if (target != null)
+			{
+				eventSystem.SetSelectedGameObject(target.gameObject);
+			}
+		}
+
 		private void Update()
 		{
-			// Idle-until-input focus. Every page opens with NOTHING selected, on
-			// every device - a touch phone never wants a fake highlight, and a
-			// gamepad session only earns one once the player actually pushes a
-			// navigation control. This runs only while the page is active
-			// (hidden pages have no Update), and the selection gate comes
-			// first: whenever something is focused this is a single-null-test
-			// no-op, and on touch-only devices the input check is two more.
+			// Backstop, not the primary path: Show()/Start() establish the
+			// default the moment a page opens (SelectFirstIfIdle). This only
+			// matters when the selection is lost anyway - a controller that
+			// connects after boot, a page whose anchor was deactivated by
+			// something else - and re-grabs it on the next held navigation
+			// input. The selection gate comes first: when anything is focused
+			// this is a single-null-test no-op, and on touch-only devices the
+			// input check is two more.
 			EventSystem eventSystem = EventSystem.current;
 
 			if (eventSystem == null || eventSystem.currentSelectedGameObject != null)
@@ -147,10 +192,10 @@ namespace OpenFrontier.MainMenu
 
 		/// <summary>
 		/// Auto-anchor when no FirstSelection was authored: the first active,
-		/// interactable Selectable in the page's hierarchy order. Runs once, on
-		/// the frame the highlight is established, only while a navigation
-		/// control is actually held - the single allocation of the child scan
-		/// never touches a phone.
+		/// interactable Selectable in the page's hierarchy order. Runs once per
+		/// establishment - on open, or on the backstop frame - always behind
+		/// the gamepad check, so the single allocation of the child scan never
+		/// touches a phone.
 		/// </summary>
 		private Selectable FindFirstSelectable()
 		{

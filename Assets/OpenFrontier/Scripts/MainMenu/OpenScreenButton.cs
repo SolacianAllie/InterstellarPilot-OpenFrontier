@@ -43,12 +43,12 @@ namespace OpenFrontier.MainMenu
 				return;
 			}
 
-			// Hide FIRST: deactivating the own page clears the EventSystem
-			// selection, so the target page always opens idle - nothing is
-			// highlighted until the first navigation input establishes focus
-			// (see MenuScreen.FirstSelection). DeactivateSiblingScreens covers
-			// same-parent siblings; solo-spawned screens on other canvases
-			// need this own-screen Hide.
+			// Hide FIRST: pages establish their gamepad focus inside Show()
+			// (MenuScreen.SelectFirstIfIdle), and Show()'s own sibling walk
+			// deactivates this page anyway when both live under the same
+			// parent. Hiding up front keeps the end state identical for
+			// solo-spawned screens on other canvases, which the sibling walk
+			// cannot reach.
 			FindOwnScreen()?.Hide();
 			Target.Show();
 		}
