@@ -47,7 +47,7 @@ namespace OpenFrontier
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
 		private static void SpawnTracker()
 		{
-			if (Object.FindFirstObjectByType<InputSchemeTracker>() != null)
+			if (Object.FindAnyObjectByType<InputSchemeTracker>() != null)
 			{
 				return;
 			}

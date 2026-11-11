@@ -73,10 +73,32 @@ namespace OpenFrontier
 				&& (gamepad.dpad.ReadValue().sqrMagnitude > 0.04f
 					|| gamepad.leftStick.ReadValue().sqrMagnitude > 0.04f
 					|| gamepad.rightStick.ReadValue().sqrMagnitude > 0.04f
-					|| gamepad.anyButton.wasPressedThisFrame))
+					|| gamepad.leftTrigger.ReadValue() > 0.2f
+					|| gamepad.rightTrigger.ReadValue() > 0.2f
+					|| ButtonPressedThisFrame(gamepad)))
 			{
 				ActiveInput.Set(InputScheme.Gamepad);
 			}
+		}
+
+		/// <summary>
+		/// Any face/shoulder/stick-click/start/select button pressed this
+		/// frame. Gamepad has no aggregate "anyButton" control, so the buttons
+		/// are enumerated; triggers are analog (AxisControl, no
+		/// wasPressedThisFrame) and are handled by value instead.
+		/// </summary>
+		private static bool ButtonPressedThisFrame(Gamepad gamepad)
+		{
+			return gamepad.buttonSouth.wasPressedThisFrame
+				|| gamepad.buttonNorth.wasPressedThisFrame
+				|| gamepad.buttonWest.wasPressedThisFrame
+				|| gamepad.buttonEast.wasPressedThisFrame
+				|| gamepad.startButton.wasPressedThisFrame
+				|| gamepad.selectButton.wasPressedThisFrame
+				|| gamepad.leftShoulder.wasPressedThisFrame
+				|| gamepad.rightShoulder.wasPressedThisFrame
+				|| gamepad.leftStickButton.wasPressedThisFrame
+				|| gamepad.rightStickButton.wasPressedThisFrame;
 		}
 
 		private void Deselect()
