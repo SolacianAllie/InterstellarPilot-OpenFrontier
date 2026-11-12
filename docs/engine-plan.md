@@ -15,7 +15,10 @@ scene-reference decision and EngineCore-at-boot are recorded. New section:
 inline. Amended 2026-11-12, third pass (execution session, M0 landed
 green-strict as `bb5607fb`): from-scratch content doctrine pinned (standing
 rules) and the M1 PreRebuild extraction landed contract corrections
-(Porting contracts section).*
+(Porting contracts section). Amended 2026-11-12, fourth pass (execution
+session): M1 landed green and PROVEN IN PLAY as `c82469aa`; SpaceUnity
+nebula/star data machinery stripped (user decision — textures preserved);
+fresh Tags & Layers hierarchy pinned and landed (LegacyStripInstaller).*
 
 ## Status when this plan was written
 
@@ -210,8 +213,59 @@ Three layers. The old flat "sectors" concept is replaced.
 ### Replacements
 
 - **Imphenzia StaticStars: replaced** — stars come from the galaxy scene; the
-  DLL is NOT re-homed. SpaceUnity nebula/star content survives as dressing
-  content only. Nebula quad-generation pipeline not ported.
+  DLL is NOT re-homed. Nebula quad-generation pipeline not ported.
+- **SpaceUnity nebula/star DATA machinery: stripped [2026-11-12, user
+  decision]** — the 338 NebulaAsset data prefabs, 338 nebula materials, the
+  10 StarsAssets, the Nebula template and `SU_StaticStarsTint`, plus the
+  NebulaAsset/StarsAsset components and the four Common flag enums, deleted
+  (zero live references verified first). The TEXTURES (Stars + Nebulas) are
+  preserved — inert data for hand-authored galaxy dressing. The 13 `Planet*`
+  shells remain load-bearing and were NOT touched (user: "planets are OKAY").
+
+### Tags & Layers — the fresh hierarchy [2026-11-12]
+
+- The rebuild owns its layer list. The legacy game defined 24 user layers
+  and used 4; all retire except `Ship` (the name survives as the NPC-ship
+  layer). The fresh set lands at slots 8-12 in addition order: **8
+  Celestial** (planets/stars/moons — the dedicated celestial camera's
+  subject; the 13 `Planet*` shells re-point here), **9 PlayerShip** (the
+  only ship always visible — M4's always-render guarantee), **10 Ship**
+  (NPC ships, POI-local rendering control — M6), **11 Effects**
+  (projectiles, particles, superliminal comet trails — M5/M6), **12
+  Volumes** (mass-lock/SafeZone trigger volumes — the physics-matrix
+  filter, M3). UI stays the built-in slot 5; holograms and unclassified
+  content ride Default. Asymmetry that shapes the policy: ADDING a layer
+  later is cheap and non-breaking; REMOVING one is the expensive
+  operation — so nothing speculative ships.
+- Deliberately NOT created: Hologram (rides Default until a hologram
+  camera split earns it), Galaxy/backdrop capture (an M2 decision made
+  WITH the galaxy scene contract), Projectile/Detectable/Hud3D/Wormhole
+  (may earn equivalents at M5/M6 — added then).
+- The 9 legacy tags (Engine, Hud, SpaceScene_*) retire with the strip;
+  their one live carrier (the Nebula template's SpaceScene_Nebula tag) was
+  deleted content. Physics collision matrix starts everything-collides;
+  M3's Volumes work tightens it.
+
+**Verified disk state [2026-11-12, LegacyStripInstaller — the full 32-slot
+table; a fresh session must not re-derive any of this]:**
+
+| Slot | Layer | Notes |
+|---|---|---|
+| 0–2 | Default / TransparentFX / Ignore Raycast | real built-ins, untouched |
+| 3 | *(empty)* | legacy `SkyProbe` retired — this project had reassigned the slot |
+| 4 | Water | real built-in, untouched |
+| **5** | **UI** | **this project's layout — the 85 uGUI objects bind slot 5; NEVER assume the standard slot 4** |
+| 6 | *(empty)* | legacy `TintBackground` retired |
+| 7 | *(empty)* | — |
+| 8–12 | Celestial / PlayerShip / Ship / Effects / Volumes | the fresh set; later milestones APPEND at 13+, never reshuffle |
+| 13–31 | *(empty)* | reserved for earned additions |
+
+Live m_Layer census after the sweep: `0` ×66, `5` ×85, `8` ×39 (the 13
+Planet* shells: root + Sphere + Atmosphere — the project's only
+custom-layer content), **nothing else**; no script, camera culling mask
+or physics-matrix entry references any retired index. Tags now carry only
+built-ins (Untagged, MainCamera). Harness: 4/4 PASS, 44 .cs covered.
+Installer re-run pending only for slots 3/6 (added after the first run).
 
 ## The tick machine + world sim — pinned 2026-11-12
 
@@ -625,7 +679,9 @@ the session; facts, not opinions):**
 - Content: ship FBX/textures (no scripted ship prefabs — Ranger/Overlord unit
   shells are scriptless strips with dangling nested prefab refs), 13 Planet*
   shells (Sphere ×900 + Atmosphere ×910, visual-fold complete, 0 scripts),
-  SpaceUnity 1040 files (338 NebulaAssets + materials, 10 StarsAssets),
+  SpaceUnity textures only (Stars + Nebulas; the 338 NebulaAssets + their
+  materials, the 10 StarsAssets and the Nebula template stripped
+  2026-11-12 — Replacements),
   hologram pipeline (HologramShip clock + HoloSpinner + outline baker),
   109 ogg audio, 18 shaders, URP settings + Build Profiles
   (Win/Linux/Android).
@@ -641,7 +697,8 @@ the session; facts, not opinions):**
 - **From-scratch content doctrine [2026-11-12, execution session]:** game
   content is authored fresh — nothing NEW consumes legacy content assets.
   Already-integrated legacy assets (menu holograms + Ranger/Overlord, the 13
-  `Planet*` shells, SpaceUnity nebula/star dressing, ship FBXs/textures,
+  `Planet*` shells, the SpaceUnity star/nebula textures — data machinery
+  stripped [2026-11-12], see Replacements — ship FBXs/textures,
   audio, the two legacy particle shaders) stay load-bearing until their
   authored replacements land — no removal schedule; they are simply never
   built upon. PreRebuild's decompiled code stays READ-ONLY reference for

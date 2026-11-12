@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4730242686860875}
-  m_Layer: 23
+  m_Layer: 8
   m_Name: PlanetAlpine1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -44,7 +44,7 @@ GameObject:
   - component: {fileID: 1785433320033439}
   - component: {fileID: 1843933501722913}
   - component: {fileID: 1786745916655552}
-  m_Layer: 26
+  m_Layer: 8
   m_Name: Atmosphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -134,7 +134,7 @@ GameObject:
   - component: {fileID: 1804222988670393}
   - component: {fileID: 1939234966396734}
   - component: {fileID: 1806680206815991}
-  m_Layer: 26
+  m_Layer: 8
   m_Name: Sphere
   m_TagString: Untagged
   m_Icon: {fileID: 0}

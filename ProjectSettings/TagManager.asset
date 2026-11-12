@@ -2,51 +2,45 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!78 &1
 TagManager:
-  serializedVersion: 2
-  tags:
-  - Engine
-  - Hud
-  - SpaceScene_Planet
-  - SpaceScene_PlanetRings
-  - SpaceScene_LocalStar
-  - SpaceScene_Nebula
-  - SpaceScene_Camera
-  - SpaceScene_Moon
-  - SpaceScene_Galaxy
+  serializedVersion: 3
+  tags: []
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - SkyProbe
+  - 
   - Water
   - UI
-  - TintBackground
   - 
-  - Engine
-  - MiscUnit
-  - 2D
-  - BackgroundImage
-  - Avoider
-  - Hud3D
-  - Missile
-  - PlayerShipSprites
-  - BackgroundObjects
-  - Cargo
+  - 
+  - Celestial
+  - PlayerShip
   - Ship
-  - Station
-  - Asteroid
-  - Projectile
-  - Wormhole
-  - Planet
-  - AsteroidCluster
-  - Mine
-  - BackgroundPlanet
-  - AsteroidClusterObject
-  - Detectable
-  - UnitGasCloud
-  - DeepSpace
-  - UnitWaypoint
+  - Effects
+  - Volumes
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
   m_SortingLayers:
   - name: Default
     uniqueID: 0
     locked: 0
+  m_RenderingLayers:
+  - Default
+  m_MigratedRenderPipelines: []
