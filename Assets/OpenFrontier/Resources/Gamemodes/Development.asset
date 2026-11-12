@@ -15,6 +15,6 @@ MonoBehaviour:
   Id: core.devtest
   Title: Development
   Description: Internal development test mode. Visible in the editor and development builds only - the registry filters it out of release builds.
-  PreviewImage: {fileID: 0}
+  PreviewImage: {fileID: -1411432230010455080, guid: ae0e557fe5238b003a85d9d8fe0d5367, type: 3}
   SortOrder: 999
   DeveloperOnly: 1

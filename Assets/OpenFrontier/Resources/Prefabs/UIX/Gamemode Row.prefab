@@ -152,6 +152,7 @@ GameObject:
   - component: {fileID: 7405697578604368127}
   - component: {fileID: 2742542658613156535}
   - component: {fileID: 2844513028014565759}
+  - component: {fileID: 4357905328858771586}
   m_Layer: 5
   m_Name: Gamemode Row
   m_TagString: Untagged
@@ -257,7 +258,7 @@ MonoBehaviour:
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
   m_Interactable: 1
-  m_TargetGraphic: {fileID: 2802353559127742381}
+  m_TargetGraphic: {fileID: 0}
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
@@ -318,3 +319,31 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OpenFrontier.MainMenu.GamemodeRow
   Title: {fileID: 0}
+--- !u!114 &4357905328858771586
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8078102480174713285}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e03a915d292f6626f4ad2ae22aac20e8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OpenFrontier.MainMenu.SelectableImageColor
+  Target: {fileID: 2802353559127742381}
+  ExtraTargets: []
+  ImageColors:
+    m_NormalColor: {r: 0.5, g: 0.21875, b: 0, a: 1}
+    m_HighlightedColor: {r: 1, g: 0.43529412, b: 0, a: 1}
+    m_PressedColor: {r: 1, g: 0.7176471, b: 0.5, a: 1}
+    m_SelectedColor: {r: 1, g: 0.43529412, b: 0, a: 1}
+    m_DisabledColor: {r: 0.2509804, g: 0.2509804, b: 0.2509804, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  SaturationShader: {fileID: 0}
+  GreyscaleNormal: 1
+  GreyscaleHighlighted: 0
+  GreyscalePressed: 0
+  GreyscaleSelected: 0
+  GreyscaleDisabled: 1

@@ -4996,9 +4996,9 @@ MonoBehaviour:
     m_FadeDuration: 0.1
   SaturationShader: {fileID: 4800000, guid: 687a2336c1817ce07762dd07aeeb01c8, type: 3}
   GreyscaleNormal: 0
-  GreyscaleHighlighted: 1
-  GreyscalePressed: 1
-  GreyscaleSelected: 1
+  GreyscaleHighlighted: 0
+  GreyscalePressed: 0
+  GreyscaleSelected: 0
   GreyscaleDisabled: 0
 --- !u!114 &1149157142
 MonoBehaviour:
@@ -8006,9 +8006,9 @@ MonoBehaviour:
     m_FadeDuration: 0.1
   SaturationShader: {fileID: 4800000, guid: 687a2336c1817ce07762dd07aeeb01c8, type: 3}
   GreyscaleNormal: 0
-  GreyscaleHighlighted: 1
-  GreyscalePressed: 1
-  GreyscaleSelected: 1
+  GreyscaleHighlighted: 0
+  GreyscalePressed: 0
+  GreyscaleSelected: 0
   GreyscaleDisabled: 0
 --- !u!114 &1618376919
 MonoBehaviour:
@@ -9663,9 +9663,9 @@ MonoBehaviour:
     m_FadeDuration: 0.1
   SaturationShader: {fileID: 4800000, guid: 687a2336c1817ce07762dd07aeeb01c8, type: 3}
   GreyscaleNormal: 0
-  GreyscaleHighlighted: 1
-  GreyscalePressed: 1
-  GreyscaleSelected: 1
+  GreyscaleHighlighted: 0
+  GreyscalePressed: 0
+  GreyscaleSelected: 0
   GreyscaleDisabled: 0
 --- !u!114 &1966257070
 MonoBehaviour:

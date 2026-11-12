@@ -34,8 +34,16 @@ namespace OpenFrontier.MainMenu
 	/// separate wiring, so the two never have to agree.
 	///
 	/// State resolution matches Selectable's priority: Disabled beats everything
-	/// (the polled <c>interactable</c> check), then Pressed, Highlighted, Selected,
-	/// Normal. Reacts to events, not per-frame simulation: the only Update work is
+	/// (the polled <c>interactable</c> check), then Pressed, Chosen, Highlighted,
+	/// Selected, Normal.
+	///
+	/// CHOSEN is the one code-owned state: <see cref="SetChosen"/> pins the label
+	/// lit regardless of pointer or EventSystem focus - a list row stays marked
+	/// as its list's choice until the choice moves. It maps onto the authored
+	/// highlighted color (the hover look, persisted); a screen wanting a
+	/// distinct chosen color earns a knob then. The image twin carries the same
+	/// state - keep both in step.
+	/// Reacts to events, not per-frame simulation: the only Update work is
 	/// a single cached bool compare (the house pattern from MainMenuScreen.update,
 	/// which throttles its poll similarly) catching code that flips
 	/// <c>interactable</c> without touching this - permission gating, "no save
@@ -66,6 +74,7 @@ namespace OpenFrontier.MainMenu
 			Normal,
 			Highlighted,
 			Pressed,
+			Chosen,
 			Selected,
 			Disabled,
 		}
@@ -77,6 +86,10 @@ namespace OpenFrontier.MainMenu
 		private bool pointerDown;
 
 		private bool isSelected;
+
+		// The code-owned persistent lit flag; false on every button that never
+		// hears SetChosen, so the machine behaves exactly as before.
+		private bool chosen;
 
 		private bool cachedInteractable = true;
 
@@ -175,6 +188,23 @@ namespace OpenFrontier.MainMenu
 			Apply(ComputeState(), instant: false);
 		}
 
+		/// <summary>
+		/// Pins or releases the persistent lit state. Call from code that owns
+		/// the notion of "this one is picked" (GamemodeRow mirroring its list);
+		/// pointer and focus events never touch it, and a press on a chosen row
+		/// still reads Pressed while held.
+		/// </summary>
+		public void SetChosen(bool value)
+		{
+			if (chosen == value)
+			{
+				return;
+			}
+
+			chosen = value;
+			Apply(ComputeState(), instant: false);
+		}
+
 		private LabelState ComputeState()
 		{
 			// Priority order mirrors Selectable's own transition rules.
@@ -188,6 +218,14 @@ namespace OpenFrontier.MainMenu
 				// Clicks cancelled by dragging off still read as pressed while the
 				// finger stays down; seeing "still held" is the point of the tint.
 				return LabelState.Pressed;
+			}
+
+			if (chosen)
+			{
+				// The list's current row: lit no matter where the pointer or
+				// focus went. Beats the pointer highlight so a hovered
+				// neighbour never out-shouts the chosen row.
+				return LabelState.Chosen;
 			}
 
 			if (pointerInside)
@@ -219,6 +257,11 @@ namespace OpenFrontier.MainMenu
 					break;
 				case LabelState.Pressed:
 					color = TextColors.pressedColor;
+					break;
+				case LabelState.Chosen:
+					// Same color the hover look uses - the requirement is "the
+					// chosen row keeps the highlighted look", not a new color.
+					color = TextColors.highlightedColor;
 					break;
 				case LabelState.Highlighted:
 					color = TextColors.highlightedColor;

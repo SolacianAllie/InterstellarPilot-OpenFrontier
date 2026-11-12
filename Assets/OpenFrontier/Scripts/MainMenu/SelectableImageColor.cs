@@ -36,8 +36,15 @@ namespace OpenFrontier.MainMenu
 	/// does not pop while the label crossfades.
 	///
 	/// State resolution matches Selectable's priority: Disabled beats
-	/// everything (the polled <c>interactable</c> check), then Pressed,
-	/// Highlighted, Selected, Normal. Reacts to events, not per-frame
+	/// everything (the polled <c>interactable</c> check), then Pressed, Chosen,
+	/// Highlighted, Selected, Normal.
+	///
+	/// CHOSEN matches the text twin's code-owned state: <see cref="SetChosen"/>
+	/// pins the image lit regardless of pointer or focus (a list row's
+	/// background stays up while it is its list's choice). It maps onto the
+	/// authored highlighted color; greyscale rides
+	/// <see cref="GreyscaleHighlighted"/>. Keep both twins in step.
+	/// Reacts to events, not per-frame
 	/// simulation; the only Update work is one cached bool compare. Fades run
 	/// with unscaled time so they survive a PauseWhenShown screen where
 	/// timeScale reads 0.
@@ -83,6 +90,7 @@ namespace OpenFrontier.MainMenu
 			Normal,
 			Highlighted,
 			Pressed,
+			Chosen,
 			Selected,
 			Disabled,
 		}
@@ -95,7 +103,18 @@ namespace OpenFrontier.MainMenu
 
 		private bool isSelected;
 
+		// The text twin's code-owned persistent lit flag; false unless a caller
+		// drives it, so plain buttons behave exactly as before.
+		private bool chosen;
+
 		private bool cachedInteractable = true;
+
+#if UNITY_EDITOR
+		// Diagnostic dedupe - see Apply.
+		private LabelState loggedState = (LabelState)(-1);
+
+		private float loggedGrey = -1f;
+#endif
 
 		private void Awake()
 		{
@@ -169,6 +188,22 @@ namespace OpenFrontier.MainMenu
 			Apply(ComputeState(), instant: false);
 		}
 
+		/// <summary>
+		/// Twin of <see cref="SelectableTextColor.SetChosen"/>: pins or releases
+		/// the persistent lit state, owned by code (GamemodeRow), untouched by
+		/// pointer and focus events.
+		/// </summary>
+		public void SetChosen(bool value)
+		{
+			if (chosen == value)
+			{
+				return;
+			}
+
+			chosen = value;
+			Apply(ComputeState(), instant: false);
+		}
+
 		private LabelState ComputeState()
 		{
 			// Priority order mirrors Selectable's own transition rules.
@@ -182,6 +217,14 @@ namespace OpenFrontier.MainMenu
 				// Clicks cancelled by dragging off still read as pressed while the
 				// finger stays down; seeing "still held" is the point of the tint.
 				return LabelState.Pressed;
+			}
+
+			if (chosen)
+			{
+				// The list's current row: lit no matter where the pointer or
+				// focus went. Beats the pointer highlight so a hovered
+				// neighbour never out-shouts the chosen row.
+				return LabelState.Chosen;
 			}
 
 			if (pointerInside)
@@ -213,6 +256,11 @@ namespace OpenFrontier.MainMenu
 					break;
 				case LabelState.Pressed:
 					color = ImageColors.pressedColor;
+					break;
+				case LabelState.Chosen:
+					// Same color the hover look uses - "keep the highlighted
+					// look" is the requirement, not a new color.
+					color = ImageColors.highlightedColor;
 					break;
 				case LabelState.Highlighted:
 					color = ImageColors.highlightedColor;
@@ -253,6 +301,20 @@ namespace OpenFrontier.MainMenu
 			}
 
 			float grey = ComputeGreyscale(state);
+
+#if UNITY_EDITOR
+			// One-line state diagnostic, editor-only (compiled out of release
+			// builds): when an icon visibly misbehaves the console names the
+			// resolved state and exactly what was driven where. Deduped by
+			// state so a hover does not spam a line per event.
+			if (state != loggedState || !Mathf.Approximately(grey, loggedGrey))
+			{
+				Material drawn = Target != null && Target.canvasRenderer != null ? Target.canvasRenderer.GetMaterial() : null;
+				Debug.Log($"[SelectableImageColor] '{name}' -> {state}: color {color}, grey {grey:0.00}, rig '{(Target != null && Target.material != null ? Target.material.name : "null")}', drawn '{(drawn != null ? drawn.name : "null")}'.", this);
+				loggedState = state;
+				loggedGrey = grey;
+			}
+#endif
 
 			DriveSaturation(Target, grey, instant);
 
@@ -359,6 +421,10 @@ namespace OpenFrontier.MainMenu
 					return GreyscaleDisabled;
 				case LabelState.Pressed:
 					return GreyscalePressed;
+				case LabelState.Chosen:
+					// Chosen shares the hover grey; no Chosen knob until a
+					// screen wants a distinct chosen look.
+					return GreyscaleHighlighted;
 				case LabelState.Highlighted:
 					return GreyscaleHighlighted;
 				case LabelState.Selected:

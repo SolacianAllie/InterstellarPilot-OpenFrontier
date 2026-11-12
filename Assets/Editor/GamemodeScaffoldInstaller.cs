@@ -16,7 +16,10 @@ namespace OpenFrontier.EditorTools
 	///    - the registry auto-loads that folder, so the asset alone makes the
 	///    mode appear; no registration code exists or is wanted.
 	/// 2. The Gamemode Row prefab - a clone of Simple Button plus GamemodeRow
-	///    and a LayoutElement height - under Resources/Prefabs/UIX/.
+	///    and a LayoutElement height - under Resources/Prefabs/UIX/. The
+	///    background Image is handed to SelectableImageColor (the Button's
+	///    targetGraphic released - one owner per graphic) so the CHOSEN row's
+	///    bar stays lit, not just its label; GamemodeRow drives both twins.
 	/// 3. Scene wiring on the NewGame screen: GamemodeList on the Selection
 	///    Menu's Content, ContentSizeFitter beside its authored
 	///    VerticalLayoutGroup, and GamemodeCard on the "Gamemode Card" object.
@@ -34,6 +37,14 @@ namespace OpenFrontier.EditorTools
 	/// / Image) when those children exist; anything unmatched is logged,
 	/// never guessed - and only ever fills a still-null field, so hand
 	/// wiring always wins.
+	///
+	/// 4. Every SelectableImageColor in the scene: the hands-on greys
+	///    (Highlighted / Pressed / Selected) -> 0, icons stay colored while
+	///    the card is interacted with. Selected alone was not enough: with a
+	///    mouse present the module keeps the card under the resting cursor
+	///    hovered, so a controller-focused card resolved Highlighted
+	///    (authored grey) regardless of the Selected value. Rest stays as
+	///    authored (these cards author colored-at-rest).
 	/// </summary>
 	public static class GamemodeScaffoldInstaller
 	{
@@ -64,7 +75,10 @@ namespace OpenFrontier.EditorTools
 				return;
 			}
 
+			// Before WireScene: its scene save must capture this too.
+			EnsureInteractionColours();
 			WireScene(newGameScreen, rowPrefab);
+			VerifyInteractionColours();
 		}
 
 		private static GameObject FindScreen(string name)
@@ -128,8 +142,8 @@ namespace OpenFrontier.EditorTools
 			{
 				if (existing.GetComponent<GamemodeRow>() != null)
 				{
-					Debug.Log($"{Tag} Row prefab already exists at {RowPath} - left untouched.");
-					return existing;
+					Debug.Log($"{Tag} Row prefab already exists at {RowPath} - checking its background ownership.");
+					return EnsureBackgroundOwner(existing);
 				}
 
 				Debug.LogWarning($"{Tag} {RowPath} exists but has no GamemodeRow - left untouched, wire it by hand.");
@@ -175,11 +189,149 @@ namespace OpenFrontier.EditorTools
 			if (ok)
 			{
 				Debug.Log($"{Tag} Created {RowPath} (Simple Button clone + GamemodeRow + LayoutElement height {reloaded.GetComponent<RectTransform>().sizeDelta.y}).");
-				return reloaded;
+				return EnsureBackgroundOwner(reloaded);
 			}
 
 			Debug.LogError($"{Tag} Row prefab verification FAILED after creation - inspect {RowPath} by hand.");
 			return null;
+		}
+
+		/// <summary>
+		/// The chosen row's BAR must stay lit, not just its label - and the
+		/// Button's built-in ColorTint cannot express a persistent state, so
+		/// its background ownership moves to SelectableImageColor (which
+		/// carries the same SetChosen the label twin has). One owner per
+		/// graphic: the Button releases its targetGraphic and keeps
+		/// transitioning nothing, while the twin covers every state it used
+		/// to. The twin's ColorBlock is copied from the Button's so the bar
+		/// reads exactly as authored before the handover.
+		/// </summary>
+		private static GameObject EnsureBackgroundOwner(GameObject rowPrefab)
+		{
+			Button button = rowPrefab.GetComponent<Button>();
+			Image background = rowPrefab.GetComponent<Image>();
+			SelectableImageColor imageColor = rowPrefab.GetComponent<SelectableImageColor>();
+
+			if (button == null || background == null)
+			{
+				Debug.LogWarning($"{Tag} Row prefab has no Button or background Image - the chosen tint stays label-only.");
+				return rowPrefab;
+			}
+
+			if (imageColor != null && button.targetGraphic == null && imageColor.Target == background)
+			{
+				Debug.Log($"{Tag} Row prefab background already owned by SelectableImageColor - left untouched.");
+				return rowPrefab;
+			}
+
+			GameObject contents = PrefabUtility.LoadPrefabContents(RowPath);
+
+			try
+			{
+				imageColor = contents.GetComponent<SelectableImageColor>();
+
+				if (imageColor == null)
+				{
+					imageColor = contents.AddComponent<SelectableImageColor>();
+				}
+
+				imageColor.ImageColors = contents.GetComponent<Button>().colors;
+				imageColor.Target = contents.GetComponent<Image>();
+				contents.GetComponent<Button>().targetGraphic = null;
+
+				PrefabUtility.SaveAsPrefabAsset(contents, RowPath);
+			}
+			finally
+			{
+				PrefabUtility.UnloadPrefabContents(contents);
+			}
+
+			GameObject reloaded = AssetDatabase.LoadAssetAtPath<GameObject>(RowPath);
+			SelectableImageColor check = reloaded != null ? reloaded.GetComponent<SelectableImageColor>() : null;
+			bool ok = check != null
+				&& check.Target == reloaded.GetComponent<Image>()
+				&& reloaded.GetComponent<Button>().targetGraphic == null;
+
+			if (ok)
+			{
+				Debug.Log($"{Tag} Row prefab upgraded: SelectableImageColor owns the background (Button's color block copied, targetGraphic released) - the CHOSEN row's bar stays lit.");
+				return reloaded;
+			}
+
+			Debug.LogError($"{Tag} Row prefab upgrade verification FAILED - inspect {RowPath} by hand.");
+			return reloaded != null ? reloaded : null;
+		}
+
+		private static void EnsureInteractionColours()
+		{
+			SelectableImageColor[] tints = Object.FindObjectsByType<SelectableImageColor>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+			int fixedCount = 0;
+
+			for (int i = 0; i < tints.Length; i++)
+			{
+				SelectableImageColor tint = tints[i];
+				bool changed = false;
+
+				// All three hands-on states colored. Fixing Selected alone did
+				// not change what the user saw: with a mouse present the
+				// module keeps the card under the resting cursor hovered, so
+				// the controller-focused card resolved Highlighted (authored
+				// grey) and stayed grey regardless of the Selected value.
+				if (tint.GreyscaleHighlighted != 0f)
+				{
+					tint.GreyscaleHighlighted = 0f;
+					changed = true;
+				}
+
+				if (tint.GreyscalePressed != 0f)
+				{
+					tint.GreyscalePressed = 0f;
+					changed = true;
+				}
+
+				if (tint.GreyscaleSelected != 0f)
+				{
+					tint.GreyscaleSelected = 0f;
+					changed = true;
+				}
+
+				if (!changed)
+				{
+					continue;
+				}
+
+				EditorUtility.SetDirty(tint);
+				fixedCount++;
+				Debug.Log($"{Tag} '{GetPath(tint.transform)}': interaction greys (hover/press/selected) -> 0, the icon stays colored whenever its card is active.");
+			}
+
+			if (fixedCount > 0)
+			{
+				AssetDatabase.SaveAssets();
+			}
+			else
+			{
+				Debug.Log($"{Tag} Every SelectableImageColor already colors its hands-on states - left untouched.");
+			}
+		}
+
+		private static void VerifyInteractionColours()
+		{
+			// The scene is saved by now, so the live objects are the file.
+			SelectableImageColor[] tints = Object.FindObjectsByType<SelectableImageColor>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+			for (int i = 0; i < tints.Length; i++)
+			{
+				SelectableImageColor tint = tints[i];
+
+				if (tint.GreyscaleHighlighted != 0f || tint.GreyscalePressed != 0f || tint.GreyscaleSelected != 0f)
+				{
+					Debug.LogError($"{Tag} Final verification FAILED: '{GetPath(tint.transform)}' still greys a hands-on state.");
+					return;
+				}
+			}
+
+			Debug.Log($"{Tag} Interaction colours verified: icons stay colored on hover, press and selected.");
 		}
 
 		private static void WireScene(GameObject newGameScreen, GameObject rowPrefab)
