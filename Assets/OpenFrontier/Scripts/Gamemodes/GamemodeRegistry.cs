@@ -53,6 +53,15 @@ namespace OpenFrontier.Gamemodes
 		}
 
 		/// <summary>
+		/// Forces the lazy load now. The landing scene's boot step calls this
+		/// so the menu's first frame never pays the Resources scan.
+		/// </summary>
+		public static void Warmup()
+		{
+			EnsureLoaded();
+		}
+
+		/// <summary>
 		/// Adds a definition to the visible set. Reserved for the future
 		/// ModLoader - built-ins never arrive through here. Forces the
 		/// built-in load first so the conflict rule stays deterministic.

@@ -1,9 +1,12 @@
+using System.Collections.Generic;
+using System.IO;
 using OpenFrontier.Gamemodes;
 using OpenFrontier.MainMenu;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace OpenFrontier.EditorTools
@@ -531,6 +534,678 @@ namespace OpenFrontier.EditorTools
 			component = target.AddComponent<T>();
 			Debug.Log($"{Tag} Added {typeof(T).Name} to '{target.name}'.");
 			return true;
+		}
+	}
+
+	/// <summary>
+	/// One-shot scaffold for the landing scene (run once, verify, then delete
+	/// the file together with the gamemode scaffold). Idempotent:
+	///
+	/// 1. Places the user's authored "Loading Screen" prefab
+	///    (Resources/Prefabs/UIX/ - own ortho camera, holo ships, tips UI)
+	///    into the open "Landing Scene" and activates the INSTANCE (the
+	///    prefab asset ships deactivated for editing comfort).
+	/// 2. Guarantees the boot conductor: LandingBoot lives at the SCENE ROOT,
+	///    never under UI - the first build parented it under the generated
+	///    canvas and that canvas' retirement destroyed it (no swap, caught in
+	///    the saved scene). Missing = recreated; parented = moved to root.
+	/// 3. Wires the ship lottery: LoadingShipPicker goes on the prefab root
+	///    (through the sanctioned LoadPrefabContents flow) with every direct
+	///    child named *HOLO as a candidate - one is shown per enable, uniform
+	///    random, re-rolled. Adding a ship = drag it in and re-run this tool
+	///    (the rescan grows the array). Also fixes a LoadingGUI scale-0 slip
+	///    while there (the whole authored UI was collapsed).
+	/// 4. Wires the tips: LoadingTips on the prefab's 'Tips' node, labels
+	///    filled by child name (Title / Description) only when still null,
+	///    starter tips seeded only while the pool is empty - authored tips
+	///    always win on a re-run. One tip per enable, uniform random.
+	/// 5. Retires the scaffold's own generated UI ("Landing Canvas" and its
+	///    backdrop/title/progress bar) plus the scene's loose camera - the
+	///    authored screen replaces both. LandingBoot releases its fill
+	///    reference (the authored screen has no progress widget) and its
+	///    minimum beat moves 0.5 -&gt; 1.5s so the random ship gets a visible
+	///    moment at 24 deg/s.
+	/// 6. Rewrites EditorBuildSettings to the real scenes, landing first
+	///    (build index 0 = the boot scene, the original game's flow). Every
+	///    entry whose path no longer exists is dropped - the whole
+	///    pre-migration list dangles since the 2026-11-08 rebuild move; any
+	///    real extra scene is kept behind the two.
+	///
+	/// Verifies the live objects after the save, same as the gamemode
+	/// scaffold. Requires the Landing Scene to be the ACTIVE scene - the
+	/// tool edits and saves it.
+	/// </summary>
+	public static class LandingScaffoldInstaller
+	{
+		private const string LandingScenePath = "Assets/OpenFrontier/Scenes/Landing Scene.unity";
+		private const string MenuScenePath = "Assets/OpenFrontier/Scenes/Main Menu.unity";
+		private const string LoadingScreenPrefabPath = "Assets/OpenFrontier/Resources/Prefabs/UIX/Loading Screen.prefab";
+		private const string Tag = "[LandingScaffoldInstaller]";
+
+		[MenuItem("Open Frontier/Scaffold Landing Scene (one-shot)")]
+		public static void Scaffold()
+		{
+			if (EditorSceneManager.GetActiveScene().name != "Landing Scene")
+			{
+				Debug.LogError($"{Tag} The ACTIVE scene is not 'Landing Scene' - open it (File > Open Scene), then run this again.");
+				return;
+			}
+
+			EnsureBootSceneList();
+			GameObject loadingScreen = EnsureLoadingScreenInstance();
+			EnsureBootConductor();
+			EnsureShipLottery(loadingScreen);
+			EnsureTips(loadingScreen);
+			SwapToAuthoredScreen(loadingScreen);
+			SaveAndVerify(loadingScreen);
+		}
+
+		private static GameObject EnsureLoadingScreenInstance()
+		{
+			GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(LoadingScreenPrefabPath);
+
+			if (prefab == null)
+			{
+				Debug.LogError($"{Tag} No loading screen prefab at {LoadingScreenPrefabPath} - cannot place it.");
+				return null;
+			}
+
+			// Match by prefab source, not name: a renamed instance is still
+			// the same screen (and an unsaved manual placement is found too).
+			GameObject instance = null;
+
+			foreach (GameObject root in EditorSceneManager.GetActiveScene().GetRootGameObjects())
+			{
+				if (PrefabUtility.GetCorrespondingObjectFromSource(root) == prefab)
+				{
+					instance = root;
+					break;
+				}
+			}
+
+			if (instance == null)
+			{
+				instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, EditorSceneManager.GetActiveScene());
+				Debug.Log($"{Tag} Placed the Loading Screen prefab in the scene.");
+			}
+			else
+			{
+				Debug.Log($"{Tag} Loading screen already placed in the scene - left in place.");
+			}
+
+			// The prefab asset ships deactivated (editing comfort); the boot
+			// scene needs the screen visible from frame zero, so the INSTANCE
+			// is activated - an override; the asset keeps its own state.
+			if (!instance.activeSelf)
+			{
+				instance.SetActive(true);
+				Debug.Log($"{Tag} Activated the Loading Screen instance (the prefab asset itself stays deactivated).");
+			}
+
+			return instance;
+		}
+
+		private static void EnsureShipLottery(GameObject loadingScreen)
+		{
+			if (loadingScreen == null)
+			{
+				return;
+			}
+
+			LoadingShipPicker existing = loadingScreen.GetComponent<LoadingShipPicker>();
+			bool hasCandidates = existing != null
+				&& existing.ships != null
+				&& existing.ships.Length > 0
+				&& System.Array.Exists(existing.ships, ship => ship != null);
+
+			int holoChildren = 0;
+
+			for (int i = 0; i < loadingScreen.transform.childCount; i++)
+			{
+				if (loadingScreen.transform.GetChild(i).name.EndsWith("HOLO", System.StringComparison.Ordinal))
+				{
+					holoChildren++;
+				}
+			}
+
+			// Drift = the picker exists but the prefab grew new *HOLO children
+			// since the array was wired - the rescan grows the array.
+			bool arrayDrifted = existing != null && existing.ships != null && existing.ships.Length != holoChildren;
+
+			// A scale-0 canvas collapses the whole authored UI - that reads as
+			// a slip, not a hide (a hide is m_IsActive), so it is fixed here.
+			Transform gui = loadingScreen.transform.Find("LoadingGUI");
+			bool guiCollapsed = gui != null && gui.localScale == Vector3.zero;
+
+			if (hasCandidates && !arrayDrifted && !guiCollapsed)
+			{
+				Debug.Log($"{Tag} Ship lottery already wired ({holoChildren} *HOLO children) and the GUI stands - left untouched.");
+				return;
+			}
+
+			// The lottery belongs on the prefab (every placement gets it), so
+			// the edit goes through the sanctioned prefab flow.
+			GameObject contents = PrefabUtility.LoadPrefabContents(LoadingScreenPrefabPath);
+
+			try
+			{
+				LoadingShipPicker picker = contents.GetComponent<LoadingShipPicker>();
+
+				if (picker == null)
+				{
+					picker = contents.AddComponent<LoadingShipPicker>();
+					Debug.Log($"{Tag} Added LoadingShipPicker to the Loading Screen prefab root.");
+				}
+
+				List<Transform> candidates = new List<Transform>();
+
+				for (int i = 0; i < contents.transform.childCount; i++)
+				{
+					Transform child = contents.transform.GetChild(i);
+
+					if (child.name.EndsWith("HOLO", System.StringComparison.Ordinal))
+					{
+						candidates.Add(child);
+					}
+				}
+
+				picker.ships = candidates.ToArray();
+				Debug.Log($"{Tag} Ship lottery wired: {candidates.Count} candidate(s) ({string.Join(", ", candidates.ConvertAll(ship => ship.name))}) - direct children named *HOLO.");
+
+				Transform prefabGui = contents.transform.Find("LoadingGUI");
+
+				if (prefabGui != null && prefabGui.localScale == Vector3.zero)
+				{
+					prefabGui.localScale = Vector3.one;
+					Debug.Log($"{Tag} LoadingGUI scale was 0 - set to 1 (the authored UI was collapsed to nothing).");
+				}
+
+				PrefabUtility.SaveAsPrefabAsset(contents, LoadingScreenPrefabPath);
+			}
+			finally
+			{
+				PrefabUtility.UnloadPrefabContents(contents);
+			}
+
+			// Verify against the RELOADED prefab, not the in-memory object.
+			GameObject reloaded = AssetDatabase.LoadAssetAtPath<GameObject>(LoadingScreenPrefabPath);
+			LoadingShipPicker check = reloaded != null ? reloaded.GetComponent<LoadingShipPicker>() : null;
+			bool ok = check != null && check.ships != null && check.ships.Length > 0 && check.ships[0] != null;
+
+			if (ok)
+			{
+				Debug.Log($"{Tag} Ship lottery verified on the reloaded prefab.");
+			}
+			else
+			{
+				Debug.LogError($"{Tag} Ship lottery verification FAILED - inspect the prefab by hand.");
+			}
+		}
+
+		private static void EnsureBootConductor()
+		{
+			// The conductor must be a SCENE ROOT object: the first scaffold
+			// build parented it under the generated canvas, and retiring that
+			// canvas destroyed it with the UI - the boot sequence never ran
+			// and the landing never handed over (caught in the saved scene:
+			// zero LandingBoot references after the swap run).
+			LandingBoot boot = Object.FindAnyObjectByType<LandingBoot>();
+
+			if (boot == null)
+			{
+				new GameObject("Landing Boot", typeof(LandingBoot));
+				Debug.Log($"{Tag} Created 'Landing Boot' with LandingBoot at the scene root.");
+				return;
+			}
+
+			if (boot.transform.parent != null)
+			{
+				string formerParent = boot.transform.parent.name;
+				boot.transform.SetParent(null);
+				Debug.Log($"{Tag} Moved LandingBoot from '{formerParent}' to the scene root - a conductor under any UI subtree dies with that UI's cleanup.");
+			}
+			else
+			{
+				Debug.Log($"{Tag} LandingBoot already at the scene root - left in place.");
+			}
+		}
+
+		private static void EnsureTips(GameObject loadingScreen)
+		{
+			if (loadingScreen == null)
+			{
+				return;
+			}
+
+			Transform tipsTransform = loadingScreen.transform.Find("LoadingGUI/Tips");
+			LoadingTips existing = tipsTransform != null ? tipsTransform.GetComponent<LoadingTips>() : null;
+
+			bool wired = existing != null
+				&& existing.titleLabel != null
+				&& existing.descriptionLabel != null
+				&& existing.tips != null
+				&& existing.tips.Length > 0;
+
+			if (wired)
+			{
+				Debug.Log($"{Tag} LoadingTips already wired with authored tips - left untouched.");
+				return;
+			}
+
+			// The tip system belongs on the prefab (every placement gets it),
+			// so the edit goes through the sanctioned prefab flow.
+			GameObject contents = PrefabUtility.LoadPrefabContents(LoadingScreenPrefabPath);
+
+			try
+			{
+				Transform prefabTips = contents.transform.Find("LoadingGUI/Tips");
+
+				if (prefabTips == null)
+				{
+					Debug.LogError($"{Tag} No 'LoadingGUI/Tips' node in the prefab - wire the tip labels by hand.");
+					return;
+				}
+
+				LoadingTips tips = prefabTips.GetComponent<LoadingTips>();
+
+				if (tips == null)
+				{
+					tips = prefabTips.gameObject.AddComponent<LoadingTips>();
+					Debug.Log($"{Tag} Added LoadingTips to the prefab's 'Tips' node.");
+				}
+
+				// Labels fill only still-null fields - hand wiring always wins.
+				TMP_Text[] labels = prefabTips.GetComponentsInChildren<TMP_Text>(true);
+
+				for (int i = 0; i < labels.Length; i++)
+				{
+					TMP_Text label = labels[i];
+
+					if (label.name == "Title" && tips.titleLabel == null)
+					{
+						tips.titleLabel = label;
+						Debug.Log($"{Tag} LoadingTips titleLabel wired to 'Title'.");
+					}
+					else if (label.name == "Description" && tips.descriptionLabel == null)
+					{
+						tips.descriptionLabel = label;
+						Debug.Log($"{Tag} LoadingTips descriptionLabel wired to 'Description'.");
+					}
+				}
+
+				// Starter content only while the pool is empty - user-authored
+				// tips always win on a re-run.
+				if (tips.tips == null || tips.tips.Length == 0)
+				{
+					tips.tips = new LoadingTips.Tip[]
+					{
+						new LoadingTips.Tip { Title = "Welcome aboard", Description = "Open Frontier is under construction - the fleet grows with every build." },
+						new LoadingTips.Tip { Title = "Gamemodes", Description = "The NewGame screen lists every registered gamemode. Development is the built-in test mode." },
+						new LoadingTips.Tip { Title = "The holo fleet", Description = "Every boot rolls a random ship onto this turntable. Today: Ranger and Overlord." },
+					};
+					Debug.Log($"{Tag} Seeded 3 starter tips (edit or replace them in the Inspector - LoadingTips on the 'Tips' node).");
+				}
+
+				PrefabUtility.SaveAsPrefabAsset(contents, LoadingScreenPrefabPath);
+			}
+			finally
+			{
+				PrefabUtility.UnloadPrefabContents(contents);
+			}
+
+			// Verify against the RELOADED prefab, not the in-memory object.
+			GameObject reloaded = AssetDatabase.LoadAssetAtPath<GameObject>(LoadingScreenPrefabPath);
+			Transform reloadedTips = reloaded != null ? reloaded.transform.Find("LoadingGUI/Tips") : null;
+			LoadingTips check = reloadedTips != null ? reloadedTips.GetComponent<LoadingTips>() : null;
+			bool ok = check != null && check.titleLabel != null && check.descriptionLabel != null && check.tips != null && check.tips.Length > 0;
+
+			if (ok)
+			{
+				Debug.Log($"{Tag} Tips verified on the reloaded prefab: labels wired, {check.tips.Length} tip(s) in the pool.");
+			}
+			else
+			{
+				Debug.LogError($"{Tag} Tips verification FAILED - inspect the prefab by hand.");
+			}
+		}
+
+		private static void SwapToAuthoredScreen(GameObject loadingScreen)
+		{
+			// The conductor survives the swap; its references to the generated
+			// UI do not.
+			LandingBoot boot = Object.FindAnyObjectByType<LandingBoot>();
+
+			if (boot == null)
+			{
+				Debug.LogError($"{Tag} No LandingBoot in the scene - the boot conductor is missing.");
+				return;
+			}
+
+			// The authored screen has no progress widget: release the fill
+			// reference BEFORE the canvas it points at is destroyed.
+			if (boot.progressFill != null)
+			{
+				boot.progressFill = null;
+				Debug.Log($"{Tag} LandingBoot.progressFill released - the authored screen has no progress widget. Wire one later if you add one; until then the boot paces the handover on the minimum beat alone.");
+			}
+
+			// Half a second shows nothing of a turntable at 24 deg/s.
+			if (boot.minimumDisplaySeconds != 1.5f)
+			{
+				boot.minimumDisplaySeconds = 1.5f;
+				Debug.Log($"{Tag} LandingBoot minimum beat 0.5 -> 1.5s - the random ship deserves a visible moment. Tune on the LandingBoot component.");
+			}
+
+			// The scaffold's generated UI is retired wholesale: the authored
+			// screen brings its own canvas, camera and ships.
+			GameObject generatedCanvas = GameObject.Find("Landing Canvas");
+
+			if (generatedCanvas != null)
+			{
+				Object.DestroyImmediate(generatedCanvas);
+				Debug.Log($"{Tag} Removed the scaffold's generated 'Landing Canvas' (replaced by the authored Loading Screen).");
+			}
+
+			// The scene's loose camera loses to the prefab's LoadingCam; two
+			// base cameras would double-render the frame.
+			GameObject looseCamera = GameObject.Find("Camera");
+
+			if (looseCamera != null)
+			{
+				Object.DestroyImmediate(looseCamera);
+				Debug.Log($"{Tag} Removed the scene's loose 'Camera' - the Loading Screen prefab brings its own (LoadingCam); two base cameras would double-render.");
+			}
+		}
+
+		private static void SaveAndVerify(GameObject loadingScreen)
+		{
+			if (loadingScreen == null)
+			{
+				return;
+			}
+
+			EditorUtility.SetDirty(loadingScreen);
+			EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
+			Debug.Log($"{Tag} Saved the Landing Scene.");
+
+			// Re-read the live objects as the final check (the in-memory scene
+			// is what the saved file now contains).
+			LoadingShipPicker picker = loadingScreen.GetComponent<LoadingShipPicker>();
+			bool ok = loadingScreen.activeSelf
+				&& PrefabUtility.GetCorrespondingObjectFromSource(loadingScreen) == AssetDatabase.LoadAssetAtPath<GameObject>(LoadingScreenPrefabPath)
+				&& picker != null
+				&& picker.ships != null
+				&& picker.ships.Length > 0
+				&& GameObject.Find("Landing Canvas") == null
+				&& GameObject.Find("Camera") == null;
+
+			LandingBoot boot = Object.FindAnyObjectByType<LandingBoot>();
+			ok = ok && boot != null && boot.progressFill == null && boot.menuSceneName == "Main Menu";
+
+			EditorBuildSettingsScene[] buildScenes = EditorBuildSettings.scenes;
+			ok = ok && buildScenes.Length >= 2
+				&& buildScenes[0].path == LandingScenePath
+				&& buildScenes[1].path == MenuScenePath;
+
+			if (ok)
+			{
+				Debug.Log($"{Tag} DONE. The landing boots through YOUR Loading Screen: a random *HOLO ship on the turntable (one roll per show), your tips UI, then the menu. The scaffold's generated UI and the scene's loose camera are gone; the Main Menu scene still plays standalone.");
+			}
+			else
+			{
+				Debug.LogError($"{Tag} Final verification FAILED - inspect the Landing Scene by hand.");
+			}
+		}
+
+		private static void EnsureBootSceneList()
+		{
+			List<EditorBuildSettingsScene> scenes = new List<EditorBuildSettingsScene>();
+			int dangling = 0;
+
+			// Keep only entries whose path still exists on disk (skipping the
+			// two managed here - they are re-added in the right order below).
+			// The pre-migration build list dangles wholesale: every path died
+			// in the 2026-11-08 rebuild move.
+			for (int i = 0; i < EditorBuildSettings.scenes.Length; i++)
+			{
+				EditorBuildSettingsScene scene = EditorBuildSettings.scenes[i];
+
+				if (scene.path == LandingScenePath || scene.path == MenuScenePath)
+				{
+					continue;
+				}
+
+				if (!string.IsNullOrEmpty(scene.path) && File.Exists(scene.path))
+				{
+					scenes.Add(scene);
+				}
+				else
+				{
+					dangling++;
+				}
+			}
+
+			// Landing first: build index 0 is the default boot scene, exactly
+			// the original game's flow.
+			scenes.Insert(0, new EditorBuildSettingsScene(LandingScenePath, true));
+			scenes.Insert(1, new EditorBuildSettingsScene(MenuScenePath, true));
+			EditorBuildSettings.scenes = scenes.ToArray();
+
+			if (dangling > 0)
+			{
+				Debug.Log($"{Tag} Dropped {dangling} dangling build-scene entries (dead pre-migration paths).");
+			}
+
+			Debug.Log($"{Tag} Build scene list: index 0 = Landing Scene (boot), index 1 = Main Menu{(scenes.Count > 2 ? $", {scenes.Count - 2} other scene(s) kept" : "")}.");
+		}
+	}
+
+	/// <summary>
+	/// One-shot pass that puts ButtonSounds on every menu button: each prefab
+	/// under Resources/Prefabs/UIX/ (Simple Button, Gamemode Row, Fullscreen
+	/// Menu - anything carrying a Button, so future button prefabs are
+	/// covered by a re-run) and every Button in the open scene. Idempotent:
+	/// buttons already carrying the component are left alone.
+	///
+	/// ButtonSounds owns NO AudioSource component - every blip spawns a
+	/// transient one-shot player that dies after the clip, so sounds outlive
+	/// the screens they were born on. The first version of this tool relied
+	/// on a RequireComponent AudioSource; any empty one still sitting on a
+	/// button is stripped here (an AudioSource with a clip assigned by hand
+	/// is left alone).
+	///
+	/// Clips stay NULL by design - sound is authored data, assigned in the
+	/// Inspector (hover + click); this pass installs the machinery only and
+	/// lists the available UIX clips so they are one Inspector drag away.
+	/// Verified against the RELOADED prefabs and the live scene.
+	/// </summary>
+	public static class ButtonSoundInstaller
+	{
+		private const string UixFolder = "Assets/OpenFrontier/Resources/Prefabs/UIX";
+		private const string AudioClipFolder = "Assets/OpenFrontier/AudioClip/UIX";
+		private const string Tag = "[ButtonSoundInstaller]";
+
+		[MenuItem("Open Frontier/Add Button Sounds (one-shot)")]
+		public static void Install()
+		{
+			int prefabButtons = 0;
+			int prefabEdited = 0;
+
+			foreach (string prefabPath in Directory.GetFiles(UixFolder, "*.prefab", SearchOption.AllDirectories))
+			{
+				string path = prefabPath.Replace('\\', '/');
+				GameObject contents = PrefabUtility.LoadPrefabContents(path);
+				bool changed = false;
+
+				try
+				{
+					foreach (Button button in contents.GetComponentsInChildren<Button>(true))
+					{
+						prefabButtons++;
+
+						if (EnsureOnButton(button, $"'{path}'"))
+						{
+							changed = true;
+							prefabEdited++;
+						}
+					}
+
+					if (changed)
+					{
+						PrefabUtility.SaveAsPrefabAsset(contents, path);
+					}
+				}
+				finally
+				{
+					PrefabUtility.UnloadPrefabContents(contents);
+				}
+			}
+
+			int sceneButtons = 0;
+			int sceneEdited = 0;
+
+			foreach (Button button in Object.FindObjectsByType<Button>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+			{
+				sceneButtons++;
+
+				if (EnsureOnButton(button, "Scene"))
+				{
+					EditorUtility.SetDirty(button);
+					sceneEdited++;
+				}
+			}
+
+			Scene activeScene = EditorSceneManager.GetActiveScene();
+
+			if (sceneEdited > 0)
+			{
+				if (!string.IsNullOrEmpty(activeScene.path))
+				{
+					EditorSceneManager.SaveScene(activeScene);
+					Debug.Log($"{Tag} Saved the open scene '{activeScene.name}'.");
+				}
+				else
+				{
+					Debug.LogWarning($"{Tag} The open scene is untitled - save it yourself to keep the added components.");
+				}
+			}
+
+			AssetDatabase.SaveAssets();
+
+			// Verify against the RELOADED state - the saved file is the truth.
+			bool ok = true;
+
+			foreach (string prefabPath in Directory.GetFiles(UixFolder, "*.prefab", SearchOption.AllDirectories))
+			{
+				string path = prefabPath.Replace('\\', '/');
+				GameObject reloaded = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+				if (reloaded == null)
+				{
+					continue;
+				}
+
+				foreach (Button button in reloaded.GetComponentsInChildren<Button>(true))
+				{
+					if (button.GetComponent<ButtonSounds>() == null)
+					{
+						Debug.LogError($"{Tag} Verification FAILED: '{path}' '{GetPath(button.transform)}' has no ButtonSounds.");
+						ok = false;
+						continue;
+					}
+
+					AudioSource stray = button.GetComponent<AudioSource>();
+
+					if (stray != null && stray.clip == null)
+					{
+						Debug.LogError($"{Tag} Verification FAILED: '{path}' '{GetPath(button.transform)}' still carries an empty AudioSource.");
+						ok = false;
+					}
+				}
+			}
+
+			foreach (Button button in Object.FindObjectsByType<Button>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+			{
+				if (button.GetComponent<ButtonSounds>() == null)
+				{
+					Debug.LogError($"{Tag} Verification FAILED: scene '{GetPath(button.transform)}' has no ButtonSounds.");
+					ok = false;
+					continue;
+				}
+
+				AudioSource stray = button.GetComponent<AudioSource>();
+
+				if (stray != null && stray.clip == null)
+				{
+					Debug.LogError($"{Tag} Verification FAILED: scene '{GetPath(button.transform)}' still carries an empty AudioSource.");
+					ok = false;
+				}
+			}
+
+			if (ok)
+			{
+				string[] clipFiles = Directory.GetFiles(AudioClipFolder);
+				List<string> clipNames = new List<string>();
+
+				foreach (string clipFile in clipFiles)
+				{
+					if (clipFile.EndsWith(".meta"))
+					{
+						continue;
+					}
+
+					clipNames.Add(Path.GetFileName(clipFile));
+				}
+
+				Debug.Log($"{Tag} DONE. {prefabEdited}/{prefabButtons} prefab button(s) and {sceneEdited}/{sceneButtons} scene button(s) gained ButtonSounds" +
+					$"{(prefabEdited == 0 && sceneEdited == 0 ? " - every button already carried it" : "")}. " +
+					$"Assign the clips in the Inspector (Hover Clip / Click Clip); null plays nothing. " +
+					$"Available UIX clips: {(clipNames.Count > 0 ? string.Join(", ", clipNames) : "none")}");
+			}
+		}
+
+		/// <summary>
+		/// Puts ButtonSounds on one button if missing, and strips the empty
+		/// AudioSource the first tool version's RequireComponent added (the
+		/// one-shot now spawns its sources; an unclipped one on a button is
+		/// tool debris - a hand-wired clip is left alone). Returns true when
+		/// anything changed.
+		/// </summary>
+		private static bool EnsureOnButton(Button button, string context)
+		{
+			bool changed = false;
+
+			if (button.GetComponent<ButtonSounds>() == null)
+			{
+				button.gameObject.AddComponent<ButtonSounds>();
+				Debug.Log($"{Tag} {context}: ButtonSounds added to '{GetPath(button.transform)}'.");
+				changed = true;
+			}
+
+			AudioSource stray = button.GetComponent<AudioSource>();
+
+			if (stray != null && stray.clip == null)
+			{
+				Object.DestroyImmediate(stray);
+				Debug.Log($"{Tag} {context}: removed the empty AudioSource from '{GetPath(button.transform)}' - one-shot sources are spawned now.");
+				changed = true;
+			}
+
+			return changed;
+		}
+
+		private static string GetPath(Transform transform)
+		{
+			string path = transform.name;
+			Transform current = transform.parent;
+
+			while (current != null)
+			{
+				path = current.name + "/" + path;
+				current = current.parent;
+			}
+
+			return path;
 		}
 	}
 }
