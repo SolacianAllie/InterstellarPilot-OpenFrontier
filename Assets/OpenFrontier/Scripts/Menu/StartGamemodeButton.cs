@@ -1,3 +1,4 @@
+using OpenFrontier.Engine;
 using OpenFrontier.Gamemodes;
 using UnityEngine;
 using UnityEngine.UI;
@@ -5,12 +6,11 @@ using UnityEngine.UI;
 namespace OpenFrontier.MainMenu
 {
 	/// <summary>
-	/// The launch seam: on click, hands the selected definition to whatever
-	/// boots a session. Today that is a logged stub - the engine's world-boot
-	/// is not ported yet, and the dev gamemode's destination is the recorded
-	/// open question in docs/gamemode-modding-design.md. When it exists, this
-	/// is the port of legacy ScenarioUI.PlayScenario: compose the launch data
-	/// from the definition and hand it to the scenario loader.
+	/// The launch seam: on click, hands the selected definition to
+	/// EngineLauncher — the port of legacy ScenarioUI.PlayScenario: compose
+	/// the launch data from the definition and hand it to the loader. The
+	/// engine's world-boot owns what happens next (payload composed,
+	/// protocol dropped to 0, target scene loaded, WorldBoot adopts).
 	///
 	/// The definition travels, not the row or the asset name - everything
 	/// downstream keys off Id.
@@ -68,7 +68,7 @@ namespace OpenFrontier.MainMenu
 				return;
 			}
 
-			Debug.Log($"[StartGamemodeButton] Launch requested: '{selected.Id}' (stub - engine world-boot not ported yet).");
+			EngineLauncher.Launch(selected);
 		}
 	}
 }

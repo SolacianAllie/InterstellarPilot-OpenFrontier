@@ -1,4 +1,5 @@
 using System.Collections;
+using OpenFrontier.Engine;
 using OpenFrontier.Gamemodes;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -53,10 +54,15 @@ namespace OpenFrontier.MainMenu
 		{
 			float started = Time.unscaledTime;
 
-			// Boot init - the landing scene's whole reason to exist. Today the
-			// menu stack needs exactly one thing warm (the lazy gamemode
-			// registry); grow this block as boot-time services arrive.
+			// Boot init - the landing scene's whole reason to exist. Today
+			// the stack needs two things warm: the lazy gamemode registry,
+			// and the engine heartbeat itself (spawned AT BOOT per the pinned
+			// plan - the menu is becoming an active engine world, and the
+			// EngineCore instance is persistent, so it survives into the menu
+			// scene and every world after it). Grow this block as boot-time
+			// services arrive.
 			GamemodeRegistry.Warmup();
+			EngineCore.Boot();
 
 			AsyncOperation load = SceneManager.LoadSceneAsync(menuSceneName);
 

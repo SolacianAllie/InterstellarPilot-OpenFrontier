@@ -11,4 +11,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/OpenFrontier/Scenes/Main Menu.unity
     guid: 5a9c8c46399706b2f8707eb7c4f4c46f
+  - enabled: 1
+    path: Assets/OpenFrontier/Scenes/OpenFrontier Stub.unity
+    guid: 552df84df57e6866fbcfa7912b8f5bf5
   m_configObjects: {}

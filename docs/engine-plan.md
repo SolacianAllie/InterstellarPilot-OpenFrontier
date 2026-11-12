@@ -12,7 +12,10 @@ world journal, delta records), entity IDs are a fresh 64-bit kind-tagged
 scheme, parallelism is budget-gated per platform, and the M0 assembly map,
 scene-reference decision and EngineCore-at-boot are recorded. New section:
 "The tick machine + world sim". Changed bullets are tagged [2026-11-12]
-inline.*
+inline. Amended 2026-11-12, third pass (execution session, M0 landed
+green-strict as `bb5607fb`): from-scratch content doctrine pinned (standing
+rules) and the M1 PreRebuild extraction landed contract corrections
+(Porting contracts section).*
 
 ## Status when this plan was written
 
@@ -572,6 +575,39 @@ All in `PreRebuild/OpenFrontierLogic/OpenFrontier.IP/...`, assembly
   (2). Old layout/flow are suggestions. Never wholesale-copy EngineASX;
   extract registry/sim-loop concepts, rewrite space-facing parts.
 
+**Contract corrections from the M1 extraction (2026-11-12 — full report in
+the session; facts, not opinions):**
+
+- **The decompiled engine is NOT persistent.** EngineASX has no
+  DontDestroyOnLoad, EngineScene loads additively per world, and the
+  Single-mode launch load unloads it — every world (menu included;
+  MenuScreenScene carries a WorldBase) built a FRESH engine; only the
+  statics (`EngineASX.Instance`, `LoadedAndReady`, `WorldBase.LoadData`)
+  survived scene boundaries. The old "menu world and galaxy world share ONE
+  instance" line above was belief, not fact. EngineCore's DDOL-at-boot
+  design is the deliberate improvement and stands.
+- Legacy budgeting read `Time.deltaTime` inside FixedUpdate — a frame delta
+  in the fixed step. Budget in TICKS (integer cadence), never frame deltas.
+- timeScale had FOUR unrelated writers (loader, LoadingScreenUI.Start,
+  WorldBase.Init, NotifyWorldLoadedAndReady). EngineCore is the single
+  authority for the load/pause protocol in M1.
+- WorldBase's init poll swallowed exceptions via try/finally — a failed
+  init read as a ready world. M1 fails loudly.
+- Watched-sector ticking had a gap (ships ticked in watched sectors while
+  inactive updates skipped them — stations/cargo never did). The
+  kind-tagged tier system decides this explicitly; do not inherit it.
+- `ActiveSector`'s setter fused sim state with presentation (pool returns,
+  HUD caches, backdrop, camera particles) — decompose into a sim event +
+  render reaction under the RenderSync doctrine when sectors arrive (M3).
+- Legacy engine→UI coupling: the engine loaded its own screens and pushed
+  toasts through UIController. The event bus carries notifications instead.
+- Bugs to NOT reproduce: mission data loaded twice; two off-by-one count
+  getters; `LoadingScenario` event fired before the payload was assigned.
+- 2.5D assumptions are baked into otherwise-portable primitives
+  (Y-flattened inactive-player motion, 2D map positions, radial universe
+  bound). The rebuild's sim is full 3D doubles — nothing of that shape is
+  carried.
+
 ## Live build state (Assets/) — pointers
 
 - `Scripts/MainMenu/` (20 files), `Scripts/Gamemodes/` (GamemodeDefinition,
@@ -602,6 +638,15 @@ All in `PreRebuild/OpenFrontierLogic/OpenFrontier.IP/...`, assembly
 
 ## Process / verification rules (standing)
 
+- **From-scratch content doctrine [2026-11-12, execution session]:** game
+  content is authored fresh — nothing NEW consumes legacy content assets.
+  Already-integrated legacy assets (menu holograms + Ranger/Overlord, the 13
+  `Planet*` shells, SpaceUnity nebula/star dressing, ship FBXs/textures,
+  audio, the two legacy particle shaders) stay load-bearing until their
+  authored replacements land — no removal schedule; they are simply never
+  built upon. PreRebuild's decompiled code stays READ-ONLY reference for
+  entry-point contracts (port doctrine unchanged: port the contract, never
+  the code — and none of it is copied).
 - Headless Unity does not work here (licensing, exit 198) — the USER performs
   all editor actions; verify via `tools/harness/check.sh` +
   `grep -c "error CS" Logs/Editor.log` after editor refocus.

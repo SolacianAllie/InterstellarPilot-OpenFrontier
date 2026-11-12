@@ -44,5 +44,8 @@ namespace OpenFrontier.Gamemodes
 
 		[Tooltip("Visible only in the editor and development builds - the registry filters it out, so a release build never even lists it.")]
 		public bool DeveloperOnly;
+
+		[Tooltip("Scene this gamemode's launch boots into. Serialized-string contract - spell it exactly as the .unity file is named (SceneNames in the engine assembly is the single source). Empty = not launchable; the launcher errors loudly. The dev test mode targets 'OpenFrontier Stub'.")]
+		public string TargetSceneName;
 	}
 }
