@@ -2552,9 +2552,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OpenFrontier.MainMenu.GamemodeCard
   List: {fileID: 408209113}
-  Title: {fileID: 0}
-  Description: {fileID: 0}
-  Image: {fileID: 0}
+  Title: {fileID: 669387767}
+  Description: {fileID: 1078527011}
+  Image: {fileID: 1313564924}
 --- !u!1 &470484742
 GameObject:
   m_ObjectHideFlags: 0

@@ -30,8 +30,10 @@ namespace OpenFrontier.EditorTools
 	///
 	/// Every step verifies against the RELOADED file before reporting success
 	/// (the MenuScaffoldInstaller lesson: logging records intents, disk
-	/// records facts). Card labels/image are deliberately left for the user
-	/// - the tool does not guess the card's visual layout.
+	/// records facts). Card visuals wire by child NAME (Title / Description
+	/// / Image) when those children exist; anything unmatched is logged,
+	/// never guessed - and only ever fills a still-null field, so hand
+	/// wiring always wins.
 	/// </summary>
 	public static class GamemodeScaffoldInstaller
 	{
@@ -261,12 +263,14 @@ namespace OpenFrontier.EditorTools
 				if (card.List != list)
 				{
 					card.List = list;
-					Debug.Log($"{Tag} GamemodeCard on '{cardTransform.name}' now points at the Content list (was '{(cardAdded ? "unwired" : "the misplaced list")}' ). Its Title/Description/Image children stay yours - the tool does not guess the card's visual layout.");
+					Debug.Log($"{Tag} GamemodeCard on '{cardTransform.name}' now points at the Content list (was {(cardAdded ? "unwired" : "the misplaced list")}).");
 				}
 				else
 				{
 					Debug.Log($"{Tag} GamemodeCard already wired to the Content list - left untouched.");
 				}
+
+				WireCardVisuals(cardTransform, card);
 			}
 			else
 			{
@@ -300,11 +304,52 @@ namespace OpenFrontier.EditorTools
 
 			if (finalOk)
 			{
-				Debug.Log($"{Tag} DONE. Exactly one GamemodeList, on '{GetPath(checkTransform)}'. Play and open NewGame: the Development row now builds under YOUR Selection Menu Content.");
+				Debug.Log($"{Tag} DONE. Exactly one GamemodeList, on '{GetPath(checkTransform)}'. Play and open NewGame: the Development row builds under YOUR Selection Menu Content, and the card mirrors it with no click - the list preselects the first visible mode on open.");
 			}
 			else
 			{
 				Debug.LogError($"{Tag} Final scene verification FAILED - inspect '{ContentPath}' by hand.");
+			}
+		}
+
+		private static void WireCardVisuals(Transform cardTransform, GamemodeCard card)
+		{
+			TextMeshProUGUI[] labels = cardTransform.GetComponentsInChildren<TextMeshProUGUI>(true);
+
+			for (int i = 0; i < labels.Length; i++)
+			{
+				TextMeshProUGUI label = labels[i];
+
+				if (label.name == "Title" && card.Title == null)
+				{
+					card.Title = label;
+					Debug.Log($"{Tag} Card Title wired to the '{label.name}' label.");
+				}
+				else if (label.name == "Description" && card.Description == null)
+				{
+					card.Description = label;
+					Debug.Log($"{Tag} Card Description wired to the '{label.name}' label.");
+				}
+			}
+
+			// The card root itself carries a background Image - only a child
+			// actually named "Image" is the preview, never the root's.
+			Image[] images = cardTransform.GetComponentsInChildren<Image>(true);
+
+			for (int i = 0; i < images.Length; i++)
+			{
+				Image image = images[i];
+
+				if (image.name == "Image" && image.transform != cardTransform && card.Image == null)
+				{
+					card.Image = image;
+					Debug.Log($"{Tag} Card Image wired to the '{image.name}' child (it hides itself until a selection has a PreviewImage).");
+				}
+			}
+
+			if (card.Title == null || card.Description == null || card.Image == null)
+			{
+				Debug.LogWarning($"{Tag} Card wiring incomplete - Title {(card.Title != null ? "wired" : "NOT FOUND")}, Description {(card.Description != null ? "wired" : "NOT FOUND")}, Image {(card.Image != null ? "wired" : "NOT FOUND")}. Wire the missing ones in the Inspector, or rename the child labels to 'Title' / 'Description' / 'Image'.");
 			}
 		}
 
