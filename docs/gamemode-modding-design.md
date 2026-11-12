@@ -200,9 +200,9 @@ The dev gamemode is an ordinary definition with `DeveloperOnly` ticked;
 release players never see it, and its launch path stays a stub until the
 engine seam exists — nothing dev-only leaks into the shipped UI.
 
-**OPEN QUESTION:** what the dev gamemode actually launches into (empty
-bootstrap world? test scene? nothing until the engine exists?). The only
-design item still unresolved.
+**RESOLVED 2026-11-12** (see `docs/engine-plan.md`, M1): the dev gamemode
+boots the bare M1 stub scene — empty skybox; the engine boots and proves
+the chain (timeScale 0→1, log/unscaled marker); zero content authoring.
 
 ## Build order
 
