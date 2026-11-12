@@ -5,14 +5,17 @@ using UnityEngine.SceneManagement;
 namespace OpenFrontier.Engine
 {
 	/// <summary>
-	/// The launch seam: GamemodeDefinition → payload → scene boot. The port
-	/// of legacy ScenarioUI.PlayScenario/ScenarioLoaderUI minus everything
-	/// sector-specific. Deliberately small: validate, drop the load/pause
-	/// protocol to 0 through the single authority, park the payload on a
-	/// STATIC carrier (the pinned scene-boundary pattern — a Single-mode
-	/// load destroys the menu scene, and only statics and persistent
-	/// objects survive it), then load the target scene. The target scene's
-	/// WorldBoot adopts the payload and lifts the protocol back to 1.
+	/// The launch seam: GamemodeDefinition → payload → GALAXY stage →
+	/// system boot. The port of legacy ScenarioUI.PlayScenario/
+	/// ScenarioLoaderUI minus everything sector-specific. Deliberately
+	/// small: validate, drop the load/pause protocol to 0 through the
+	/// single authority, park the payload on a STATIC carrier (the pinned
+	/// scene-boundary pattern — a Single-mode load destroys the menu
+	/// scene, and only statics and persistent objects survive it), then
+	/// load the GALAXY scene. The galaxy stage proves itself and hands
+	/// over to the payload's TargetSceneName (M2b inserts the cubemap
+	/// capture at that seam), whose Single-mode load unloads the galaxy
+	/// and whose WorldBoot adopts the payload and lifts the protocol.
 	///
 	/// Every validation happens BEFORE the protocol drop: a launch that
 	/// cannot happen must leave the world exactly as it was. A LoadScene
@@ -20,6 +23,7 @@ namespace OpenFrontier.Engine
 	/// nothing — but a protocol dropped first would freeze the menu at
 	/// timeScale 0 behind a load that never finishes (the failed first
 	/// playtest: unlisted stub scene, menu died silently after the click).
+	/// BOTH scenes are validated — the galaxy stage AND the final target.
 	/// </summary>
 	public static class EngineLauncher
 	{
@@ -27,6 +31,14 @@ namespace OpenFrontier.Engine
 
 		/// <summary>A launch is queued but its scene has not adopted it yet.</summary>
 		public static bool HasPending => pending != null;
+
+		/// <summary>
+		/// Read the pending payload WITHOUT consuming it — the galaxy stage
+		/// needs the gamemode Id (dressing subtree) and the target scene
+		/// name, but the payload itself belongs to the system scene's
+		/// WorldBoot, whose ConsumePending is still the only consume.
+		/// </summary>
+		public static LaunchPayload PeekPending() => pending;
 
 		/// <summary>
 		/// The boot conductor's one consume: adopt-and-clear, so a payload
@@ -66,6 +78,12 @@ namespace OpenFrontier.Engine
 				return;
 			}
 
+			if (!IsSceneInBuildSettings(SceneNames.Galaxy))
+			{
+				Debug.LogError($"[EngineLauncher] The galaxy stage '{SceneNames.Galaxy}' is not in the active build profile's scene list (File > Build Profiles > Scene List) - every launch routes through it. Launch refused - nothing changed.");
+				return;
+			}
+
 			// Defensive Boot: a menu opened directly in the editor never ran
 			// the landing boot, and the engine must exist before its world
 			// boots. Idempotent — the normal path is unaffected.
@@ -78,7 +96,12 @@ namespace OpenFrontier.Engine
 			EngineCore.NotifyLoadStarted();
 
 			pending = ComposePayload(gamemode);
-			SceneManager.LoadScene(gamemode.TargetSceneName, LoadSceneMode.Single);
+
+			// Route through the galaxy stage: the Single-mode load destroys
+			// the menu; the stage scans, proves itself and hands to
+			// TargetSceneName (the pinned lifecycle — the stage exists only
+			// to be photographed).
+			SceneManager.LoadScene(SceneNames.Galaxy, LoadSceneMode.Single);
 		}
 
 		/// <summary>Build-profile scene-list check, by NAME (the

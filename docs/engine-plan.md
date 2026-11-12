@@ -20,6 +20,63 @@ session): M1 landed green and PROVEN IN PLAY as `c82469aa`; SpaceUnity
 nebula/star data machinery stripped (user decision — textures preserved);
 fresh Tags & Layers hierarchy pinned and landed (LegacyStripInstaller).*
 
+## Current position — update at every landing (cross-chat recall anchor)
+
+- **Landed on `Dev`:** M0 assembly skeleton `bb5607fb`; M1 EngineCore
+  `c82469aa` — PROVEN IN PLAY (menu launch → payload adopt → protocol
+  lift → 30 Hz heartbeat markers; the engine has been alive since the
+  landing boot); legacy strip + fresh layer hierarchy `d901153c`
+  (24 legacy layers retired, five fresh at slots 8-12, SpaceUnity data
+  machinery gone, textures kept, planets kept).
+- **Traps a fresh session must not re-learn:** UI binds LAYER SLOT 5 in
+  this project (not the standard 4 — see the Tags & Layers table);
+  harness needs `--regen` whenever files arrive/depart; headless Unity
+  is impossible here — the USER performs all editor actions (close the
+  editor before mass deletions); everything lands on `Dev`, never a
+  bare push.
+- **In flight: M2 GalaxyStage — 2a built, dressing proven, chain
+  playtest pending.** Scene contract PINNED ("Galaxy scene contract"
+  above). Landed this session: the scene-contract components
+  (`SystemAnchor`, `GenerationTrigger`, `GalaxyStageBoot` under
+  `Scripts/Engine/Galaxy/`), the launch chain routed THROUGH the galaxy
+  stage as a pass-through (`EngineLauncher` validates both scenes,
+  `PeekPending()` hands the payload through), the one-shot
+  `GalaxySceneScaffoldInstaller` (ran — it authored Galaxy.unity,
+  user-verified against the reloaded file, in build settings), and the
+  galaxy dressing: `GalaxyDisk` (procedural volumetric sheet, vertical
+  profile baked into vertex alpha) + `GalaxyStars`/`GalaxyClouds`
+  (camera-facing billboards on one merged mesh each, placed by
+  `GalaxyDistribution`'s splitmix64 PRNG snapped onto the disk shader's
+  spiral crest) + two shaders, zero textures. PROVEN IN PLAY: the
+  galaxy renders — user-verified disk glow, star points along the arms,
+  dust clouds; three draw calls, no spin (user call: real drift would
+  never read).
+- **Galaxy lessons on record:** ONE mesh instance per component —
+  Clear+refill, never destroy (OnValidate refuses DestroyImmediate;
+  replace-and-leak strands an orphaned mesh in the scene per save;
+  ContextMenu rebuilds recover a swapped mesh). Billboards live in the
+  GALAXY's transform chain: baked sizes are LOCAL units, lossyScale
+  must carry them — a scale-1 billboard object is invisible by
+  construction, and `WarnIfUnanchored()` says so. Near-fade and sizes
+  are WORLD-unit knobs: at galaxy scale judge them against thousands —
+  a whole un-scaled galaxy sits inside a 40-150 unit fade and reads as
+  additive black. Additive black is indistinguishable from nothing: a
+  live-session diagnostic dump (parenting, lossyScale, layers, meshes,
+  materials, shaders, camera state) beat reading a stale scene file
+  twice; the diagnostic served and was deleted.
+- **Remaining M2 gates:** the launch-chain playtest (menu → Development
+  → Create → `[GalaxyStageBoot]` scan/modes/hand-over logs → stub
+  heartbeat) is the M2a proof commit; then **2b** — the cubemap capture
+  rig (root-shift pinning, one face per frame, resolution from graphics
+  settings, sky handed to the system scene across the boundary);
+  **2c** — arrival-vector math + load-completes-only-when-sky-AND-
+  system-are-ready. User gates still open: per-mode dressing under
+  `modes/<gamemode-id>/`, resize the starter Generation Trigger box,
+  place/author anchors, move Disk/Stars/Clouds/Galaxy Camera to layer
+  Celestial (slot 8; slots 8-12 are the fresh hierarchy).
+- M1 leftovers deferred to their milestones: per-type registry facades,
+  pool consumers, menu-world design pass.
+
 ## Status when this plan was written
 
 - Menu UI is done: New Game screen fully wired (GamemodeList/Row/Card,
@@ -41,8 +98,10 @@ Three layers. The old flat "sectors" concept is replaced.
 
 - The user hand-crafts a galaxy scene. Voided skybox; stars are real objects
   in it: visibly brighter stars = visitable systems, dim ones = distant
-  systems or padding. Nebulae (SpaceUnity content) become hand-placed
-  dressing — the runtime-generated backdrop pipeline is dead.
+  systems or padding. Nebulae become hand-placed dressing built fresh from
+  the preserved SpaceUnity textures — the runtime-generated backdrop
+  pipeline is dead and its data machinery was stripped [2026-11-12,
+  Replacements].
 - The scene carries **system anchors** (named objects) and **trigger boxes**
   the user authors as legal placement volumes where gamemode-placed or
   generated systems land.
@@ -89,6 +148,42 @@ Three layers. The old flat "sectors" concept is replaced.
 - Player drops out **~10k from the POI centre**.
 - Ticking: fully ticked while the player is there, occasionally ticked
   otherwise.
+
+#### Galaxy scene contract — pinned with the user [2026-11-12, M2]
+
+```
+Galaxy.unity — flat-BLACK skybox; ALL visual content is scene objects
+├─ Galaxy                     root of authored galaxy content
+│   ├─ hand                   hand-placed content, present in EVERY universe
+│   ├─ Generated              runtime-generated content — anything not
+│   │                         hand-crafted lands here (renamed from
+│   │                         "random" while pinning this contract)
+│   └─ modes/<gamemode-id>/   per-gamemode hand-placed galaxy elements;
+│                             the launcher activates EXACTLY the launched
+│                             gamemode's subtree — the subfolder NAME is
+│                             the data-overlay binding (matches the
+│                             gamemode Id, e.g. modes/core.devtest/)
+├─ Generation Trigger         systems are FORCED to generate inside this
+├─ systems                    SystemAnchor objects — BOTH kinds:
+│                             hand-authored (gamemode-placed systems
+│                             reference them by data overlay) and
+│                             runtime-created for generated systems;
+│                             other generated content (dressing,
+│                             phenomena) parents under Generated/
+├─ Galaxy Camera              the cubemap capture rig's eye (root-shift
+│                             pinning, one face per frame)
+└─ MAP                        orthographic; galaxy snapshot → sector-map
+                              backdrop; AUTHORED NOW, consumed later
+```
+
+- The black skybox is LOAD-BEARING: the cubemap grabbed at a system's
+  galaxy position makes that system inherit its own galaxy neighborhood
+  as its skybox — zero per-system sky authoring, ever.
+- Consequence of modes-by-subfolder: a gamemode with no subtree gets no
+  galaxy elements; a new gamemode = a new subfolder, no code.
+- The Generation Trigger is the single legal-placement volume (user:
+  systems are "forced to generate inside"); its shapes are authored
+  content the engine reads, never hard-coded bounds.
 
 ### Pinned origin — star system layer ONLY (critical, load-bearing)
 

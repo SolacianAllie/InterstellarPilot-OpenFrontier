@@ -17,6 +17,11 @@ namespace OpenFrontier.Engine
 		/// <summary>The menu. Stays standalone-playable in the editor.</summary>
 		public const string MainMenu = "Main Menu";
 
+		/// <summary>The photographed stage: launch routes THROUGH it, it
+		/// grabs each system's sky (M2b) and hands over — its Single-mode
+		/// hand-over unloads it. Authored per the pinned scene contract.</summary>
+		public const string Galaxy = "Galaxy";
+
 		/// <summary>The M1 bare stub world: empty skybox, engine boots,
 		/// timeScale 0→1 — the core.devtest destination (zero content
 		/// authoring).</summary>
