@@ -1,0 +1,19 @@
+{
+    "name": "OpenFrontier.Menu",
+    "rootNamespace": "",
+    "references": [
+        "OpenFrontier.Engine",
+        "OpenFrontier.Content",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

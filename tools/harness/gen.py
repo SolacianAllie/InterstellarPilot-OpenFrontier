@@ -151,14 +151,24 @@ def bee_rsp(assembly):
                                          '*', assembly + '.rsp')))
     if not hits:
         return None
+    editor_hits = []
     for h in hits:
         try:
             head = open(h, encoding='utf-8', errors='ignore').read(65536)
         except OSError:
             continue
         if 'UNITY_EDITOR' in head:
-            return h
-    return hits[0]
+            editor_hits.append(h)
+    if not editor_hits:
+        return hits[0]
+    # Bee keeps every graph REVISION's artifact folder, and an old revision's
+    # rsp still lists retired assemblies: after M0 retired the loose lump,
+    # 1300b0aE.dag's Assembly-CSharp-Editor.rsp still carried
+    # Assembly-CSharp.ref.dll, whose ghost produced CS0433 against the real
+    # OpenFrontier DLLs while the editor itself compiled clean. Unity
+    # rewrites an assembly's rsp on every compile, so the NEWEST
+    # UNITY_EDITOR rsp is the current graph's record -- take it.
+    return max(editor_hits, key=os.path.getmtime)
 
 
 def unity_refs_for(assembly, own_name):
@@ -355,7 +365,10 @@ def generate():
         refs = dedupe(refs)
         safe = re.sub(r'[^A-Za-z0-9._-]', '_', name)
         out = os.path.join(BUILD, safe, safe + '.csproj')
-        write_csproj(out, name, srcs, refs, defines)
+        # A brand-new asmdef has no Bee rsp yet (Unity has never compiled it),
+        # so unity_refs_for returns (None, None) -- same guard the loose
+        # Assembly-CSharp branch below already applies.
+        write_csproj(out, name, srcs, refs, defines or ())
         projects.append((name, out, len(srcs)))
 
     # Loose scripts: anything under Assets that no asmdef claims. Unity
