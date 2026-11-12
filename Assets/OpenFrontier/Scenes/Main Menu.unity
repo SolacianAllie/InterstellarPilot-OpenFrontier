@@ -2125,6 +2125,7 @@ GameObject:
   - component: {fileID: 408209111}
   - component: {fileID: 408209112}
   - component: {fileID: 291924995}
+  - component: {fileID: 408209113}
   m_Layer: 5
   m_Name: Content
   m_TagString: Untagged
@@ -2177,6 +2178,19 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!114 &408209113
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 408209110}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4210bf78512ea30a09f1e7e8ab3fb011, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OpenFrontier.MainMenu.GamemodeList
+  RowPrefab: {fileID: 2844513028014565759, guid: da42228669266be39bacd3c561baa246, type: 3}
 --- !u!1 &423820679
 GameObject:
   m_ObjectHideFlags: 0
@@ -2444,6 +2458,7 @@ GameObject:
   - component: {fileID: 465430967}
   - component: {fileID: 465430966}
   - component: {fileID: 465430962}
+  - component: {fileID: 465430968}
   m_Layer: 5
   m_Name: Gamemode Card
   m_TagString: Untagged
@@ -2524,6 +2539,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 465430960}
   m_CullTransparentMesh: 1
+--- !u!114 &465430968
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 465430960}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61a8ee0ebddc881618b863a927781d31, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OpenFrontier.MainMenu.GamemodeCard
+  List: {fileID: 408209113}
+  Title: {fileID: 0}
+  Description: {fileID: 0}
+  Image: {fileID: 0}
 --- !u!1 &470484742
 GameObject:
   m_ObjectHideFlags: 0
