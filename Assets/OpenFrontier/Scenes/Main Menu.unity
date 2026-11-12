@@ -4140,6 +4140,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OpenFrontier.MainMenu.MenuScreen
   EntryScreen: 1
   FadeDuration: 0.15
+  FirstSelection: {fileID: 0}
+  BackButton: {fileID: 0}
 --- !u!1 &935736236
 GameObject:
   m_ObjectHideFlags: 0
@@ -4290,6 +4292,7 @@ GameObject:
   - component: {fileID: 1000446049}
   - component: {fileID: 1000446048}
   - component: {fileID: 1000446047}
+  - component: {fileID: 1000446052}
   m_Layer: 5
   m_Name: Singleplayer
   m_TagString: Untagged
@@ -4382,31 +4385,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1000446049}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 903402662}
-        m_TargetAssemblyTypeName: OpenFrontier.MainMenu.MenuScreen, Assembly-CSharp
-        m_MethodName: Hide
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-      - m_Target: {fileID: 1614385387}
-        m_TargetAssemblyTypeName: OpenFrontier.MainMenu.MenuScreen, Assembly-CSharp
-        m_MethodName: Show
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!114 &1000446049
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4445,6 +4424,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1000446045}
   m_CullTransparentMesh: 1
+--- !u!114 &1000446052
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000446045}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20068341751601878f2db46d9b09f822, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OpenFrontier.MainMenu.OpenScreenButton
+  Target: {fileID: 1614385387}
 --- !u!1001 &1003237486
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5082,6 +5074,24 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1149157138}
   m_CullTransparentMesh: 1
+--- !u!1 &1161657349 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8797399125788940920, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
+  m_PrefabInstance: {fileID: 1558955050}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1161657355
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1161657349}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20068341751601878f2db46d9b09f822, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OpenFrontier.MainMenu.OpenScreenButton
+  Target: {fileID: 903402662}
 --- !u!1 &1204090067
 GameObject:
   m_ObjectHideFlags: 0
@@ -5228,6 +5238,7 @@ GameObject:
   - component: {fileID: 1209541318}
   - component: {fileID: 1209541322}
   - component: {fileID: 1209541317}
+  - component: {fileID: 1209541323}
   m_Layer: 5
   m_Name: New Game
   m_TagString: Untagged
@@ -5403,6 +5414,19 @@ MonoBehaviour:
   GreyscalePressed: 1
   GreyscaleSelected: 1
   GreyscaleDisabled: 0
+--- !u!114 &1209541323
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1209541315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20068341751601878f2db46d9b09f822, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OpenFrontier.MainMenu.OpenScreenButton
+  Target: {fileID: 1577988094}
 --- !u!1001 &1228170562
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7310,7 +7334,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5550623114981504343, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.size
-      value: 2
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5550623114981504343, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
@@ -7323,7 +7347,7 @@ PrefabInstance:
     - target: {fileID: 5550623114981504343, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
-      objectReference: {fileID: 1614385387}
+      objectReference: {fileID: 0}
     - target: {fileID: 5550623114981504343, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_Target
       value: 
@@ -7338,7 +7362,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5550623114981504343, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
-      value: Hide
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 5550623114981504343, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_MethodName
@@ -7346,7 +7370,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5550623114981504343, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
-      value: OpenFrontier.MainMenu.MenuScreen, Assembly-CSharp
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 5550623114981504343, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_TargetAssemblyTypeName
@@ -7354,7 +7378,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5550623114981504343, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
-      value: UnityEngine.Object, UnityEngine
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 5550623114981504343, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[1].m_Arguments.m_ObjectArgumentAssemblyTypeName
@@ -7367,6 +7391,10 @@ PrefabInstance:
     - target: {fileID: 6306376081190385229, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       propertyPath: m_IsActive
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8797399125788940920, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
+      propertyPath: m_Name
+      value: Back
       objectReference: {fileID: 0}
     - target: {fileID: 9204902279047815724, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       propertyPath: m_SizeDelta.y
@@ -7382,7 +7410,10 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3717417501388004083, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       insertIndex: -1
       addedObject: {fileID: 338013676}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8797399125788940920, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1161657355}
   m_SourcePrefab: {fileID: 100100000, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
 --- !u!1001 &1577988091
 PrefabInstance:
@@ -7526,13 +7557,27 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 3717417501388004083, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1234337881}
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8797399125788940920, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2012778634}
   m_SourcePrefab: {fileID: 100100000, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
 --- !u!224 &1577988092 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 3717417501388004083, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
   m_PrefabInstance: {fileID: 1577988091}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1577988094 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6443329433342865563, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
+  m_PrefabInstance: {fileID: 1577988091}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75829547dc46862573ee5ed4a677d01a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OpenFrontier.MainMenu.MenuScreen
 --- !u!1 &1599043926
 GameObject:
   m_ObjectHideFlags: 0
@@ -9835,6 +9880,24 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1974948831}
   m_CullTransparentMesh: 1
+--- !u!1 &2012778628 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8797399125788940920, guid: fdeabf1f6081ac8e891fcf66a76ae958, type: 3}
+  m_PrefabInstance: {fileID: 1577988091}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2012778634
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2012778628}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20068341751601878f2db46d9b09f822, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OpenFrontier.MainMenu.OpenScreenButton
+  Target: {fileID: 1614385387}
 --- !u!1 &2014738807
 GameObject:
   m_ObjectHideFlags: 0
