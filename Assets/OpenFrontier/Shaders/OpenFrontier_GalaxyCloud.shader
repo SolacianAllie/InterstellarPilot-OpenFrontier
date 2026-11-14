@@ -1,0 +1,87 @@
+// Open Frontier: the realtime galaxy band. ONE draw of GPU-instanced,
+// camera-facing additive billboards; per-instance data (position, size,
+// colour) arrives via _InstanceData, filled by GalaxyInstanceCloud from the
+// blueprint's CDF sampling.
+//
+// Billboard orientation happens in clip space against the per-camera
+// projection matrix, so the same indirect draw is correct in every camera
+// that renders it - the ortho map view and the perspective in-sky view both
+// included. The cloud's object transform arrives as _LocalToWorld (set from
+// script every frame), so moving/rotating the cloud never rebuilds anything.
+// No LightMode tag: renders as SRPDefaultUnlit under URP. Queue discipline:
+// tag says Transparent; the MATERIAL carries the 2990 offset (backdrop,
+// just under the 2999 nebulae and the 3000 gameplay particles).
+Shader "OpenFrontier/Galaxy/Cloud" {
+	Properties {
+		[HDR] _CloudTint ("Cloud Tint", Color) = (1,1,1,1)
+	}
+	SubShader {
+		Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" "PreviewType"="Plane" }
+		Blend SrcAlpha One
+		Cull Off
+		ZWrite Off
+
+		Pass {
+			HLSLPROGRAM
+			#pragma target 4.5
+			#pragma exclude_renderers gles
+			#pragma vertex vert
+			#pragma fragment frag
+			#pragma multi_compile_instancing
+			#include "UnityCG.cginc"
+
+			struct InstanceData
+			{
+				float4 posSize; // xyz = cloud-local position, w = sprite size (world units)
+				float4 color;   // linear tint, a = per-point strength
+			};
+
+			StructuredBuffer<InstanceData> _InstanceData;
+			float4x4 _LocalToWorld;
+			fixed4 _CloudTint;
+
+			struct appdata_cloud
+			{
+				float4 vertex : POSITION;
+				float2 uv : TEXCOORD0;
+			};
+
+			struct v2f_cloud
+			{
+				float4 pos : SV_POSITION;
+				float2 uv : TEXCOORD0; // -1..1 across the sprite
+				fixed4 color : COLOR0;
+			};
+
+			v2f_cloud vert(appdata_cloud v, uint id : SV_InstanceID)
+			{
+				v2f_cloud o;
+				InstanceData d = _InstanceData[id];
+				float3 world = mul(_LocalToWorld, float4(d.posSize.xyz, 1.0)).xyz;
+				float4 clipPos = mul(UNITY_MATRIX_VP, float4(world, 1.0));
+				// clip-space billboard: push the sprite size through THIS
+				// camera's projection - perspective-correct in-sky, constant
+				// world size under the ortho map. Sprites whose centre is
+				// behind the camera collapse instead of flipping.
+				float scale = clipPos.w > 0.0 ? 1.0 : 0.0;
+				clipPos.xy += v.vertex.xy * d.posSize.w * scale
+					* float2(UNITY_MATRIX_P._m00, UNITY_MATRIX_P._m11);
+				o.pos = clipPos;
+				o.uv = v.uv * 2.0 - 1.0;
+				o.color = d.color * _CloudTint;
+				return o;
+			}
+
+			fixed4 frag(v2f_cloud i) : SV_Target
+			{
+				float d2 = dot(i.uv, i.uv);
+				float rim = saturate(1.0 - d2);
+				float a = rim * rim * 0.35;   // soft halo
+				a += exp(-d2 * 5.0) * 0.65;   // hot core
+				a *= i.color.a;
+				return fixed4(i.color.rgb, a);
+			}
+			ENDHLSL
+		}
+	}
+}
