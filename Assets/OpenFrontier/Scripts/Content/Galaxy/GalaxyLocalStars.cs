@@ -6,88 +6,75 @@ namespace OpenFrontier.Galaxy
 {
 	/// <summary>
 	/// The LOCAL sky: a small shell of individual stars generated around
-	/// the viewpoint, sampled from the sibling GalaxyStars' model at the
-	/// local density (shader OpenFrontier/GalaxyBillboards, own
-	/// material).
+	/// the viewpoint (shader OpenFrontier/GalaxyStars, own material with
+	/// the near-fade disabled -- near stars must blaze).
 	///
-	/// WHY: the global mesh is the galaxy's FAR view -- a few tens of
-	/// thousands of weighted points standing in for billions of model
-	/// stars. Inside the population, any small neighbourhood contains
-	/// almost none of them: the local sky reads empty away from the
-	/// core. This component is the second tier of the SAME model --
-	/// "billions of stars" as a density function (GalaxyDistribution's
-	/// samplers), rendered through a bounded budget that follows the
-	/// viewpoint. Elite's trick, minus the storage.
+	/// WHY: the baked face and the hero mesh are the galaxy's FAR view.
+	/// Any small neighbourhood of the population contains almost none of
+	/// them: the local sky reads empty, especially looking outward past
+	/// the rim where the baked quad ends. This component is the second
+	/// tier of the same model -- "billions of stars" as a density the
+	/// viewpoint carries with it. Elite's trick, minus the storage.
 	///
-	/// DETERMINISM BY CELL: the viewpoint's galaxy-local position is
-	/// quantised to a grid (cell edge = half the shell radius). The
-	/// shell builds around the CELL CENTRE from a seed derived from the
-	/// cell coordinates -- the same cell of the same seed is the same
-	/// sky, every revisit, nothing stored. Crossing a cell rebuilds the
-	/// shell (an authoring-time pop; the sky capture is static and
-	/// never pops).
+	/// DETERMINISM BY CELL: the viewpoint's world position is quantised
+	/// to a grid (cell edge = half the shell radius). The shell builds
+	/// around the CELL CENTRE from a seed derived from the cell
+	/// coordinates -- the same cell of the same seed is the same sky,
+	/// every revisit, nothing stored. Crossing a cell rebuilds the shell
+	/// (an authoring-time pop; the sky capture is static and never
+	/// pops).
 	///
-	/// HANDOFF: the global mesh's near fade removes its stars close to
-	/// the camera while this shell supplies the near field -- the two
-	/// tiers compose into one sky. Give the shell its OWN material
-	/// (duplicate the stars material): Near Fade ~0/40, Proximity
-	/// Boost on (near stars blaze), Radial Dimming low (rim regions
-	/// stay bright -- the point of the shell). Local positions need no
-	/// arm snapping: the shader's inter-arm band shading supplies the
-	/// arm contrast at any radius.
-	///
-	/// WIRING: child of the disk at its ORIGIN, scale 1 (the cell grid
-	/// is this object's local frame), ModelSource = the GalaxyStars
-	/// component (the shell samples ITS distribution knobs; one owner,
-	/// no drift), Anchor = the viewpoint (the Galaxy Camera while
-	/// authoring; the M2b capture rig calls RebuildAt at the capture
-	/// position). Unwired Anchor falls back to Camera.main. Layer:
-	/// Celestial (8), with the rest of the celestial dressing.
+	/// WIRING: object at the Galaxy root, SCALE 1 -- this shell works in
+	/// WORLD units (the dressing root's x3000 scale must not touch it).
+	/// Model = the GalaxyBackdrop (one owner, no drift: population mix
+	/// and palette come from its Params at the cell's galaxy position).
+	/// Anchor = the viewpoint (the Galaxy Camera while authoring; the
+	/// M2b capture rig calls RebuildAt at the capture position).
+	/// Unwired Anchor falls back to Camera.main.
 	///
 	/// MOBILE: one extra draw call, ~16k vertices at the default count,
 	/// rebuilt only on cell crossings (throttled by MinRebuildInterval);
-	/// the per-frame cost of the check is one matrix multiply and three
-	/// floor calls.
+	/// the per-frame cost of the check is three floor calls.
 	/// </summary>
 	[ExecuteAlways]
 	[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 	public class GalaxyLocalStars : MonoBehaviour
 	{
 		[Header("Population")]
-		[Tooltip("Shell star count: individual nearby stars, ONE extra draw call. 20000 ceiling (~80k vertices, ~3 MB) is trivial next to the global mesh.")]
+		[Tooltip("Shell star count: individual nearby stars, ONE extra draw call. 20000 ceiling (~80k vertices, ~3 MB).")]
 		[Min(0)]
 		public int Count = 4000;
 
 		[Tooltip("Deterministic base seed. The shell is keyed to the spatial CELL as well: the same cell of the same seed is the same sky, every revisit, nothing stored.")]
-		public int Seed = 3;
+		public int Seed = 7;
 
-		[Header("Shell")]
-		[Tooltip("Shell radius in LOCAL units (x the transform scale): how far individual stars are generated around the viewpoint. 0.08 on a 3000-scale galaxy = a 240-unit sphere. The sky rebuilds when the viewpoint crosses a cell of half this size.")]
-		[Range(0.01f, 0.5f)]
-		public float ShellRadius = 0.08f;
+		[Header("Shell (world units -- this object sits at scale 1)")]
+		[Tooltip("How far individual stars are generated around the viewpoint. The sky rebuilds when the viewpoint crosses a cell of half this size.")]
+		[Range(20f, 1000f)]
+		public float ShellRadius = 260f;
 
-		[Tooltip("Minimum seconds between rebuilds: a viewpoint dragged across many cells rebuilds at most ~10x per second, never per frame.")]
+		[Tooltip("Minimum seconds between rebuilds: a viewpoint dragged across many cells rebuilds at most ~4x per second, never per frame.")]
 		[Range(0f, 2f)]
-		public float MinRebuildInterval = 0.1f;
+		public float MinRebuildInterval = 0.25f;
 
 		[Tooltip("The viewpoint the local sky is built around. Wire the Galaxy Camera while authoring; the M2b capture rig pins the capture position via RebuildAt. Unwired: falls back to Camera.main.")]
 		public Transform Anchor;
 
-		[Tooltip("Fallback thickness fraction when the model source's own FitTo is unwired -- match the disk's Thickness.")]
-		[Min(0.004f)]
-		public float ThicknessFraction = 0.06f;
-
-		[Header("Model (read from the wired sibling -- one owner, no drift)")]
-		[Tooltip("The GalaxyStars component whose distribution knobs define the model. Required: unwired, there is nothing to sample and the shell stays empty (loudly).")]
-		public GalaxyStars ModelSource;
+		[Header("Model (one owner, no drift)")]
+		[Tooltip("The GalaxyBackdrop whose Params define the model. Required: unwired, there is nothing to sample and the shell stays empty (loudly).")]
+		public GalaxyBackdrop Model;
 
 		[Header("Look")]
-		[Tooltip("Shell star size range in LOCAL units. These are INDIVIDUAL stars, not buckets: 0.0004-0.0015 on a 3000-radius galaxy = 1.2-4.5 unit points.")]
-		public Vector2 SizeRange = new Vector2(0.0004f, 0.0015f);
+		[Tooltip("Shell star size range in WORLD units. These are INDIVIDUAL stars, not buckets.")]
+		public Vector2 SizeRange = new Vector2(0.5f, 2.2f);
 
 		[Tooltip("Brightness distribution power: higher = fewer bright, many dim.")]
 		[Range(0.5f, 4f)]
-		public float BrightnessPower = 2f;
+		public float BrightnessPower = 2.2f;
+
+		[Tooltip("Vertical spread of the local cloud (world units) -- how thick the star cloud around the viewpoint feels.")]
+		[Range(10f, 800f)]
+		public float VerticalSpread = 90f;
 
 		private Mesh generatedMesh;
 		private Camera mainCamera;
@@ -104,16 +91,29 @@ namespace OpenFrontier.Galaxy
 
 		/// <summary>The cell grid edge as a fraction of the shell
 		/// radius: half the radius per cell step keeps the guaranteed
-		/// coverage around the viewpoint at ~0.65 x the radius (the
-		/// worst-case corner offset is sqrt(2)/2 x cell) while
-		/// re-rolling at most every half radius of travel.</summary>
+		/// coverage around the viewpoint at ~0.65 x the radius.</summary>
 		private const float CellFraction = 0.5f;
 
-		/// <summary>The thin disk population's vertical sigma, in
-		/// half-thickness units -- the same shape the global sampler
-		/// uses (and the same constant LocalPopulationWeights
-		/// normalises by).</summary>
-		private const float DiskSigmaH = 0.45f;
+		/// <summary>Share of shell stars in the ROUND (halo-like)
+		/// vertical spread -- the overhead sky must not be empty at the
+		/// camera's height above the plane.</summary>
+		private const float RoundShare = 0.3f;
+
+		/// <summary>Nearby-star spectral variety (the local sky shows
+		/// individual stars, not population averages): warm white
+		/// dominant, with gold, blue-white, orange and red accents.</summary>
+		private static readonly Color[] Spectra =
+		{
+			new Color(1.00f, 0.96f, 0.92f), // warm white
+			new Color(1.00f, 0.96f, 0.92f),
+			new Color(1.00f, 0.96f, 0.92f),
+			new Color(1.00f, 0.88f, 0.66f), // gold
+			new Color(1.00f, 0.88f, 0.66f),
+			new Color(0.78f, 0.86f, 1.00f), // blue-white
+			new Color(0.78f, 0.86f, 1.00f),
+			new Color(1.00f, 0.72f, 0.42f), // orange
+			new Color(1.00f, 0.52f, 0.40f), // red
+		};
 
 		private void Awake()
 		{
@@ -122,7 +122,7 @@ namespace OpenFrontier.Galaxy
 			{
 				AdoptMesh(filter);
 			}
-			WarnIfUnanchored();
+			WarnIfUnwired();
 		}
 
 		private void Update()
@@ -165,12 +165,12 @@ namespace OpenFrontier.Galaxy
 			{
 				RebuildAt(world);
 			}
-			WarnIfUnanchored();
+			WarnIfUnwired();
 		}
 
 		private float CellSize()
 		{
-			return Mathf.Max(ShellRadius * CellFraction, 1e-4f);
+			return Mathf.Max(ShellRadius * CellFraction, 1e-3f);
 		}
 
 		private bool TryResolveAnchor(out Vector3 world)
@@ -245,11 +245,10 @@ namespace OpenFrontier.Galaxy
 		}
 
 		/// <summary>One mesh instance REUSED across rebuilds (Clear +
-		/// refill, never destroyed) -- same lifecycle contract as the
-		/// siblings: Unity refuses DestroyImmediate during OnValidate,
-		/// and replace-and-leak embeds an orphaned mesh per save. The
-		/// marker name lets a scene reload ADOPT the copy the last save
-		/// embedded.</summary>
+		/// refill, never destroyed) -- Unity refuses DestroyImmediate
+		/// during OnValidate, and replace-and-leak embeds an orphaned
+		/// mesh per save. The marker name lets a scene reload ADOPT the
+		/// copy the last save embedded.</summary>
 		private Mesh AdoptMesh(MeshFilter filter)
 		{
 			Mesh mesh = generatedMesh;
@@ -266,61 +265,38 @@ namespace OpenFrontier.Galaxy
 			return mesh;
 		}
 
-		private void FillMesh(Mesh mesh, Vector3 centerLocal)
+		private void FillMesh(Mesh mesh, Vector3 center)
 		{
 			mesh.Clear();
 			int count = Mathf.Clamp(Count, 0, MaxCount);
-			float half = ModelSource != null && ModelSource.FitTo != null
-				? ModelSource.FitTo.Thickness * 0.5f
-				: ThicknessFraction * 0.5f;
 
-			if (ModelSource == null)
+			if (Model == null || count == 0)
 			{
-				// The loud version lives in WarnIfUnanchored; here the
+				// The loud version lives in WarnIfUnwired; here the
 				// shell simply has no model to sample from.
-				mesh.bounds = new Bounds(centerLocal, Vector3.zero);
+				mesh.bounds = new Bounds(center, Vector3.zero);
 				return;
 			}
 
-			// The local population mix: the model's density at the CELL
-			// CENTRE (the stars' origin), mass-weighted per population.
-			float hCenter = centerLocal.y / half;
-			float diskMass = Mathf.Max(0f,
-				1f - ModelSource.CoreFraction - ModelSource.HaloFraction);
-			GalaxyDistribution.LocalPopulationWeights(
-				new Vector2(centerLocal.x, centerLocal.z), hCenter,
-				ModelSource.DiskFalloff, ModelSource.DiskHeight,
-				ModelSource.VerticalFalloff,
-				ModelSource.BarLength, ModelSource.BarWidth,
-				ModelSource.BarAngle, ModelSource.CoreHeight,
-				ModelSource.HaloRadius, ModelSource.HaloHeight,
-				diskMass, ModelSource.CoreFraction, ModelSource.HaloFraction,
-				out float wDisk, out float wCore, out float wHalo);
-			float total = wDisk + wCore + wHalo;
-
-			// Far from every population the weights underflow to zero:
-			// an empty local sky is the CORRECT answer out there.
-			if (count == 0 || total <= 0f)
-			{
-				mesh.bounds = new Bounds(centerLocal, Vector3.zero);
-				return;
-			}
-
-			float sizeMin = Mathf.Max(SizeRange.x, 0.00005f);
-			float sizeMax = Mathf.Max(SizeRange.y, sizeMin);
-			float vFall = ModelSource.VerticalFalloff;
-			float vEdge = Mathf.Exp(-vFall);
-			float sigmaYMax = Mathf.Max(DiskSigmaH * ModelSource.DiskHeight,
-				Mathf.Max(ModelSource.CoreHeight, ModelSource.HaloHeight));
+			// The local population mix: the model's face at the CELL
+			// CENTRE's galaxy position -- young arms tint the local sky
+			// blue where the cell sits on an arm.
+			Vector3 modelScale = Model.transform.lossyScale;
+			float scale = Mathf.Max(Mathf.Max(modelScale.x, modelScale.y), modelScale.z);
+			GalaxyModel.Face face = GalaxyModel.EvaluateFace(
+				center.x / scale, center.z / scale, Model.Model);
+			float youngFrac = Mathf.Clamp01(
+				face.Young / Mathf.Max(face.Young + face.OldTotal, 1e-5f));
 
 			Vector3[] verts = new Vector3[count * 4];
 			Vector2[] corners = new Vector2[count * 4];
+			Color[] colors = new Color[count * 4];
 			Vector4[] data = new Vector4[count * 4];
 			int[] triangles = new int[count * 6];
 
 			// Cell-keyed determinism: the same cell of the same seed is
 			// the same sky, every revisit, nothing stored.
-			ulong state = GalaxyDistribution.CellSeed(
+			ulong state = GalaxyModel.CellSeed(
 				Seed, lastCell.x, lastCell.y, lastCell.z);
 			Vector2[] quadCorners =
 			{
@@ -328,71 +304,49 @@ namespace OpenFrontier.Galaxy
 				new Vector2(-1f, 1f), new Vector2(1f, 1f),
 			};
 
+			float sizeMin = Mathf.Max(SizeRange.x, 0.02f);
+			float sizeMax = Mathf.Max(SizeRange.y, sizeMin);
+			float spectrumCount = Spectra.Length;
+
 			for (int i = 0; i < count; i++)
 			{
-				// Population by local density share.
-				float pick = GalaxyDistribution.Unit(ref state) * total;
-				float sigmaH;
-				float hMul;
-				bool diskPop;
-				if (pick < wDisk)
-				{
-					diskPop = true;
-					sigmaH = DiskSigmaH * ModelSource.DiskHeight;
-					hMul = ModelSource.DiskHeight;
-				}
-				else if (pick < wDisk + wCore)
-				{
-					diskPop = false;
-					sigmaH = ModelSource.CoreHeight;
-					hMul = ModelSource.CoreHeight;
-				}
-				else
-				{
-					diskPop = false;
-					sigmaH = ModelSource.HaloHeight;
-					hMul = ModelSource.HaloHeight;
-				}
-
 				// xz: uniform disc around the cell centre. The local
 				// patch of any population is radially flat at this
-				// scale; the shader's band and presence terms supply
-				// the global structure for free.
-				float a = GalaxyDistribution.Unit(ref state) * Mathf.PI * 2f;
+				// scale; the model supplies the global structure at a
+				// distance, this shell supplies grain up close.
+				float a = GalaxyModel.Unit(ref state) * Mathf.PI * 2f;
 				float rr = ShellRadius
-					* Mathf.Sqrt(GalaxyDistribution.Unit(ref state));
-				float x = centerLocal.x + Mathf.Cos(a) * rr;
-				float z = centerLocal.z + Mathf.Sin(a) * rr;
+					* Mathf.Sqrt(GalaxyModel.Unit(ref state));
+				float x = center.x + Mathf.Cos(a) * rr;
+				float z = center.z + Mathf.Sin(a) * rr;
 
-				// y: the population's vertical gaussian around the cell
-				// centre, in absolute local units.
-				float y = centerLocal.y
-					+ GalaxyDistribution.Gaussian(ref state, sigmaH) * half;
-
-				// Vertical brightness weight, the global rule: the
-				// disk's curve runs from the PLANE (through the
-				// DiskHeight stretch), core and halo from their own
-				// sigma units.
-				float hN = (y / half) / Mathf.Max(hMul, 0.05f);
-				float weight = diskPop
-					? Mathf.Max(0f,
-						(Mathf.Exp(-hN * hN * vFall) - vEdge) / (1f - vEdge))
-					: Mathf.Exp(-hN * hN * 0.25f);
+				// y: a flattened cloud around the viewpoint, with a
+				// rounder share so the overhead sky stays alive.
+				float sigmaY = GalaxyModel.Unit(ref state) < RoundShare
+					? ShellRadius * 0.6f
+					: VerticalSpread;
+				float y = center.y + GalaxyModel.Gaussian(ref state, sigmaY) * 0.4f;
 
 				float size = Mathf.Lerp(sizeMin, sizeMax,
-					Mathf.Pow(GalaxyDistribution.Unit(ref state), 2f));
+					Mathf.Pow(GalaxyModel.Unit(ref state), 2f));
 				float brightness = Mathf.Pow(
-					GalaxyDistribution.Unit(ref state), BrightnessPower);
-				// Same bright-tail whitening as the global stars.
-				float tint = Mathf.Clamp01((brightness - 0.6f) * 2.5f);
+					GalaxyModel.Unit(ref state), BrightnessPower) * 2.0f + 0.15f;
 
-				Vector3 center = new Vector3(x, y, z);
+				// Colour: the model's population mix at this cell, then
+				// a per-star spectral pick (individual stars, not
+				// population averages).
+				Color popColor = Color.Lerp(GalaxyModel.DiskColor, GalaxyModel.ArmColor, youngFrac);
+				int spectrumIndex = (int)(GalaxyModel.Unit(ref state) * spectrumCount) % Spectra.Length;
+				Color col = Color.Lerp(popColor, Spectra[spectrumIndex], 0.55f) * brightness;
+
+				Vector3 starCenter = new Vector3(x, y, z);
 				for (int k = 0; k < 4; k++)
 				{
 					int v = i * 4 + k;
-					verts[v] = center;
+					verts[v] = starCenter;
 					corners[v] = quadCorners[k];
-					data[v] = new Vector4(size, brightness, weight, tint);
+					colors[v] = col;
+					data[v] = new Vector4(size, 1f, 0f, 0f);
 				}
 
 				int t = i * 6;
@@ -413,54 +367,39 @@ namespace OpenFrontier.Galaxy
 			{
 				mesh.vertices = verts;
 				mesh.uv = corners;
+				mesh.colors = colors;
 				mesh.SetUVs(1, new List<Vector4>(data));
 				mesh.triangles = triangles;
 			}
 			// Bounds centred on the CELL CENTRE (the stars live around
-			// it), padded by the largest size and the tallest
-			// population's 4-sigma reach. Exact: every sample clamps at
-			// 4 sigma.
-			float yExtent = 4f * half * sigmaYMax + sizeMax;
-			float xzExtent = ShellRadius + sizeMax;
-			mesh.bounds = new Bounds(centerLocal,
-				new Vector3(2f * xzExtent, 2f * yExtent, 2f * xzExtent));
+			// it), padded by the shell radius and the tallest spread.
+			float extent = ShellRadius + sizeMax;
+			float yExtent = ShellRadius * 0.6f + VerticalSpread + sizeMax;
+			mesh.bounds = new Bounds(center,
+				new Vector3(2f * extent, 2f * yExtent, 2f * extent));
 		}
 
-		/// <summary>The shell's contract, made loud: it must be a child
-		/// of the disk at its origin (scale contract -- LOCAL units),
-		/// sampling a wired ModelSource. Any other state is invisible
-		/// additive black or a wrong-volume sample, which reads as a
-		/// broken feature.</summary>
-		private void WarnIfUnanchored()
+		/// <summary>The shell's contract, made loud: it works in WORLD
+		/// units at scale 1 and samples a wired Model. Any other state
+		/// is invisible additive black or a wrong-volume sample, which
+		/// reads as a broken feature.</summary>
+		private void WarnIfUnwired()
 		{
-			if (ModelSource == null)
+			if (Model == null)
 			{
 				Debug.LogWarning(
-					$"[{GetType().Name}] '{name}' has no ModelSource -- wire the GalaxyStars component. The shell samples ITS distribution knobs (one owner, no drift); unwired, there is no model and the shell stays empty.",
+					$"[{GetType().Name}] '{name}' has no Model -- wire the GalaxyBackdrop component. The shell samples ITS Params (one owner, no drift); unwired, there is no model and the shell stays empty.",
 					this);
 				return;
 			}
 
-			Transform disk = ModelSource.FitTo != null
-				? ModelSource.FitTo.transform
-				: null;
-			if (disk == null)
+			float maxScale = Mathf.Max(
+				Mathf.Max(transform.lossyScale.x, transform.lossyScale.y),
+				transform.lossyScale.z);
+			if (Mathf.Abs(maxScale - 1f) > 0.01f)
 			{
 				Debug.LogWarning(
-					$"[{GetType().Name}] '{name}' -> ModelSource '{ModelSource.name}' has no FitTo wired, so the disk's thickness is unknown; falling back to ThicknessFraction ({ThicknessFraction}).",
-					this);
-			}
-			else if (transform.parent != disk)
-			{
-				Debug.LogWarning(
-					$"[{GetType().Name}] '{name}' is not a child of '{disk.name}'. The shell's cell grid and sizes are LOCAL units: without the galaxy's scale in the transform chain the local sky is invisible. Drag this object under '{disk.name}'.",
-					this);
-			}
-			else if (transform.localPosition.magnitude > 0.001f
-				|| Mathf.Abs(transform.localScale.x - 1f) > 0.001f)
-			{
-				Debug.LogWarning(
-					$"[{GetType().Name}] '{name}' must sit at the disk's origin, scale 1: its cell grid is its own local frame, so an offset or scaled shell samples the wrong volume.",
+					$"[{GetType().Name}] '{name}' is scaled {maxScale:0.###}. The shell works in WORLD units: park it under the Galaxy root at scale 1, not inside the x3000 dressing.",
 					this);
 			}
 		}

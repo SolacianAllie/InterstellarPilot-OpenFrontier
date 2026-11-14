@@ -102,16 +102,14 @@ Intermediate folder metas under
 - `PreRebuild/` is outside Unity: never imported, never compiled, invisible to
   the editor and the harness. Unity/LFS `.gitattributes` still applies to it —
   every attribute rule is extension-based, so nothing re-buckets when files move.
-- The harness is LOUD-IDLE here: 0 `.asmdef` under Assets (one loose `.cs`,
-  nothing assembled) makes
-  `check.sh` purge any stale generated project set and report green with an
-  explicit "build gate idle" note instead of building. It returns to strict
-  mode the moment the first `.asmdef` lands under `Assets/`; until then,
-  loose `.cs` files compile in the EDITOR only (Assembly-CSharp) — the
-  harness cannot see them, so `Logs/Editor.log` is that code's gate.
-  `codec-test`'s
-  `sync.py` still links pre-migration paths — regenerate it when the first new
-  code arrives, before trusting its green.
+- **(2026-11-14) The harness is STRICT again: 3 `.asmdef` now live under
+  Assets** (`OpenFrontier.Content`, `OpenFrontier.Engine`, `OpenFrontier.Menu`
+  under `Scripts/`). The loud-idle state below no longer holds; every new
+  `.cs` must land inside one of those three assembly folders (or
+  `Assets/Editor/` for loose editor scripts) and pass `check.sh`. The
+  original note: the harness was loud-idle when 0 `.asmdef` existed; it
+  returns to strict mode the moment the first `.asmdef` lands under
+  `Assets/` — that day has come.
 - ProjectSettings consequences of the move: the `GraphicsSettings` /
   `QualitySettings` custom pipeline references RESOLVE again — the URP asset
   lives at `Assets/OpenFrontier/Settings/` (moved there with its metas
@@ -161,9 +159,7 @@ prefab before any screen prefab), scene-first then prefab. **Blank-slate UI
 prefabs DO live under Resources/**
 (`Assets/OpenFrontier/Resources/Prefabs/UIX/`): an earlier plan said "not under
 Resources/" and the user reversed it on 2026-11-09, so spawn-on-demand screens
-can `Resources.Load` their UI directly.
-
-- **Editor scripts cannot restructure a loaded prefab asset's hierarchy in
+can `Resources.Load` their UI directly.- **Editor scripts cannot restructure a loaded prefab asset's hierarchy in
   Unity 6000.6.** `SetParent` through a loaded asset root refuses with
   *"Transform resides in a Prefab asset and cannot be set to prevent data
   corruption"* (`AddComponent` on the root is fine; transforms are not).
@@ -184,6 +180,63 @@ can `Resources.Load` their UI directly.
   menu canvas' root fitter (2026-11-10): the prefab's inner one comes out,
   and a future solo-spawned screen's host canvas carries exactly one
   fitter of its own.
+
+## The galaxy's face is BAKED, the stars are placed (2026-11-14 rebuild)
+
+The M2 procedural galaxy (200k point billboards + additive cloud blobs,
+`GalaxyStars/Clouds/Disk/Distribution/LocalStars` + 3 shaders) was scrapped at
+the user's call: it read as haze soup, "okay but horrible, not realistic".
+Target locked: a real Milky Way photo - warm golden core, blue-white arms,
+dust rifts that actually DARKEN. The new shape:
+
+- **One model, two consumers.** `GalaxyModel` (Content) is the single source
+  of truth: splitmix64 streams (carried over from the scrapped
+  `GalaxyDistribution`), the structure evaluator `EvaluateFace` (Sérsic-ish
+  bulge + bar + 2 major/2 minor log-spiral arms from the bar ends +
+  fbm-patched), dust as per-channel Beer-Lambert extinction
+  (`DustTau` reddens what it dims - blue absorbed ~2x red, THE realism
+  rule), the palette (Core/Disk/Arm/Hii colours), and the runtime
+  placement (`PlaceHeroStars`, `CellSeed` for the local shell).
+- **The bake is editor-time.** `Open Frontier/Galaxy — Bake Disk Texture`
+  (`Assets/Editor/GalaxyBaker.cs`) renders `GalaxyModel.Params` per-pixel
+  into `Assets/OpenFrontier/Textures/Galaxy/GalaxyDisk.png` (2048, ASTC 6x6
+  on Android via importer override) + ~27k rejection-sampled splats for
+  grain/HII. Same params -> byte-identical PNG. Runtime cost: ONE additive
+  quad. Params are SCENE-FIRST: the bake takes the loaded GalaxyBackdrop's
+  knobs; the installer only bakes when the texture is MISSING (re-tuning =
+  deliberate re-run of the bake menu).
+- **Runtime dressing** = `GalaxyBackdrop` (hand/Dressing, scale x3000:
+  quad child + ONE merged hero-star mesh, ~4200 model-placed billboards,
+  ExecuteAlways, mesh-reuse marker names like the old "(generated)" blobs)
+  + `GalaxyLocalStars` (Galaxy root, scale 1 - WORLD units, cell-keyed
+  deterministic shell around the camera, `RebuildAt` is the M2b rig's
+  entry point, Model wired to the backdrop = one owner, no drift).
+- **Tier handoff is in the shader:** `OpenFrontier/GalaxyStars` has a
+  uniform-gated near fade (`_NearFadeEnd` 0 disables); the hero material
+  fades 60->140, the shell material never fades. Backdrop quad draws at
+  queue 2990 (before stars at 3000) - same doctrine as the sun/nebula
+  queue fix.
+- **The Generation Trigger lived under hand/Disk for its SCALE** (legal
+  region = disk transform x box). The dressing installer MOVES it to the
+  Galaxy root with `worldPositionStays` BEFORE destroying hand/, so the
+  boot's serialized reference AND the world-space region survive
+  bit-identical; the installer verifies the reloaded file's
+  `collider.bounds` against the pre-move facts.
+- **Materials are created by the Material API** in the installer
+  (`Assets/OpenFrontier/Materials/Galaxy/`), never hand-edited YAML. Old
+  SpaceUnity materials (Stars/Stars Near/Clouds/Mensa) were deleted WITH
+  the shaders - verified nothing outside the galaxy scene referenced them.
+- **Offline editor-script verification trick** (the ScriptAssemblies
+  staleness trap beats the harness on every NEW Content type): copy the
+  generated `tools/harness/build/Assembly-CSharp-Editor/*.csproj` to
+  /tmp, re-anchor the relative paths, swap the `OpenFrontier.Content` /
+  `.Engine` HintPaths to the FRESH harness-built DLLs under
+  `tools/harness/build/*/bin/Debug/netstandard2.1/`, and `dotnet build`
+  with the Unity DotNetSdk. A full clean compile without waiting for the
+  refocus - it caught a missing `using`, `overridden` (not `enabled`) on
+  `TextureImporterPlatformSettings` in 6000.6, and the
+  `FindAnyObjectByType` (not FindFirst) deprecation before any editor
+  session did.
 
 ## Planet visuals live INSIDE the `Planet*` shells (folded 2026-11-08)
 
