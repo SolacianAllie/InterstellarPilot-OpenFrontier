@@ -28,9 +28,26 @@ Shader "OpenFrontier/GalaxyBillboards"
 	//
 	// COLOUR IS COMPUTED PER-VERTEX, from the same radial/arm functions
 	// the disk paints, so the palette knobs live in THIS material and the
-	// population (where, how many, how big) lives in the C#. Per-vertex
-	// colour costs 24k interpolator writes instead of hundreds of
-	// thousands of per-pixel evaluations.
+	// population (where, how many, how big) lives in the C#. The arm band
+	// is LIVE: the same smoothstep the disk's arm term uses dims the
+	// inter-arm population, and TEXCOORD1.w whitens the bright tail the
+	// C# bakes. Per-vertex colour costs tens of thousands of interpolator
+	// writes instead of hundreds of thousands of per-pixel evaluations.
+	//
+	// SHAPE TEXTURES: either layer (each material binds its own) can
+	// swap the procedural falloff for a texture -- rgb tints the vertex
+	// palette (white textures preserve it), alpha is the mask, _ST
+	// honours tiling/offset so sprite atlases work. The texture owns the
+	// edge: fade it to black at its border, or the quad's rim shows.
+	// The SpaceUnity star-field and nebula textures already in
+	// Resources/SpaceUnity are fair game.
+	//
+	// PROXIMITY: stars brighten as the camera closes on them -- the
+	// depth-lit fly-through field. _ProximityBoost opts a material in;
+	// it multiplies into the near fade so the two form one distance
+	// response. The world-space quads already grow on approach, so size
+	// AND brightness now rise together; a close dim star can out-shine
+	// a far bright one.
 	//
 	// ADDITIVE, like the disk: black adds nothing, draw order is free,
 	// and the layers compose over the disk in any order.
@@ -40,18 +57,27 @@ Shader "OpenFrontier/GalaxyBillboards"
 	// angle below is the same logarithmic spiral the disk shader paints,
 	// so density lands exactly on the painted arms.
 	//
-	// MOBILE FIRST: stars are ~6000 quads of a few pixels each; clouds are
-	// a few hundred. The near fade (dissolve when the camera gets close --
-	// the Elite behaviour) also bounds the worst fill-rate case, because
-	// the puffs that would cover the most pixels are the ones it fades
-	// out.
+	// MOBILE FIRST: the per-frame cost is vertex shading only -- the mesh
+	// is static, additive, ZWrite-off. Counts are a ONE-SHOT CAPTURE
+	// budget: the galaxy renders for seconds while the sky cubemap is
+	// grabbed, so star counts into the six figures are affordable for
+	// that window; tune them down for anything that persists. The near
+	// fade (dissolve when the camera gets close -- the Elite behaviour)
+	// also bounds the worst fill-rate case, because the puffs that would
+	// cover the most pixels are the ones it fades out.
 
 	Properties
 	{
 		// ---- palette / placement shading (same functions as the disk) ----
 		[IntRange] _Arms ("Arm Count", Range(1, 8)) = 2
 		_Winding ("Spiral Winding", Range(0, 14)) = 5
+		// Feeds the inter-arm dimming's smoothstep width, exactly as in
+		// the disk's arm term.
 		_ArmSoftness ("Arm Softness", Range(0.05, 0.9)) = 0.35
+		// How dark the inter-arm population goes (1 = no banding). The
+		// C# snaps most disk stars ONTO the crests; this knob shapes the
+		// uniform remainder so the arms read with contrast.
+		_ArmDimFloor ("Inter-Arm Dimming", Range(0, 1)) = 0.55
 		// How quickly points dim toward the rim.
 		_PresenceFalloff ("Radial Dimming", Range(0.5, 8)) = 3
 		// Extra brightness inside the bulge: stars in the core are the
@@ -67,8 +93,14 @@ Shader "OpenFrontier/GalaxyBillboards"
 		// ~1; clouds are tuned with this rather than rebuilding the mesh.
 		_SizeScale ("Size Scale", Range(0.05, 4)) = 1
 		// exp(-d*d*k) on the -1..1 corner: high k = tight points (stars,
-		// ~18), low k = soft puffs (clouds, ~3.5).
+		// ~18), low k = soft puffs (clouds, ~3.5). Only used while the
+		// shape-texture keyword is OFF.
 		_EdgeSharpness ("Edge Sharpness", Range(0.5, 30)) = 3.5
+		// Optional shape texture: rgb tints, alpha masks. Assign a
+		// texture BEFORE enabling the toggle -- enabled with none
+		// assigned samples black and the layer vanishes.
+		[MainTexture] _MainTex ("Shape Texture", 2D) = "black" {}
+		[Toggle(_SHAPE_TEXTURE)] _UseShapeTexture ("Use Shape Texture (else procedural)", Float) = 0
 		// Near fade in WORLD units: brighten from 0 at Start to full at
 		// End as distance grows. This is what lets the camera sit inside
 		// the population without one nearby puff covering the lens -- and
@@ -76,6 +108,12 @@ Shader "OpenFrontier/GalaxyBillboards"
 		// neighbourhood from washing out the frame.
 		_NearFadeStart ("Near Fade Start (world units)", Float) = 40
 		_NearFadeEnd ("Near Fade End (world units)", Float) = 150
+		// Proximity brightening: stars near the camera gain brightness
+		// -- the depth-lit field of a fly-through, closer stars blazing
+		// while the field behind stays dim. Neutral at 0; the stars
+		// material opts in (clouds keep the plain near fade).
+		_ProximityDistance ("Proximity Range (world units)", Float) = 400
+		_ProximityBoost ("Proximity Brightening", Range(0, 8)) = 0
 	}
 
 	SubShader
@@ -84,7 +122,14 @@ Shader "OpenFrontier/GalaxyBillboards"
 		{
 			"RenderPipeline" = "UniversalPipeline"
 			"RenderType" = "Transparent"
-			"Queue" = "Transparent"
+			// Explicit layer order for the galaxy stack: the disk paints
+			// at Transparent (3000), the stars at +1, the dust shader
+			// (GalaxyDust: Scatter/Occlude) at +2 so its RevSub pass
+			// darkens the glow drawn before it, and the local shell's
+			// material sets +3 so the nearest stars punch through the
+			// dust. Deterministic ordering instead of distance-sorted
+			// ties between bounds-centred meshes.
+			"Queue" = "Transparent+1"
 		}
 
 		Pass
@@ -101,8 +146,17 @@ Shader "OpenFrontier/GalaxyBillboards"
 			#pragma target 3.0
 			#pragma vertex vert
 			#pragma fragment frag
+			// Local keyword: only the material that opts in pays for the
+			// texture variant.
+			#pragma shader_feature_local _SHAPE_TEXTURE
 
 			#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+			// Shape texture (see Properties): per material -- stars and
+			// clouds each bind their own. The _ST vector lives inside the
+			// cbuffer for SRP-batcher compatibility; the sampler cannot.
+			TEXTURE2D(_MainTex);
+			SAMPLER(sampler_MainTex);
 
 			CBUFFER_START(UnityPerMaterial)
 				float4 _InnerColor;
@@ -110,6 +164,7 @@ Shader "OpenFrontier/GalaxyBillboards"
 				float _Arms;
 				float _Winding;
 				float _ArmSoftness;
+				float _ArmDimFloor;
 				float _PresenceFalloff;
 				float _BulgeRadius;
 				float _BulgeBoost;
@@ -118,6 +173,9 @@ Shader "OpenFrontier/GalaxyBillboards"
 				float _EdgeSharpness;
 				float _NearFadeStart;
 				float _NearFadeEnd;
+				float _ProximityDistance;
+				float _ProximityBoost;
+				float4 _MainTex_ST;
 			CBUFFER_END
 
 			struct Attributes
@@ -181,8 +239,18 @@ Shader "OpenFrontier/GalaxyBillboards"
 				// shader: sin(N*theta + phase) is continuous across the
 				// atan2 wrap only for integer N.
 				float armCount = max(1.0, round(_Arms));
-				half band = sin(armCount * theta
-					+ _Winding * log(max(r, 0.03))) * 0.5 + 0.5;
+				float twist = _Winding * log(max(r, 0.03));
+				half band = sin(armCount * theta + twist) * 0.5 + 0.5;
+				// The SAME smoothstep the disk's arm term uses. The C#
+				// snaps most disk stars onto the crests, so the band's job
+				// is the inter-arm population: uniform-angle points dim
+				// between the arms, reinforcing the painted contrast. The
+				// effect fades out inside the bulge -- the core is no
+				// place for arm banding.
+				half armBand = smoothstep(1.0 - _ArmSoftness, 1.0, band);
+				half armDim = lerp(1.0,
+					lerp(_ArmDimFloor, 1.0, armBand),
+					smoothstep(0.0, _BulgeRadius, r));
 				half innerMix = smoothstep(0.65, 0.2, r);
 				half3 col = lerp(_OuterColor.rgb, _InnerColor.rgb, innerMix);
 
@@ -191,13 +259,21 @@ Shader "OpenFrontier/GalaxyBillboards"
 				half coreBoost = exp(-coreD2
 					/ max(_BulgeRadius * _BulgeRadius, 1e-5));
 
-				// Brightness: vertical weight (the disk's profile) x the
-				// pre-shaped distribution (few bright, many dim) x radial
-				// presence x the bulge swarm boost.
+				// Brightness: vertical weight (the disk's profile, or the
+				// core's own gentler curve) x the pre-shaped distribution
+				// (few bright, many dim) x radial presence x the bulge
+				// swarm boost x the inter-arm band.
 				half bright = input.data.z
 					* (0.3 + 0.7 * input.data.y)
 					* presence
-					* (1.0 + _BulgeBoost * coreBoost);
+					* (1.0 + _BulgeBoost * coreBoost)
+					* armDim;
+
+				// The bright tail whitens (data.w, baked by the C#): a
+				// dense field reads as temperature variation, not one
+				// tint. Clouds bake w = 0 and are untouched.
+				col = lerp(col, half3(1.0, 0.97, 0.9),
+					saturate(input.data.w) * 0.75);
 
 				// Near fade: 0 at Start, full at End. Also the fill-rate
 				// guard -- the closest (largest-on-screen) billboards are
@@ -205,19 +281,41 @@ Shader "OpenFrontier/GalaxyBillboards"
 				half fade = saturate((dist - _NearFadeStart)
 					/ max(_NearFadeEnd - _NearFadeStart, 1e-3));
 
-				output.color = half4(col * bright * fade, 1.0);
+				// Proximity brightening: full at the camera, gone at
+				// _ProximityDistance. Multiplied into the same product as
+				// the near fade, so the two knobs compose into ONE
+				// distance response: rise through the fade band, keep
+				// rising as the star closes. Neutral at boost 0.
+				half proximity = 1.0 + _ProximityBoost
+					* (1.0 - saturate(dist / max(_ProximityDistance, 1e-3)));
+
+				output.color = half4(
+					col * bright * fade * _Intensity * proximity, 1.0);
 				return output;
 			}
 
 			half4 frag(Varyings input) : SV_Target
 			{
-				// exp falloff on the -1..1 corner: high sharpness gives a
-				// tight round point (stars), low gives a soft puff
-				// (clouds). exp(d*d) is zero enough by the diagonal that
-				// no quad edge is ever visible.
+				// Full-quad UV from the -1..1 corner: the mesh bakes
+				// corners, not UVs, so texture mode costs nothing extra.
+				float2 uv = input.corner * 0.5 + 0.5;
+			#if defined(_SHAPE_TEXTURE)
+				// Texture mode: the texture owns the shape. rgb tints
+				// (white textures preserve the vertex palette), alpha is
+				// the mask; the manual _ST transform honours
+				// tiling/offset for sprite atlases.
+				float2 texUV = uv * _MainTex_ST.xy + _MainTex_ST.zw;
+				half4 shape = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, texUV);
+				return half4(input.color.rgb * shape.rgb * shape.a, 1.0);
+			#else
+				// Procedural mode: exp falloff on the -1..1 corner: high
+				// sharpness gives a tight round point (stars), low gives
+				// a soft puff (clouds). exp(d*d) is zero enough by the
+				// diagonal that no quad edge is ever visible.
 				float d = length(input.corner);
 				half falloff = exp(-d * d * _EdgeSharpness);
 				return half4(input.color.rgb * falloff, 1.0);
+			#endif
 			}
 			ENDHLSL
 		}

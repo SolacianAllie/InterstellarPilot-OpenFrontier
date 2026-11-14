@@ -88,7 +88,7 @@ Material:
     - _ArmFalloff: 7.72
     - _ArmSoftness: 0.9
     - _ArmStrength: 0
-    - _Arms: 4.19
+    - _Arms: 5
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
     - _BumpScale: 1

@@ -628,6 +628,15 @@ exit 198) — the user performs all editor actions.
   scheme no longer matches names after the `Pixelfactor.*` → `OpenFrontier.*` rename.
   Verified: none of six plausible formulas reproduce any existing GUID, so the
   current set is effectively random — generate a fresh UUID hex for a new file.
+- **A failed SHADER reimport does not magenta the material — it silently
+  keeps the last good compiled version.** The galaxy dust shader spent three
+  rounds "not working" because a depth-gate variable (`band`) collided with
+  the arm-band variable in the same vertex function: every refocus re-imported
+  a broken shader, the editor kept rendering the last good version, and knob
+  changes did nothing visible. `error CS` greps never catch this — the gate is
+  `grep -in "shader error" Logs/Editor.log` after every shader edit. Verify,
+  don't assume: a shader change that "does nothing" may simply not be the code
+  that is running.
 - **A hand-edited prefab with a null reference fails SILENTLY as
   "nothing happens".** `MultiplayerScreen.prefab` is a hand-edited clone of
   LoadGameScreen's, so a dropped field does not break the build - the C#
