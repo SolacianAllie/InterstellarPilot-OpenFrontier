@@ -21,7 +21,7 @@ Shader "OpenFrontier/GalaxyBackdrop"
 
 	SubShader
 	{
-		Tags { "RenderType" = "Transparent" "Queue" = "2990" "RenderPipeline" = "UniversalPipeline" "IgnoreProjector" = "True" }
+		Tags { "RenderType" = "Transparent" "Queue" = "Transparent" "RenderPipeline" = "UniversalPipeline" "IgnoreProjector" = "True" }
 
 		Pass
 		{

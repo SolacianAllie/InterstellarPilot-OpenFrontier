@@ -161,7 +161,40 @@ namespace OpenFrontier.Engine
 			// render must not write sim state. At timeScale 0 this keeps
 			// drawing the last snapshot while the sim is stopped natively
 			// (no FixedUpdate) — exactly the loading/paused shape.
+			if (render == null)
+			{
+				Hollowed();
+				return;
+			}
 			render.RenderUpdate();
+		}
+
+		/// <summary>Set once when the husk is detected and reported —
+		/// the guard fires at most once per hollowing (it resets with
+		/// the next domain reload, exactly like the hollowing that
+		/// re-arms it).</summary>
+		private bool hollowReported;
+
+		/// <summary>The singleton's services are private non-serialised
+		/// fields on a RUNTIME-SPAWNED object: a domain reload DURING
+		/// play (a script change, or the first import of new scripts
+		/// still landing when play was pressed) reconstructs the
+		/// component with every field null and never re-runs Awake. The
+		/// husk would NRE every frame forever — report once, in the
+		/// console's language, then remove it and free the static so
+		/// the next Boot() spawns a real one.</summary>
+		private void Hollowed()
+		{
+			if (hollowReported)
+			{
+				return;
+			}
+			hollowReported = true;
+			Debug.LogError(
+				"[EngineCore] This runtime-spawned heartbeat was hollowed by a MID-PLAY domain reload (services are private non-serialised fields; Awake does not re-run). Destroying the husk. Stop play, let imports finish, re-enter play to rebuild the engine.",
+				this);
+			instance = null;
+			Destroy(gameObject);
 		}
 
 		private void OnDestroy()
@@ -180,6 +213,11 @@ namespace OpenFrontier.Engine
 			// check. (The legacy source kept a redundant gate whose comment
 			// claimed code "runs while paused" — unreachable, and a trap this
 			// file deliberately does not reproduce.)
+			if (scheduler == null)
+			{
+				Hollowed();
+				return;
+			}
 			scheduler.Tick(Time.fixedDeltaTime);
 
 			// End-of-tick sim write — the M1 form of the sim/render

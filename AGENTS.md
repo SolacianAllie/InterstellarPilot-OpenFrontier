@@ -714,6 +714,30 @@ exit 198) — the user performs all editor actions.
   empty row — no error, no exception, the tool reported success.
   `monoscript-check.py` in the harness now fails on it, so **after adding any
   `.cs` file run `check.sh`, not just the compile.**
+- **Playing while the first import of new scripts is still landing causes a
+  MID-PLAY domain reload that hollows runtime-spawned singletons — and the
+  resulting per-frame NRE spam reads as "compiler errors".** Editor.log,
+  2026-11-14: play entered with Enter Play Mode Options (domain AND scene
+  reload disabled) while the new galaxy scripts' .metas were still being
+  generated; `[ScriptCompilation] Requested script compilation because:
+  AssetDatabase observed changes` fired during play; `EngineCore` — a
+  runtime-spawned DontDestroyOnLoad singleton whose five services live in
+  PRIVATE NON-SERIALISED fields — was reconstructed as a husk with every
+  field null (Awake does not re-run for already-enabled objects after a
+  mid-play reload) and threw NullReferenceException in Update/FixedUpdate
+  forever. `EngineCore.Hollowed()` now detects the husk, reports ONCE in
+  the console's language, destroys it and frees the static (the next
+  `Boot()` spawns a real one). Rule: after refocusing on new code, let the
+  import finish BEFORE pressing play — the import-progress spinner (or a
+  quiet second) is the gate; and remember FixedUpdate running at all is a
+  timeScale-1 tell (Reload-Scene-disabled play inherits timeScale from
+  whatever ran last).
+- **A bare integer in a ShaderLab `Queue` tag warns "uses undefined
+  Queue: '3000'" in Unity 6** — the tag wants DEFINED names
+  (`Background/Geometry/Transparent/Overlay`, `Name+offset`). Negative
+  offsets don't exist in shader tags: to draw just under Transparent
+  (2990), tag `Transparent` and set the MATERIAL's `renderQueue = 2990`
+  (the dressing installer does; material overrides shader tag).
 - **The starfield is pinned at the WORLD ORIGIN, not the camera:**
   `Imphenzia.SpaceForUnity.StaticStars.LateUpdate` force-pins its
   20000-unit-wide star-cube mesh to `Vector3.zero` every frame (DLL,

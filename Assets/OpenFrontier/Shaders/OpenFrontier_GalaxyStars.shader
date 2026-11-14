@@ -32,7 +32,7 @@ Shader "OpenFrontier/GalaxyStars"
 
 	SubShader
 	{
-		Tags { "RenderType" = "Transparent" "Queue" = "3000" "RenderPipeline" = "UniversalPipeline" "IgnoreProjector" = "True" }
+		Tags { "RenderType" = "Transparent" "Queue" = "Transparent" "RenderPipeline" = "UniversalPipeline" "IgnoreProjector" = "True" }
 
 		Pass
 		{
