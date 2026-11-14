@@ -83,12 +83,14 @@ global pushed from `Time.unscaledTime` (the `_OpenFrontierHoloTime` pattern).
     242/243/244 = flare/spike/spiral for the brightest stars;
     `GalaxyCloud.mat` carries `_SpriteTex` + `_BrightTex`. The old
     procedural cross/haze profiles are gone. lookVersion 3 = procedural
-    fallback retune only (the user's tuned asset values are preserved:
-    armContrast 3, starCount 48000, sizeMin 1).
+    fallback retune only; the user's live `DefaultGalaxy.asset` values are
+    authoritative. ED's star sheet bakes square nebula frames into cells 9
+    and 13, so the cloud shader fades every tile to a circle — a stacked
+    star field can never read as a field of cards.
   - **ED nebula evidence:** bright nebulae are 256³ BC7 volumes
     (`generic_bright_nebula_01..05` + `04_special`) with 256×1 HDR colour
     ramps; dark nebulae (`generic_dark_nebula_01..05`) are sparse
-    absorption volumes. The five bright ones bake the placable cards below.
+    absorption volumes. The five bright ones bake the placable volumes below.
     The lens-flare sheet also carries big glow/spike star art, which is
     where the bright-star sprites came from.
 - **Traps a fresh session must not re-learn:** shader compile failures are
@@ -124,21 +126,30 @@ into the scene contract. Delivered: `9126d385`.
   (`Blend SrcAlpha OneMinusSrcAlpha`) ABOVE the cloud draw (queue ~2991),
   sampled from a lane field along the arms' inner edges — additive sprites
   can't darken, so dust must occlude. This is ED's dark-rift read.
-- **Nebula placables (LANDED ahead of phase 3, 2026-11-14, user-directed):**
+- **Nebula placables — true 3D volumes (LANDED 2026-11-14, user-directed):**
   nebulae are UNIQUE placables, NOT embedded in the galaxy cloud. Five
   standalone prefabs live under `Assets/OpenFrontier/Galaxy/Nebulae/`
-  (Dusk, Veil, Ember, Amethyst, Rose): builtin quad + `Nebula*.mat` +
-  `OpenFrontier_GalaxyNebula.shader` (camera-facing additive billboard,
-  per-camera clip-space offset, transform scale = diameter, Z rotation =
-  card roll, queue 2999). Textures bake from ED's five 256³ bright-nebula
-  volumes: Y-axis emission/optical-depth projection, colour from the
-  volume, alpha = density, circular vignette hides the volume frame.
-  Drop a prefab into `hand/` in Galaxy.unity and place/scale/tint it.
-  The dark volumes stay archived for a future alpha-blended absorption
-  placable.
-- **Optional hero volume:** one 64³ BC7-ish volume texture + 256×1 color
-  ramp raymarched (ED's low-res shape) — only if the cards aren't enough;
-  mobile budget decides.
+  (Dusk, Veil, Ember, Amethyst, Rose): builtin Cube proxy +
+  `NebulaVolume.mat` + `OpenFrontier_GalaxyNebulaVolume.shader` +
+  `GalaxyNebulaVolume` runtime component, queue 2999. Each prefab carries
+  one ED bright volume baked to a **64³ RGBA32** `.bytes` payload (1 MB;
+  5 MB total, LFS): RGB = emission colour, A = optical density. The shader
+  ray-marches the box (32 steps default, 64 max, dither-jittered),
+  intersects the unit cube analytically so a camera inside the nebula
+  works, and fades the baked square frame out from r=0.40→0.49.
+  Premultiplied `Blend One OneMinusSrcAlpha` lets dense cores dim the stars
+  behind; the ray code is camera-agnostic (ortho map + perspective sky).
+  The component uploads the Texture3D through a MaterialPropertyBlock —
+  nothing runtime-created is serialized and there is no per-frame CPU.
+  Scale = volume box, rotation = volume orientation. Drop a prefab into
+  `hand/` in Galaxy.unity and place/scale/rotate it. The old flat
+  `Nebula*.png`/`Nebula*.mat` cards remain in-tree as a fallback/preview
+  only; the prefabs no longer use them. The dark volumes stay archived for
+  a future alpha-blended absorption placable.
+- **Volume budget:** 64³ is the mobile budget; a 128³ hero (8 MB each) is a
+  desktop-only future upgrade. `_Steps` 32 is the phone default, 64 for
+  hero close-ups. Five volumes = 5 MB of texture memory, uploaded on
+  enable by the component.
 - **MAP camera tuning:** inside-the-bulge brightness (ED answers with
   LocalDustBrightness 0.13 at Low + an offscreen-RT capture pass — our
   cheaper knobs: fade-by-bulge-radius, or distance-based dimming baked into

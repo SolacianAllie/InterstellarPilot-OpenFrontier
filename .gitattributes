@@ -179,3 +179,6 @@ LightingData.asset     binary
 # stay under GitHub's 100MB per-file limit and the LFS quota. Re-extract
 # them from DiscordSocialSdk-UnityPlugin-<version>.zip if ever needed.
 *.xcf                  lfs
+
+# ED nebula volumes: raw 64^3 RGBA32, 1 MB per placable.
+*.bytes                 lfs

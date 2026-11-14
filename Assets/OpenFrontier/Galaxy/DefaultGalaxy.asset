@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: OpenFrontier.Content::OpenFrontier.IP.Engine.GalaxyBlueprint
   densityMap: {fileID: 2800000, guid: 6b581742e12642e5961ea2fffccec419, type: 3}
   seed: 1
-  radius: 20000
-  thickness: 600
+  radius: 3500
+  thickness: 70
   bulgeRadiusFraction: 0.14
   bulgeThicknessBoost: 2.4
   bulgeStrength: 1.6
@@ -23,7 +23,7 @@ MonoBehaviour:
   armCount: 2
   armPitchDegrees: 13
   armWidthDegrees: 9
-  armContrast: 3
+  armContrast: 1
   armPhaseDegrees: 0
   barLengthFraction: 0
   barWidthFraction: 0.1

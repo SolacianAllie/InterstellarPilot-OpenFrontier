@@ -30,6 +30,11 @@
 Shader "OpenFrontier/Galaxy/Cloud" {
 	Properties {
 		[HDR] _CloudTint ("Cloud Tint", Color) = (1,1,1,1)
+		// Both sheets are bound on GalaxyCloud.mat. Declaring them here keeps
+		// the material's texture binding explicit and inspectable instead of
+		// relying on HLSL-only samplers.
+		_SpriteTex ("Star Sprites", 2D) = "white" {}
+		_BrightTex ("Bright Sprites", 2D) = "white" {}
 	}
 	SubShader {
 		Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" "PreviewType"="Plane" }
@@ -116,6 +121,10 @@ Shader "OpenFrontier/Galaxy/Cloud" {
 					float2 uv = (cell + saturate(i.uv * 0.5 + 0.5)) * float2(0.125, 0.25);
 					a = tex2D(_SpriteTex, uv).a;
 				}
+				// the ED sheet bakes two square nebula frames into its 32
+				// cells (9 and 13); fade every tile out to a circle so a
+				// stacked star field can never read as a field of cards
+				a *= saturate((1.0 - dot(i.uv, i.uv)) * 3.0);
 				a *= i.color.a;
 				return fixed4(i.color.rgb, a);
 			}
