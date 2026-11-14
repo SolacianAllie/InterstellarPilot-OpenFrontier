@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1a9ba38ec04474b961458f3f2a4946f, type: 3}
+  m_Name: DefaultGalaxy
+  m_EditorClassIdentifier: OpenFrontier.Content::OpenFrontier.IP.Engine.GalaxyBlueprint
+  densityMap: {fileID: 0}
+  seed: 1
+  radius: 3500
+  thickness: 70
+  bulgeRadiusFraction: 0.14
+  bulgeThicknessBoost: 2.4
+  bulgeStrength: 1.6
+  discFalloff: 2.1
+  armCount: 2
+  armPitchDegrees: 13
+  armWidthDegrees: 9
+  armContrast: 1.15
+  armPhaseDegrees: 0
+  barLengthFraction: 0
+  barWidthFraction: 0.1
+  starCount: 12000
+  sizeMin: 2.2
+  sizeMax: 6.5
+  brightness: 1
+  coreColor: {r: 1, g: 0.9, b: 0.74, a: 1}
+  armColor: {r: 0.78, g: 0.86, b: 1, a: 1}
+  edgeColor: {r: 0.44, g: 0.55, b: 0.82, a: 1}
+  colorJitter: 0.18
