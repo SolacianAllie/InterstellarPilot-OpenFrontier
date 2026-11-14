@@ -25,8 +25,21 @@ namespace OpenFrontier.IP.Engine
 	[CreateAssetMenu(menuName = "OpenFrontier/Galaxy Blueprint", fileName = "NewGalaxyBlueprint.asset")]
 	public class GalaxyBlueprint : ScriptableObject
 	{
-		/// <summary>Sampling grid resolution - also the expected painted-map size.</summary>
-		public const int GridResolution = 256;
+		/// <summary>
+		/// Sampling grid resolution - matches the shipped GalaxyDensityMap
+		/// (512x512) so its GetPixels32 fast path hits. The procedural
+		/// fallback pays ~50ms once per reseed at this size (the map path
+		/// skips the per-cell spiral math entirely).
+		/// </summary>
+		public const int GridResolution = 512;
+
+		/// <summary>GalaxyStarSprites.png is an 8x4 sheet of ED star sprites (fx.w indexes cells).</summary>
+		public const int SpriteCellsX = 8;
+		public const int SpriteCellCount = 32;
+
+		/// <summary>fx.w >= 240 keeps the procedural sprite profiles: haze, then the diffraction cross.</summary>
+		public const float HazeVariant = 241f;
+		public const float CrossVariant = 242f;
 
 		/// <summary>Hard ceiling in one cloud; raise deliberately, mobile-first.</summary>
 		public const int MaxStarCount = 48000;
@@ -106,7 +119,7 @@ namespace OpenFrontier.IP.Engine
 		public float twinkleSpeedMax = 3.8f;
 
 		/// <summary>Bump when the default look retunes; older assets migrate once via OnValidate / Generate.</summary>
-		internal const int CurrentLookVersion = 2;
+		internal const int CurrentLookVersion = 3;
 
 		[SerializeField, HideInInspector] int lookVersion;
 
@@ -264,9 +277,13 @@ namespace OpenFrontier.IP.Engine
 					float size = Mathf.Lerp(sizeMin, sizeMax, (float)rng.NextDouble());
 					size *= 0.9f + 0.9f * Mathf.Exp(-Sq(r01 / bulgeFrac)); // bulge stars run larger
 
-					// brightest stars get the diffraction-cross sprite variant
-					float variant = (dens > 0.85f && rng.NextDouble() < 0.4) ? 2f : 0f;
-					if (variant > 0f) size *= 1.25f;
+					// sprite variant: a random cell of the ED star sheet
+					// (GalaxyStarSprites, 8x4), except the brightest few,
+					// which add the procedural diffraction-cross flare
+					float variant = (dens > 0.85f && rng.NextDouble() < 0.4)
+						? CrossVariant
+						: (float)rng.Next(SpriteCellCount);
+					if (variant > 240f) size *= 1.25f;
 
 					fxOut[i] = new Vector4(
 						(float)(rng.NextDouble() * Math.PI * 2.0),
@@ -290,7 +307,7 @@ namespace OpenFrontier.IP.Engine
 					float size = Mathf.Lerp(hazeSizeMin, hazeSizeMax, rJitter * rJitter);
 					size *= 0.9f + 0.9f * Mathf.Exp(-Sq(r01 / bulgeFrac));
 
-					fxOut[i] = new Vector4(0f, 0f, 0f, 1f); // variant 1 = haze profile, no twinkle
+					fxOut[i] = new Vector4(0f, 0f, 0f, HazeVariant); // haze profile, no twinkle
 					sizesOut[i] = size;
 				}
 
@@ -381,10 +398,11 @@ namespace OpenFrontier.IP.Engine
 		}
 
 		/// <summary>
-		/// The phase-2 look retune: near-white correlated-temperature stars
-		/// plus the haze/twinkle tier. Existing assets migrate once via
-		/// lookVersion (OnValidate + the Generate guard for builds); this is
-		/// also the context-menu reset.
+		/// The look-version 3 retune: the procedural fallback gets real arm
+		/// contrast (broader, slower-winding arms) and a tighter haze tier;
+		/// stars now draw from the ED sprite sheet. Existing assets migrate
+		/// once via lookVersion (OnValidate + the Generate guard for builds);
+		/// this is also the context-menu reset.
 		/// </summary>
 		void ApplyDefaultLook()
 		{
@@ -393,9 +411,13 @@ namespace OpenFrontier.IP.Engine
 			edgeColor = new Color(0.50f, 0.60f, 0.85f);
 			colorJitter = 0.09f;
 			brightness = 1f;
-			hazeFraction = 0.35f;
-			hazeSizeMin = 25f;
-			hazeSizeMax = 90f;
+			discFalloff = 1.8f;
+			armPitchDegrees = 22f;
+			armWidthDegrees = 7f;
+			armContrast = 1.6f;
+			hazeFraction = 0.3f;
+			hazeSizeMin = 18f;
+			hazeSizeMax = 60f;
 			hazeAlpha = 0.05f;
 			twinkleAmpMin = 0.06f;
 			twinkleAmpMax = 0.22f;

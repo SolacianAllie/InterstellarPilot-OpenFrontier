@@ -16,9 +16,12 @@
 // global every frame from Time.unscaledTime.
 //
 // Sprite variants (fx.w, flat across the quad):
-//   0 = star   - soft halo + hot core
-//   1 = haze   - broad, very soft, steady (the band's glow, stacked)
-//   2 = bright - core + a subtle 4-point diffraction cross
+//   0..31       - a cell of the ED star sheet (GalaxyStarSprites.png, 8x4
+//                 grid of the real star sprites Frontier's sky billboards
+//                 draw; the alpha channel is the sprite shape)
+//   241         - haze: broad, very soft, steady (the band's glow, stacked)
+//   242         - bright star: procedural 4-point diffraction cross on top
+//                 of the sprite falloff
 //
 // No LightMode tag: renders as SRPDefaultUnlit under URP. Queue discipline:
 // tag says Transparent; the MATERIAL carries the 2990 offset (backdrop,
@@ -53,6 +56,7 @@ Shader "OpenFrontier/Galaxy/Cloud" {
 			float4x4 _LocalToWorld;
 			fixed4 _CloudTint;
 			float _OpenFrontierGalaxyTime;
+			sampler2D _SpriteTex;
 
 			struct appdata_cloud
 			{
@@ -95,19 +99,24 @@ Shader "OpenFrontier/Galaxy/Cloud" {
 				float d2 = dot(i.uv, i.uv);
 				float rim = saturate(1.0 - d2);
 				float a;
-				if (i.variant < 0.5)        // star: halo + hot core
+				if (i.variant > 240.5)
 				{
-					a = rim * rim * 0.35 + exp(-d2 * 5.0) * 0.65;
+					if (i.variant > 241.5)  // bright star: core + diffraction cross
+					{
+						float spikeH = exp(-abs(i.uv.x) * 5.0) * exp(-i.uv.y * i.uv.y * 25.0);
+						float spikeV = exp(-abs(i.uv.y) * 5.0) * exp(-i.uv.x * i.uv.x * 25.0);
+						a = rim * rim * 0.25 + exp(-d2 * 6.0) * 0.75 + (spikeH + spikeV) * 0.45;
+					}
+					else                    // haze: broad, soft, stacked low
+					{
+						a = pow(rim, 1.6) * 0.85;
+					}
 				}
-				else if (i.variant < 1.5)   // haze: broad, soft, stacked low
+				else                        // ED star sheet: 8x4 atlas cell
 				{
-					a = pow(rim, 1.6) * 0.85;
-				}
-				else                        // bright star: core + diffraction cross
-				{
-					float spikeH = exp(-abs(i.uv.x) * 5.0) * exp(-i.uv.y * i.uv.y * 25.0);
-					float spikeV = exp(-abs(i.uv.y) * 5.0) * exp(-i.uv.x * i.uv.x * 25.0);
-					a = rim * rim * 0.25 + exp(-d2 * 6.0) * 0.75 + (spikeH + spikeV) * 0.45;
+					float2 cell = float2(fmod(i.variant, 8.0), floor(i.variant / 8.0));
+					float2 uv = (cell + saturate(i.uv * 0.5 + 0.5)) * float2(0.125, 0.25);
+					a = tex2D(_SpriteTex, uv).a;
 				}
 				a *= i.color.a;
 				return fixed4(i.color.rgb, a);

@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1a9ba38ec04474b961458f3f2a4946f, type: 3}
   m_Name: DefaultGalaxy
   m_EditorClassIdentifier: OpenFrontier.Content::OpenFrontier.IP.Engine.GalaxyBlueprint
-  densityMap: {fileID: 0}
+  densityMap: {fileID: 2800000, guid: 6b581742e12642e5961ea2fffccec419, type: 3}
   seed: 1
-  radius: 3500
-  thickness: 70
+  radius: 20000
+  thickness: 600
   bulgeRadiusFraction: 0.14
   bulgeThicknessBoost: 2.4
   bulgeStrength: 1.6
@@ -23,15 +23,24 @@ MonoBehaviour:
   armCount: 2
   armPitchDegrees: 13
   armWidthDegrees: 9
-  armContrast: 1.15
+  armContrast: 3
   armPhaseDegrees: 0
   barLengthFraction: 0
   barWidthFraction: 0.1
-  starCount: 12000
-  sizeMin: 2.2
+  starCount: 48000
+  sizeMin: 1
   sizeMax: 6.5
   brightness: 1
+  hazeFraction: 0.35
+  hazeSizeMin: 25
+  hazeSizeMax: 90
+  hazeAlpha: 0.05
+  twinkleAmpMin: 0.06
+  twinkleAmpMax: 0.22
+  twinkleSpeedMin: 1.2
+  twinkleSpeedMax: 3.8
+  lookVersion: 3
   coreColor: {r: 1, g: 0.9, b: 0.74, a: 1}
-  armColor: {r: 0.78, g: 0.86, b: 1, a: 1}
-  edgeColor: {r: 0.44, g: 0.55, b: 0.82, a: 1}
-  colorJitter: 0.18
+  armColor: {r: 0.85, g: 0.9, b: 1, a: 1}
+  edgeColor: {r: 0.5, g: 0.6, b: 0.85, a: 1}
+  colorJitter: 0.09

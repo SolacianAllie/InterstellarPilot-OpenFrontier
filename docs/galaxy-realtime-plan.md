@@ -57,14 +57,29 @@ global pushed from `Time.unscaledTime` (the `_OpenFrontierHoloTime` pattern).
   ONLY ScriptAssemblies staleness (CS0246 GalaxyBlueprint in
   Assembly-CSharp-Editor; defining assembly compiles clean, Content.dll
   predates the file) — clears on editor refocus.
-- **Phase 2 in flight this session:** haze layer (welds points into a band),
-  star temperature re-tune (correlated warm↔cool around white, not rainbow;
-  `lookVersion` migration applies new defaults to existing assets once),
-  twinkle + sprite variants (halo / haze / diffraction-cross) via a third
-  instance float4 (phase, amp, speed, variant) at stride 48, unscaled-time
-  global, and `GalaxyInstanceCloud.ReseedAllRandom()` — the static entry
-  point M7's generation code will call when systems arrive
-  (GenerationTrigger owns only the legal region; nothing fires it yet).
+- **Phase 2 LANDED (`f26cd2f2` haze/temperature/twinkle + `3393d924` scene
+  wiring), phase-2.5 landed same session (ED textures + real density map):**
+  - **ED evidence update:** the carve contains NO flat galaxy image and no
+    skybox/backdrop cubemaps (grep-verified: `galaxymapui*` is UI chrome —
+    codex icons/badges/panels; skybox/backdrop/cubemap = zero matches).
+    ED's map galaxy is GENERATED live from catalog point data — the same
+    architecture as ours. What ED ships and we now USE: the `stars` sprite
+    family (the carve keeps 128² LOD copies; the full 512²
+    `systemmap_stars.pdiffuse_alphatexture` re-packs rows 0–3 into
+    `Assets/OpenFrontier/Galaxy/GalaxyStarSprites.png`, 8×4 cells, alpha =
+    sprite shape) — decoded offline via BC3/BC7 (ffmpeg for BC1, python
+    `texture2ddecoder` for BC7; tooling under /tmp/opencode/edgalaxy).
+  - **Galaxy shape** comes from `GalaxyDensityMap.png` (512², authored by
+    us: bar+bulge+hotspot, 2 strong + 2 weak log-spiral arms at 22° pitch,
+    dust rifts along arm inner edges, the great rift, clump noise) —
+    assigned to `DefaultGalaxy.asset`'s densityMap; `GridResolution` 512 so
+    the GetPixels32 fast path hits. The procedural spiral stays as fallback
+    (contrast boosted in look v3); the map is the Phase-4 painter's surface.
+  - Shader draws stars from the sheet (`fx.w` 0..31 = cell; 241 = haze
+    profile; 242 = procedural diffraction cross for the brightest);
+    `GalaxyCloud.mat` carries `_SpriteTex`. lookVersion 3 = procedural
+    fallback retune only (the user's tuned asset values are preserved:
+    armContrast 3, starCount 48000, sizeMin 1).
 - **Traps a fresh session must not re-learn:** shader compile failures are
   SILENT (last good version keeps rendering — grep
   `Logs/Editor.log` for `shader error` after every shader edit);
