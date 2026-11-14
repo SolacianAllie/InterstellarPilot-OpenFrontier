@@ -180,63 +180,28 @@ can `Resources.Load` their UI directly.- **Editor scripts cannot restructure a l
   menu canvas' root fitter (2026-11-10): the prefab's inner one comes out,
   and a future solo-spawned screen's host canvas carries exactly one
   fitter of its own.
+## The galaxy visual system was REMOVED at the user's call (2026-11-14)
 
-## The galaxy's face is BAKED, the stars are placed (2026-11-14 rebuild)
+The bake-and-place galaxy (GalaxyModel/GalaxyBackdrop/GalaxyLocalStars,
+the two OpenFrontier_Galaxy* shaders, GalaxyBaker/GalaxyDressingInstaller,
+the Materials/Galaxy + Textures/Galaxy assets and their scene dressing
+"hand/Dressing", "Local Sky" and embedded meshes) was scrapped the same
+day it shipped: the user judged it still not photo-real and asked for a
+clean slate to try their own idea. One revert of that removal commit
+restores every byte, including the retuned model.
 
-The M2 procedural galaxy (200k point billboards + additive cloud blobs,
-`GalaxyStars/Clouds/Disk/Distribution/LocalStars` + 3 shaders) was scrapped at
-the user's call: it read as haze soup, "okay but horrible, not realistic".
-Target locked: a real Milky Way photo - warm golden core, blue-white arms,
-dust rifts that actually DARKEN. The new shape:
+What REMAINS and is load-bearing: `Assets/OpenFrontier/Scenes/Galaxy.unity`
+(name "Galaxy"), its scene contract (GalaxyStageBoot wiring, Generation
+Trigger legal region, Devtest/systems/MAP/modes anchors, Galaxy Camera,
+an empty "hand/" for user-authored dressing), `GalaxySceneScaffoldInstaller`
+(one-shot scene skeleton builder, kept), and the engine-side stage
+plumbing (PeekPending/ConsumePending handoff). Nothing in engine code
+referenced the removed types; the scaffold installer does not either.
 
-- **One model, two consumers.** `GalaxyModel` (Content) is the single source
-  of truth: splitmix64 streams (carried over from the scrapped
-  `GalaxyDistribution`), the structure evaluator `EvaluateFace` (Sérsic-ish
-  bulge + bar + 2 major/2 minor log-spiral arms from the bar ends +
-  fbm-patched), dust as per-channel Beer-Lambert extinction
-  (`DustTau` reddens what it dims - blue absorbed ~2x red, THE realism
-  rule), the palette (Core/Disk/Arm/Hii colours), and the runtime
-  placement (`PlaceHeroStars`, `CellSeed` for the local shell).
-- **The bake is editor-time.** `Open Frontier/Galaxy — Bake Disk Texture`
-  (`Assets/Editor/GalaxyBaker.cs`) renders `GalaxyModel.Params` per-pixel
-  into `Assets/OpenFrontier/Textures/Galaxy/GalaxyDisk.png` (2048, ASTC 6x6
-  on Android via importer override) + ~27k rejection-sampled splats for
-  grain/HII. Same params -> byte-identical PNG. Runtime cost: ONE additive
-  quad. Params are SCENE-FIRST: the bake takes the loaded GalaxyBackdrop's
-  knobs; the installer only bakes when the texture is MISSING (re-tuning =
-  deliberate re-run of the bake menu).
-- **Runtime dressing** = `GalaxyBackdrop` (hand/Dressing, scale x3000:
-  quad child + ONE merged hero-star mesh, ~4200 model-placed billboards,
-  ExecuteAlways, mesh-reuse marker names like the old "(generated)" blobs)
-  + `GalaxyLocalStars` (Galaxy root, scale 1 - WORLD units, cell-keyed
-  deterministic shell around the camera, `RebuildAt` is the M2b rig's
-  entry point, Model wired to the backdrop = one owner, no drift).
-- **Tier handoff is in the shader:** `OpenFrontier/GalaxyStars` has a
-  uniform-gated near fade (`_NearFadeEnd` 0 disables); the hero material
-  fades 60->140, the shell material never fades. Backdrop quad draws at
-  queue 2990 (before stars at 3000) - same doctrine as the sun/nebula
-  queue fix.
-- **The Generation Trigger lived under hand/Disk for its SCALE** (legal
-  region = disk transform x box). The dressing installer MOVES it to the
-  Galaxy root with `worldPositionStays` BEFORE destroying hand/, so the
-  boot's serialized reference AND the world-space region survive
-  bit-identical; the installer verifies the reloaded file's
-  `collider.bounds` against the pre-move facts.
-- **Materials are created by the Material API** in the installer
-  (`Assets/OpenFrontier/Materials/Galaxy/`), never hand-edited YAML. Old
-  SpaceUnity materials (Stars/Stars Near/Clouds/Mensa) were deleted WITH
-  the shaders - verified nothing outside the galaxy scene referenced them.
-- **Offline editor-script verification trick** (the ScriptAssemblies
-  staleness trap beats the harness on every NEW Content type): copy the
-  generated `tools/harness/build/Assembly-CSharp-Editor/*.csproj` to
-  /tmp, re-anchor the relative paths, swap the `OpenFrontier.Content` /
-  `.Engine` HintPaths to the FRESH harness-built DLLs under
-  `tools/harness/build/*/bin/Debug/netstandard2.1/`, and `dotnet build`
-  with the Unity DotNetSdk. A full clean compile without waiting for the
-  refocus - it caught a missing `using`, `overridden` (not `enabled`) on
-  `TextureImporterPlatformSettings` in 6000.6, and the
-  `FindAnyObjectByType` (not FindFirst) deprecation before any editor
-  session did.
+If a future galaxy visual system lands, scene-first params and the
+bake-preview offline-probe technique (render the model to a PNG outside
+the editor, ~3s per iteration) remain the proven workflow - the probe
+rig itself was /tmp scratch and is gone.
 
 ## Planet visuals live INSIDE the `Planet*` shells (folded 2026-11-08)
 
