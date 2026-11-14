@@ -86,18 +86,42 @@ namespace OpenFrontier.IP.Engine
 		[Tooltip("Global brightness multiplier baked into every point colour.")]
 		[Range(0f, 4f)] public float brightness = 1f;
 
+		[Header("Haze & Twinkle")]
+		[Tooltip("Share of points that become large dim haze sprites - the glow that welds the stars into a band.")]
+		[Range(0f, 0.6f)] public float hazeFraction = 0.35f;
+
+		[Tooltip("Haze sprite size range, world units (fewer huge than small).")]
+		public float hazeSizeMin = 25f;
+		public float hazeSizeMax = 90f;
+
+		[Tooltip("Haze peak alpha - additive stacking builds the band's glow. Keep low; it stacks.")]
+		[Range(0f, 0.3f)] public float hazeAlpha = 0.05f;
+
+		[Tooltip("Twinkle amplitude range for stars (haze is steady).")]
+		public float twinkleAmpMin = 0.06f;
+		public float twinkleAmpMax = 0.22f;
+
+		[Tooltip("Twinkle speed range, radians/second (unscaled time - runs while the stage is paused).")]
+		public float twinkleSpeedMin = 1.2f;
+		public float twinkleSpeedMax = 3.8f;
+
+		/// <summary>Bump when the default look retunes; older assets migrate once via OnValidate / Generate.</summary>
+		internal const int CurrentLookVersion = 2;
+
+		[SerializeField, HideInInspector] int lookVersion;
+
 		[Header("Palette")]
 		[Tooltip("Core colour (warm).")]
 		public Color coreColor = new Color(1.00f, 0.90f, 0.74f);
 
 		[Tooltip("Mid/arm colour (cool white).")]
-		public Color armColor = new Color(0.78f, 0.86f, 1.00f);
+		public Color armColor = new Color(0.85f, 0.90f, 1.00f);
 
 		[Tooltip("Outer rim colour (dim blue).")]
-		public Color edgeColor = new Color(0.44f, 0.55f, 0.82f);
+		public Color edgeColor = new Color(0.50f, 0.60f, 0.85f);
 
-		[Tooltip("Per-channel random tint spread - the star-temperature jitter.")]
-		[Range(0f, 0.5f)] public float colorJitter = 0.18f;
+		[Tooltip("Warm<->cool temperature spread. Stars stay near-white; this only tints them.")]
+		[Range(0f, 0.5f)] public float colorJitter = 0.09f;
 
 		/// <summary>True when the blueprint samples a painted map instead of the analytic spiral.</summary>
 		public bool HasDensityMap => densityMap != null;
@@ -156,17 +180,22 @@ namespace OpenFrontier.IP.Engine
 
 		/// <summary>
 		/// Samples the galaxy. Fills positionsOut (CLOUD-LOCAL: disc in x/z, y
-		/// up), colorsOut (linear rgb, alpha = per-point strength) and
-		/// sizesOut (sprite size, world units), returning how many points
-		/// were written (<= starCount and <= each array's length).
-		/// Deterministic in (seedOverride, params). A few ms for 12k points.
+		/// up), colorsOut (linear rgb, alpha = per-point strength), sizesOut
+		/// (sprite size, world units) and fxOut (phase, twinkle amplitude,
+		/// twinkle speed, sprite variant), returning how many points were
+		/// written (<= starCount and <= each array's length). Deterministic in
+		/// (seedOverride, params). A few ms for 12k points.
 		/// </summary>
-		public int Generate(int seedOverride, Vector3[] positionsOut, Color[] colorsOut, float[] sizesOut)
+		public int Generate(int seedOverride, Vector3[] positionsOut, Color[] colorsOut, float[] sizesOut, Vector4[] fxOut)
 		{
-			if (positionsOut == null || colorsOut == null || sizesOut == null) return 0;
+			if (positionsOut == null || colorsOut == null || sizesOut == null || fxOut == null) return 0;
 			int count = Mathf.Min(Mathf.Min(starCount, positionsOut.Length),
-				Mathf.Min(colorsOut.Length, sizesOut.Length));
+				Mathf.Min(Mathf.Min(colorsOut.Length, sizesOut.Length), fxOut.Length));
 			if (count <= 0) return 0;
+
+			// safety net for builds (OnValidate is editor-only): old assets
+			// pick the current look up once, at first use
+			if (lookVersion < CurrentLookVersion) ApplyDefaultLook();
 
 			float maxWeight;
 			float[] weights = BuildWeightGrid(out maxWeight);
@@ -180,6 +209,11 @@ namespace OpenFrontier.IP.Engine
 			var rng = new System.Random(seedOverride);
 			float bulgeFrac = Mathf.Max(bulgeRadiusFraction, 0.001f);
 
+			// haze walks the SAME density field as the stars - the band's glow
+			// follows its structure; stars claim the front of the array
+			int starPoints = Mathf.Clamp(
+				count - Mathf.RoundToInt(count * Mathf.Clamp01(hazeFraction)), 0, count);
+
 			for (int i = 0; i < count; i++)
 			{
 				// ---- sample the disc: invert the CDF, jitter inside the cell
@@ -192,10 +226,10 @@ namespace OpenFrontier.IP.Engine
 				}
 				int cellX = lo % GridResolution;
 				int cellY = lo / GridResolution;
-				float fx = (cellX + (float)rng.NextDouble()) / GridResolution;
-				float fy = (cellY + (float)rng.NextDouble()) / GridResolution;
-				float px = fx * 2f - 1f;
-				float pz = fy * 2f - 1f;
+				float fx01 = (cellX + (float)rng.NextDouble()) / GridResolution;
+				float fy01 = (cellY + (float)rng.NextDouble()) / GridResolution;
+				float px = fx01 * 2f - 1f;
+				float pz = fy01 * 2f - 1f;
 				float r01 = Mathf.Sqrt(px * px + pz * pz);
 				if (r01 > 1f) { float s = 1f / r01; px *= s; pz *= s; r01 = 1f; }
 
@@ -212,22 +246,56 @@ namespace OpenFrontier.IP.Engine
 					? Color.Lerp(coreColor, armColor, t / 0.35f)
 					: Color.Lerp(armColor, edgeColor, (t - 0.35f) / 0.65f);
 
-				// denser regions read brighter and hotter; per-channel jitter
-				// stands in for star temperature
 				float dens = maxWeight > 0f ? Mathf.Clamp01(weights[lo] / maxWeight) : 0f;
-				float boost = brightness * (0.75f + 0.55f * dens);
-				c.r *= boost * (1f + ((float)rng.NextDouble() - 0.5f) * 2f * colorJitter);
-				c.g *= boost * (1f + ((float)rng.NextDouble() - 0.5f) * 2f * colorJitter);
-				c.b *= boost * (1f + ((float)rng.NextDouble() - 0.5f) * 2f * colorJitter);
-				c.a = Mathf.Clamp01(0.45f + 0.55f * dens) * (0.85f + 0.15f * (float)rng.NextDouble());
+				float rJitter = (float)rng.NextDouble();
 
-				// size: authorable range, bulge stars run larger
-				float size = Mathf.Lerp(sizeMin, sizeMax, (float)rng.NextDouble());
-				size *= 0.9f + 0.9f * Mathf.Exp(-Sq(r01 / bulgeFrac));
+				if (i < starPoints)
+				{
+					// ---- a star: denser regions brighter; temperature jitter
+					// slides the star warm/cool AROUND white (correlated, not
+					// the per-channel rainbow of the first pass)
+					float boost = brightness * (0.85f + 0.35f * dens);
+					float warm = (rJitter - 0.5f) * 2f * colorJitter;
+					c.r *= boost * (1f + warm);
+					c.g *= boost * (1f + warm * 0.3f);
+					c.b *= boost * (1f - warm * 0.8f);
+					c.a = Mathf.Clamp01(0.55f + 0.45f * dens) * (0.85f + 0.15f * (float)rng.NextDouble());
+
+					float size = Mathf.Lerp(sizeMin, sizeMax, (float)rng.NextDouble());
+					size *= 0.9f + 0.9f * Mathf.Exp(-Sq(r01 / bulgeFrac)); // bulge stars run larger
+
+					// brightest stars get the diffraction-cross sprite variant
+					float variant = (dens > 0.85f && rng.NextDouble() < 0.4) ? 2f : 0f;
+					if (variant > 0f) size *= 1.25f;
+
+					fxOut[i] = new Vector4(
+						(float)(rng.NextDouble() * Math.PI * 2.0),
+						Mathf.Lerp(twinkleAmpMin, twinkleAmpMax, (float)rng.NextDouble()),
+						Mathf.Lerp(twinkleSpeedMin, twinkleSpeedMax, (float)rng.NextDouble()),
+						variant);
+					sizesOut[i] = size;
+				}
+				else
+				{
+					// ---- haze: large, very dim, steady - additive stacking
+					// welds the stars into a continuous band (the ED dust tier)
+					float boost = brightness * 0.9f;
+					float warm = (rJitter - 0.5f) * colorJitter;
+					c.r *= boost * (1f + warm);
+					c.g *= boost * (1f + warm * 0.3f);
+					c.b *= boost * (1f - warm * 0.8f);
+					c.a = hazeAlpha * (0.4f + 0.6f * dens);
+
+					// more small than huge - the square biases toward the floor
+					float size = Mathf.Lerp(hazeSizeMin, hazeSizeMax, rJitter * rJitter);
+					size *= 0.9f + 0.9f * Mathf.Exp(-Sq(r01 / bulgeFrac));
+
+					fxOut[i] = new Vector4(0f, 0f, 0f, 1f); // variant 1 = haze profile, no twinkle
+					sizesOut[i] = size;
+				}
 
 				positionsOut[i] = new Vector3(px * radius, y, pz * radius);
 				colorsOut[i] = c;
-				sizesOut[i] = size;
 			}
 			return count;
 		}
@@ -291,11 +359,49 @@ namespace OpenFrontier.IP.Engine
 
 		void OnValidate()
 		{
+			if (lookVersion < CurrentLookVersion) ApplyDefaultLook();
 			radius = Mathf.Max(radius, 1f);
 			thickness = Mathf.Max(thickness, 0.1f);
 			sizeMin = Mathf.Max(sizeMin, 0.01f);
 			if (sizeMax < sizeMin) sizeMax = sizeMin;
 			starCount = Mathf.Clamp(starCount, 0, MaxStarCount);
+			hazeFraction = Mathf.Clamp01(hazeFraction);
+			if (hazeSizeMax < hazeSizeMin) hazeSizeMax = hazeSizeMin;
+			if (twinkleAmpMax < twinkleAmpMin) twinkleAmpMax = twinkleAmpMin;
+			if (twinkleSpeedMax < twinkleSpeedMin) twinkleSpeedMax = twinkleSpeedMin;
+		}
+
+		[ContextMenu("Reset To Default Look")]
+		public void ResetToDefaultLook()
+		{
+			ApplyDefaultLook();
+#if UNITY_EDITOR
+			UnityEditor.EditorUtility.SetDirty(this);
+#endif
+		}
+
+		/// <summary>
+		/// The phase-2 look retune: near-white correlated-temperature stars
+		/// plus the haze/twinkle tier. Existing assets migrate once via
+		/// lookVersion (OnValidate + the Generate guard for builds); this is
+		/// also the context-menu reset.
+		/// </summary>
+		void ApplyDefaultLook()
+		{
+			coreColor = new Color(1.00f, 0.90f, 0.74f);
+			armColor = new Color(0.85f, 0.90f, 1.00f);
+			edgeColor = new Color(0.50f, 0.60f, 0.85f);
+			colorJitter = 0.09f;
+			brightness = 1f;
+			hazeFraction = 0.35f;
+			hazeSizeMin = 25f;
+			hazeSizeMax = 90f;
+			hazeAlpha = 0.05f;
+			twinkleAmpMin = 0.06f;
+			twinkleAmpMax = 0.22f;
+			twinkleSpeedMin = 1.2f;
+			twinkleSpeedMax = 3.8f;
+			lookVersion = CurrentLookVersion;
 		}
 
 		static float Sq(float v) { return v * v; }

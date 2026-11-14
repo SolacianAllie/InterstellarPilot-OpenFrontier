@@ -36,11 +36,16 @@ namespace OpenFrontier.IP.Engine
 		public Material material;
 
 		const string CloudShaderName = "OpenFrontier/Galaxy/Cloud";
-		const int FloatsPerInstance = 8; // pos.xyz + size | color.rgba
-		const int InstanceStride = 32;   // two float4s
+		const int FloatsPerInstance = 12; // pos.xyz + size | color.rgba | fx(phase, amp, speed, variant)
+		const int InstanceStride = 48;    // three float4s
 
 		static readonly int LocalToWorldId = Shader.PropertyToID("_LocalToWorld");
 		static readonly int InstanceDataId = Shader.PropertyToID("_InstanceData");
+		// the sky's clock: UNSCALED time - the stage boots at timeScale 0 and
+		// _Time freezes exactly there, so twinkle runs on this pushed global
+		// (the _OpenFrontierHoloTime pattern). PropertyToID in static init is
+		// fine; URP itself does it everywhere.
+		static readonly int GalaxyTimeId = Shader.PropertyToID("_OpenFrontierGalaxyTime");
 
 		Mesh _quad;
 		ComputeBuffer _instanceBuffer;
@@ -51,6 +56,7 @@ namespace OpenFrontier.IP.Engine
 		Vector3[] _positions;
 		Color[] _colors;
 		float[] _sizes;
+		Vector4[] _fx;
 		int _capacity; // instance count the buffers were built for
 		bool _warnedNoBlueprint;
 		bool _warnedNoShader;
@@ -68,6 +74,9 @@ namespace OpenFrontier.IP.Engine
 
 		void Update()
 		{
+			// advance the sky's clock before anything else - even a cloud with
+			// no blueprint keeps the global fresh for any shader using it
+			Shader.SetGlobalFloat(GalaxyTimeId, Time.unscaledTime);
 			if (_instanceBuffer == null || _argsBuffer == null || _capacity <= 0) return;
 			if (blueprint == null)
 			{
@@ -97,7 +106,7 @@ namespace OpenFrontier.IP.Engine
 			if (count != _capacity) RebuildBuffers(count);
 			if (_capacity <= 0) return;
 
-			int written = blueprint.Generate(seed, _positions, _colors, _sizes);
+			int written = blueprint.Generate(seed, _positions, _colors, _sizes, _fx);
 			for (int i = 0; i < written; i++)
 			{
 				int b = i * FloatsPerInstance;
@@ -111,6 +120,11 @@ namespace OpenFrontier.IP.Engine
 				_instanceFloats[b + 5] = c.g;
 				_instanceFloats[b + 6] = c.b;
 				_instanceFloats[b + 7] = c.a;
+				Vector4 f = _fx[i];
+				_instanceFloats[b + 8] = f.x;
+				_instanceFloats[b + 9] = f.y;
+				_instanceFloats[b + 10] = f.z;
+				_instanceFloats[b + 11] = f.w;
 			}
 			if (written > 0) _instanceBuffer.SetData(_instanceFloats, 0, 0, written * FloatsPerInstance);
 			// indirect args: indexCount, instanceCount, firstIndex, baseVertex, firstInstance
@@ -127,6 +141,25 @@ namespace OpenFrontier.IP.Engine
 		public void ReseedFromBlueprint()
 		{
 			Reseed(blueprint != null ? blueprint.seed : 1);
+		}
+
+		[ContextMenu("Reseed Random (Per Jump)")]
+		public void ReseedRandomMenu()
+		{
+			ReseedRandom();
+		}
+
+		/// <summary>
+		/// The per-jump entry point for M7's generation code: reseeds every
+		/// cloud in the scene ONCE, at event time - a scene scan belongs to
+		/// events, never the render path (house rule). GenerationTrigger owns
+		/// only the legal region; the generation that fires this doesn't exist
+		/// yet (docs/galaxy-realtime-plan.md, phase 2/3).
+		/// </summary>
+		public static void ReseedAllRandom()
+		{
+			GalaxyInstanceCloud[] clouds = FindObjectsByType<GalaxyInstanceCloud>(FindObjectsSortMode.None);
+			for (int i = 0; i < clouds.Length; i++) clouds[i].ReseedRandom();
 		}
 
 		void EnsureSetup()
@@ -150,6 +183,7 @@ namespace OpenFrontier.IP.Engine
 			_positions = new Vector3[count];
 			_colors = new Color[count];
 			_sizes = new float[count];
+			_fx = new Vector4[count];
 		}
 
 		Material ResolveMaterial()
@@ -226,6 +260,7 @@ namespace OpenFrontier.IP.Engine
 			_positions = null;
 			_colors = null;
 			_sizes = null;
+			_fx = null;
 			_fallbackMaterial = null;
 		}
 
