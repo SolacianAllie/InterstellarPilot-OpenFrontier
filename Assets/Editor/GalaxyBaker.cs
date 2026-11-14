@@ -106,12 +106,19 @@ namespace OpenFrontier.EditorTools
 					Color c = GalaxyModel.FaceToLight(face);
 					// Ambient halo: keeps the interior off dead black
 					// between the arms (real photos never hit 0).
+					// DiskColor, not CoreColor: a warm ambience tinted
+					// the whole first preview sepia.
 					float r = Mathf.Sqrt(x * x + z * z);
-					float ambient = 0.02f * Mathf.Exp(-r / 0.75f);
-					c += GalaxyModel.CoreColor * ambient;
+					float ambient = 0.009f * Mathf.Exp(-r / 0.75f);
+					c += GalaxyModel.DiskColor * ambient;
 					// Rim fade: the quad's edge dissolves over the last
 					// ~12% of the radius (no hard rim from any angle).
-					float fade = 1f - Mathf.SmoothStep(0.90f, 1.02f, r);
+					// SmoothRange, not Mathf.SmoothStep: the latter
+					// interpolates VALUES at t -- the first bake's
+					// 1 - SmoothStep(0.90, 1.02, r) returned
+					// 1 - [0.90..1.02], multiplying the whole disk by
+					// 0.10 and the rim band by less than zero.
+					float fade = 1f - GalaxyModel.SmoothRange(0.90f, 1.02f, r);
 					c *= fade;
 
 					int o = (py * res + px) * 3;
@@ -130,6 +137,19 @@ namespace OpenFrontier.EditorTools
 			float maxDensity = 5.4f; // bulge(2.2)+nucleus(1.4)+bar(1.1)+disk peak
 			ulong state = GalaxyModel.Stream(p.Seed);
 
+			// Splat brightness carries the SAME rim fade as the face:
+			// grain added past the disk's rim read as a snow-globe
+			// boundary in the first preview.
+			float SplatFade(float sx, float sz)
+			{
+				float sr = Mathf.Sqrt(sx * sx + sz * sz);
+				// Rim fade + the field grain follows the old-disk
+				// falloff: uniform grain to the rim read as a flat grey
+				// sheet in the previews.
+				float diskFall = 0.25f + 0.75f * Mathf.Exp(-sr / 0.45f);
+				return diskFall * (1f - GalaxyModel.SmoothRange(0.85f, 1.0f, sr));
+			}
+
 			for (int i = 0; i < FieldStarCount; i++)
 			{
 				SampleByRejection(ref state, p, maxDensity, out float x, out float z, out GalaxyModel.Face face);
@@ -139,12 +159,12 @@ namespace OpenFrontier.EditorTools
 				Color baseCol = Color.Lerp(GalaxyModel.DiskColor, GalaxyModel.ArmColor, youngFrac);
 				float drift = GalaxyModel.Unit(ref state);
 				baseCol = Color.Lerp(baseCol, GalaxyModel.CoreColor, drift * 0.35f * (1f - youngFrac));
-				baseCol = Color.Lerp(baseCol, Color.white, 0.15f);
+				baseCol = Color.Lerp(baseCol, Color.white, 0.08f);
 
-				float bright = 0.35f + 1.05f * Mathf.Pow(GalaxyModel.Unit(ref state), 2.6f);
+				float bright = 0.16f + 0.55f * Mathf.Pow(GalaxyModel.Unit(ref state), 2.6f);
 				float u = GalaxyModel.Unit(ref state);
 				float sizePx = u < 0.86f ? 1.0f : (u < 0.97f ? 2.0f : 3.0f);
-				SplatPx(light, res, ModelToPixel(x, res), ModelToPixel(z, res), sizePx, baseCol * bright);
+				SplatPx(light, res, ModelToPixel(x, res), ModelToPixel(z, res), sizePx, baseCol * (bright * SplatFade(x, z)));
 			}
 
 			for (int i = 0; i < BrightKnotCount; i++)
@@ -154,10 +174,11 @@ namespace OpenFrontier.EditorTools
 				Color baseCol = Color.Lerp(GalaxyModel.DiskColor, GalaxyModel.ArmColor, youngFrac);
 				float bright = 1.2f + 1.6f * Mathf.Pow(GalaxyModel.Unit(ref state), 1.8f);
 				float sizePx = 2.2f + 1.3f * GalaxyModel.Unit(ref state);
-				SplatPx(light, res, ModelToPixel(x, res), ModelToPixel(z, res), sizePx, baseCol * bright);
+				float fade = SplatFade(x, z);
+				SplatPx(light, res, ModelToPixel(x, res), ModelToPixel(z, res), sizePx, baseCol * (bright * fade));
 				// A soft glow pad behind every knot: the photo's stars
 				// are never bare points.
-				SplatPx(light, res, ModelToPixel(x, res), ModelToPixel(z, res), sizePx * 2.6f, baseCol * (0.25f * bright));
+				SplatPx(light, res, ModelToPixel(x, res), ModelToPixel(z, res), sizePx * 2.6f, baseCol * (0.25f * bright * fade));
 			}
 
 			// HII: rose knots that may only land ON the arms (the
@@ -177,8 +198,9 @@ namespace OpenFrontier.EditorTools
 				hiiPlaced++;
 				float bright = 0.35f + 0.55f * GalaxyModel.Unit(ref state);
 				float sizePx = 2.5f + 5.5f * Mathf.Pow(GalaxyModel.Unit(ref state), 1.6f);
-				SplatPx(light, res, ModelToPixel(x, res), ModelToPixel(z, res), sizePx, GalaxyModel.HiiColor * bright);
-				SplatPx(light, res, ModelToPixel(x, res), ModelToPixel(z, res), 1.2f, GalaxyModel.HiiColor * bright * 2.2f);
+				Color hii = GalaxyModel.HiiColor * (bright * SplatFade(x, z));
+				SplatPx(light, res, ModelToPixel(x, res), ModelToPixel(z, res), sizePx, hii);
+				SplatPx(light, res, ModelToPixel(x, res), ModelToPixel(z, res), 1.2f, hii * 2.2f);
 			}
 			if (hiiPlaced < HiiKnotCount)
 			{

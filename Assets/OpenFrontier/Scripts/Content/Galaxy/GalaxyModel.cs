@@ -87,13 +87,13 @@ namespace OpenFrontier.Galaxy
 		{
 			Params p = default;
 			p.Seed = seed;
-			p.PitchDegrees = 13f;
+			p.PitchDegrees = 20f;
 			p.BarLength = 0.11f;
 			p.BarWidth = 0.04f;
 			p.BarAngleDegrees = 25f;
-			p.BulgeRadius = 0.10f;
-			p.DiskScale = 0.36f;
-			p.ArmSharpness = 3.0f;
+			p.BulgeRadius = 0.16f;
+			p.DiskScale = 0.32f;
+			p.ArmSharpness = 6f;
 			p.Patchiness = 1.0f;
 			p.DustStrength = 1.0f;
 			p.RiftStrength = 1.0f;
@@ -108,11 +108,15 @@ namespace OpenFrontier.Galaxy
 		/// <summary>Bulge/bar: old warm population.</summary>
 		public static readonly Color CoreColor = new Color(1.00f, 0.84f, 0.62f);
 
-		/// <summary>Old disk sheet.</summary>
-		public static readonly Color DiskColor = new Color(1.00f, 0.92f, 0.80f);
+		/// <summary>Old disk sheet: deliberately NEUTRAL -- the photo's
+		/// warmth belongs to the core alone; a warm sheet turned the
+		/// first preview sepia.</summary>
+		public static readonly Color DiskColor = new Color(0.98f, 0.94f, 0.88f);
 
-		/// <summary>Young arm knots: hot blue-white.</summary>
-		public static readonly Color ArmColor = new Color(0.74f, 0.85f, 1.00f);
+		/// <summary>Young arm knots: hot blue-white, deliberately cooler
+		/// than the disk -- the photo's arms read blue against the warm
+		/// core.</summary>
+		public static readonly Color ArmColor = new Color(0.60f, 0.76f, 1.00f);
 
 		/// <summary>HII regions: ionised hydrogen rose.</summary>
 		public static readonly Color HiiColor = new Color(1.00f, 0.40f, 0.46f);
@@ -141,8 +145,9 @@ namespace OpenFrontier.Galaxy
 			public float OldTotal => Bulge + Bar + DiskOld;
 		}
 
-		/// <summary>Minor-arm mass fraction of a major arm.</summary>
-		private const float MinorArmMass = 0.45f;
+		/// <summary>Minor-arm mass fraction of a major arm (the Milky
+		/// Way's minors are much fainter than its two dominants).</summary>
+		private const float MinorArmMass = 0.20f;
 
 		/// <summary>The spiral-crest phase constant: crests sit where
 		/// 2*theta + winding*ln(r) == CrestPhase(p) + 2*pi*k. Derived
@@ -160,7 +165,26 @@ namespace OpenFrontier.Galaxy
 		/// `PitchDegrees` (sign = trailing).</summary>
 		private static float Winding(in Params p)
 		{
-			return -2f * Mathf.Tan(Mathf.Clamp(p.PitchDegrees, 2f, 40f) * Mathf.Deg2Rad);
+			// -2/tan(pitch), NOT -2*tan(pitch): the log-spiral constant is
+			// b = -2/w and tan(pitch) = b (pitch measured from the
+			// circumferential direction). The tan-multiplied form made a
+			// 13-degree pitch actually 77 degrees -- the arms rendered as
+			// straight radial rays, the plus-sign pinwheel of the third
+			// preview. 13 degrees now sweeps ~470 degrees over the disk,
+			// the Milky-Way coil.
+			return -2f / Mathf.Tan(Mathf.Clamp(p.PitchDegrees, 2f, 40f) * Mathf.Deg2Rad);
+		}
+
+		/// <summary>HLSL-style smoothstep: 0 below edge0, 1 above
+		/// edge1, hermite between. NOT Mathf.SmoothStep -- that
+		/// interpolates between VALUES at a parameter t
+		/// (SmoothStep(0.10, 0.26, rC) returns a value in [0.10, 0.26],
+		/// not a 0..1 fade), which cost the first bake its arms and its
+		/// disk. Every range gate on this model goes through here.</summary>
+		public static float SmoothRange(float edge0, float edge1, float x)
+		{
+			float t = Mathf.Clamp01((x - edge0) / Mathf.Max(edge1 - edge0, 1e-6f));
+			return t * t * t * (t * (t * 6f - 15f) + 10f);
 		}
 
 		/// <summary>Value-noise fbm on the face: deterministic integer
@@ -210,6 +234,13 @@ namespace OpenFrontier.Galaxy
 			return h * (1f / 4294967296f);
 		}
 
+		/// <summary>Wrap an angle into [-pi, pi).</summary>
+		private static float WrapPi(float a)
+		{
+			const float TwoPi = 2f * Mathf.PI;
+			return a - TwoPi * Mathf.Floor((a + Mathf.PI) / TwoPi);
+		}
+
 		/// <summary>Structure at (x, z) on the face. r is clamped at
 		/// 1.25 -- beyond the rim every population is essentially 0 and
 		/// the clamped math stays finite.</summary>
@@ -222,14 +253,18 @@ namespace OpenFrontier.Galaxy
 			float winding = Winding(p);
 			float phase = 2f * theta + winding * Mathf.Log(rC);
 
-			// --- old disk: exponential sheet ---
-			f.DiskOld = 0.50f * Mathf.Exp(-r / Mathf.Max(p.DiskScale, 0.05f));
+			// --- old disk: exponential sheet, DIM, fbm-mottled -- the
+			// inter-arm floor must not swamp the arms and must not be
+			// featureless (featureless sheet read as polished chrome). ---
+			float sheetMottle = 0.62f + 0.76f * Fbm(x * 5.3f, z * 4.7f, 3, (uint)p.Seed + 0x77AAu);
+			f.DiskOld = 0.075f * sheetMottle * Mathf.Exp(-r / Mathf.Max(p.DiskScale, 0.05f));
 
 			// --- bulge: Sérsic n~2 approximated by a sqrt-law falloff,
-			// plus a hot nuclear kernel ---
+			// plus a hot nuclear kernel. Broader than the first pass:
+			// the core glow must span a visible fraction of the disk. ---
 			float re = Mathf.Max(p.BulgeRadius, 0.02f);
-			f.Bulge = 2.2f * Mathf.Exp(-3.7f * Mathf.Sqrt(rC / re))
-				+ 1.4f * Mathf.Exp(-(rC * rC) / (0.035f * 0.035f));
+			f.Bulge = 2.2f * Mathf.Exp(-2.6f * Mathf.Sqrt(rC / re))
+				+ 1.1f * Mathf.Exp(-(rC * rC) / (0.035f * 0.035f));
 
 			// --- bar: rotated tri-axial gaussian ---
 			float ang = p.BarAngleDegrees * Mathf.Deg2Rad;
@@ -242,38 +277,105 @@ namespace OpenFrontier.Galaxy
 			f.Bar = 1.1f * Mathf.Exp(
 				-(bx * bx) / (2f * sw * sw) - (by * by) / (2f * sl * sl));
 
-			// --- arms: crest bands off the bar end. Major pair at the
-			// crest phase, minor pair half a turn away, both suppressed
-			// near the centre where the bulge swamps them, both
-			// patchified by fbm (a real arm is clumpy, not a smooth
-			// ribbon). ---
-			float crest = CrestPhase(p);
-			float dMajor = Mathf.Sin(phase - crest);
-			float dMinor = Mathf.Sin(phase - crest + Mathf.PI);
-			float centerFade = Mathf.SmoothStep(0.10f, 0.26f, rC);
-			float patch = 0.45f + 0.9f * Fbm(rC * 5.5f, phase * 1.6f, 3, (uint)p.Seed + 0x51ED27u);
-			float clump = 0.7f + 0.6f * Fbm(rC * 14f, phase * 4f, 2, (uint)p.Seed + 0xA3D9u);
+			// --- arms: GAUSSIAN BANDS in wrapped phase distance off the
+			// bar end. Major pair at phase-crest = pi/2 (sin lobes CANNOT
+			// make thin arms -- pow(sin, n) stays above half-max for
+			// ~half the circle and the complementary minor pair filled
+			// the whole disk with grey), minor pair half a turn away.
+			// Both suppressed near the centre where the bulge swamps
+			// them. The crest WOBBLES (real arms are not perfect
+			// sinusoids) and the patch noise is sampled on the THETA
+			// circle -- phase-based coordinates jump by 4*pi across
+			// theta=pi and stitched a visible seam along -x into the
+			// first previews. ---
+			float crest = CrestPhase(p)
+				+ 0.22f * Mathf.Sin(2f * theta + 1.7f)
+				+ 0.12f * Mathf.Sin(3f * theta + 4.1f)
+				+ 0.06f * Mathf.Sin(5f * theta + 2.2f);
+			float dMajor = WrapPi(phase - crest - Mathf.PI * 0.5f);
+			float dMinor = WrapPi(dMajor - Mathf.PI);
+			float centerFade = SmoothRange(0.20f, 0.34f, rC);
+			// Arms dissolve into the outer haze: crisp coils to the rim
+			// read as a machined spring (fourth preview). Real outer arms
+			// diffuse into scattered knots and sheet.
+			float outerFade = 1f - SmoothRange(0.82f, 0.96f, rC);
+			float armEnv = centerFade * outerFade;
+			float circleU = Mathf.Cos(theta);
+			float circleV = Mathf.Sin(theta);
+			float patch = 0.55f + 0.85f * Fbm(circleU * 2.6f + rC * 3.0f, circleV * 2.6f - rC * 2.0f, 3, (uint)p.Seed + 0x51ED27u);
+			float clump = 0.8f + 0.5f * Fbm(circleU * 4.2f + rC * 5.0f, circleV * 4.2f + rC * 3.0f, 2, (uint)p.Seed + 0xA3D9u);
 			float clumpiness = Mathf.Lerp(1f, patch * clump, Mathf.Clamp01(p.Patchiness));
-			f.Young = centerFade * clumpiness
-				* (Mathf.Pow(Mathf.Max(dMajor, 0f), Mathf.Max(p.ArmSharpness, 1f))
-					+ MinorArmMass * Mathf.Pow(Mathf.Max(dMinor, 0f), Mathf.Max(p.ArmSharpness, 1f)));
+			// Per-arm amplitude: slow fbm around the theta circle, one
+			// per arm pair -- without it every arm is the same brightness
+			// along its whole length and the face reads as a windmill.
+			float armModMajor = 0.55f + 0.75f * Fbm(circleU * 0.85f - rC * 0.4f, circleV * 0.85f + rC * 0.3f, 2, (uint)p.Seed + 0x5E37u);
+			float armModMinor = 0.55f + 0.75f * Fbm(circleU * 0.8f + rC * 0.5f, circleV * 0.8f - rC * 0.35f, 2, (uint)p.Seed + 0x9E37u);
+			float sharp = Mathf.Max(p.ArmSharpness, 1f);
+			float armSigma = Mathf.Clamp(2.0f / sharp, 0.10f, 0.45f);
+			float bandMaj = Mathf.Exp(-(dMajor * dMajor) / (armSigma * armSigma));
+			float bandMin = Mathf.Exp(-(dMinor * dMinor) / (armSigma * armSigma));
+			// Segment gating: independent patch/clump fields break each
+			// arm into bright and dim sections -- mathematically perfect
+			// coils read as a machined toy (the fifth preview).
+			float segMaj = 0.15f + 0.85f * SmoothRange(0.55f, 1.0f, patch);
+			float segMin = 0.15f + 0.85f * SmoothRange(0.65f, 1.15f, clump);
+			// Broad dim glow haloing each band (sigma x2.4): a gaussian
+			// DECAYS between arms -- the pow lobes could not.
+			float glowMaj = Mathf.Exp(-(dMajor * dMajor) / (armSigma * 2.4f * (armSigma * 2.4f)));
+			float glowMin = Mathf.Exp(-(dMinor * dMinor) / (armSigma * 2.4f * (armSigma * 2.4f)));
+			f.Young = armEnv * (
+				clumpiness * (bandMaj * armModMajor * segMaj
+					+ MinorArmMass * bandMin * armModMinor * segMin)
+				// Beads: star-forming knots chaining along the crest.
+				// The smooth band alone reads as a machined ribbon; the
+				// photo's arms are chains of clusters over a glow.
+				+ bandMaj * armModMajor * 1.1f * SmoothRange(0.62f, 0.92f,
+					Fbm(circleU * 7.0f + rC * 9.0f, circleV * 7.0f - rC * 6.0f, 3, (uint)p.Seed + 0xB34Du))
+				+ bandMin * armModMinor * 0.35f * SmoothRange(0.62f, 0.92f,
+					Fbm(circleU * 7.0f - rC * 8.0f, circleV * 7.0f + rC * 5.0f, 3, (uint)p.Seed + 0x6F11u))
+				+ 0.12f * glowMaj * armModMajor
+				+ 0.025f * glowMin * armModMinor);
 
-			// --- dust: lanes riding just inside the arm crests (dust
-			// piles on the arm's inner edge) + the great rift crossing
-			// the core. Both fbm-fractured; the rift is strongest over
-			// the bulge. Dust is an optical DEPTH, consumers convert to
-			// transmission. ---
-			float lane = Mathf.Pow(Mathf.Max(dMajor, 0f), Mathf.Max(p.ArmSharpness, 1f) * 0.55f)
-				+ 0.4f * Mathf.Pow(Mathf.Max(dMinor, 0f), Mathf.Max(p.ArmSharpness, 1f) * 0.55f);
-			float laneFractal = 0.35f + 0.85f * Fbm(rC * 3.1f, phase * 1.1f, 4, (uint)p.Seed + 0x7C95u);
+			// --- dust: lanes riding the arms' INNER edge. The offset
+			// must exceed a lane-sigma or the lane's gaussian tail sits
+			// ON the band centre and its extinction reddens the young
+			// light bronze (the fourth preview's mistake). Lanes ride
+			// the arms only -- not the inner disk. The great rift
+			// crosses the core, warped into a curve. Both fbm-fractured;
+			// the rift is strongest over the bulge. Dust is an optical
+			// DEPTH, consumers convert to transmission. ---
+			float laneSigma = armSigma * 0.9f;
+			float laneMaj = Mathf.Exp(-((dMajor + 0.55f) * (dMajor + 0.55f)) / (laneSigma * laneSigma));
+			float laneMin = Mathf.Exp(-((dMinor + 0.55f) * (dMinor + 0.55f)) / (laneSigma * laneSigma));
+			float lane = (laneMaj + 0.3f * laneMin) * centerFade;
+			float laneFractal = 0.25f + 0.95f * Fbm(circleU * 3.2f + rC * 4.0f, circleV * 3.2f - rC * 2.2f, 5, (uint)p.Seed + 0x7C95u);
 			float psi = ang + 0.35f;
-			float riftDist = Mathf.Abs(x * Mathf.Sin(psi) - z * Mathf.Cos(psi));
-			float rift = (0.75f + 0.45f * Fbm(x * 4.4f, z * 4.4f, 3, (uint)p.Seed + 0x2B1Fu))
+			float along = x * Mathf.Cos(psi) + z * Mathf.Sin(psi);
+			float perp = x * Mathf.Sin(psi) - z * Mathf.Cos(psi);
+			// Warp the straight line into a lazy S so it stops reading
+			// as a ruled edge.
+			float warp = 0.055f * Mathf.Sin(along * 3.2f + (uint)p.Seed * 0.001f)
+				+ 0.03f * Mathf.Sin(along * 7.1f);
+			float riftDist = Mathf.Abs(perp - warp);
+			float rift = (0.75f + 0.45f * Fbm(x * 6.0f, z * 6.0f, 4, (uint)p.Seed + 0x2B1Fu))
 				* (0.55f + 0.50f * Mathf.Exp(-r * 2f))
-				* Mathf.Exp(-(riftDist * riftDist) / (0.10f * 0.10f));
+				* Mathf.Exp(-(riftDist * riftDist) / (0.055f * 0.055f));
+			// Core window: the innermost disk is dust-free. Without it
+			// the rift (which passes through the exact centre, where
+			// riftDist <= r for every point) extinguished the NUCLEUS --
+			// the first bake's brightest pixel was the disk, not the
+			// core. The photo's look is a golden core with the rift
+			// wrapping it, not through it.
+			// Cap 1.1: rifts go dark, never the pure black the first
+			// preview's 1.6 cap produced.
+			float coreWindow = SmoothRange(0.02f, 0.09f, rC);
+			// Wisps: faint patchy dust between the arms -- the
+			// inter-arm of a real photo is never clean.
+			float wisp = SmoothRange(0.60f, 0.95f,
+				Fbm(x * 8.1f, z * 7.3f, 4, (uint)p.Seed + 0x3D70u)) * 0.35f * centerFade;
 			f.Dust = Mathf.Clamp(
-				(lane * laneFractal + rift * p.RiftStrength) * Mathf.Max(p.DustStrength, 0f),
-				0f, 1.6f);
+				(lane * laneFractal + rift * p.RiftStrength + wisp) * Mathf.Max(p.DustStrength, 0f),
+				0f, 1.1f) * coreWindow;
 
 			return f;
 		}
@@ -286,7 +388,9 @@ namespace OpenFrontier.Galaxy
 			Color c = CoreColor * f.Bulge;
 			c += CoreColor * (f.Bar * 0.9f);
 			c += DiskColor * f.DiskOld;
-			c += ArmColor * (f.Young * 0.55f);
+			// 1.25: the arms must sit 2-3x over the sheet after the
+			// tonemap+gamma compression flattens light ratios.
+			c += ArmColor * (f.Young * 1.25f);
 			// Beer-Lambert extinction through the dust, per channel --
 			// the reddening rule.
 			c.r *= Mathf.Exp(-f.Dust * DustTau.x);
@@ -426,11 +530,14 @@ namespace OpenFrontier.Galaxy
 
 			float winding = Winding(p);
 			float crest = CrestPhase(p);
-			// Solve the crest for theta at this radius; k picks which
-			// of the pair (0/1), minor arms offset half a turn.
+			// The ARM CENTRE sits at phase - crest = pi/2 (the face's
+			// gaussian bands peak there) -- the first placer targeted
+			// the raw crest constant and seeded the space BETWEEN the
+			// arms. Minor arms sit half a turn further.
 			float spread = Gaussian(ref state, 0.055f + 0.05f * Unit(ref state));
 			float jitter = (Fbm(r * 6f, Unit(ref state) * 40f, 2, (uint)p.Seed + 0x11u) - 0.5f) * 0.10f;
-			float phaseTarget = crest + (onMinor ? Mathf.PI : 0f)
+			float phaseTarget = crest + Mathf.PI * 0.5f
+				+ (onMinor ? Mathf.PI : 0f)
 				+ ((Unit(ref state) < 0.5f) ? 0f : 2f * Mathf.PI);
 			float theta = 0.5f * (phaseTarget - winding * Mathf.Log(r)) + spread + jitter;
 

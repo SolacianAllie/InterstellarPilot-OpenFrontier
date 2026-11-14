@@ -65,12 +65,12 @@ namespace OpenFrontier.Galaxy
 		public GalaxyBackdrop Model;
 
 		[Header("Look")]
-		[Tooltip("Shell star size range in WORLD units. These are INDIVIDUAL stars, not buckets.")]
-		public Vector2 SizeRange = new Vector2(0.5f, 2.2f);
+		[Tooltip("Shell star size range in WORLD units. Stars are POINTS: variety is brightness, not size -- sizes big enough to see as discs read as cotton balls (the first shell's lesson).")]
+		public Vector2 SizeRange = new Vector2(0.06f, 0.55f);
 
 		[Tooltip("Brightness distribution power: higher = fewer bright, many dim.")]
 		[Range(0.5f, 4f)]
-		public float BrightnessPower = 2.2f;
+		public float BrightnessPower = 3.0f;
 
 		[Tooltip("Vertical spread of the local cloud (world units) -- how thick the star cloud around the viewpoint feels.")]
 		[Range(10f, 800f)]
@@ -329,8 +329,10 @@ namespace OpenFrontier.Galaxy
 
 				float size = Mathf.Lerp(sizeMin, sizeMax,
 					Mathf.Pow(GalaxyModel.Unit(ref state), 2f));
+				// Brightness carries the hierarchy (sizes are points):
+				// mostly faint, a handful of blazing leaders.
 				float brightness = Mathf.Pow(
-					GalaxyModel.Unit(ref state), BrightnessPower) * 2.0f + 0.15f;
+					GalaxyModel.Unit(ref state), BrightnessPower) * 3.5f + 0.08f;
 
 				// Colour: the model's population mix at this cell, then
 				// a per-star spectral pick (individual stars, not
