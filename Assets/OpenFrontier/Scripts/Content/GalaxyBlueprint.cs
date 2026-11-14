@@ -37,9 +37,11 @@ namespace OpenFrontier.IP.Engine
 		public const int SpriteCellsX = 8;
 		public const int SpriteCellCount = 32;
 
-		/// <summary>fx.w >= 240 keeps the procedural sprite profiles: haze, then the diffraction cross.</summary>
+		/// <summary>fx.w >= 240 selects the high-res ED lens-flare sprites: haze, then the three bright-star cells.</summary>
 		public const float HazeVariant = 241f;
-		public const float CrossVariant = 242f;
+		public const float FlareVariant = 242f;
+		public const float SpikeVariant = 243f;
+		public const float SpiralVariant = 244f;
 
 		/// <summary>Hard ceiling in one cloud; raise deliberately, mobile-first.</summary>
 		public const int MaxStarCount = 48000;
@@ -279,10 +281,19 @@ namespace OpenFrontier.IP.Engine
 
 					// sprite variant: a random cell of the ED star sheet
 					// (GalaxyStarSprites, 8x4), except the brightest few,
-					// which add the procedural diffraction-cross flare
-					float variant = (dens > 0.85f && rng.NextDouble() < 0.4)
-						? CrossVariant
-						: (float)rng.Next(SpriteCellCount);
+					// which draw the high-res ED lens-flare cells - heavy
+					// flare, diffraction spikes, or (rarely) the spiral flare
+					float variant;
+					if (dens > 0.85f && rng.NextDouble() < 0.4)
+					{
+						double roll = rng.NextDouble();
+						variant = roll < 0.55 ? FlareVariant
+							: roll < 0.9 ? SpikeVariant : SpiralVariant;
+					}
+					else
+					{
+						variant = (float)rng.Next(SpriteCellCount);
+					}
 					if (variant > 240f) size *= 1.25f;
 
 					fxOut[i] = new Vector4(

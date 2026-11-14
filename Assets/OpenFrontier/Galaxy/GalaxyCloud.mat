@@ -23,6 +23,10 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _BrightTex:
+        m_Texture: {fileID: 2800000, guid: 0d096fc80ed94e7b9ac8c60c2498aa69, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _SpriteTex:
         m_Texture: {fileID: 2800000, guid: df17896b3c2d4c938699d9231870fc11, type: 3}
         m_Scale: {x: 1, y: 1}

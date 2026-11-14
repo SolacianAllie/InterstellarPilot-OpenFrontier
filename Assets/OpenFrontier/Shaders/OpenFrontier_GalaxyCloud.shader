@@ -19,9 +19,10 @@
 //   0..31       - a cell of the ED star sheet (GalaxyStarSprites.png, 8x4
 //                 grid of the real star sprites Frontier's sky billboards
 //                 draw; the alpha channel is the sprite shape)
-//   241         - haze: broad, very soft, steady (the band's glow, stacked)
-//   242         - bright star: procedural 4-point diffraction cross on top
-//                 of the sprite falloff
+//   241         - haze: the soft-glow cell of the ED lens-flare sheet
+//   242         - brightest stars: the ED radial flare
+//   243         - brightest stars: the ED diffraction-spike star
+//   244         - rare: the ED spiral star
 //
 // No LightMode tag: renders as SRPDefaultUnlit under URP. Queue discipline:
 // tag says Transparent; the MATERIAL carries the 2990 offset (backdrop,
@@ -57,6 +58,7 @@ Shader "OpenFrontier/Galaxy/Cloud" {
 			fixed4 _CloudTint;
 			float _OpenFrontierGalaxyTime;
 			sampler2D _SpriteTex;
+			sampler2D _BrightTex;
 
 			struct appdata_cloud
 			{
@@ -96,21 +98,17 @@ Shader "OpenFrontier/Galaxy/Cloud" {
 
 			fixed4 frag(v2f_cloud i) : SV_Target
 			{
-				float d2 = dot(i.uv, i.uv);
-				float rim = saturate(1.0 - d2);
 				float a;
 				if (i.variant > 240.5)
 				{
-					if (i.variant > 241.5)  // bright star: core + diffraction cross
-					{
-						float spikeH = exp(-abs(i.uv.x) * 5.0) * exp(-i.uv.y * i.uv.y * 25.0);
-						float spikeV = exp(-abs(i.uv.y) * 5.0) * exp(-i.uv.x * i.uv.x * 25.0);
-						a = rim * rim * 0.25 + exp(-d2 * 6.0) * 0.75 + (spikeH + spikeV) * 0.45;
-					}
-					else                    // haze: broad, soft, stacked low
-					{
-						a = pow(rim, 1.6) * 0.85;
-					}
+					// high-res ED lens-flare cells (GalaxyBrightSprites.png,
+					// 4 across): 241 haze -> soft glow (3), 242 flare (0),
+					// 243 spike (1), 244 spiral (2)
+					float cell = i.variant > 241.5 ? (i.variant - 242.0) : 3.0;
+					cell = clamp(cell, 0.0, 3.0);
+					float2 uv = (float2(cell, 0.0) + saturate(i.uv * 0.5 + 0.5))
+						* float2(0.25, 1.0);
+					a = tex2D(_BrightTex, uv).a;
 				}
 				else                        // ED star sheet: 8x4 atlas cell
 				{

@@ -75,11 +75,22 @@ global pushed from `Time.unscaledTime` (the `_OpenFrontierHoloTime` pattern).
     assigned to `DefaultGalaxy.asset`'s densityMap; `GridResolution` 512 so
     the GetPixels32 fast path hits. The procedural spiral stays as fallback
     (contrast boosted in look v3); the map is the Phase-4 painter's surface.
-  - Shader draws stars from the sheet (`fx.w` 0..31 = cell; 241 = haze
-    profile; 242 = procedural diffraction cross for the brightest);
-    `GalaxyCloud.mat` carries `_SpriteTex`. lookVersion 3 = procedural
+  - **High-res bright stars (same session):** ED's `lensflarehq` 2048×1024
+    flare atlas (carved but never decoded until now) re-packs into
+    `GalaxyBrightSprites.png` — 4 cells of 512²: the radial flare, a
+    4-point spike star, a spiral star and a soft glow (alpha = shape).
+    Shader: `fx.w` 0..31 = a star-sheet cell; 241 = the soft-glow haze;
+    242/243/244 = flare/spike/spiral for the brightest stars;
+    `GalaxyCloud.mat` carries `_SpriteTex` + `_BrightTex`. The old
+    procedural cross/haze profiles are gone. lookVersion 3 = procedural
     fallback retune only (the user's tuned asset values are preserved:
     armContrast 3, starCount 48000, sizeMin 1).
+  - **ED nebula evidence:** bright nebulae are 256³ BC7 volumes
+    (`generic_bright_nebula_01..05` + `04_special`) with 256×1 HDR colour
+    ramps; dark nebulae (`generic_dark_nebula_01..05`) are sparse
+    absorption volumes. The five bright ones bake the placable cards below.
+    The lens-flare sheet also carries big glow/spike star art, which is
+    where the bright-star sprites came from.
 - **Traps a fresh session must not re-learn:** shader compile failures are
   SILENT (last good version keeps rendering — grep
   `Logs/Editor.log` for `shader error` after every shader edit);
@@ -113,9 +124,18 @@ into the scene contract. Delivered: `9126d385`.
   (`Blend SrcAlpha OneMinusSrcAlpha`) ABOVE the cloud draw (queue ~2991),
   sampled from a lane field along the arms' inner edges — additive sprites
   can't darken, so dust must occlude. This is ED's dark-rift read.
-- **Nebula cards:** world-pinned large dim textured quads at queue 2999
-  (house backdrop tier), palette-matched; the SpaceUnity nebula materials
-  already live in the repo at that exact queue.
+- **Nebula placables (LANDED ahead of phase 3, 2026-11-14, user-directed):**
+  nebulae are UNIQUE placables, NOT embedded in the galaxy cloud. Five
+  standalone prefabs live under `Assets/OpenFrontier/Galaxy/Nebulae/`
+  (Dusk, Veil, Ember, Amethyst, Rose): builtin quad + `Nebula*.mat` +
+  `OpenFrontier_GalaxyNebula.shader` (camera-facing additive billboard,
+  per-camera clip-space offset, transform scale = diameter, Z rotation =
+  card roll, queue 2999). Textures bake from ED's five 256³ bright-nebula
+  volumes: Y-axis emission/optical-depth projection, colour from the
+  volume, alpha = density, circular vignette hides the volume frame.
+  Drop a prefab into `hand/` in Galaxy.unity and place/scale/tint it.
+  The dark volumes stay archived for a future alpha-blended absorption
+  placable.
 - **Optional hero volume:** one 64³ BC7-ish volume texture + 256×1 color
   ramp raymarched (ED's low-res shape) — only if the cards aren't enough;
   mobile budget decides.
