@@ -7,6 +7,12 @@ NebulaVolume.mat + GalaxyNebulaVolume component as the two hand-authored
 originals (NebulaBarnard, NebulaPleiades), so there is one template and no
 per-prefab material drift.
 
+Every run also writes the per-instance optical fields (density / absorption /
+brightness) into ALL Nebula*.prefab files - named ones get brightness
+4/ED-gain (their gain lives in the baked data), the generic bakes get the
+measured absorption 12. Hand-tuned values in the editor do not survive a
+regeneration; the fields are regenerated data, like the scales.
+
 The GUIDs are deterministic (MD5 of the repo-relative asset path), so a
 regenerated checkout gets the same references and the .bytes need no editor
 round-trip before the prefabs can be imported. Existing Barnard/Pleiades
@@ -19,6 +25,7 @@ Run after the bake:
 """
 import argparse
 import hashlib
+import json
 import os
 import re
 import sys
@@ -59,6 +66,90 @@ DISPLAY = {
 # The two originals were hand-authored and are referenced by the scene. Never
 # rewrite them silently; their GUIDs already exist.
 ORIGINALS = ('NebulaBarnard', 'NebulaPleiades')
+
+# Per-instance optical multipliers, written into every prefab's
+# GalaxyNebulaVolume block next to the quality field. ED's named volumes
+# carry the game's own per-volume density gain baked into the .bytes
+# (ed_gain in the bake tool), stored as density/peak with `density`
+# restoring the peak (ed_density.json), so they march at absorption 1
+# with brightness 4/gain: ED's opacity lands in the data and the emission
+# level the volume's own colour gives at brightness 4 stays. The generic
+# bakes keep their hand normalisation (column cap / dark target) and
+# compensate with the measured absorption 12 instead - the value that
+# lands their optical depth on ED's own. The shared NebulaVolume.mat
+# stays the neutral 1/1/4 base for anything these fields do not cover.
+GENERIC_ABSORPTION = 12.0
+BASE_BRIGHTNESS = 4.0
+
+OPTICAL_FIELDS = ('density', 'absorption', 'brightness')
+
+
+def apply_optics(path, values):
+	"""Write the per-instance optical fields into a prefab's
+	GalaxyNebulaVolume block, replacing any that already exist. Idempotent,
+	and touches nothing else - names, scales and GUIDs stay put."""
+	lines = open(path, encoding='utf-8').read().splitlines(keepends=True)
+	block = end = None
+	for i, line in enumerate(lines):
+		if block is None:
+			if ('m_EditorClassIdentifier: OpenFrontier.Content::'
+					'OpenFrontier.IP.Engine.GalaxyNebulaVolume' in line):
+				block = i
+		elif line.startswith('--- !u!'):
+			end = i
+			break
+	if block is None:
+		sys.exit(f'{os.path.basename(path)}: no GalaxyNebulaVolume block')
+	if end is None:
+		end = len(lines)
+	out, inserted = [], False
+	for line in lines[block:end]:
+		field = line.split(':', 1)[0].strip()
+		if field in OPTICAL_FIELDS:
+			continue                      # re-written right after quality
+		out.append(line)
+		if not inserted and field == 'quality':
+			for name, value in values.items():
+				out.append(f'  {name}: {value:.6g}\n')
+			inserted = True
+	if not inserted:
+		sys.exit(f'{os.path.basename(path)}: no quality line to anchor on')
+	with open(path, 'w', encoding='utf-8', newline='') as f:
+		f.write(''.join(lines[:block] + out + lines[end:]))
+
+
+def optics_pass(bake):
+	"""Classify every Nebula*.prefab and write its per-instance optics."""
+	named = {bake.STEM[k]: k for k in bake.STEM}
+	peaks = {}
+	if os.path.isfile(bake.DENSITY_JSON):
+		with open(bake.DENSITY_JSON, encoding='utf-8') as f:
+			peaks = json.load(f)
+	done = 0
+	for fname in sorted(os.listdir(PRE)):
+		if not fname.endswith('.prefab'):
+			continue
+		stem = fname[:-len('.prefab')]
+		path = os.path.join(PRE, fname)
+		if stem in named:
+			gain = bake.ed_gain_plateau(bake.ED_NAMED[named[stem]]['256'])
+			if stem not in peaks:
+				sys.exit(f'{stem}: no baked peak density in '
+				         f'{bake.DENSITY_JSON} - run nebula_volume_bake.py first')
+			peak = peaks[stem]
+			values = {'density': peak, 'absorption': 1.0,
+			          'brightness': BASE_BRIGHTNESS / gain}
+			note = f'ED gain {gain:.3f}x, peak {peak:.2f}'
+		else:
+			values = {'density': 1.0, 'absorption': GENERIC_ABSORPTION,
+			          'brightness': BASE_BRIGHTNESS}
+			note = 'generic compensation'
+		apply_optics(path, values)
+		print(f'{stem:18s} density {values["density"]:g}  absorption '
+		      f'{values["absorption"]:g}  brightness '
+		      f'{values["brightness"]:.6g}  [{note}]')
+		done += 1
+	print(f'{done} prefab(s) optics set')
 
 
 def import_bake():
@@ -171,6 +262,13 @@ def main():
 	for stem, name, scale in made:
 		print(f'{stem:18s} {name:24s} cube edge {scale}')
 	print(f'{len(made)} prefab(s) generated')
+
+	# Per-instance optics run every time (idempotent): named volumes get
+	# brightness 4/ED-gain, generics the measured absorption. This covers
+	# the hand-authored originals and the generic prefabs too - only the
+	# three optical fields are touched.
+	optics_pass(bake)
+
 	if missing:
 		print('missing baked volumes (run the bake first):')
 		for p in missing:

@@ -64,11 +64,51 @@ column normalisation. That is why the bright cards still reach their
 only removes the low-density layer underneath. All 11 generic LOD ladders
 were rebaked with it.
 
+## ED's own density gain (the faithful bake)
+
+Every ED volume texture ships with a paired 256x1 RGBA32F transfer slice
+carved beside it (same identity hash; the CSV row filter demands the ramp
+shape because a BC7 cube row shares the prefix). Its alpha channel is the
+game's per-volume density gain over raw alpha:
+
+| class | gain | volumes |
+|---|---|---|
+| translucent | 1.0x | Pleiades, Fine Ring |
+| standard | 4.957x | the other fifteen named nebulae |
+| dust cluster | 18.961x | Horsehead |
+
+The bake multiplies the surviving density by `gain[raw_alpha]`, clamped to
+the bins 0-248 median: the ramp's last bins (249-255) spike to ~192 on under
+0.1% of voxels — dense-core speckle ED's own render never shows.
+
+That gain pushes per-voxel densities past 1, which the 8-bit alpha channel
+cannot hold, so the bake stores `density / K` with `K` = the volume's own
+peak density and the prefab component carries `density: K` to restore the
+absolute scale in the shader. Identical τ and emission, and the bytes use
+the full 0-255 range. `tools/galaxy/ed_density.json` carries the K values
+from bake to prefab generator.
+
+The gain multiplies emission too (emission ∝ density), so each gained
+prefab's component carries `brightness: 4/gain`: ED's opacity lands
+per-volume and the emission level the volume's own colour gives at
+brightness 4 stays. ED's actual emission levelling lives in the ramp's RGB
+(a dimmed, level-stepped version of the volume's own hue); its absolute
+scale is not recoverable from the carve, so it is deliberately not baked.
+
+Per-instance optics live on the prefabs, not the material: named volumes
+carry `density K / absorption 1 / brightness 4/gain`; the 11 generic bakes
+keep their hand normalisation and compensate with `absorption 12` (the
+measured value that lands their optical depth on ED's own). The shared
+`NebulaVolume.mat` stays the neutral 1/1/4 base.
+
 ## Quality slider
 
 `GalaxyNebulaVolume.quality` is a 0–2 slider: 0 = 64³, 1 = 128³, 2 = 256³.
-Raymarch steps follow the rung (32/48/64) so the added detail is actually
-sampled. Only the selected LOD is uploaded. Switching at runtime destroys and
+Raymarch steps follow the rung (32/64/128 — two texels per step at every
+rung) so the added detail is actually sampled and the dither grain stays at
+the same visual scale. The ray start is dithered with interleaved gradient
+noise (static per pixel; no TAA dependency). Only the selected LOD is
+uploaded. Switching at runtime destroys and
 rebuilds the Texture3D, so the high rung hitches on device.
 
 ## Regenerating
@@ -82,8 +122,11 @@ Run from the repo root:
 
 The default bake set is all 29 prefabs. `nebula_prefabs.py` is idempotent; it
 wires the `.bytes` GUIDs into the shared prefab template and skips existing
-prefabs unless `--force` is passed. The two originals (`NebulaBarnard`,
-`NebulaPleiades`) are hand-authored and never rewritten. Sources are ED's BC7
+prefabs unless `--force` is passed, and every run rewrites the three
+per-instance optical fields on all 29 prefabs (hand-tuned values in the
+editor do not survive it — the fields are generated data, like the scales).
+The two originals (`NebulaBarnard`, `NebulaPleiades`) keep their identity
+but get the optical fields like everything else. Sources are ED's BC7
 3D volumes under `/home/deck/ed-assets/carved/textures/` (64³ low and 256³
 high; the 128 rung is derived). Set `ED_TEXTURE_ROOT` if the carve moves.
 

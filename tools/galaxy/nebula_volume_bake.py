@@ -33,10 +33,30 @@ Pleiades were the first two; the other sixteen are the same mapping. Red
 Spider is deliberately absent - its DB row points at
 Generic_PlanataryNebula_06, so it has no unique volume. The named bakes are
 RAW in colour and structure: no column normalisation and no card LUT. The
-only shaping is the low-alpha continuum cut (DENSITY_FLOOR, scaled to each
-volume's own core) and a 5% edge fade. ED's alpha carries a 1-10% background
-around the actual gas; raw, the raymarch integrates it over the whole cube,
-so Barnard's thin shell read as a filled sphere with its rim buried in haze.
+shaping is threefold:
+
+1. the low-alpha continuum cut (DENSITY_FLOOR, scaled to each volume's own
+   core) - ED's alpha carries a 1-10% background around the actual gas, and
+   raw the raymarch integrates it over the whole cube, so Barnard's thin
+   shell read as a filled sphere with its rim buried in haze;
+2. a 5% edge fade so no box silhouette can show;
+3. ED's OWN per-volume density gain. Every ED volume texture ships with a
+   paired 256x1 RGBA32F transfer slice (same carve hash, R32 ramp + BC7 cube
+   share the volume's identity) whose ALPHA channel is the game's density
+   gain over raw alpha: 4.957x for sixteen of the named nebulae, 1.0x for
+   the translucent Pleiades and Fine Ring, 18.961x for Horsehead's dust.
+   The ramp's last bins (249-255) spike to ~192 on under 0.1% of voxels -
+   dense-core speckle ED's own render never shows - so the applied gain
+   clamps to the bins 0-248 median. The gain pushes per-voxel density past
+   1 (alpha 0.75 x 4.96), which the 8-bit alpha channel cannot hold, so the
+   bake stores density/K, K = the volume's own peak density, and the
+   prefab's component carries `density: K` to restore ED's absolute scale
+   in the shader. The ramp's RGB (a dimmed, level-stepped
+   version of the volume's own hue) is NOT baked: it is ED's emission
+   levelling, whose absolute scale is not recoverable from the carve, so
+   each gained prefab carries brightness 4/gain on its GalaxyNebulaVolume
+   instead - the validated emission level stays, the opacity becomes ED's.
+
 BC7 decodes as BGRA, so the
 channel order is the only colour transform. The authored card functions stay
 in this file for reference; the committed Cards/*.png are the flat fallbacks,
@@ -54,6 +74,8 @@ Output layout: Nebulae/Volumes/LOD<edge>/Nebula<Name>.bytes, cards in
 Nebulae/Cards/. Deterministic: fixed seeds, fixed constants.
 """
 import argparse
+import csv
+import json
 import os
 import re
 import struct
@@ -68,11 +90,19 @@ except ImportError:
 	         '(use ~/.venvs/decals/bin/python to run this tool)')
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Bake -> prefab handoff: each named volume's peak density K (see bake_raw).
+DENSITY_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            'ed_density.json')
 NEB_DIR = os.path.join(REPO, 'Assets', 'OpenFrontier', 'Galaxy', 'Nebulae')
 CARD_DIR = os.path.join(NEB_DIR, 'Cards')
 VOL_DIR = os.path.join(NEB_DIR, 'Volumes')
 ED_ROOT = os.environ.get('ED_TEXTURE_ROOT',
                          '/home/deck/ed-assets/carved/textures')
+# The carve catalog: sha1 -> carved DDS path. ED ships a 256x1 RGBA32F
+# transfer slice beside every volume texture; its row shares the volume's
+# own hash, which is the carve filename's last hash token.
+ED_CATALOG = os.environ.get('ED_TEXTURE_CATALOG',
+                            '/home/deck/ed-assets/catalog/carved_textures.csv')
 
 N = 64                 # default volume edge; --sizes picks the LOD folders
 CARD = 512             # card edge
@@ -369,21 +399,73 @@ def _density_floor(alpha):
 	        max(DENSITY_FLOOR[1], DENSITY_FLOOR_REL[1] * p))
 
 
+_RAMP_CACHE = {}
+
+
+def ed_gain(src_rel):
+	"""ED's per-volume density gain, from the volume's companion slice.
+
+	Every ED volume texture ships with a 256x1 RGBA32F transfer slice carved
+	beside it; the two rows share the volume's identity hash (the carve
+	filename's last 8-hex token), and one of them is the BC7 cube itself, so
+	the row filter demands the ramp shape. Stored channel order is BGRA:
+	channel 3 is the gain curve over raw alpha. Its bins 249-255 spike to
+	~192 on <0.1% of voxels; the applied gain clamps to the bins 0-248
+	median so a lone dense voxel cannot punch a black hole through a ray.
+	Volumes whose ramp was not carved fall back to gain 1.
+	"""
+	key = re.findall(r'[0-9a-f]{8}', os.path.basename(src_rel))[-1]
+	if key in _RAMP_CACHE:
+		return _RAMP_CACHE[key]
+	gain = None
+	with open(ED_CATALOG) as f:
+		for r in csv.reader(f):
+			if (len(r) > 21 and r[0][:8] == key
+					and r[7] == 'R32G32B32A32_FLOAT'
+					and r[8] == '256' and r[9] == '1'):
+				raw = open(r[21], 'rb').read()
+				off = 148 if raw[84:88] == b'DX10' else 128
+				tex = np.frombuffer(raw, dtype='<f4', count=256 * 4,
+				                    offset=off).reshape(256, 4)
+				plateau = float(np.median(tex[:249, 3]))
+				gain = np.minimum(tex[:, 3], plateau).astype(np.float32)
+				break
+	if gain is None:
+		gain = np.ones(256, np.float32)
+	_RAMP_CACHE[key] = gain
+	return gain
+
+
+def ed_gain_plateau(src_rel):
+	"""The volume's ED density-gain plateau (bins 0-248 median)."""
+	return float(np.median(ed_gain(src_rel)[:249]))
+
+
 def _density_transfer(dens, floor=None):
 	"""Drop a named volume's low-alpha continuum."""
 	lo, hi = floor or DENSITY_FLOOR
 	return dens * smoothstep(lo, hi, dens)
 
 
-def bake_raw(vol, floor=None):
+def bake_raw(vol, floor=None, gain=None, rescale=None):
 	"""ED named volume -> (RGBA32 bytes, stats).
 
 	BC7 through texture2ddecoder comes back BGRA; ED's DDS is straight-alpha
 	BC7_UNORM, so the swap is the only colour transform. The alpha then loses
-	its low-density continuum (a floor scaled to the volume's own core) and
-	the outer 5% fades, so the cube's empty half does not raymarch as a ball
-	and the faces do not cut the gas. No column normalisation, no LUT: the
-	game's colour and surviving density remain.
+	its low-density continuum (a floor scaled to the volume's own core), gets
+	ED's own per-volume density gain from the companion ramp (clamped to the
+	plateau, indexed by raw alpha - see ed_gain), and the outer 5% fades, so
+	the cube's empty half does not raymarch as a ball and the faces do not
+	cut the gas. No column normalisation, no LUT: the game's colour and
+	surviving density remain.
+
+	ED's gain pushes per-voxel densities past 1 (alpha 0.75 x 4.96), and the
+	8-bit alpha channel cannot hold that, so the bake stores density/K with
+	K = the volume's own peak density and the GalaxyNebulaVolume component
+	carries `density: K` to restore ED's absolute scale in the shader -
+	identical tau and emission, and the bytes use the full 0-255 range.
+	`rescale` pins K across rungs (always the 256 bake's peak, from
+	ed_density.json) so every LOD of a volume restores through one number.
 	"""
 	alpha = vol[..., 3].astype(np.float32) / 255.0
 	if floor is None:
@@ -394,12 +476,19 @@ def bake_raw(vol, floor=None):
 	out[..., 2] = vol[..., 0]
 	dens = _density_transfer(alpha, floor)
 	dens *= _edge_guard(vol.shape[0])
+	if gain is not None:
+		dens *= gain[np.clip((alpha * 255).round().astype(int), 0, 255)]
+	k = float(rescale) if rescale is not None else max(float(dens.max()), 1e-6)
+	peak_column = float(dens.sum(axis=0).max() / vol.shape[0])
+	dens /= k
 	out[..., 3] = np.clip(dens * 255, 0, 255)
 	n = vol.shape[0]
-	return out, {'peak_column': float(dens.sum(axis=0).max() / n),
+	return out, {'peak_column': peak_column,
 	             'nonzero': float((dens > 1 / 255).mean()),
 	             'clipped': float((dens >= 1).mean()),
-	             'floor': floor}
+	             'floor': floor,
+	             'gain': (float(np.median(gain)) if gain is not None else 1.0),
+	             'peak_density': k}
 
 
 def bake_ed(name, vol, card_png=None):
@@ -673,6 +762,13 @@ def main():
 	                help='also write top/side integral PNGs (scratch)')
 	args = ap.parse_args()
 	names = args.names or list(ED_ALL + AUTHORED)
+
+	# Previous bake's peak densities pin K across rungs (and re-runs): every
+	# LOD of a volume must restore through the prefab's one `density` number.
+	peaks = {}
+	if os.path.isfile(DENSITY_JSON):
+		with open(DENSITY_JSON, encoding='utf-8') as f:
+			peaks = json.load(f)
 	bad = [n for n in names if n not in ED_ALL + AUTHORED]
 	if bad:
 		sys.exit(f'unknown nebula name(s): {", ".join(bad)}')
@@ -712,8 +808,10 @@ def main():
 				vols[full] = decode_ed_dds(full)   # one decode per source
 			vol = to_edge(vols[full], n)
 			if name in ED_NAMED:
-				out, stats = bake_raw(vol, floor)
-				how = 'ED named volume, floor cut'
+				out, stats = bake_raw(vol, floor, ed_gain(path), rescale=peaks.get(stem))
+				if peaks.get(stem) is None:
+					peaks[stem] = stats['peak_density']
+				how = 'ED named volume, floor cut + ED gain, peak rescaled'
 			else:
 				out, stats = bake_ed(name, vol,
 				                     card_path if name in ED_SOURCES else None)
@@ -727,11 +825,22 @@ def main():
 			      f'{stats["nonzero"] * 100:.0f}%'
 			      + (f', floor {stats["floor"][0]:.2f}-{stats["floor"][1]:.2f}'
 			         if 'floor' in stats else '')
+			      + (f', ED gain {stats["gain"]:.2f}x'
+			         if 'gain' in stats else '')
+			      + (f', peak density {stats["peak_density"]:.2f}'
+			         if 'peak_density' in stats else '')
 			      + (f', clipped {stats["clipped"] * 100:.1f}%'
 			         if 'clipped' in stats else ''))
 			if args.preview:
 				os.makedirs(args.preview, exist_ok=True)
 				save_preview(os.path.join(args.preview, f'{stem}-{n}'), out)
+
+	if peaks:
+		with open(DENSITY_JSON, 'w', encoding='utf-8') as f:
+			json.dump(peaks, f, indent=1, sort_keys=True)
+			f.write('\n')
+		print(f'{len(peaks)} peak densities -> '
+		      f'{os.path.relpath(DENSITY_JSON, REPO)}')
 
 
 if __name__ == '__main__':

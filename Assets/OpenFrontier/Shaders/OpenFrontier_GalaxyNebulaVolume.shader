@@ -14,8 +14,10 @@
 // only supply colour LUTs for the five generic brights and flat fallbacks.
 // The shader carries no shaping of its own.
 //
-// Cost: _Steps samples per covered pixel - GalaxyNebulaVolume sets 32/48/64
-// for the 64^3/128^3/256^3 quality rungs. The component uploads one Texture3D
+// Cost: _Steps samples per covered pixel - GalaxyNebulaVolume sets 32/64/128
+// for the 64^3/128^3/256^3 quality rungs (two texels per step at every rung,
+// so the dither grain shrinks with the step instead of changing scale
+// between rungs). The component uploads one Texture3D
 // per placed INSTANCE (no share cache yet), sized by the selected rung:
 // 1 MB, 8 MB or 64 MB as RGBA32. The 256^3 rung is ED's own high LOD -
 // desktop/testing only.
@@ -68,11 +70,13 @@ Shader "OpenFrontier/Galaxy/NebulaVolume" {
 				return o;
 			}
 
-			float hash12(float2 p)
+			float ign12(float2 p)
 			{
-				float3 p3 = frac(float3(p.xyx) * 0.1031);
-				p3 += dot(p3, p3.yzx + 33.33);
-				return frac((p3.x + p3.y) * p3.z);
+				// interleaved gradient noise (Jimenez 14): blue-noise-like
+				// dither, one instruction, no texture. Static per pixel - no
+				// TAA needed, and the grain does not crawl while the camera
+				// moves.
+				return frac(52.9829189 * frac(dot(p, float2(0.06711056, 0.00583715))));
 			}
 
 			float4 frag(v2f i) : SV_Target
@@ -101,15 +105,15 @@ Shader "OpenFrontier/Galaxy/NebulaVolume" {
 				float tFar = min(min(tmax.x, tmax.y), tmax.z);
 				if (tFar <= tNear) discard;
 
-				int steps = (int)clamp(_Steps, 8.0, 64.0);
+				int steps = (int)clamp(_Steps, 8.0, 128.0);
 				float stepLen = (tFar - tNear) / (float)steps;
-				float jitter = hash12(i.pos.xy) * stepLen;
+				float jitter = ign12(i.pos.xy) * stepLen;
 				float3 p = ro + rd * (tNear + jitter);
 
 				float transmittance = 1.0;
 				float3 emission = 0.0;
 				[loop]
-				for (int s = 0; s < 64; s++)
+				for (int s = 0; s < 128; s++)
 				{
 					if (s >= steps) break;
 					float3 uvw = saturate(p + 0.5);
