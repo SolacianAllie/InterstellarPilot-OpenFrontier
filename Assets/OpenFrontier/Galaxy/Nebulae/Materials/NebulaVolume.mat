@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Nebula Volume
+  m_Name: NebulaVolume
   m_Shader: {fileID: 4800000, guid: e23287a49ce940e4a2a8db85d8ef0feb, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -29,10 +29,10 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Absorption: 1
-    - _Brightness: 10
-    - _Density: 1
-    - _Steps: 128
+    - _Absorption: 2
+    - _Brightness: 2
+    - _Density: 10
+    - _Steps: 32
     m_Colors:
     - _Tint: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []

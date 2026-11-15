@@ -8,11 +8,10 @@
 // perspective sky view both see the same volume. The ray is intersected with
 // the unit cube analytically, so a camera inside the nebula still works.
 //
-// All shaping lives in the bake (tools/galaxy/nebula_volume_bake.py): a wavy
-// noisy slab whose xy silhouette is the ED card's own round alpha cutout - the
-// veins read front-on, a side view is a structured band, and the square frame
-// ED bakes into the card RGB is erased there (colour is masked by card alpha).
-// The shader carries no shaping of its own.
+// All shaping lives in the bake (tools/galaxy/nebula_volume_bake.py): ED's own
+// volume data for the generic palette, hand-built 3D fields for Barnard's Loop
+// and the Pleiades. Every voxel carries its own density; the cards only supply
+// colour LUTs and flat fallbacks. The shader carries no shaping of its own.
 //
 // Cost: _Steps samples per covered pixel - GalaxyNebulaVolume sets 32/48/64
 // for the 64^3/128^3/256^3 quality rungs. The component uploads one Texture3D

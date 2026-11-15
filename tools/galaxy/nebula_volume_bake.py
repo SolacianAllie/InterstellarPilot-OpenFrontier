@@ -23,14 +23,11 @@ density left at its natural brightness. Together with the five card bakes
 that is every nebula volume ED ships as a placeable.
 
 Two nebulae are AUTHORED (ED ships no named-nebula textures - the carve holds
-only generic bright/dark volumes): Barnard's Loop is a broken elliptical ring
-in deep red, the Pleiades a compact blue wisp cluster. Their cards are
-synthesized here, saved next to the volumes so the flat-card fallback assets
-stay in sync, and baked as a wavy noisy SLAB whose xy silhouette is the card:
-
-    density(x,y,z) = card_luma(x,y) * card_alpha(x,y)   (xy silhouette)
-                     * gauss(z - wavy(x,y), sigma)      (slab thickness)
-                     * value_noise(x,y,z)               (wispy breakup)
+only generic bright/dark volumes): Barnard's Loop is a broken, noise-warped
+bubble shell in deep red (a ring from above, an arc from the side), the
+Pleiades a 3D filament cluster around a bright blue core. Their cards are
+synthesized here for the flat-card fallbacks; the VOLUMES are real 3D fields,
+never card extrusions - a slab reads as one flat sheet from every angle.
 
 Assets (run from the repo root; .bytes/.png written in place, LFS-tracked):
 
@@ -66,11 +63,8 @@ ED_ROOT = os.environ.get('ED_TEXTURE_ROOT',
 N = 64                 # default volume edge; --sizes picks the LOD folders
 CARD = 512             # card edge
 TARGET_COLUMN = 0.46   # peak density integral, cube units (old ball: ~0.52)
-SIGMA_Z = 0.26         # authored slabs: gaussian sigma, cube units
-WAVE = 0.12            # authored slabs: mid-plane displacement, cube units
-FACE_FADE = (0.38, 0.495)   # authored slabs: kill density at the cube z faces
-BODY_FLOOR = 0.12      # authored slabs: base density so the body isn't hollow
-EDGE_GUARD = (0.88, 0.995)  # ED volumes: fade the outer ~5% of every axis
+AUTHORED_COLUMN = 0.34  # same unit for the two hand-built nebulae
+EDGE_GUARD = (0.88, 0.995)  # fade the outer ~5% of every axis
 LUMA_BINS = 24         # card colour LUT resolution
 
 LUMA = np.array([0.2126, 0.7152, 0.0722], np.float32)
@@ -241,10 +235,7 @@ def bake_ed(name, vol, card_png=None):
 	alpha = vol[..., 3].astype(np.float32) / 255.0
 
 	# edge guard: no box silhouette even if ED's data touches a face
-	axis = (np.arange(n, dtype=np.float32) / (n - 1)) * 2 - 1
-	guard = 1 - smoothstep(EDGE_GUARD[0], EDGE_GUARD[1], np.abs(axis))
-	guard3 = guard[:, None, None] * guard[None, :, None] * guard[None, None, :]
-	alpha *= guard3
+	alpha *= _edge_guard(n)
 
 	dark = name in DARK
 	dens = alpha
@@ -366,52 +357,110 @@ def card_pleiades():
 	return rgb, alpha.astype(np.uint8)
 
 
-def bake_slab(rgb, alpha, n):
-	"""Authored card -> wavy noisy slab volume (n^3 RGBA32, stats)."""
-	full = np.concatenate([np.clip(rgb * 255, 0, 255).astype(np.uint8),
-	                       alpha[..., None]], axis=2)
-	down = Image.fromarray(full, 'RGBA').resize((n, n), Image.BILINEAR)
-	c = np.asarray(down, np.float32) / 255.0
-	rgb_n, a_n = c[..., :3], c[..., 3]
+def _edge_guard(n):
+	"""1 at the core, 0 at the faces: no box silhouette can show."""
+	axis = (np.arange(n, dtype=np.float32) / (n - 1)) * 2 - 1
+	g = 1 - smoothstep(EDGE_GUARD[0], EDGE_GUARD[1], np.abs(axis))
+	return g[:, None, None] * g[None, :, None] * g[None, None, :]
 
-	# xy structure: the card's veins are 5-20 px and a wide bilinear mean
-	# washes them out, so density samples a BLOCK-PERCENTILE of the full-res
-	# luma (85th: filaments survive, haze does not), contrast-stretched
-	# against the card's own gas range.
-	lum512 = (rgb * LUMA).sum(axis=-1)
-	blocks = lum512.reshape(n, CARD // n, n, CARD // n)
-	luma_p = np.percentile(blocks, 85, axis=(1, 3))
-	gas = a_n > 0.5
-	lo, hi = np.percentile(luma_p[gas], (5, 97))
-	lum = np.clip((luma_p - max(lo, 1e-4)) / max(hi - lo, 1e-4), 0, 1)
 
-	env = a_n                                  # the card's round cutout
-	dens_xy = env * (BODY_FLOOR + (1 - BODY_FLOOR) * lum ** 0.9)
+def _stamp(dens, p, sigma, amp):
+	"""Add one gaussian blob at continuous -1..1 coordinates (in place)."""
+	n = dens.shape[0]
+	step = 2.0 / (n - 1)
+	c = (np.asarray(p, np.float64) + 1.0) / step
+	r = int(np.ceil(2.6 * sigma / step))
+	lo = np.maximum(np.floor(c).astype(int) - r, 0)
+	hi = np.minimum(np.floor(c).astype(int) + r + 1, n)
+	if np.any(hi <= lo):
+		return
+	ax = [(np.arange(lo[i], hi[i], dtype=np.float32) - c[i]) * step
+	      for i in range(3)]
+	gz, gy, gx = np.meshgrid(ax[0], ax[1], ax[2], indexing='ij')
+	dens[lo[0]:hi[0], lo[1]:hi[1], lo[2]:hi[2]] += amp * np.exp(
+		-(gx * gx + gy * gy + gz * gz) / (2 * sigma * sigma))
 
-	xs = np.arange(n, dtype=np.float32)
-	Z, Y, X = [g / (n - 1) for g in np.meshgrid(xs, xs, xs, indexing='ij')]
-	wavy = trinoise2d(n, 6, 42) * 2 - 1
-	zz = Z - 0.5 + WAVE * wavy
-	gz = np.exp(-zz * zz / (2 * SIGMA_Z * SIGMA_Z))
-	gz *= 1 - smoothstep(FACE_FADE[0], FACE_FADE[1], np.abs(zz))
+
+def bake_authored(name, n):
+	"""Authored nebula -> a REAL 3D field (n^3 RGBA32, stats).
+
+	Barnard's Loop is a broken, noise-warped bubble shell - a ring from above,
+	an arc from the side - with its own interior haze, so no view is a card
+	extrusion. The Pleiades are a bright core with filaments that each point
+	in their own 3D direction. Same face margin and optical budget as the ED
+	bakes so the whole palette sits in one brightness family.
+	"""
+	xs = np.linspace(-1, 1, n, dtype=np.float32)
+	Z, Y, X = np.meshgrid(xs, xs, xs, indexing='ij')
 	n3 = trivol((n, n, n))
-	xy = (np.rint(Y * (n - 1)).astype(int) * n
-	      + np.rint(X * (n - 1)).astype(int))      # flat card-slice index
-	dens = dens_xy.ravel()[xy] * gz * (0.42 + 0.58 * n3)
+	if name == 'barnard':
+		# ellipsoidal shell, warped by noise so the rim is lumpy; a wedge is
+		# missing (the Loop is an arc, not a closed ring) and the rim is
+		# brighter along one side
+		r = np.sqrt((X / 0.82) ** 2 + (Y / 0.66) ** 2 + (Z / 0.60) ** 2)
+		r += (n3 - 0.5) * 0.22
+		shell = np.exp(-((r - 1.0) ** 2) / (2 * 0.11 ** 2))
+		# azimuth lives in xy only, so the mask is a 2D slice broadcast along
+		# z; the wrapped distance keeps the seam at theta=+-pi continuous
+		cy, cx = np.meshgrid(xs, xs, indexing='ij')
+		theta = np.arctan2(cy, cx)
+		dth = np.abs(np.arctan2(np.sin(theta + 2.15),
+		                        np.cos(theta + 2.15)))
+		gap = 1 - 0.85 * np.exp(-(dth / 0.85) ** 2)
+		wave = 0.5 + 0.5 * np.clip(np.cos(theta - 0.6), 0, 1)
+		dens = (shell * (0.2 + 0.8 * n3 ** 1.5)
+		        * gap[None, :, :] * wave[None, :, :])
+		dens += 0.07 * np.exp(-(r * 1.9) ** 2) * n3 ** 2   # interior haze
+		lo, hi = (92, 20, 16), (255, 118, 82)      # deep red H-alpha
+	else:
+		# core, a faint envelope, and sixteen curved filaments stamped as
+		# overlapping gaussian blobs. The strands start all over the cluster
+		# and take their own directions, so nothing radiates from the core -
+		# a shared origin is what made the first pass read as a starfish.
+		rr = np.sqrt(X * X + Y * Y + Z * Z)
+		dens = np.exp(-(rr / 0.11) ** 2) + 0.5 * np.exp(-(rr / 0.05) ** 2)
+		dens += 0.24 * np.exp(-(rr / 0.48) ** 2)
+		rng = np.random.default_rng(5407)
+		for _ in range(16):
+			d = rng.normal(size=3)
+			d /= max(np.linalg.norm(d), 1e-6)
+			start = d * rng.uniform(0.02, 0.26)
+			u = rng.normal(size=3)
+			u /= np.linalg.norm(u)
+			u = 0.7 * u + 0.5 * d          # outward bias, not radial
+			u /= np.linalg.norm(u)
+			v = rng.normal(size=3)
+			v -= u * np.dot(u, v)
+			v /= max(np.linalg.norm(v), 1e-6)
+			w = np.cross(u, v)
+			length = rng.uniform(0.15, 0.55)
+			bend = rng.uniform(-0.35, 0.35)
+			bend2 = rng.uniform(-0.3, 0.3)
+			steps = max(int(length / 0.015), 5)
+			sig = rng.uniform(0.02, 0.045)
+			amp = rng.uniform(0.18, 0.5)
+			for k in range(steps + 1):
+				t = k / steps
+				s = t * length
+				p = (start + u * s + v * (bend * s * s)
+				     + w * (bend2 * s * s * 0.7))
+				_stamp(dens, p, sig * (1 - 0.35 * t), amp * (1 - 0.5 * t))
+		dens *= 0.45 + 0.55 * n3
+		lo, hi = (88, 126, 222), (228, 242, 255)   # blue reflection nebula
 
-	column = dens.sum(axis=0) / n              # cube units
-	peak = column.max()
+	dens *= _edge_guard(n)
+	peak = dens.sum(axis=0).max() / n            # same column unit as bake_ed
 	if peak > 0:
-		dens *= min(TARGET_COLUMN / peak, 1.0) / 1.0
-
-	rgbv = rgb_n.reshape(-1, 3)[xy] * env.ravel()[xy][..., None]
+		dens *= min(AUTHORED_COLUMN / peak, 6.0)
+	dens = np.clip(dens, 0, 1)
+	t = dens / max(float(dens.max()), 1e-6)
+	rgb = _ramp(t, lo, hi, 0.75)
 	out = np.zeros((n, n, n, 4), np.uint8)
-	out[..., 0] = np.clip(rgbv[..., 0] * 255, 0, 255)
-	out[..., 1] = np.clip(rgbv[..., 1] * 255, 0, 255)
-	out[..., 2] = np.clip(rgbv[..., 2] * 255, 0, 255)
+	out[..., :3] = np.clip(rgb * 255, 0, 255)
 	out[..., 3] = np.clip(dens * 255, 0, 255)
 	return out, {'peak_column': float(dens.sum(axis=0).max() / n),
-	             'nonzero': float((dens > 1 / 255).mean())}
+	             'nonzero': float((dens > 1 / 255).mean()),
+	             'clipped': float((dens >= 1).mean())}
 
 
 # --------------------------------------------------------------- plumbing ----
@@ -470,8 +519,8 @@ def main():
 			vols = {}
 		for n in sizes:
 			if name in AUTHORED:
-				out, stats = bake_slab(rgb, alpha, n)
-				how = 'slab'
+				out, stats = bake_authored(name, n)
+				how = 'authored 3D'
 			else:
 				path = srcs.get(str(n)) or srcs.get('256')
 				if path is None:
@@ -490,7 +539,9 @@ def main():
 			save_bytes(os.path.join(dst, f'{stem}.bytes'), out)
 			print(f'{name:9s} {n:3d}^3 -> {stem}.bytes [{how}]  peak column '
 			      f'{stats["peak_column"]:.2f} cu, gas voxels '
-			      f'{stats["nonzero"] * 100:.0f}%')
+			      f'{stats["nonzero"] * 100:.0f}%'
+			      + (f', clipped {stats["clipped"] * 100:.1f}%'
+			         if 'clipped' in stats else ''))
 			if args.preview:
 				os.makedirs(args.preview, exist_ok=True)
 				save_preview(os.path.join(args.preview, f'{stem}-{n}'), out)
