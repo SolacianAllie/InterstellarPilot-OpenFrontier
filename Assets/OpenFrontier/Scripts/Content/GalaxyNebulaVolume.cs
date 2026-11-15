@@ -3,8 +3,8 @@ using UnityEngine;
 namespace OpenFrontier.IP.Engine
 {
 	/// <summary>
-	/// One placed 3D nebula. The five ED bright volumes ship as 64^3 RGBA32
-	/// .bytes files (1 MB each); this component uploads one into a Texture3D
+	/// One placed 3D nebula. ED's volumes ship as 64^3 RGBA32 .bytes files
+	/// (1 MB each); this component uploads one into a Texture3D
 	/// and hands it to the renderer through a MaterialPropertyBlock, so the
 	/// shared NebulaVolume.mat stays untouched and nothing runtime-created is
 	/// serialized into the scene. The shader does the raymarch; there is no

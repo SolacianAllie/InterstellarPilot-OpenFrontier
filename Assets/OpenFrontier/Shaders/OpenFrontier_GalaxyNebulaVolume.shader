@@ -8,13 +8,17 @@
 // perspective sky view both see the same volume. The ray is intersected with
 // the unit cube analytically, so a camera inside the nebula still works.
 //
-// The ED volume carries a square frame baked into its cube faces. The cloud
-// itself is round, so the outer shell fades out from r=0.40 to 0.49 instead of
-// ever showing a box edge.
+// All shaping lives in the bake (tools/galaxy/nebula_volume_bake.py): a wavy
+// noisy slab whose xy silhouette is the ED card's own round alpha cutout - the
+// veins read front-on, a side view is a structured band, and the square frame
+// ED bakes into the card RGB is erased there (colour is masked by card alpha).
+// The shader carries no shaping of its own.
 //
 // Cost: _Steps samples per covered pixel (default 32, max 64). The volume is
-// 64^3 RGBA32 = 1 MB, five placables = 5 MB - the mobile budget. Raise the
-// volume size to 128^3 only for a desktop hero nebula.
+// 64^3 RGBA32 = 1 MB; the shipped palette is thirteen placables (13 MB of
+// assets), and every placed INSTANCE uploads its own Texture3D - there is no
+// share cache yet, so multiply-placing one prefab costs 1 MB per copy. Raise
+// the volume size to 128^3 only for a desktop hero nebula.
 //
 // Blend is premultiplied so dense cores dim the stars behind them; queue 2999
 // keeps it under the galaxy cloud (2990) and over the gameplay particles
@@ -110,8 +114,7 @@ Shader "OpenFrontier/Galaxy/NebulaVolume" {
 					if (s >= steps) break;
 					float3 uvw = saturate(p + 0.5);
 					float4 voxel = tex3Dlod(_Volume, float4(uvw, 0.0));
-					float fade = 1.0 - smoothstep(0.40, 0.49, length(p));
-					float density = voxel.a * _Density * fade;
+					float density = voxel.a * _Density;
 					emission += transmittance * voxel.rgb * _Tint.rgb * _Brightness
 						* density * stepLen;
 					transmittance *= exp(-density * _Absorption * stepLen);
