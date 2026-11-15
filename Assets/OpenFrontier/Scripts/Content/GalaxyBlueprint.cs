@@ -44,7 +44,7 @@ namespace OpenFrontier.IP.Engine
 		public const float SpiralVariant = 244f;
 
 		/// <summary>Hard ceiling in one cloud; raise deliberately, mobile-first.</summary>
-		public const int MaxStarCount = 48000;
+		public const int MaxStarCount = 1000000;
 
 		[Header("Density Source")]
 		[Tooltip("Optional 256x256 top-down density map over the disc (READABLE asset required - Read/Write on import). Brightest channel = density. Null = analytic spiral below.")]

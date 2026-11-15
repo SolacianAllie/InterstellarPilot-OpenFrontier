@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: DefaultGalaxy
   m_EditorClassIdentifier: OpenFrontier.Content::OpenFrontier.IP.Engine.GalaxyBlueprint
   densityMap: {fileID: 2800000, guid: 6b581742e12642e5961ea2fffccec419, type: 3}
-  seed: 1
-  radius: 3500
-  thickness: 70
+  seed: 0
+  radius: 10000
+  thickness: 200
   bulgeRadiusFraction: 0.14
   bulgeThicknessBoost: 2.4
   bulgeStrength: 1.6
@@ -23,17 +23,17 @@ MonoBehaviour:
   armCount: 2
   armPitchDegrees: 13
   armWidthDegrees: 9
-  armContrast: 1
+  armContrast: 3
   armPhaseDegrees: 0
   barLengthFraction: 0
   barWidthFraction: 0.1
-  starCount: 48000
-  sizeMin: 1
-  sizeMax: 6.5
+  starCount: 250000
+  sizeMin: 0.05
+  sizeMax: 2
   brightness: 1
-  hazeFraction: 0.35
-  hazeSizeMin: 25
-  hazeSizeMax: 90
+  hazeFraction: 0.1
+  hazeSizeMin: 500
+  hazeSizeMax: 1000
   hazeAlpha: 0.05
   twinkleAmpMin: 0.06
   twinkleAmpMax: 0.22

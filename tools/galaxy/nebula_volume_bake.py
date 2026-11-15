@@ -3,37 +3,41 @@
 
 The first-generation bake was a pure radial falloff (alpha peaked at the cube
 centre and fell off with r, which raymarched as a glowing BALL). This tool
-replaces it with two data paths:
+replaces it with ED's own data, in three paths:
 
-Eleven ED nebulae bake from ELITE DANGEROUS'S OWN BC7-compressed DDS 3D
-textures in the game carve - BOTH LODs the game ships: 64^3 "low" (~300 KB)
-and 256^3 "high" (19 MB). Structure (alpha = density, wisp for wisp) comes
-from ED's volume; colour comes from the existing Nebula*.png card: a
-luma -> rgb LUT sampled from the card recolours ED's teal-blue data into each
-prefab's palette. ED's alpha is column-normalised so every volume integrates
-to TARGET_COLUMN cube units through its densest vein, and the cube faces get
-a 5% edge guard so no box silhouette can show. The shader carries no shaping
-of its own - the bake is the single source of the shape.
+Five bright volumes use ED's structure and a card palette. Structure (alpha =
+density, wisp for wisp) comes from the game's own BC7 DDS volume: 64^3 "low"
+(~300 KB) and 256^3 "high" (19 MB). Colour comes from the existing
+Nebula*.png card: a luma -> rgb LUT sampled from the card recolours ED's
+teal-blue data into each prefab's palette. ED's alpha is column-normalised so
+every volume integrates to TARGET_COLUMN cube units through its densest vein,
+and the cube faces get a 5% edge guard so no box silhouette can show. The
+shader carries no shaping of its own - the bake is the single source of the
+shape.
 
-The rest of ED's palette bakes with no card: the five DARK volumes are
-absorption nebulae (their alpha is the dust, their rgb is only a faint glow
-at DARK_EMISSION, and the column is normalised UP to DARK_TARGET so they
-actually occlude), and plain bright 04 keeps its own blue-grey hue with the
-density left at its natural brightness. Together with the five card bakes
-that is every nebula volume ED ships as a placeable.
+Six volumes keep their own hue. The five DARK volumes are absorption
+nebulae (their alpha is the dust, their rgb is only a faint glow at
+DARK_EMISSION, and the column is normalised UP to DARK_TARGET so they
+actually occlude); plain bright 04 keeps its own blue-grey hue with the
+density left at its natural brightness.
 
-Two nebulae are AUTHORED (ED ships no named-nebula textures - the carve holds
-only generic bright/dark volumes): Barnard's Loop is a broken, noise-warped
-bubble shell in deep red (a ring from above, an arc from the side), the
-Pleiades a 3D filament cluster around a bright blue core. Their cards are
-synthesized here for the flat-card fallbacks; the VOLUMES are real 3D fields,
-never card extrusions - a slab reads as one flat sheet from every angle.
+Barnard's Loop and the Pleiades are ED's OWN named volumes, not authored
+shapes. The game's NebulaDatabase references them by name-hash
+(DJB2("barnardsloop_high_volumetexture") and
+DJB2("brightnebula_02_high_volumetexture")); the carve had lost the leading
+letters of those files, so they sat unnamed among the BC7 volumes. They bake
+RAW: no edge guard, no column normalisation, no card LUT - the game's own RGB
+and alpha go straight into RGBA32. BC7 decodes as BGRA, so only the channel
+order changes. The authored card functions stay in this file for reference;
+the committed Cards/*.png are the flat fallbacks, and the volume path no
+longer calls them.
 
 Assets (run from the repo root; .bytes/.png written in place, LFS-tracked):
 
     ~/.venvs/decals/bin/python tools/galaxy/nebula_volume_bake.py
     ~/.venvs/decals/bin/python tools/galaxy/nebula_volume_bake.py dusk pleiades
-    ... --size 256                              # bake the HQ LOD
+    ~/.venvs/decals/bin/python tools/galaxy/nebula_volume_bake.py barnard pleiades --sizes 64 128 256
+    ... --sizes 256                              # bake the HQ LOD
     ... --preview /tmp/opencode/neb-previews    # top/side integral PNGs
 
 Output layout: Nebulae/Volumes/LOD<edge>/Nebula<Name>.bytes, cards in
@@ -128,9 +132,29 @@ DARK = ('dark01', 'dark02', 'dark03', 'dark04', 'dark05')
 DARK_EMISSION = 0.12   # dust glow, fraction of a bright nebula's emission
 DARK_TARGET = 0.55     # dark columns are scaled UP to this optical depth
 
+# ED'S NAMED NEBULA VOLUMES. The game's NebulaDatabase maps each display name
+# to a High/Low volume name; DJB2("<name>_volumetexture") is the texture UID,
+# which recovers the files whose carved names lost their leading letters.
+# UIDs (and the DB rows): BarnardsLoop_High 5f8f01d3 / _Low 51f3b665;
+# Pleiades Nebula -> BrightNebula_02_High 167cb384 / _Low 022975f6.
+# These are RAW sources: bake_raw keeps every voxel exactly as the game has it.
+ED_NAMED = {
+	'barnard': {
+		'64': 'texture/low_volumetexture_tex_51f3b665__eee3bffb_d64.dds',
+		'256': 'texture/_high_volumetexture_tex_5f8f01d3__d2718b95_d256.dds',
+	},
+	'pleiades': {
+		'64': 'texture/la_02_low_volumetexture_tex_022975f6__f36b7947_d64.dds',
+		'256': 'texture/ula_02_high_volumetexture_tex_167cb384__00e7374e_d256.dds',
+	},
+}
+
 ED_CARDS = tuple(ED_SOURCES)
-ED_ALL = ED_CARDS + tuple(ED_RAW)
-AUTHORED = ('barnard', 'pleiades')
+ED_ALL = ED_CARDS + tuple(ED_RAW) + tuple(ED_NAMED)
+
+# Retired hand-built volumes. The two named prefabs now carry ED's own data;
+# these functions stay only so the flat-card fallbacks can be regenerated.
+AUTHORED = ()
 
 
 # ---------------------------------------------------------------- noise ----
@@ -227,6 +251,25 @@ def card_lut(card_png):
 		if count[b] == 0:
 			lut[b] = lut[idx[np.abs(idx - b).argmin()]]
 	return lut, idx
+
+
+def bake_raw(vol):
+	"""ED named volume 1:1 -> (RGBA32 bytes, stats).
+
+	BC7 through texture2ddecoder comes back BGRA; ED's DDS is straight-alpha
+	BC7_UNORM, so the swap is the only transform. No edge guard, no column
+	normalisation, no LUT: the game's own rgb and alpha are the bake.
+	"""
+	out = np.empty_like(vol)
+	out[..., 0] = vol[..., 2]
+	out[..., 1] = vol[..., 1]
+	out[..., 2] = vol[..., 0]
+	out[..., 3] = vol[..., 3]
+	dens = out[..., 3].astype(np.float32) / 255.0
+	n = vol.shape[0]
+	return out, {'peak_column': float(dens.sum(axis=0).max() / n),
+	             'nonzero': float((dens > 1 / 255).mean()),
+	             'clipped': float((dens >= 1).mean())}
 
 
 def bake_ed(name, vol, card_png=None):
@@ -509,29 +552,26 @@ def main():
 	for name in names:
 		stem = f'Nebula{name.capitalize()}'
 		card_path = os.path.join(CARD_DIR, f'{stem}.png')
-		rgb = alpha = None
-		if name in AUTHORED:
-			rgb, alpha = (card_barnard if name == 'barnard' else card_pleiades)()
-			save_card(card_path, rgb, alpha)   # also the flat-card fallback
-			vols = {}
-		else:
-			srcs = ED_SOURCES.get(name) or ED_RAW[name]
-			vols = {}
+		srcs = ED_SOURCES.get(name) or ED_RAW.get(name) or ED_NAMED.get(name)
+		if srcs is None:
+			sys.exit(f'{name}: no source table')
+		vols = {}
 		for n in sizes:
-			if name in AUTHORED:
-				out, stats = bake_authored(name, n)
-				how = 'authored 3D'
+			path = srcs.get(str(n)) or srcs.get('256')
+			if path is None:
+				sys.exit(f'{name}: no source for {n}^3')
+			full = os.path.join(ED_ROOT, path)
+			if not os.path.isfile(full):
+				sys.exit(f'{name}: ED volume not found: {full}\n'
+				         '(the carve lives at /home/deck/ed-assets)')
+			if full not in vols:
+				vols[full] = decode_ed_dds(full)   # one decode per source
+			vol = to_edge(vols[full], n)
+			if name in ED_NAMED:
+				out, stats = bake_raw(vol)
+				how = 'ED named volume, raw'
 			else:
-				path = srcs.get(str(n)) or srcs.get('256')
-				if path is None:
-					sys.exit(f'{name}: no source for {n}^3')
-				full = os.path.join(ED_ROOT, path)
-				if not os.path.isfile(full):
-					sys.exit(f'{name}: ED volume not found: {full}\n'
-					         '(the carve lives at /home/deck/ed-assets)')
-				if full not in vols:
-					vols[full] = decode_ed_dds(full)   # one decode per source
-				out, stats = bake_ed(name, to_edge(vols[full], n),
+				out, stats = bake_ed(name, vol,
 				                     card_path if name in ED_SOURCES else None)
 				how = 'ed volume' if name in ED_SOURCES else 'ed volume, own hue'
 			dst = os.path.join(VOL_DIR, f'LOD{n}')

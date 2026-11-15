@@ -1,7 +1,7 @@
 // Open Frontier: true 3D nebula placables. A box mesh is only the volume's
-// bounding proxy; the fragment ray-marches the real ED 256^3 nebula volume
-// (baked to a 64^3 RGBA32 Texture3D on the placeable component). RGB is the
-// emission colour, A is optical density.
+// bounding proxy; the fragment ray-marches the real ED nebula volume
+// (ED's 64^3/128^3/256^3 RGBA32 Texture3D). RGB is the emission colour, A is
+// optical density.
 //
 // One box serves every camera: perspective rays start at the eye, orthographic
 // rays run along the camera forward - the standard ortho map view and the
@@ -9,9 +9,10 @@
 // the unit cube analytically, so a camera inside the nebula still works.
 //
 // All shaping lives in the bake (tools/galaxy/nebula_volume_bake.py): ED's own
-// volume data for the generic palette, hand-built 3D fields for Barnard's Loop
-// and the Pleiades. Every voxel carries its own density; the cards only supply
-// colour LUTs and flat fallbacks. The shader carries no shaping of its own.
+// volume data for every prefab, including its named Barnard's Loop and
+// Pleiades volumes, which bake raw (no guard, no normalisation). The cards
+// only supply colour LUTs for the five generic brights and flat fallbacks.
+// The shader carries no shaping of its own.
 //
 // Cost: _Steps samples per covered pixel - GalaxyNebulaVolume sets 32/48/64
 // for the 64^3/128^3/256^3 quality rungs. The component uploads one Texture3D
