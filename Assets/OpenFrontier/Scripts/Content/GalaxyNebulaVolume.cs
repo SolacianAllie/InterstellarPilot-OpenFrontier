@@ -3,25 +3,34 @@ using UnityEngine;
 namespace OpenFrontier.IP.Engine
 {
 	/// <summary>
-	/// One placed 3D nebula. ED's volumes ship as 64^3 RGBA32 .bytes files
-	/// (1 MB each); this component uploads one into a Texture3D
-	/// and hands it to the renderer through a MaterialPropertyBlock, so the
-	/// shared NebulaVolume.mat stays untouched and nothing runtime-created is
-	/// serialized into the scene. The shader does the raymarch; there is no
-	/// per-frame work here.
+	/// One placed 3D nebula with a quality ladder. ED's volumes ship at three
+	/// edges: 64^3 (1 MB, the mobile LOD), 128^3 (8 MB, a downsample of ED's
+	/// high data) and 256^3 (64 MB, ED's own high LOD). Each is a raw RGBA32
+	/// .bytes file (x fastest, then y, then z); this component uploads the
+	/// selected one into a Texture3D and hands it to the renderer through a
+	/// MaterialPropertyBlock, so the shared NebulaVolume.mat stays untouched
+	/// and nothing runtime-created is serialized into the scene.
+	///
+	/// 'quality' is the test/tuning slider: 0 low, 1 medium, 2 high. Build
+	/// falls back to the nearest asset present, so a prefab may carry only
+	/// part of the ladder. Raymarch steps scale with the edge (32/48/64) -
+	/// a 256^3 volume sampled 32 times would throw the new detail away.
 	///
 	/// ExecuteAlways so the nearest editor view already shows the volume
 	/// instead of the template's empty box. OnDisable tears the texture down.
+	/// A quality switch is a rebuild - old Texture3D destroyed, new one
+	/// uploaded - so expect an upload hitch for the high LOD on device.
 	/// </summary>
 	[ExecuteAlways]
 	[RequireComponent(typeof(MeshRenderer))]
 	public sealed class GalaxyNebulaVolume : MonoBehaviour
 	{
-		/// <summary>64^3 RGBA32 raw bytes, x fastest then y then z.</summary>
-		public TextAsset volumeData;
+		public TextAsset volumeLow;      // 64^3,  1 MB
+		public TextAsset volumeMedium;   // 128^3, 8 MB
+		public TextAsset volumeHigh;     // 256^3, 64 MB
 
-		/// <summary>Edge length of the baked volume. Must match volumeData.</summary>
-		[Min(8)] public int size = 64;
+		/// <summary>0 = 64^3, 1 = 128^3, 2 = 256^3.</summary>
+		[Range(0, 2)] public int quality;
 
 		Renderer _renderer;
 		MaterialPropertyBlock _block;
@@ -44,26 +53,36 @@ namespace OpenFrontier.IP.Engine
 			Build();
 		}
 
+		/// <summary>Switch the uploaded LOD at runtime (rebuilds the texture).</summary>
+		public void SetQuality(int level)
+		{
+			quality = Mathf.Clamp(level, 0, 2);
+			if (!isActiveAndEnabled) return;
+			Release();
+			Build();
+		}
+
 		void Build()
 		{
-			if (volumeData == null) return;
+			TextAsset asset = Pick();
+			if (asset == null) return;
 
 			_renderer = GetComponent<Renderer>();
 			if (_renderer == null) return;
 
-			int expected = size * size * size * 4;
-			byte[] bytes = volumeData.bytes;
-			if (bytes == null || bytes.Length != expected)
+			byte[] bytes = asset.bytes;
+			int edge = CubeEdge(bytes);
+			if (edge == 0)
 			{
-				Debug.LogError($"[GalaxyNebulaVolume] '{name}': '{volumeData.name}' is " +
-					$"{(bytes == null ? 0 : bytes.Length)} bytes, expected {expected} " +
-					$"for {size}^3 RGBA32.", this);
+				Debug.LogError($"[GalaxyNebulaVolume] '{name}': '{asset.name}' is " +
+					$"{(bytes == null ? 0 : bytes.Length)} bytes, not a cube RGBA32 " +
+					"volume.", this);
 				return;
 			}
 
-			_volume = new Texture3D(size, size, size, TextureFormat.RGBA32, false, true)
+			_volume = new Texture3D(edge, edge, edge, TextureFormat.RGBA32, false, true)
 			{
-				name = volumeData.name,
+				name = asset.name,
 				wrapMode = TextureWrapMode.Clamp,
 				filterMode = FilterMode.Bilinear,
 				hideFlags = HideFlags.HideAndDontSave
@@ -73,8 +92,41 @@ namespace OpenFrontier.IP.Engine
 
 			if (_block == null) _block = new MaterialPropertyBlock();
 			_block.SetTexture("_Volume", _volume);
+			_block.SetFloat("_Steps", StepsFor(edge));
 			_renderer.SetPropertyBlock(_block);
 		}
+
+		/// <summary>Requested rung, else the nearest one that has an asset.</summary>
+		TextAsset Pick()
+		{
+			int wanted = Mathf.Clamp(quality, 0, 2);
+			for (int i = wanted; i >= 0; i--)
+			{
+				TextAsset asset = At(i);
+				if (asset != null) return asset;
+			}
+			for (int i = wanted + 1; i <= 2; i++)
+			{
+				TextAsset asset = At(i);
+				if (asset != null) return asset;
+			}
+			return null;
+		}
+
+		TextAsset At(int level) =>
+			level == 0 ? volumeLow : level == 1 ? volumeMedium : volumeHigh;
+
+		static int CubeEdge(byte[] bytes)
+		{
+			if (bytes == null || bytes.Length < 32) return 0;
+			long voxels = bytes.Length / 4L;
+			int edge = (int)System.Math.Round(System.Math.Pow(voxels, 1.0 / 3.0));
+			return (long)edge * edge * edge == voxels ? edge : 0;
+		}
+
+		/// <summary>One sample per texel at 64^3; keep that density upward.</summary>
+		static float StepsFor(int edge) =>
+			edge >= 256 ? 64f : edge >= 128 ? 48f : 32f;
 
 		void Release()
 		{

@@ -14,11 +14,11 @@
 // ED bakes into the card RGB is erased there (colour is masked by card alpha).
 // The shader carries no shaping of its own.
 //
-// Cost: _Steps samples per covered pixel (default 32, max 64). The volume is
-// 64^3 RGBA32 = 1 MB; the shipped palette is thirteen placables (13 MB of
-// assets), and every placed INSTANCE uploads its own Texture3D - there is no
-// share cache yet, so multiply-placing one prefab costs 1 MB per copy. Raise
-// the volume size to 128^3 only for a desktop hero nebula.
+// Cost: _Steps samples per covered pixel - GalaxyNebulaVolume sets 32/48/64
+// for the 64^3/128^3/256^3 quality rungs. The component uploads one Texture3D
+// per placed INSTANCE (no share cache yet), sized by the selected rung:
+// 1 MB, 8 MB or 64 MB as RGBA32. The 256^3 rung is ED's own high LOD -
+// desktop/testing only.
 //
 // Blend is premultiplied so dense cores dim the stars behind them; queue 2999
 // keeps it under the galaxy cloud (2990) and over the gameplay particles

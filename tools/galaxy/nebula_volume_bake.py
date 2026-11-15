@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
-"""Bake the OpenFrontier nebula placables' 64^3 RGBA32 volumes.
+"""Bake the OpenFrontier nebula placables' RGBA32 volumes, one file per LOD.
 
 The first-generation bake was a pure radial falloff (alpha peaked at the cube
 centre and fell off with r, which raymarched as a glowing BALL). This tool
 replaces it with two data paths:
 
-Five ED nebulae (amethyst/dusk/ember/rose/veil) bake from ELITE DANGEROUS'S
-OWN 64^3 low-detail volumes - BC7-compressed DDS 3D textures in the game
-carve (/home/deck/ed-assets, ~300 KB each; ED also ships 256^3 high LODs at
-19 MB - out of the mobile budget). Structure (alpha = density, wisp for wisp)
-comes from ED's volume; colour comes from the existing Nebula*.png card: a
+Eleven ED nebulae bake from ELITE DANGEROUS'S OWN BC7-compressed DDS 3D
+textures in the game carve - BOTH LODs the game ships: 64^3 "low" (~300 KB)
+and 256^3 "high" (19 MB). Structure (alpha = density, wisp for wisp) comes
+from ED's volume; colour comes from the existing Nebula*.png card: a
 luma -> rgb LUT sampled from the card recolours ED's teal-blue data into each
 prefab's palette. ED's alpha is column-normalised so every volume integrates
 to TARGET_COLUMN cube units through its densest vein, and the cube faces get
@@ -37,9 +36,11 @@ Assets (run from the repo root; .bytes/.png written in place, LFS-tracked):
 
     ~/.venvs/decals/bin/python tools/galaxy/nebula_volume_bake.py
     ~/.venvs/decals/bin/python tools/galaxy/nebula_volume_bake.py dusk pleiades
+    ... --size 256                              # bake the HQ LOD
     ... --preview /tmp/opencode/neb-previews    # top/side integral PNGs
 
-Deterministic: fixed seeds, fixed constants.
+Output layout: Nebulae/Volumes/LOD<edge>/Nebula<Name>.bytes, cards in
+Nebulae/Cards/. Deterministic: fixed seeds, fixed constants.
 """
 import argparse
 import os
@@ -57,10 +58,12 @@ except ImportError:
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 NEB_DIR = os.path.join(REPO, 'Assets', 'OpenFrontier', 'Galaxy', 'Nebulae')
-ED_DIR = os.environ.get('ED_TEXTURE_DIR',
-                        '/home/deck/ed-assets/carved/textures/texture')
+CARD_DIR = os.path.join(NEB_DIR, 'Cards')
+VOL_DIR = os.path.join(NEB_DIR, 'Volumes')
+ED_ROOT = os.environ.get('ED_TEXTURE_ROOT',
+                         '/home/deck/ed-assets/carved/textures')
 
-N = 64                 # volume edge; must match GalaxyNebulaVolume.size
+N = 64                 # default volume edge; --sizes picks the LOD folders
 CARD = 512             # card edge
 TARGET_COLUMN = 0.46   # peak density integral, cube units (old ball: ~0.52)
 SIGMA_Z = 0.26         # authored slabs: gaussian sigma, cube units
@@ -72,24 +75,60 @@ LUMA_BINS = 24         # card colour LUT resolution
 
 LUMA = np.array([0.2126, 0.7152, 0.0722], np.float32)
 
+# Every volume ED ships, both native LODs, as paths under ED_ROOT. Note the
+# mangled carve names (a leading "ge"/"g" was lost) - copy them verbatim.
+# Bright 01's HIGH LOD is the one high file that landed in textures/model.
+# A 128 edge is downsampled from the 256 source (ED ships no native 128).
 ED_SOURCES = {
-	# prefab    ED low-detail volume (64^3 BC7 DDS in the carve)
-	'amethyst': 'eneric_bright_nebula_01_low_volumetexture_tex_e1fd3710__2e342d17_d64.dds',
-	'dusk':     'eneric_bright_nebula_02_low_volumetexture_tex_92d79d51__3d42b3cf_d64.dds',
-	'ember':    'eneric_bright_nebula_03_low_volumetexture_tex_43b20392__17d5781b_d64.dds',
-	'rose':     'eneric_bright_nebula_05_low_volumetexture_tex_a566d014__18f6a071_d64.dds',
-	'veil':     'generic_bright_nebula_04_special_low_volumetexture__93bfffd1_d64.dds',
+	'amethyst': {
+		'64': 'texture/eneric_bright_nebula_01_low_volumetexture_tex_e1fd3710__2e342d17_d64.dds',
+		'256': 'model/generic_bright_nebula_01_high_volumetexture__aeae3f52_d256.dds',
+	},
+	'dusk': {
+		'64': 'texture/eneric_bright_nebula_02_low_volumetexture_tex_92d79d51__3d42b3cf_d64.dds',
+		'256': 'texture/generic_bright_nebula_02_high_volumetexture__5b0da39f_d256.dds',
+	},
+	'ember': {
+		'64': 'texture/eneric_bright_nebula_03_low_volumetexture_tex_43b20392__17d5781b_d64.dds',
+		'256': 'texture/generic_bright_nebula_03_high_volumetexture__8f25f399_d256.dds',
+	},
+	'rose': {
+		'64': 'texture/eneric_bright_nebula_05_low_volumetexture_tex_a566d014__18f6a071_d64.dds',
+		'256': 'texture/generic_bright_nebula_05_high_volumetexture__63182c2c_d256.dds',
+	},
+	'veil': {
+		'64': 'texture/generic_bright_nebula_04_special_low_volumetexture__93bfffd1_d64.dds',
+		'256': 'texture/generic_bright_nebula_04_special_high_volumetexture__a80dda3a_d256.dds',
+	},
 }
 
 # No card for these: colour comes from the volume's own hue. The dark five are
 # absorption nebulae - occlusion first, a thin dust glow second.
 ED_RAW = {
-	'bright04': 'eneric_bright_nebula_04_low_volumetexture_tex_f48c69d3__8d717023_d64.dds',
-	'dark01': 'eric_dark_nebula_01_low_volumetexture_tex_52c36c92__a1e6e602_d64.dds',
-	'dark02': 'eric_dark_nebula_02_low_volumetexture_tex_039dd2d3__dd1baf70_d64.dds',
-	'dark03': 'eric_dark_nebula_03_low_volumetexture_tex_b4783914__8f4d9296_d64.dds',
-	'dark04': 'eric_dark_nebula_04_low_volumetexture_tex_65529f55__968b6d20_d64.dds',
-	'dark05': 'eric_dark_nebula_05_low_volumetexture_tex_162d0596__6a9c4e71_d64.dds',
+	'bright04': {
+		'64': 'texture/eneric_bright_nebula_04_low_volumetexture_tex_f48c69d3__8d717023_d64.dds',
+		'256': 'texture/generic_bright_nebula_04_high_volumetexture__cb33619e_d256.dds',
+	},
+	'dark01': {
+		'64': 'texture/eric_dark_nebula_01_low_volumetexture_tex_52c36c92__a1e6e602_d64.dds',
+		'256': 'texture/neric_dark_nebula_01_high_volumetexture_tex_7a557da0__a9496aed_d256.dds',
+	},
+	'dark02': {
+		'64': 'texture/eric_dark_nebula_02_low_volumetexture_tex_039dd2d3__dd1baf70_d64.dds',
+		'256': 'texture/neric_dark_nebula_02_high_volumetexture_tex_467cac01__99be5f11_d256.dds',
+	},
+	'dark03': {
+		'64': 'texture/eric_dark_nebula_03_low_volumetexture_tex_b4783914__8f4d9296_d64.dds',
+		'256': 'texture/neric_dark_nebula_03_high_volumetexture_tex_12a3da62__939c7813_d256.dds',
+	},
+	'dark04': {
+		'64': 'texture/eric_dark_nebula_04_low_volumetexture_tex_65529f55__968b6d20_d64.dds',
+		'256': 'texture/neric_dark_nebula_04_high_volumetexture_tex_decb08c3__804fb4fc_d256.dds',
+	},
+	'dark05': {
+		'64': 'texture/eric_dark_nebula_05_low_volumetexture_tex_162d0596__6a9c4e71_d64.dds',
+		'256': 'texture/neric_dark_nebula_05_high_volumetexture_tex_aaf23724__4724cda6_d256.dds',
+	},
 }
 DARK = ('dark01', 'dark02', 'dark03', 'dark04', 'dark05')
 DARK_EMISSION = 0.12   # dust glow, fraction of a bright nebula's emission
@@ -144,12 +183,12 @@ def trinoise2d(size, res, seed):
 
 # --------------------------------------------------------- ED volume path ----
 def decode_ed_dds(path):
-	"""64^3 BC7 DDS -> (64,64,64,4) uint8 [z, y, x] RGBA."""
+	"""BC7 DDS (cubic) -> (e,e,e,4) uint8 [z, y, x] RGBA at the file's own res."""
 	import texture2ddecoder
 	d = open(path, 'rb').read()
 	size, flags, h, w, pitch, depth = struct.unpack_from('<6I', d, 4)
-	if (w, h, depth) != (N, N, N):
-		sys.exit(f'{os.path.basename(path)}: expected {N}^3, got {w}x{h}x{depth}')
+	if not (w == h == depth):
+		sys.exit(f'{os.path.basename(path)}: expected a cube, got {w}x{h}x{depth}')
 	stride = (w // 4) * (h // 4) * 16          # BC7: 16 B per 4x4 block
 	data = d[148:148 + stride * depth]         # base mip only
 	vol = np.empty((depth, h, w, 4), np.uint8)
@@ -158,6 +197,18 @@ def decode_ed_dds(path):
 			texture2ddecoder.decode_bc7(data[z * stride:(z + 1) * stride], w, h),
 			np.uint8).reshape(h, w, 4)
 	return vol
+
+
+def to_edge(vol, n):
+	"""Box-average a native volume down to edge n (same edge passes through)."""
+	e = vol.shape[0]
+	if e == n:
+		return vol
+	if e % n:
+		sys.exit(f'cannot downsample {e}^3 to {n}^3')
+	f = e // n
+	m = vol.reshape(n, f, n, f, n, f, 4).mean(axis=(1, 3, 5), dtype=np.float32)
+	return np.clip(np.rint(m), 0, 255).astype(np.uint8)
 
 
 def card_lut(card_png):
@@ -184,13 +235,13 @@ def card_lut(card_png):
 	return lut, idx
 
 
-def bake_ed(name, dds_name, card_png=None):
+def bake_ed(name, vol, card_png=None):
 	"""ED volume structure + optional card palette -> (RGBA32 bytes, stats)."""
-	vol = decode_ed_dds(os.path.join(ED_DIR, dds_name))
+	n = vol.shape[0]
 	alpha = vol[..., 3].astype(np.float32) / 255.0
 
 	# edge guard: no box silhouette even if ED's data touches a face
-	axis = (np.arange(N, dtype=np.float32) / (N - 1)) * 2 - 1
+	axis = (np.arange(n, dtype=np.float32) / (n - 1)) * 2 - 1
 	guard = 1 - smoothstep(EDGE_GUARD[0], EDGE_GUARD[1], np.abs(axis))
 	guard3 = guard[:, None, None] * guard[None, :, None] * guard[None, None, :]
 	alpha *= guard3
@@ -200,7 +251,7 @@ def bake_ed(name, dds_name, card_png=None):
 
 	# column normalise: card bakes keep ED's natural brightness (capped at the
 	# optical budget), dark dust is scaled UP until it actually occludes.
-	peak = dens.sum(axis=0).max() / N
+	peak = dens.sum(axis=0).max() / n
 	if peak > 0:
 		if dark:
 			dens *= DARK_TARGET / peak
@@ -234,10 +285,10 @@ def bake_ed(name, dds_name, card_png=None):
 			inorm = np.clip((intensity - lo) / max(hi - lo, 1e-4), 0, 1)
 			rgb = inorm[..., None] * hue
 
-	out = np.zeros((N, N, N, 4), np.uint8)
+	out = np.zeros((n, n, n, 4), np.uint8)
 	out[..., :3] = np.clip(rgb * 255, 0, 255)
 	out[..., 3] = np.clip(dens * 255, 0, 255)
-	stats = {'peak_column': float(dens.sum(axis=0).max() / N),
+	stats = {'peak_column': float(dens.sum(axis=0).max() / n),
 	         'nonzero': float((dens > 1 / 255).mean())}
 	return out, stats
 
@@ -315,51 +366,51 @@ def card_pleiades():
 	return rgb, alpha.astype(np.uint8)
 
 
-def bake_slab(rgb, alpha):
-	"""Authored card -> wavy noisy slab volume (64^3 RGBA32, stats)."""
+def bake_slab(rgb, alpha, n):
+	"""Authored card -> wavy noisy slab volume (n^3 RGBA32, stats)."""
 	full = np.concatenate([np.clip(rgb * 255, 0, 255).astype(np.uint8),
 	                       alpha[..., None]], axis=2)
-	down = Image.fromarray(full, 'RGBA').resize((N, N), Image.BILINEAR)
+	down = Image.fromarray(full, 'RGBA').resize((n, n), Image.BILINEAR)
 	c = np.asarray(down, np.float32) / 255.0
-	rgb64, a64 = c[..., :3], c[..., 3]
+	rgb_n, a_n = c[..., :3], c[..., 3]
 
-	# xy structure: the card's veins are 5-20 px and an 8x bilinear mean
+	# xy structure: the card's veins are 5-20 px and a wide bilinear mean
 	# washes them out, so density samples a BLOCK-PERCENTILE of the full-res
 	# luma (85th: filaments survive, haze does not), contrast-stretched
 	# against the card's own gas range.
 	lum512 = (rgb * LUMA).sum(axis=-1)
-	blocks = lum512.reshape(N, CARD // N, N, CARD // N)
+	blocks = lum512.reshape(n, CARD // n, n, CARD // n)
 	luma_p = np.percentile(blocks, 85, axis=(1, 3))
-	gas = a64 > 0.5
+	gas = a_n > 0.5
 	lo, hi = np.percentile(luma_p[gas], (5, 97))
 	lum = np.clip((luma_p - max(lo, 1e-4)) / max(hi - lo, 1e-4), 0, 1)
 
-	env = a64                                   # the card's round cutout
+	env = a_n                                  # the card's round cutout
 	dens_xy = env * (BODY_FLOOR + (1 - BODY_FLOOR) * lum ** 0.9)
 
-	xs = np.arange(N, dtype=np.float32)
-	Z, Y, X = [g / (N - 1) for g in np.meshgrid(xs, xs, xs, indexing='ij')]
-	wavy = trinoise2d(N, 6, 42) * 2 - 1
+	xs = np.arange(n, dtype=np.float32)
+	Z, Y, X = [g / (n - 1) for g in np.meshgrid(xs, xs, xs, indexing='ij')]
+	wavy = trinoise2d(n, 6, 42) * 2 - 1
 	zz = Z - 0.5 + WAVE * wavy
 	gz = np.exp(-zz * zz / (2 * SIGMA_Z * SIGMA_Z))
 	gz *= 1 - smoothstep(FACE_FADE[0], FACE_FADE[1], np.abs(zz))
-	n3 = trivol((N, N, N))
-	xy = (np.rint(Y * (N - 1)).astype(int) * N
-	      + np.rint(X * (N - 1)).astype(int))       # flat card-slice index
+	n3 = trivol((n, n, n))
+	xy = (np.rint(Y * (n - 1)).astype(int) * n
+	      + np.rint(X * (n - 1)).astype(int))      # flat card-slice index
 	dens = dens_xy.ravel()[xy] * gz * (0.42 + 0.58 * n3)
 
-	column = dens.sum(axis=0) / N              # cube units
+	column = dens.sum(axis=0) / n              # cube units
 	peak = column.max()
 	if peak > 0:
 		dens *= min(TARGET_COLUMN / peak, 1.0) / 1.0
 
-	rgbv = rgb64.reshape(-1, 3)[xy] * env.ravel()[xy][..., None]
-	out = np.zeros((N, N, N, 4), np.uint8)
+	rgbv = rgb_n.reshape(-1, 3)[xy] * env.ravel()[xy][..., None]
+	out = np.zeros((n, n, n, 4), np.uint8)
 	out[..., 0] = np.clip(rgbv[..., 0] * 255, 0, 255)
 	out[..., 1] = np.clip(rgbv[..., 1] * 255, 0, 255)
 	out[..., 2] = np.clip(rgbv[..., 2] * 255, 0, 255)
 	out[..., 3] = np.clip(dens * 255, 0, 255)
-	return out, {'peak_column': float(dens.sum(axis=0).max() / N),
+	return out, {'peak_column': float(dens.sum(axis=0).max() / n),
 	             'nonzero': float((dens > 1 / 255).mean())}
 
 
@@ -391,6 +442,9 @@ def main():
 	ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
 	ap.add_argument('names', nargs='*',
 	                help=f"nebulae to bake; default all: {ED_ALL + AUTHORED}")
+	ap.add_argument('--sizes', type=int, nargs='+', default=[N],
+	                help='volume edges to bake: 64 128 256 (default 64); '
+	                     '128/256 come from ED high LODs')
 	ap.add_argument('--preview', metavar='DIR',
 	                help='also write top/side integral PNGs (scratch)')
 	args = ap.parse_args()
@@ -398,31 +452,48 @@ def main():
 	bad = [n for n in names if n not in ED_ALL + AUTHORED]
 	if bad:
 		sys.exit(f'unknown nebula name(s): {", ".join(bad)}')
+	sizes = sorted(set(args.sizes), reverse=True)
+	for n in sizes:
+		if n < 16 or n > 256 or n % 16:
+			sys.exit(f'--sizes: {n} is not a 16..256 cube edge')
 
 	for name in names:
 		stem = f'Nebula{name.capitalize()}'
-		card_path = os.path.join(NEB_DIR, f'{stem}.png')
+		card_path = os.path.join(CARD_DIR, f'{stem}.png')
+		rgb = alpha = None
 		if name in AUTHORED:
 			rgb, alpha = (card_barnard if name == 'barnard' else card_pleiades)()
-			save_card(card_path, rgb, alpha)
-			out, stats = bake_slab(rgb, alpha)
-			how = 'slab'
+			save_card(card_path, rgb, alpha)   # also the flat-card fallback
+			vols = {}
 		else:
-			dds = ED_SOURCES.get(name) or ED_RAW[name]
-			if not os.path.isfile(os.path.join(ED_DIR, dds)):
-				sys.exit(f'{name}: ED volume not found: {ED_DIR}/{dds}\n'
-				         '(the carve lives at /home/deck/ed-assets)')
-			out, stats = bake_ed(name, dds,
-			                     card_path if name in ED_SOURCES else None)
-			how = 'ed volume' if name in ED_SOURCES else 'ed volume, own hue'
-		save_bytes(os.path.join(NEB_DIR, f'{stem}.bytes'), out)
-		line = (f'{name:9s} -> {stem}.bytes [{how}]  peak column '
-		        f'{stats["peak_column"]:.2f} cu, gas voxels '
-		        f'{stats["nonzero"] * 100:.0f}%')
-		if args.preview:
-			save_preview(os.path.join(args.preview, stem), out)
-			line += f'  previews in {args.preview}'
-		print(line)
+			srcs = ED_SOURCES.get(name) or ED_RAW[name]
+			vols = {}
+		for n in sizes:
+			if name in AUTHORED:
+				out, stats = bake_slab(rgb, alpha, n)
+				how = 'slab'
+			else:
+				path = srcs.get(str(n)) or srcs.get('256')
+				if path is None:
+					sys.exit(f'{name}: no source for {n}^3')
+				full = os.path.join(ED_ROOT, path)
+				if not os.path.isfile(full):
+					sys.exit(f'{name}: ED volume not found: {full}\n'
+					         '(the carve lives at /home/deck/ed-assets)')
+				if full not in vols:
+					vols[full] = decode_ed_dds(full)   # one decode per source
+				out, stats = bake_ed(name, to_edge(vols[full], n),
+				                     card_path if name in ED_SOURCES else None)
+				how = 'ed volume' if name in ED_SOURCES else 'ed volume, own hue'
+			dst = os.path.join(VOL_DIR, f'LOD{n}')
+			os.makedirs(dst, exist_ok=True)
+			save_bytes(os.path.join(dst, f'{stem}.bytes'), out)
+			print(f'{name:9s} {n:3d}^3 -> {stem}.bytes [{how}]  peak column '
+			      f'{stats["peak_column"]:.2f} cu, gas voxels '
+			      f'{stats["nonzero"] * 100:.0f}%')
+			if args.preview:
+				os.makedirs(args.preview, exist_ok=True)
+				save_preview(os.path.join(args.preview, f'{stem}-{n}'), out)
 
 
 if __name__ == '__main__':
