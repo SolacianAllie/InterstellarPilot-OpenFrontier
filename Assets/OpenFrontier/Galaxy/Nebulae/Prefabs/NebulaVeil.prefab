@@ -107,6 +107,6 @@ MonoBehaviour:
   volumeMedium: {fileID: 4900000, guid: cff0428ada724cd9af3d3c6d00bacfd1, type: 3}
   volumeHigh: {fileID: 4900000, guid: f01851162cf246589526641d7b273cc7, type: 3}
   quality: 0
-  density: 1
-  absorption: 12
-  brightness: 4
+  density: 15.1688
+  absorption: 1
+  brightness: 0.210959

@@ -9,21 +9,23 @@ Five bright volumes use ED's structure and a card palette. Structure (alpha =
 density, wisp for wisp) comes from the game's own BC7 DDS volume: 64^3 "low"
 (~300 KB) and 256^3 "high" (19 MB). Colour comes from the existing
 Nebula*.png card: a luma -> rgb LUT sampled from the card recolours ED's
-teal-blue data into each prefab's palette. ED's alpha is column-normalised so
-every volume integrates to TARGET_COLUMN cube units through its densest vein,
-and the cube faces get a 5% edge guard so no box silhouette can show. The
-shader carries no shaping of its own - the bake is the single source of the
+teal-blue data into each prefab's palette. The density is ED's OWN - the
+companion-ramp gain described under the named path below multiplies the
+surviving alpha exactly as the game applies it, and the peak rescale
+carries the absolute scale; there is no column normalisation. The cube
+faces get a 5% edge guard so no box silhouette can show. The shader
+carries no shaping of its own - the bake is the single source of the
 shape.
 
 Six volumes keep their own hue. The five DARK volumes are absorption
 nebulae (their alpha is the dust, their rgb is only a faint glow at
-DARK_EMISSION, and the column is normalised UP to DARK_TARGET so they
-actually occlude); plain bright 04 keeps its own blue-grey hue with the
-density left at its natural brightness.
+DARK_EMISSION, and ED's own 18.961x gain is what makes them occlude - the
+old DARK_TARGET scaling is retired); plain bright 04 keeps its own
+blue-grey hue, also on ED's own gain.
 
-Every ED volume, generic and named, also gets the low-alpha floor cut below.
-For the generic palette it runs before the column normalisation, so the
-brightness cap and the dark occlusion target survive the cut.
+Every ED volume, generic and named, gets the same threefold shaping: the
+low-alpha floor cut, ED's own per-volume density gain, and the 5% edge
+fade - then the peak rescale for the 8-bit channel.
 
 The 18 named nebulae with a dedicated volume are ED's OWN data, not authored
 shapes. The game's NebulaDatabase maps each display name to a High/Low pair;
@@ -106,8 +108,7 @@ ED_CATALOG = os.environ.get('ED_TEXTURE_CATALOG',
 
 N = 64                 # default volume edge; --sizes picks the LOD folders
 CARD = 512             # card edge
-TARGET_COLUMN = 0.46   # peak density integral, cube units (old ball: ~0.52)
-AUTHORED_COLUMN = 0.34  # same unit for the two hand-built nebulae
+AUTHORED_COLUMN = 0.34  # peak density integral for the two hand-built nebulae
 EDGE_GUARD = (0.88, 0.995)  # fade the outer ~5% of every axis
 # ED's volumes carry a low-alpha continuum around the real gas. At 5% and
 # below it is invisible in isolation, but a raymarch integrates it across the
@@ -115,9 +116,8 @@ EDGE_GUARD = (0.88, 0.995)  # fade the outer ~5% of every axis
 # a thin shell. The floor is the larger of this absolute minimum and a
 # fraction of the volume's own bright core, so a dim planetary's halo and a
 # bright shell's halo are cut by the same proportion rather than the same
-# absolute alpha. Zero below `lo`, identity above `hi`, smooth between. The
-# named bakes cut raw alpha; the generic bakes cut raw alpha too and then
-# column-normalise, which keeps their brightness/occlusion target.
+# absolute alpha. Zero below `lo`, identity above `hi`, smooth between. Every
+# bake cuts raw alpha.
 DENSITY_FLOOR = (0.05, 0.15)
 DENSITY_FLOOR_REL = (0.12, 0.32)
 LUMA_BINS = 24         # card colour LUT resolution
@@ -181,7 +181,6 @@ ED_RAW = {
 }
 DARK = ('dark01', 'dark02', 'dark03', 'dark04', 'dark05')
 DARK_EMISSION = 0.12   # dust glow, fraction of a bright nebula's emission
-DARK_TARGET = 0.55     # dark columns are scaled UP to this optical depth
 
 # ED'S NAMED NEBULA VOLUMES. The game's NebulaDatabase maps each display name
 # to a High/Low volume name; DJB2("<name>_volumetexture") is the texture UID,
@@ -491,27 +490,30 @@ def bake_raw(vol, floor=None, gain=None, rescale=None):
 	             'peak_density': k}
 
 
-def bake_ed(name, vol, card_png=None):
-	"""ED volume + optional card palette, with the low-alpha floor cut."""
+def bake_ed(name, vol, card_png, gain=None, rescale=None):
+	"""ED volume + optional card palette, on the faithful density path.
+
+	Identical shaping to bake_raw: the low-alpha floor cut, ED's own
+	per-volume density gain from the companion ramp (this is what the
+	game's generic brights and darks actually render at - the old column
+	normalisation to TARGET_COLUMN / DARK_TARGET was a stand-in for the
+	then-unrecovered gain and is retired), and the 5% edge fade. Colour
+	keeps each prefab's identity: the card LUT, or the volume's own hue -
+	the dark five glow at DARK_EMISSION and let the density do the real
+	work. The peak rescale (density/K, K on the component) carries the
+	8-bit channel, as in bake_raw.
+	"""
 	n = vol.shape[0]
 	raw = vol[..., 3].astype(np.float32) / 255.0
 	floor = _density_floor(raw)
-	# Same order as the named bakes: cut the continuum, then fade the faces.
-	# The column normalisation below still preserves the palette's brightness
-	# cap and the dark volumes' occlusion target.
+	# Same order as the named bakes: cut the continuum, fade the faces,
+	# then ED's own gain.
 	dens = _density_transfer(raw, floor) * _edge_guard(n)
 	dark = name in DARK
+	if gain is not None:
+		dens *= gain[np.clip((raw * 255).round().astype(int), 0, 255)]
 
-	# column normalise: card bakes keep ED's natural brightness (capped at the
-	# optical budget), dark dust is scaled UP until it actually occludes.
-	peak = dens.sum(axis=0).max() / n
-	if peak > 0:
-		if dark:
-			dens *= DARK_TARGET / peak
-		else:
-			dens *= min(TARGET_COLUMN / peak, 1.0)
-
-	alpha = dens
+	alpha = dens                     # colour shaping reads the true scale
 	intensity = vol[..., :3].astype(np.float32) / 255.0 @ LUMA
 	if card_png and os.path.isfile(card_png):
 		# voxel colour: ED intensity -> the card's palette
@@ -539,13 +541,17 @@ def bake_ed(name, vol, card_png=None):
 			inorm = np.clip((intensity - lo) / max(hi - lo, 1e-4), 0, 1)
 			rgb = inorm[..., None] * hue
 
+	k = float(rescale) if rescale is not None else max(float(dens.max()), 1e-6)
+	peak_column = float(dens.sum(axis=0).max() / n)
+	dens /= k
 	out = np.zeros((n, n, n, 4), np.uint8)
 	out[..., :3] = np.clip(rgb * 255, 0, 255)
 	out[..., 3] = np.clip(dens * 255, 0, 255)
-	stats = {'peak_column': float(dens.sum(axis=0).max() / n),
-	         'nonzero': float((dens > 1 / 255).mean()),
-	         'floor': floor}
-	return out, stats
+	return out, {'peak_column': peak_column,
+	             'nonzero': float((dens > 1 / 255).mean()),
+	             'floor': floor,
+	             'gain': (float(np.median(gain)) if gain is not None else 1.0),
+	             'peak_density': k}
 
 
 # ---------------------------------------------------------- authored path ----
@@ -809,14 +815,16 @@ def main():
 			vol = to_edge(vols[full], n)
 			if name in ED_NAMED:
 				out, stats = bake_raw(vol, floor, ed_gain(path), rescale=peaks.get(stem))
-				if peaks.get(stem) is None:
-					peaks[stem] = stats['peak_density']
 				how = 'ED named volume, floor cut + ED gain, peak rescaled'
 			else:
 				out, stats = bake_ed(name, vol,
-				                     card_path if name in ED_SOURCES else None)
-				how = ('ed volume, floor cut' if name in ED_SOURCES
-				       else 'ed volume, own hue, floor cut')
+				                     card_path if name in ED_SOURCES else None,
+				                     ed_gain(path), peaks.get(stem))
+				how = ('ED volume, card palette, floor cut + ED gain, peak rescaled'
+				       if name in ED_SOURCES
+				       else 'ED volume, own hue, floor cut + ED gain, peak rescaled')
+			if peaks.get(stem) is None:
+				peaks[stem] = stats['peak_density']
 			dst = os.path.join(VOL_DIR, f'LOD{n}')
 			os.makedirs(dst, exist_ok=True)
 			save_bytes(os.path.join(dst, f'{stem}.bytes'), out)

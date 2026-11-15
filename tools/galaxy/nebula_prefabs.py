@@ -8,10 +8,9 @@ originals (NebulaBarnard, NebulaPleiades), so there is one template and no
 per-prefab material drift.
 
 Every run also writes the per-instance optical fields (density / absorption /
-brightness) into ALL Nebula*.prefab files - named ones get brightness
-4/ED-gain (their gain lives in the baked data), the generic bakes get the
-measured absorption 12. Hand-tuned values in the editor do not survive a
-regeneration; the fields are regenerated data, like the scales.
+brightness) into ALL Nebula*.prefab files on one rule: density = the baked
+peak, absorption 1, brightness 4/ED-gain. Hand-tuned values in the editor do
+not survive a regeneration; the fields are generated data, like the scales.
 
 The GUIDs are deterministic (MD5 of the repo-relative asset path), so a
 regenerated checkout gets the same references and the .bytes need no editor
@@ -68,17 +67,14 @@ DISPLAY = {
 ORIGINALS = ('NebulaBarnard', 'NebulaPleiades')
 
 # Per-instance optical multipliers, written into every prefab's
-# GalaxyNebulaVolume block next to the quality field. ED's named volumes
-# carry the game's own per-volume density gain baked into the .bytes
-# (ed_gain in the bake tool), stored as density/peak with `density`
-# restoring the peak (ed_density.json), so they march at absorption 1
-# with brightness 4/gain: ED's opacity lands in the data and the emission
-# level the volume's own colour gives at brightness 4 stays. The generic
-# bakes keep their hand normalisation (column cap / dark target) and
-# compensate with the measured absorption 12 instead - the value that
-# lands their optical depth on ED's own. The shared NebulaVolume.mat
-# stays the neutral 1/1/4 base for anything these fields do not cover.
-GENERIC_ABSORPTION = 12.0
+# GalaxyNebulaVolume block next to the quality field. Every ED volume -
+# named and generic - carries the game's own per-volume density gain
+# baked into the .bytes (ed_gain in the bake tool), stored as
+# density/peak with `density` restoring the peak (ed_density.json), so
+# they all march at absorption 1 with brightness 4/gain: ED's opacity
+# lands in the data and the emission level the volume's own colour gives
+# at brightness 4 stays. The shared NebulaVolume.mat stays the neutral
+# 1/1/4 base for anything these fields do not cover.
 BASE_BRIGHTNESS = 4.0
 
 OPTICAL_FIELDS = ('density', 'absorption', 'brightness')
@@ -119,8 +115,16 @@ def apply_optics(path, values):
 
 
 def optics_pass(bake):
-	"""Classify every Nebula*.prefab and write its per-instance optics."""
+	"""Write per-instance optics into every Nebula*.prefab.
+
+	One rule covers all 29 now: density = the volume's baked peak
+	(ed_density.json), absorption = 1 (ED's own optical depth is in the
+	data), brightness = 4/gain (the gain multiplies emission too, so this
+	holds the level the volume's own colour gives at brightness 4).
+	"""
 	named = {bake.STEM[k]: k for k in bake.STEM}
+	for key in tuple(bake.ED_SOURCES) + tuple(bake.ED_RAW):
+		named[f'Nebula{key.capitalize()}'] = key
 	peaks = {}
 	if os.path.isfile(bake.DENSITY_JSON):
 		with open(bake.DENSITY_JSON, encoding='utf-8') as f:
@@ -131,23 +135,23 @@ def optics_pass(bake):
 			continue
 		stem = fname[:-len('.prefab')]
 		path = os.path.join(PRE, fname)
-		if stem in named:
-			gain = bake.ed_gain_plateau(bake.ED_NAMED[named[stem]]['256'])
-			if stem not in peaks:
-				sys.exit(f'{stem}: no baked peak density in '
-				         f'{bake.DENSITY_JSON} - run nebula_volume_bake.py first')
-			peak = peaks[stem]
-			values = {'density': peak, 'absorption': 1.0,
-			          'brightness': BASE_BRIGHTNESS / gain}
-			note = f'ED gain {gain:.3f}x, peak {peak:.2f}'
-		else:
-			values = {'density': 1.0, 'absorption': GENERIC_ABSORPTION,
-			          'brightness': BASE_BRIGHTNESS}
-			note = 'generic compensation'
+		key = named.get(stem)
+		if key is None:
+			sys.exit(f'{stem}: no ED volume mapping for this prefab stem')
+		srcs = (bake.ED_NAMED.get(key) or bake.ED_SOURCES.get(key)
+		        or bake.ED_RAW.get(key))
+		if srcs is None:
+			sys.exit(f'{key}: no volume source table')
+		if stem not in peaks:
+			sys.exit(f'{stem}: no baked peak density in '
+			         f'{bake.DENSITY_JSON} - run nebula_volume_bake.py first')
+		gain = bake.ed_gain_plateau(srcs['256'])
+		values = {'density': peaks[stem], 'absorption': 1.0,
+		          'brightness': BASE_BRIGHTNESS / gain}
 		apply_optics(path, values)
-		print(f'{stem:18s} density {values["density"]:g}  absorption '
-		      f'{values["absorption"]:g}  brightness '
-		      f'{values["brightness"]:.6g}  [{note}]')
+		print(f'{stem:18s} density {peaks[stem]:g}  absorption 1  '
+		      f'brightness {values["brightness"]:.6g}  '
+		      f'[ED gain {gain:.3f}x, peak {peaks[stem]:.2f}]')
 		done += 1
 	print(f'{done} prefab(s) optics set')
 

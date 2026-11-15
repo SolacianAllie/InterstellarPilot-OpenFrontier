@@ -36,12 +36,11 @@ namespace OpenFrontier.IP.Engine
 		/// <summary>
 		/// Per-instance optical multipliers; the shared NebulaVolume.mat stays
 		/// the neutral base (1/1/4) and these ride the MaterialPropertyBlock
-		/// next to _Steps. ED's named volumes carry the game's own per-volume
+		/// next to _Steps. Every ED volume carries the game's own per-volume
 		/// density gain baked into the data (ed_gain in the bake tool), stored
 		/// as density/peak with this field restoring the peak, so they march
-		/// at absorption 1 with brightness 4/gain to hold the emission level;
-		/// the generic bakes keep their hand normalisation and compensate
-		/// with absorption 12 instead.
+		/// at absorption 1 with brightness 4/gain to hold the emission level
+		/// while the opacity is ED's own.
 		/// </summary>
 		public float density = 1f;
 		public float absorption = 1f;

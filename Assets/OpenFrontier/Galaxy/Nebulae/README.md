@@ -58,11 +58,8 @@ result is Barnard's shell and rim instead of a filled sphere; the Pleiades
 keep their fine wisps, and the generic bright/dark volumes lose their halo
 without losing their column-normalised brightness or occlusion target.
 
-For the generic palette the cut runs on the raw alpha *before* the existing
-column normalisation. That is why the bright cards still reach their
-`TARGET_COLUMN` cap and the dark dust still reaches `DARK_TARGET`; the cut
-only removes the low-density layer underneath. All 11 generic LOD ladders
-were rebaked with it.
+The generic bakes cut raw alpha the same way; their hand normalisation
+targets are retired - see ED's own density gain below.
 
 ## ED's own density gain (the faithful bake)
 
@@ -75,7 +72,7 @@ game's per-volume density gain over raw alpha:
 |---|---|---|
 | translucent | 1.0x | Pleiades, Fine Ring |
 | standard | 4.957x | the other fifteen named nebulae |
-| dust cluster | 18.961x | Horsehead |
+| dust / dense | 18.961x | Horsehead, and the 11 generic sources (brights 01-04, darks 01-05) |
 
 The bake multiplies the surviving density by `gain[raw_alpha]`, clamped to
 the bins 0-248 median: the ramp's last bins (249-255) spike to ~192 on under
@@ -95,11 +92,10 @@ brightness 4 stays. ED's actual emission levelling lives in the ramp's RGB
 (a dimmed, level-stepped version of the volume's own hue); its absolute
 scale is not recoverable from the carve, so it is deliberately not baked.
 
-Per-instance optics live on the prefabs, not the material: named volumes
-carry `density K / absorption 1 / brightness 4/gain`; the 11 generic bakes
-keep their hand normalisation and compensate with `absorption 12` (the
-measured value that lands their optical depth on ED's own). The shared
-`NebulaVolume.mat` stays the neutral 1/1/4 base.
+Per-instance optics live on the prefabs, not the material: every prefab
+carries `density K / absorption 1 / brightness 4/gain` - ED's optical depth
+per volume, with the emission level the volume's own colour gives at
+brightness 4. The shared `NebulaVolume.mat` stays the neutral 1/1/4 base.
 
 ## Quality slider
 

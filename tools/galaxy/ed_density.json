@@ -1,10 +1,19 @@
 {
+ "NebulaAmethyst": 15.986716270446777,
  "NebulaBarnard": 4.011373043060303,
  "NebulaBowTie": 4.956699371337891,
+ "NebulaBright04": 15.3175048828125,
  "NebulaBubble": 4.956699371337891,
  "NebulaButterfly": 4.8789472579956055,
  "NebulaCatsEye": 4.956699371337891,
  "NebulaCrab": 4.956699371337891,
+ "NebulaDark01": 15.986716270446777,
+ "NebulaDark02": 15.168791770935059,
+ "NebulaDark03": 7.733109474182129,
+ "NebulaDark04": 15.689289093017578,
+ "NebulaDark05": 18.366134643554688,
+ "NebulaDusk": 16.581571578979492,
+ "NebulaEmber": 18.960988998413086,
  "NebulaFineRing": 1.0,
  "NebulaFlame": 4.8789472579956055,
  "NebulaHind": 4.956699371337891,
@@ -16,5 +25,7 @@
  "NebulaOrion": 4.956699371337891,
  "NebulaPleiades": 0.8039215803146362,
  "NebulaRing": 4.956699848175049,
+ "NebulaRose": 16.284143447875977,
+ "NebulaVeil": 15.168791770935059,
  "NebulaVeilWest": 4.8789472579956055
 }
