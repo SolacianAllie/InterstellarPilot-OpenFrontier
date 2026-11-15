@@ -21,16 +21,22 @@ DARK_EMISSION, and the column is normalised UP to DARK_TARGET so they
 actually occlude); plain bright 04 keeps its own blue-grey hue with the
 density left at its natural brightness.
 
-Barnard's Loop and the Pleiades are ED's OWN named volumes, not authored
-shapes. The game's NebulaDatabase references them by name-hash
-(DJB2("barnardsloop_high_volumetexture") and
-DJB2("brightnebula_02_high_volumetexture")); the carve had lost the leading
-letters of those files, so they sat unnamed among the BC7 volumes. They bake
-RAW: no edge guard, no column normalisation, no card LUT - the game's own RGB
-and alpha go straight into RGBA32. BC7 decodes as BGRA, so only the channel
-order changes. The authored card functions stay in this file for reference;
-the committed Cards/*.png are the flat fallbacks, and the volume path no
-longer calls them.
+The 18 named nebulae with a dedicated volume are ED's OWN data, not authored
+shapes. The game's NebulaDatabase maps each display name to a High/Low pair;
+DJB2("<name>_volumetexture") is the texture UID, which recovers the files
+whose carved names lost their leading letters. Barnard's Loop and the
+Pleiades were the first two; the other sixteen are the same mapping. Red
+Spider is deliberately absent - its DB row points at
+Generic_PlanataryNebula_06, so it has no unique volume. The named bakes are
+RAW in colour and structure: no column normalisation and no card LUT. The
+only shaping is the low-alpha continuum cut (DENSITY_FLOOR, scaled to each
+volume's own core) and a 5% edge fade. ED's alpha carries a 1-10% background
+around the actual gas; raw, the raymarch integrates it over the whole cube,
+so Barnard's thin shell read as
+a filled sphere with its rim buried in haze. BC7 decodes as BGRA, so the
+channel order is the only colour transform. The authored card functions stay
+in this file for reference; the committed Cards/*.png are the flat fallbacks,
+and the volume path no longer calls them.
 
 Assets (run from the repo root; .bytes/.png written in place, LFS-tracked):
 
@@ -69,6 +75,15 @@ CARD = 512             # card edge
 TARGET_COLUMN = 0.46   # peak density integral, cube units (old ball: ~0.52)
 AUTHORED_COLUMN = 0.34  # same unit for the two hand-built nebulae
 EDGE_GUARD = (0.88, 0.995)  # fade the outer ~5% of every axis
+# ED's named volumes carry a low-alpha continuum around the real gas. At 5%
+# and below it is invisible in isolation, but a raymarch integrates it across
+# the whole cube: Barnard's Loop became a red ball with a bright seam rather
+# than a thin shell. The floor is the larger of this absolute minimum and a
+# fraction of the volume's own bright core, so a dim planetary's halo and a
+# bright shell's halo are cut by the same proportion rather than the same
+# absolute alpha. Zero below `lo`, identity above `hi`, smooth between.
+DENSITY_FLOOR = (0.05, 0.15)
+DENSITY_FLOOR_REL = (0.12, 0.32)
 LUMA_BINS = 24         # card colour LUT resolution
 
 LUMA = np.array([0.2126, 0.7152, 0.0722], np.float32)
@@ -135,9 +150,10 @@ DARK_TARGET = 0.55     # dark columns are scaled UP to this optical depth
 # ED'S NAMED NEBULA VOLUMES. The game's NebulaDatabase maps each display name
 # to a High/Low volume name; DJB2("<name>_volumetexture") is the texture UID,
 # which recovers the files whose carved names lost their leading letters.
-# UIDs (and the DB rows): BarnardsLoop_High 5f8f01d3 / _Low 51f3b665;
-# Pleiades Nebula -> BrightNebula_02_High 167cb384 / _Low 022975f6.
-# These are RAW sources: bake_raw keeps every voxel exactly as the game has it.
+# 18 named entries have a dedicated pair. Red Spider is deliberately absent:
+# its row points at Generic_PlanataryNebula_06, so it has no unique volume.
+# UIDs: BarnardsLoop 5f8f01d3 / 51f3b665; BrightNebula_02 167cb384 / 022975f6.
+# These are RAW sources: bake_raw keeps the game's RGB and surviving alpha.
 ED_NAMED = {
 	'barnard': {
 		'64': 'texture/low_volumetexture_tex_51f3b665__eee3bffb_d64.dds',
@@ -147,6 +163,93 @@ ED_NAMED = {
 		'64': 'texture/la_02_low_volumetexture_tex_022975f6__f36b7947_d64.dds',
 		'256': 'texture/ula_02_high_volumetexture_tex_167cb384__00e7374e_d256.dds',
 	},
+	'bowtie': {
+		'64': 'other/xture_tex_f646dfa8__af9be05d_d64.dds',
+		'256': 'model/texture_tex_8e475376__5f49011c_d256.dds',
+	},
+	'bubble': {
+		'64': 'other/xture_tex_f0f2670a__e435da83_d64.dds',
+		'256': 'texture/texture_tex_de63c718__afcd1635_d256.dds',
+	},
+	'butterfly': {
+		'64': 'texture/lumetexture_tex_31fe073f__209e60dd_d64.dds',
+		'256': 'model/volumetexture_tex_40e36ded__737422d0_d256.dds',
+	},
+	'catseye': {
+		'64': 'texture/texture_tex_3ee72a8c__126d363d_d64.dds',
+		'256': 'texture/metexture_tex_eaf0fada__fcccb6d4_d256.dds',
+	},
+	'finering': {
+		'64': 'texture/metexture_tex_cf773a30__10c7bdbf_d64.dds',
+		'256': 'texture/lumetexture_tex_8d82fefe__e2764887_d256.dds',
+	},
+	'lemonslice': {
+		'64': 'texture/volumetexture_tex_2eaa8509__cbdea0b4_d64.dds',
+		'256': 'texture/h_volumetexture_tex_d31fa4f7__133047b0_d256.dds',
+	},
+	'messier78': {
+		'64': 'texture/lumetexture_tex_8a26e965__93f774c4_d64.dds',
+		'256': 'texture/volumetexture_tex_9e2894d3__1e74a627_d256.dds',
+	},
+	'ngc6337': {
+		'64': 'texture/metexture_tex_2bf92788__d46f6492_d64.dds',
+		'256': 'texture/lumetexture_tex_7a429756__499fabbe_d256.dds',
+	},
+	'orion': {
+		'64': 'other/ure_tex_de9ae6c5__5445836b_d64.dds',
+		'256': 'other/xture_tex_811c3e33__50734c59_d256.dds',
+	},
+	'ring': {
+		'64': 'other/tex_8afd3e4e__099b4a61_d64.dds',
+		'256': 'other/ure_tex_b9c986dc__d3c7890b_d256.dds',
+	},
+	'veilwest': {
+		'64': 'texture/est_low_volumetexture_tex_94229da8__2f0c45c3_d64.dds',
+		'256': 'texture/west_high_volumetexture_tex_e79ad176__af664170_d256.dds',
+	},
+	'flame': {
+		'64': 'other/ure_tex_cc4ac923__0dc70e47_d64.dds',
+		'256': 'other/xture_tex_24c86c51__e2193f2a_d256.dds',
+	},
+	'crab': {
+		'64': 'other/tex_da185336__77f5d3ab_d64.dds',
+		'256': 'other/ure_tex_ec4738c4__29735342_d256.dds',
+	},
+	'hind': {
+		'64': 'other/tex_fdb32141__b79b92fb_d64.dds',
+		'256': 'other/ure_tex_833bc82f__949b5d0f_d256.dds',
+	},
+	'horsehead': {
+		'64': 'texture/d_cluster_low_volumetexture_tex_d6e95a92__4098596f_d64.dds',
+		'256': 'texture/ad_cluster_high_volumetexture_tex_83392ba0__57c1d716_d256.dds',
+	},
+	'lbn623': {
+		'64': 'texture/texture_tex_690c2c14__f4139cbf_d64.dds',
+		'256': 'texture/metexture_tex_59b62d62__11ef23fc_d256.dds',
+	},
+}
+
+# Readable asset stems. The bake writes Nebula<...>.bytes under these names and
+# the prefabs use the same stem, so the folder reads like the sky.
+STEM = {
+	'barnard': 'NebulaBarnard',
+	'pleiades': 'NebulaPleiades',
+	'bowtie': 'NebulaBowTie',
+	'bubble': 'NebulaBubble',
+	'butterfly': 'NebulaButterfly',
+	'catseye': 'NebulaCatsEye',
+	'finering': 'NebulaFineRing',
+	'lemonslice': 'NebulaLemonSlice',
+	'messier78': 'NebulaMessier78',
+	'ngc6337': 'NebulaNGC6337',
+	'orion': 'NebulaOrion',
+	'ring': 'NebulaRing',
+	'veilwest': 'NebulaVeilWest',
+	'flame': 'NebulaFlame',
+	'crab': 'NebulaCrab',
+	'hind': 'NebulaHind',
+	'horsehead': 'NebulaHorsehead',
+	'lbn623': 'NebulaLBN623',
 }
 
 ED_CARDS = tuple(ED_SOURCES)
@@ -253,23 +356,44 @@ def card_lut(card_png):
 	return lut, idx
 
 
-def bake_raw(vol):
-	"""ED named volume 1:1 -> (RGBA32 bytes, stats).
+def _density_floor(alpha):
+	"""Floor for one named volume, from its own bright core."""
+	p = float(np.percentile(alpha[alpha > 0], 99.5))
+	return (max(DENSITY_FLOOR[0], DENSITY_FLOOR_REL[0] * p),
+	        max(DENSITY_FLOOR[1], DENSITY_FLOOR_REL[1] * p))
+
+
+def _density_transfer(dens, floor=None):
+	"""Drop a named volume's low-alpha continuum."""
+	lo, hi = floor or DENSITY_FLOOR
+	return dens * smoothstep(lo, hi, dens)
+
+
+def bake_raw(vol, floor=None):
+	"""ED named volume -> (RGBA32 bytes, stats).
 
 	BC7 through texture2ddecoder comes back BGRA; ED's DDS is straight-alpha
-	BC7_UNORM, so the swap is the only transform. No edge guard, no column
-	normalisation, no LUT: the game's own rgb and alpha are the bake.
+	BC7_UNORM, so the swap is the only colour transform. The alpha then loses
+	its low-density continuum (a floor scaled to the volume's own core) and
+	the outer 5% fades, so the cube's empty half does not raymarch as a ball
+	and the faces do not cut the gas. No column normalisation, no LUT: the
+	game's colour and surviving density remain.
 	"""
+	alpha = vol[..., 3].astype(np.float32) / 255.0
+	if floor is None:
+		floor = _density_floor(alpha)
 	out = np.empty_like(vol)
 	out[..., 0] = vol[..., 2]
 	out[..., 1] = vol[..., 1]
 	out[..., 2] = vol[..., 0]
-	out[..., 3] = vol[..., 3]
-	dens = out[..., 3].astype(np.float32) / 255.0
+	dens = _density_transfer(alpha, floor)
+	dens *= _edge_guard(vol.shape[0])
+	out[..., 3] = np.clip(dens * 255, 0, 255)
 	n = vol.shape[0]
 	return out, {'peak_column': float(dens.sum(axis=0).max() / n),
 	             'nonzero': float((dens > 1 / 255).mean()),
-	             'clipped': float((dens >= 1).mean())}
+	             'clipped': float((dens >= 1).mean()),
+	             'floor': floor}
 
 
 def bake_ed(name, vol, card_png=None):
@@ -550,12 +674,24 @@ def main():
 			sys.exit(f'--sizes: {n} is not a 16..256 cube edge')
 
 	for name in names:
-		stem = f'Nebula{name.capitalize()}'
+		stem = STEM.get(name, f'Nebula{name.capitalize()}')
 		card_path = os.path.join(CARD_DIR, f'{stem}.png')
 		srcs = ED_SOURCES.get(name) or ED_RAW.get(name) or ED_NAMED.get(name)
 		if srcs is None:
 			sys.exit(f'{name}: no source table')
 		vols = {}
+		floor = None
+		if name in ED_NAMED:
+			# Derive the floor from ED's high LOD for every rung, so 64/128/256
+			# cut at the same absolute alpha even though the 64 source is a
+			# separate bake.
+			high = srcs.get('256')
+			if high is not None:
+				high_full = os.path.join(ED_ROOT, high)
+				if high_full not in vols:
+					vols[high_full] = decode_ed_dds(high_full)
+				floor = _density_floor(
+					vols[high_full][..., 3].astype(np.float32) / 255.0)
 		for n in sizes:
 			path = srcs.get(str(n)) or srcs.get('256')
 			if path is None:
@@ -568,8 +704,8 @@ def main():
 				vols[full] = decode_ed_dds(full)   # one decode per source
 			vol = to_edge(vols[full], n)
 			if name in ED_NAMED:
-				out, stats = bake_raw(vol)
-				how = 'ED named volume, raw'
+				out, stats = bake_raw(vol, floor)
+				how = 'ED named volume, floor cut'
 			else:
 				out, stats = bake_ed(name, vol,
 				                     card_path if name in ED_SOURCES else None)
@@ -580,6 +716,8 @@ def main():
 			print(f'{name:9s} {n:3d}^3 -> {stem}.bytes [{how}]  peak column '
 			      f'{stats["peak_column"]:.2f} cu, gas voxels '
 			      f'{stats["nonzero"] * 100:.0f}%'
+			      + (f', floor {stats["floor"][0]:.2f}-{stats["floor"][1]:.2f}'
+			         if 'floor' in stats else '')
 			      + (f', clipped {stats["clipped"] * 100:.1f}%'
 			         if 'clipped' in stats else ''))
 			if args.preview:
