@@ -21,6 +21,10 @@ DARK_EMISSION, and the column is normalised UP to DARK_TARGET so they
 actually occlude); plain bright 04 keeps its own blue-grey hue with the
 density left at its natural brightness.
 
+Every ED volume, generic and named, also gets the low-alpha floor cut below.
+For the generic palette it runs before the column normalisation, so the
+brightness cap and the dark occlusion target survive the cut.
+
 The 18 named nebulae with a dedicated volume are ED's OWN data, not authored
 shapes. The game's NebulaDatabase maps each display name to a High/Low pair;
 DJB2("<name>_volumetexture") is the texture UID, which recovers the files
@@ -32,8 +36,8 @@ RAW in colour and structure: no column normalisation and no card LUT. The
 only shaping is the low-alpha continuum cut (DENSITY_FLOOR, scaled to each
 volume's own core) and a 5% edge fade. ED's alpha carries a 1-10% background
 around the actual gas; raw, the raymarch integrates it over the whole cube,
-so Barnard's thin shell read as
-a filled sphere with its rim buried in haze. BC7 decodes as BGRA, so the
+so Barnard's thin shell read as a filled sphere with its rim buried in haze.
+BC7 decodes as BGRA, so the
 channel order is the only colour transform. The authored card functions stay
 in this file for reference; the committed Cards/*.png are the flat fallbacks,
 and the volume path no longer calls them.
@@ -75,13 +79,15 @@ CARD = 512             # card edge
 TARGET_COLUMN = 0.46   # peak density integral, cube units (old ball: ~0.52)
 AUTHORED_COLUMN = 0.34  # same unit for the two hand-built nebulae
 EDGE_GUARD = (0.88, 0.995)  # fade the outer ~5% of every axis
-# ED's named volumes carry a low-alpha continuum around the real gas. At 5%
-# and below it is invisible in isolation, but a raymarch integrates it across
-# the whole cube: Barnard's Loop became a red ball with a bright seam rather
-# than a thin shell. The floor is the larger of this absolute minimum and a
+# ED's volumes carry a low-alpha continuum around the real gas. At 5% and
+# below it is invisible in isolation, but a raymarch integrates it across the
+# whole cube: Barnard's Loop became a red ball with a bright seam rather than
+# a thin shell. The floor is the larger of this absolute minimum and a
 # fraction of the volume's own bright core, so a dim planetary's halo and a
 # bright shell's halo are cut by the same proportion rather than the same
-# absolute alpha. Zero below `lo`, identity above `hi`, smooth between.
+# absolute alpha. Zero below `lo`, identity above `hi`, smooth between. The
+# named bakes cut raw alpha; the generic bakes cut raw alpha too and then
+# column-normalise, which keeps their brightness/occlusion target.
 DENSITY_FLOOR = (0.05, 0.15)
 DENSITY_FLOOR_REL = (0.12, 0.32)
 LUMA_BINS = 24         # card colour LUT resolution
@@ -397,15 +403,15 @@ def bake_raw(vol, floor=None):
 
 
 def bake_ed(name, vol, card_png=None):
-	"""ED volume structure + optional card palette -> (RGBA32 bytes, stats)."""
+	"""ED volume + optional card palette, with the low-alpha floor cut."""
 	n = vol.shape[0]
-	alpha = vol[..., 3].astype(np.float32) / 255.0
-
-	# edge guard: no box silhouette even if ED's data touches a face
-	alpha *= _edge_guard(n)
-
+	raw = vol[..., 3].astype(np.float32) / 255.0
+	floor = _density_floor(raw)
+	# Same order as the named bakes: cut the continuum, then fade the faces.
+	# The column normalisation below still preserves the palette's brightness
+	# cap and the dark volumes' occlusion target.
+	dens = _density_transfer(raw, floor) * _edge_guard(n)
 	dark = name in DARK
-	dens = alpha
 
 	# column normalise: card bakes keep ED's natural brightness (capped at the
 	# optical budget), dark dust is scaled UP until it actually occludes.
@@ -416,6 +422,7 @@ def bake_ed(name, vol, card_png=None):
 		else:
 			dens *= min(TARGET_COLUMN / peak, 1.0)
 
+	alpha = dens
 	intensity = vol[..., :3].astype(np.float32) / 255.0 @ LUMA
 	if card_png and os.path.isfile(card_png):
 		# voxel colour: ED intensity -> the card's palette
@@ -447,7 +454,8 @@ def bake_ed(name, vol, card_png=None):
 	out[..., :3] = np.clip(rgb * 255, 0, 255)
 	out[..., 3] = np.clip(dens * 255, 0, 255)
 	stats = {'peak_column': float(dens.sum(axis=0).max() / n),
-	         'nonzero': float((dens > 1 / 255).mean())}
+	         'nonzero': float((dens > 1 / 255).mean()),
+	         'floor': floor}
 	return out, stats
 
 
@@ -709,7 +717,8 @@ def main():
 			else:
 				out, stats = bake_ed(name, vol,
 				                     card_path if name in ED_SOURCES else None)
-				how = 'ed volume' if name in ED_SOURCES else 'ed volume, own hue'
+				how = ('ed volume, floor cut' if name in ED_SOURCES
+				       else 'ed volume, own hue, floor cut')
 			dst = os.path.join(VOL_DIR, f'LOD{n}')
 			os.makedirs(dst, exist_ok=True)
 			save_bytes(os.path.join(dst, f'{stem}.bytes'), out)

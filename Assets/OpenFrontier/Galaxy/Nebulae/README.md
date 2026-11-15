@@ -39,8 +39,8 @@ cube but not the ball: the 1–10% continuum still integrates over the full
 ray, so Barnard's Loop — a thin shell — rendered as a smooth sphere with its
 rim buried in haze.
 
-The named bakes now apply a soft floor scaled to each volume's own bright
-core:
+Every bake — named and generic — now applies a soft floor scaled to each
+volume's own bright core:
 
 ```
 p  = percentile(alpha, 99.5)
@@ -55,9 +55,14 @@ from being erased; bright shells (Barnard, p ≈ 0.72) cut at ~0.09/0.23. Below
 `lo` is empty, above `hi` is untouched, and the transition is smooth. The
 outer 5% of the cube fades so a face can never cut a cloud into a box. The
 result is Barnard's shell and rim instead of a filled sphere; the Pleiades
-keep their fine wisps. The generic palette keeps its previous normalised
-bake — extend `_density_transfer` to `bake_ed` if those ever show the same
-ball.
+keep their fine wisps, and the generic bright/dark volumes lose their halo
+without losing their column-normalised brightness or occlusion target.
+
+For the generic palette the cut runs on the raw alpha *before* the existing
+column normalisation. That is why the bright cards still reach their
+`TARGET_COLUMN` cap and the dark dust still reaches `DARK_TARGET`; the cut
+only removes the low-density layer underneath. All 11 generic LOD ladders
+were rebaked with it.
 
 ## Quality slider
 
