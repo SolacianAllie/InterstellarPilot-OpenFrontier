@@ -73,16 +73,24 @@ culling mask is narrowed, which is useful for inspection but is not a game
 presentation.
 
 **Editor preview (2026-11-15).** Every layer component is `[ExecuteAlways]`, so
-the Scene view draws the real stack without play mode. An **orthographic**
-Scene view (toolbar toggle, or `OpenFrontier/Galaxy/Frame Galaxy (Scene View)`)
-is the map presentation; any perspective Scene view is the sky presentation.
-The game cameras pick the presentation by layer mask, not by projection, so a
-Scene view that includes both layers is showing the two catalogs together for
-inspection. Inspector edits to `GalaxyBlueprint` / `GalaxyQualitySettings`
-debounce into a live rebake/reseed (`GalaxyEditPreview`,
-`EditorApplication.delayCall`, so it fires even when the Scene view does not
-repaint). Hidden layer children the backdrop builds are `HideAndDontSave`; they
-are rebuilt on enable and never enter the scene file.
+the Scene view draws the real 3D stack without play mode. The screen-space
+band/dust quads are the exception: they write clip space and are hidden from
+the Scene view, material preview and reflection cameras, because an editor
+camera that sees them gets a giant camera-facing sheet instead of the galaxy.
+The 3D cloud, density, glow and both star catalogs still preview in the Scene
+view. An **orthographic** Scene view (toolbar toggle, or
+`OpenFrontier/Galaxy/Frame Galaxy (Scene View)`) is useful for inspecting the
+map's 3D stack, but it does not include the screen-space band/dust; the full
+map presentation is the Game view's `Preview Map Camera`. A perspective Scene
+view likewise shows the sky's 3D cloud and stars, but the sky band/dust are
+only in the Game view's `Preview Sky Camera`. The game cameras pick the
+presentation by layer mask, not by projection, so a Scene view that includes
+both layers is showing the two catalogs together for inspection. Inspector
+edits to `GalaxyBlueprint` / `GalaxyQualitySettings` debounce into a live
+rebake/reseed (`GalaxyEditPreview`, `EditorApplication.delayCall`, so it fires
+even when the Scene view does not repaint). Hidden layer children the backdrop
+builds are `HideAndDontSave`; they are rebuilt on enable and never enter the
+scene file.
 
 The scene's `MAP` camera ships disabled and sized for a 50-unit view, so the
 map presentation has no working camera until something configures it. Two
@@ -597,6 +605,13 @@ landed. What exists, and where each decision moved off the draft:
   never reached the quad's edge and clipped each sprite into a rounded square.
   The quality asset now drives size 1.6..12 px, radius power 3, alpha power
   1.6, halo 0.35, ring 0.12; the sprite is round and varied, not a uniform dot.
+- The band/dust quads write clip space, so they are hidden from the editor
+  Scene view, material preview and reflection cameras via URP's
+  `RenderPipelineManager.beginCameraRendering` (before culling);
+  only `CameraType.Game` (MAP, Galaxy and a Game camera's preview) re-enables
+  them. The Scene view now shows the 3D cloud, density, glow and star
+  catalogs without a giant camera-facing band sheet; use the Game view's
+  Preview Map/Sky Camera for the full band/dust presentation.
 
 Installer: `Assets/Editor/GalaxyRenderInstaller.cs` (menu
 `OpenFrontier/Galaxy/Install ED Renderer`) — idempotent, wires cloud +

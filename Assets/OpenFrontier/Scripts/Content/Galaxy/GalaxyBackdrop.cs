@@ -25,8 +25,11 @@ namespace OpenFrontier.IP.Engine
 	/// far plane fades; the sky uses the finite latitude band and a warm veil so
 	/// it is readable even when the system sits almost exactly in the plane.
 	///
-	/// Zero per-frame CPU except the transform dirty check; the renderers are
-	/// child MeshRenderers, not a DrawMesh call in Update.
+	/// Zero per-frame CPU in a build except the transform dirty check; the
+	/// renderers are child MeshRenderers, not a DrawMesh call in Update. In
+	/// the editor, a URP camera callback hides the clip-space band/dust from
+	/// the Scene, material-preview and reflection cameras so the editor can
+	/// show the 3D galaxy instead of a camera-facing band sheet.
 	/// </summary>
 	[ExecuteAlways]
 	[DisallowMultipleComponent]
@@ -81,6 +84,10 @@ namespace OpenFrontier.IP.Engine
 		Transform _dustRoot;
 		Transform _densityRoot;
 		Transform _glowRoot;
+#if UNITY_EDITOR
+		MeshRenderer _bandRenderer;
+		MeshRenderer _dustRenderer;
+#endif
 		GalaxyQualitySettings _settings;
 		bool _built;
 		bool _warned;
@@ -90,6 +97,14 @@ namespace OpenFrontier.IP.Engine
 #if UNITY_EDITOR
 			GalaxyBlueprint.Changed += ScheduleEditRebuild;
 			GalaxyQualitySettings.Changed += ScheduleEditRebuild;
+			// The band/dust are screen-space quads: their shader writes clip
+			// space, so an editor Scene view that sees them gets a giant
+			// camera-facing sheet instead of the galaxy. Game/preview cameras
+			// still need them; hide only for the Scene and preview cameras.
+			// URP raises beginCameraRendering before its culling, which is the
+			// reliable per-camera hook here (Camera.onPreCull is a built-in
+			// pipeline event and is not guaranteed under an SRP).
+			RenderPipelineManager.beginCameraRendering += HandleBeginCameraRendering;
 #endif
 			Build();
 		}
@@ -100,6 +115,7 @@ namespace OpenFrontier.IP.Engine
 			GalaxyBlueprint.Changed -= ScheduleEditRebuild;
 			GalaxyQualitySettings.Changed -= ScheduleEditRebuild;
 			GalaxyEditPreview.Cancel(ApplyEditRebuild);
+			RenderPipelineManager.beginCameraRendering -= HandleBeginCameraRendering;
 #endif
 			Teardown();
 		}
@@ -111,15 +127,32 @@ namespace OpenFrontier.IP.Engine
 
 		void Update()
 		{
-			// Edit-mode preview: the band is scene geometry, so building it
-			// once is enough for the Scene view to show the galaxy without
-			// play mode. Inspector/asset changes debounce into one rebake.
+			// Edit-mode preview: the galaxy is ordinary scene geometry, so
+			// building it once is enough for the Scene view to show the cloud,
+			// density and glow. The band/dust quads are screen-space and are
+			// hidden from the Scene view (see HandleBeginCameraRendering); the Game/map/sky
+			// cameras still draw them. Inspector/asset changes debounce into
+			// one rebake.
 			if (!_built || !transform.hasChanged) return;
 			transform.hasChanged = false;
 			SyncTransform();
 		}
 
 #if UNITY_EDITOR
+		/// <summary>
+		/// The band/dust write clip space, so they are only meaningful from a
+		/// real game camera. Hide them from the Scene view, material preview
+		/// and reflection cameras; every Game camera (MAP, Galaxy, and the
+		/// Scene view's camera preview) re-enables them on its own pre-cull.
+		/// </summary>
+		void HandleBeginCameraRendering(ScriptableRenderContext context, Camera camera)
+		{
+			if (camera == null) return;
+			bool show = camera.cameraType == CameraType.Game;
+			if (_bandRenderer != null) _bandRenderer.enabled = show;
+			if (_dustRenderer != null) _dustRenderer.enabled = show;
+		}
+
 		/// <summary>Debounced preview: asset edits schedule one rebake, not one per keystroke.</summary>
 		void ScheduleEditRebuild()
 		{
@@ -233,6 +266,10 @@ namespace OpenFrontier.IP.Engine
 			// a huge mesh bound keeps Unity from frustum-culling the proxy.
 			_sphereRoot = NewRenderer("Galaxy Band Screen", _sphere, _bandMaterial, 1f);
 			_dustRoot = NewRenderer("Galaxy Dust Screen", _sphere, _dustMaterial, 1f);
+#if UNITY_EDITOR
+			_bandRenderer = _sphereRoot != null ? _sphereRoot.GetComponent<MeshRenderer>() : null;
+			_dustRenderer = _dustRoot != null ? _dustRoot.GetComponent<MeshRenderer>() : null;
+#endif
 			// the density disc lies IN the galactic plane: its UV is exact
 			// under the ortho map camera (spec §2 layer 3), and an angled
 			// perspective map that includes layer 30 sees the same disc
@@ -337,6 +374,10 @@ namespace OpenFrontier.IP.Engine
 			DestroyChild(ref _dustRoot);
 			DestroyChild(ref _densityRoot);
 			DestroyChild(ref _glowRoot);
+#if UNITY_EDITOR
+			_bandRenderer = null;
+			_dustRenderer = null;
+#endif
 			DestroyObject(_sphere); _sphere = null;
 			DestroyObject(_glowQuad); _glowQuad = null;
 			DestroyObject(_discMesh); _discMesh = null;
