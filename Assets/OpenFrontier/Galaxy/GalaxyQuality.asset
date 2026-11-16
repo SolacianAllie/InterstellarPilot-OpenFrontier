@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 21049188bc4912c17a1734cef622e5b4, type: 3}
+  m_Name: GalaxyQuality
+  m_EditorClassIdentifier: OpenFrontier.Content::OpenFrontier.IP.Engine.GalaxyQualitySettings
+  rung: 1
+  backgroundTextureSize: 1024
+  bandGain: 1.05
+  bandTint: {r: 1, g: 0.97, b: 0.92, a: 1}
+  clumpNoise: 0.16
+  dustStrength: 0.82
+  dustContrast: 1.3
+  dustColour: {r: 0.045, g: 0.028, b: 0.022, a: 1}
+  densityGain: 1.05
+  densityGamma: 1
+  densityTint: {r: 1, g: 0.86, b: 0.7, a: 1}
+  glowTaps: 24
+  glowGain: 2.4
+  glowFalloff: 3
+  glowRadius: 0.18
+  glowSizeFraction: 0.32
+  fadeNearRange: 20
+  fadeNearRadius: 400
+  fadeFarRange: 40000
+  fadeFarRadius: 90000
+  skyPlaneHeight: 500
+  skyBandHalfAngle: 0.3
+  starCloudInstances: 40000
+  starCloudBrightness: 1.25
+  starCloudSize: 1
+  localDustCards: 40
+  localDustBrightness: 0.033
+  nebulaVolumes: 20
+  cloudStarPxMin: 1
+  cloudStarPxMax: 3.4
+  cloudHazePxMin: 3
+  cloudHazePxMax: 8
+  mapStarSprites: 2000
+  skyStarCount: 5000
+  skyStarBrightness: 1.15
+  skyStarSizeScale: 1
+  starDimmestMag: 6.5
+  starCappedMag: -1.5
+  starSizeMin: 1.6
+  starSizeMax: 12
+  starRadPow: 3
+  starAlphaPow: 1.6
+  haloStart: 0.35
+  haloStrength: 0.35
+  spikeStart: 0.15
+  spikeStrength: 0.06
+  ringStart: 0.9
+  ringStrength: 0.12
+  minVisAlpha: 0.015
+  _appliedRung: 1

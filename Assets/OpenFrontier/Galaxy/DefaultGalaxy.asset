@@ -28,19 +28,20 @@ MonoBehaviour:
   barLengthFraction: 0
   barWidthFraction: 0.1
   starCount: 250000
+  fieldStarFraction: 0.35
   sizeMin: 0.05
   sizeMax: 2
   brightness: 1
   hazeFraction: 0.1
-  hazeSizeMin: 500
-  hazeSizeMax: 1000
+  hazeSizeMin: 60
+  hazeSizeMax: 180
   hazeAlpha: 0.05
   twinkleAmpMin: 0.06
   twinkleAmpMax: 0.22
   twinkleSpeedMin: 1.2
   twinkleSpeedMax: 3.8
   lookVersion: 3
-  coreColor: {r: 1, g: 0.9, b: 0.74, a: 1}
-  armColor: {r: 0.85, g: 0.9, b: 1, a: 1}
-  edgeColor: {r: 0.5, g: 0.6, b: 0.85, a: 1}
+  coreColor: {r: 1, g: 0.82, b: 0.52, a: 1}
+  armColor: {r: 0.95, g: 0.58, b: 0.28, a: 1}
+  edgeColor: {r: 0.44, g: 0.37, b: 0.46, a: 1}
   colorJitter: 0.09

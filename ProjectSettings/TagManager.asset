@@ -35,8 +35,8 @@ TagManager:
   - 
   - 
   - 
-  - 
-  - 
+  - GalaxyMapStars
+  - GalaxySkyStars
   m_SortingLayers:
   - name: Default
     uniqueID: 0

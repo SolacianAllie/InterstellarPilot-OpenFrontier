@@ -22,7 +22,7 @@ visuals reuse a generic type), so they are not in this set either.
 
 | Folder | What |
 |---|---|
-| `Prefabs/` | one prefab per nebula (29: 11 generic + 18 named); all three LODs referenced, `quality` slider picks the uploaded one |
+| `Prefabs/` | one prefab per nebula (29: 11 generic + 18 named); all three LODs referenced, `quality` is the authored request and `NebulaQuality` caps the uploaded one |
 | `Volumes/LOD64/` | 64³ RGBA32, 1 MB each — ED's own low LOD, the mobile default |
 | `Volumes/LOD128/` | 128³, 8 MB each — box-downsampled from ED's high LOD |
 | `Volumes/LOD256/` | 256³, 64 MB each — ED's own high LOD, desktop/testing only |
@@ -97,15 +97,32 @@ carries `density K / absorption 1 / brightness 4/gain` - ED's optical depth
 per volume, with the emission level the volume's own colour gives at
 brightness 4. The shared `NebulaVolume.mat` stays the neutral 1/1/4 base.
 
-## Quality slider
+## Quality ladder
 
-`GalaxyNebulaVolume.quality` is a 0–2 slider: 0 = 64³, 1 = 128³, 2 = 256³.
-Raymarch steps follow the rung (32/64/128 — two texels per step at every
-rung) so the added detail is actually sampled and the dither grain stays at
-the same visual scale. The ray start is dithered with interleaved gradient
-noise (static per pixel; no TAA dependency). Only the selected LOD is
-uploaded. Switching at runtime destroys and
-rebuilds the Texture3D, so the high rung hitches on device.
+`GalaxyNebulaVolume.quality` is the authored rung: 0 = 64³, 1 = 128³,
+2 = 256³. `NebulaQuality` clamps it to the platform rung at upload time, so a
+prefab authored at 2 costs 1 MB on a phone and 64 MB only at Hero:
+
+| rung | uploaded LOD | steps (size ramp) | drawn at once |
+|---|---|---:|---:|
+| Mobile | 64³ | 6–24 | 10 |
+| Desktop | 128³ | 10–64 | 20 |
+| Hero | 256³ | 16–128 | all |
+
+A `GalaxyNebulaField` on the parent of the placables runs the draw budget.
+Every 0.25 s (unscaled) it ranks the volumes by projected radius and
+brightness, keeps the top N, skips any volume below 2% / 1.2% / 0.8% of the
+half-screen height, and gives each survivor a step count on a ramp from
+MinSteps to the rung's ceiling. The ramp is capped by the LOD's native
+32/64/128, so a small 64³ volume is never oversampled. With no field in the
+scene every volume draws at its authored quality and native step count - the
+editor view, and the right behaviour for a scene with one or two volumes.
+
+Only the selected LOD is uploaded. The shader also intersects the ray with
+the volume's *occupied* box (derived from alpha at upload) and stops the
+march at 0.4% transmittance, so empty padding and dense cores do not pay
+their full step count. A rung switch destroys and rebuilds every live
+Texture3D; set it at load or from a settings screen, never per frame.
 
 ## Regenerating
 
@@ -134,6 +151,17 @@ Spider is the one named entry that points at a generic planetary.
 ## Memory
 
 Every placed instance uploads its own Texture3D — there is no share cache.
-A scene with one of each rung costs 1 + 8 + 64 MB of volume textures; dozens
-of high-rung instances will not fit a phone. Multiply-placing one prefab
-multiplies its cost.
+What it uploads is capped by the rung: Mobile 1 MB (64³), Desktop 8 MB
+(128³), Hero 64 MB (256³). Mobile's ceiling is therefore 1 MB per placed
+volume; a scene with one of each rung uploads 1 + 8 + 64 MB.
+
+The **build** cost is different and larger: every prefab serializes all
+three TextAsset references, so any scene that places one carries
+1 + 8 + 64 MB of volume data whether the rung samples it or not — 73 MB per
+placed prefab, 88% of it the 256³ rung. The runtime cap does not shrink the
+package. `OpenFrontier/Audit/Nebula Volume LOD Memory` prices the enabled
+build scenes, and a mobile pre-build pass warns when LOD128/256 are
+referenced. Ship LOD64 only, or move the high rungs behind a desktop-only
+bundle, before shipping a phone build.
+
+Multiply-placing one prefab multiplies both the upload and the package cost.

@@ -44,7 +44,14 @@ namespace OpenFrontier.IP.Engine
 		public const float SpiralVariant = 244f;
 
 		/// <summary>Hard ceiling in one cloud; raise deliberately, mobile-first.</summary>
-		public const int MaxStarCount = 1000000;
+		public const int MaxStarCount = 250000;
+
+		/// <summary>
+		/// Fires after this asset is edited in the inspector. Galaxy components
+		/// subscribe while enabled (editor only) to rebake or reseed live, so a
+		/// slider drag is visible in the Scene view without entering play mode.
+		/// </summary>
+		public static event System.Action Changed;
 
 		[Header("Density Source")]
 		[Tooltip("Optional 256x256 top-down density map over the disc (READABLE asset required - Read/Write on import). Brightest channel = density. Null = analytic spiral below.")]
@@ -52,6 +59,12 @@ namespace OpenFrontier.IP.Engine
 
 		[Tooltip("Reseed key. Same seed + same params = the same sky, always. Change it via the cloud's context menu (or the per-jump hook, phase 2).")]
 		public int seed = 1;
+
+		// Cached CPU copy for the background baker. The cloud already pays for
+		// its own 512^2 read once per reseed; this follows the same
+		// readable-map rule and falls back to the analytic spiral otherwise.
+		[System.NonSerialized] Color32[] _densityPixels;
+		[System.NonSerialized] bool _densityPixelsTried;
 
 		[Header("Shape")]
 		[Tooltip("Disc radius in world units.")]
@@ -94,6 +107,9 @@ namespace OpenFrontier.IP.Engine
 		[Header("Points")]
 		[Range(0, MaxStarCount)] public int starCount = 12000;
 
+		[Tooltip("Share of stars scattered uniformly across the disc instead of following the density map. ED's map keeps a grainy field-star population between the arms and out to the rim; 0 makes every star follow the density exactly.")]
+		[Range(0f, 1f)] public float fieldStarFraction = 0.35f;
+
 		[Tooltip("Sprite size range in world units (bulge stars run larger still).")]
 		public float sizeMin = 2.2f;
 		public float sizeMax = 6.5f;
@@ -126,14 +142,14 @@ namespace OpenFrontier.IP.Engine
 		[SerializeField, HideInInspector] int lookVersion;
 
 		[Header("Palette")]
-		[Tooltip("Core colour (warm).")]
-		public Color coreColor = new Color(1.00f, 0.90f, 0.74f);
+		[Tooltip("Core colour (warm cream). ED's map core reads almost white-amber.")]
+		public Color coreColor = new Color(1.00f, 0.82f, 0.52f);
 
-		[Tooltip("Mid/arm colour (cool white).")]
-		public Color armColor = new Color(0.85f, 0.90f, 1.00f);
+		[Tooltip("Mid/arm colour (warm amber). This is the dominant map colour.")]
+		public Color armColor = new Color(0.95f, 0.58f, 0.28f);
 
-		[Tooltip("Outer rim colour (dim blue).")]
-		public Color edgeColor = new Color(0.50f, 0.60f, 0.85f);
+		[Tooltip("Outer rim colour (dusty rose/violet, dim).")]
+		public Color edgeColor = new Color(0.44f, 0.37f, 0.46f);
 
 		[Tooltip("Warm<->cool temperature spread. Stars stay near-white; this only tints them.")]
 		[Range(0f, 0.5f)] public float colorJitter = 0.09f;
@@ -186,6 +202,51 @@ namespace OpenFrontier.IP.Engine
 		}
 
 		/// <summary>
+		/// Continuous top-down density sample for the background baker. Uses
+		/// bilinear filtering on the painted map (READABLE required) and falls
+		/// back to ProceduralDensity exactly like BuildWeightGrid does.
+		/// Coordinates are the unit disc (-1..1 on x/z), not world units.
+		/// </summary>
+		public float SampleDensity(float x, float z)
+		{
+			if (densityMap == null) return ProceduralDensity(x, z);
+
+			if (!_densityPixelsTried)
+			{
+				_densityPixelsTried = true;
+				try { _densityPixels = densityMap.GetPixels32(); }
+				catch (Exception e)
+				{
+					Debug.LogWarning($"[GalaxyBlueprint] '{name}': density map is not readable, baking from the analytic spiral. Enable Read/Write on the texture asset. ({e.GetType().Name})", this);
+				}
+			}
+			if (_densityPixels == null || _densityPixels.Length == 0) return ProceduralDensity(x, z);
+
+			int w = densityMap.width;
+			int h = densityMap.height;
+			float u = Mathf.Clamp01(x * 0.5f + 0.5f) * (w - 1);
+			float v = Mathf.Clamp01(z * 0.5f + 0.5f) * (h - 1);
+			int x0 = Mathf.FloorToInt(u);
+			int y0 = Mathf.FloorToInt(v);
+			int x1 = Mathf.Min(x0 + 1, w - 1);
+			int y1 = Mathf.Min(y0 + 1, h - 1);
+			float fx = u - x0;
+			float fy = v - y0;
+			float d00 = MapChannel(_densityPixels[y0 * w + x0]);
+			float d10 = MapChannel(_densityPixels[y0 * w + x1]);
+			float d01 = MapChannel(_densityPixels[y1 * w + x0]);
+			float d11 = MapChannel(_densityPixels[y1 * w + x1]);
+			return Mathf.Lerp(Mathf.Lerp(d00, d10, fx), Mathf.Lerp(d01, d11, fx), fy);
+		}
+
+		static float MapChannel(Color32 c)
+		{
+			// The painted maps store density in the brightest channel (the
+			// same rule BuildWeightGrid uses).
+			return Mathf.Max(c.r, Mathf.Max(c.g, c.b)) * (1f / 255f);
+		}
+
+		/// <summary>
 		/// Vertical gaussian sigma at a normalized radius - thin disc, swollen bulge.
 		/// </summary>
 		public float VerticalSigma(float r01)
@@ -223,26 +284,53 @@ namespace OpenFrontier.IP.Engine
 
 			var rng = new System.Random(seedOverride);
 			float bulgeFrac = Mathf.Max(bulgeRadiusFraction, 0.001f);
+			float fieldFraction = Mathf.Clamp01(fieldStarFraction);
 
-			// haze walks the SAME density field as the stars - the band's glow
-			// follows its structure; stars claim the front of the array
+			// haze walks the density field (the band's glow follows its
+			// structure); stars mix density sampling with a uniform field
+			// population, and claim the front of the array
 			int starPoints = Mathf.Clamp(
 				count - Mathf.RoundToInt(count * Mathf.Clamp01(hazeFraction)), 0, count);
 
 			for (int i = 0; i < count; i++)
 			{
-				// ---- sample the disc: invert the CDF, jitter inside the cell
-				double u = rng.NextDouble() * total;
-				int lo = 0, hi = weights.Length; // largest lo with cdf[lo] <= u
-				while (hi - lo > 1)
+				bool isStar = i < starPoints;
+				bool fieldStar = isStar && rng.NextDouble() < fieldFraction;
+
+				// ---- sample the disc. A field star is uniform over the
+				// disc (the grainy population ED's map keeps between the
+				// arms and out to the rim); a density-sampled point owns
+				// a CDF cell and is jittered inside it.
+				int lo;
+				float fx01, fy01;
+				if (fieldStar)
 				{
-					int mid = (lo + hi) >> 1;
-					if (cdf[mid] <= u) lo = mid; else hi = mid;
+					float fr = Mathf.Sqrt((float)rng.NextDouble());
+					float fa = (float)(rng.NextDouble() * Math.PI * 2.0);
+					float fpx = Mathf.Cos(fa) * fr;
+					float fpz = Mathf.Sin(fa) * fr;
+					fx01 = fpx * 0.5f + 0.5f;
+					fy01 = fpz * 0.5f + 0.5f;
+					int cx = Mathf.Clamp((int)(fx01 * GridResolution), 0, GridResolution - 1);
+					int cy = Mathf.Clamp((int)(fy01 * GridResolution), 0, GridResolution - 1);
+					lo = cy * GridResolution + cx;
 				}
-				int cellX = lo % GridResolution;
-				int cellY = lo / GridResolution;
-				float fx01 = (cellX + (float)rng.NextDouble()) / GridResolution;
-				float fy01 = (cellY + (float)rng.NextDouble()) / GridResolution;
+				else
+				{
+					double u = rng.NextDouble() * total;
+					lo = 0;
+					int hi = weights.Length; // largest lo with cdf[lo] <= u
+					while (hi - lo > 1)
+					{
+						int mid = (lo + hi) >> 1;
+						if (cdf[mid] <= u) lo = mid; else hi = mid;
+					}
+					int cellX = lo % GridResolution;
+					int cellY = lo / GridResolution;
+					fx01 = (cellX + (float)rng.NextDouble()) / GridResolution;
+					fy01 = (cellY + (float)rng.NextDouble()) / GridResolution;
+				}
+
 				float px = fx01 * 2f - 1f;
 				float pz = fy01 * 2f - 1f;
 				float r01 = Mathf.Sqrt(px * px + pz * pz);
@@ -266,9 +354,20 @@ namespace OpenFrontier.IP.Engine
 
 				if (i < starPoints)
 				{
-					// ---- a star: denser regions brighter; temperature jitter
-					// slides the star warm/cool AROUND white (correlated, not
-					// the per-channel rainbow of the first pass)
+					// ---- a star. ED's map is mostly amber stars with a
+					// minority of white and blue ones; the band palette is
+					// warm, so roll temperature independently instead of
+					// tinting every star with the arm colour.
+					double tempRoll = rng.NextDouble();
+					Color star = tempRoll < 0.52
+						? new Color(1.00f, 0.78f, 0.52f)
+						: tempRoll < 0.80
+							? new Color(1.00f, 0.94f, 0.86f)
+							: tempRoll < 0.94
+								? new Color(0.72f, 0.84f, 1.00f)
+								: new Color(0.56f, 0.68f, 1.00f);
+					c = Color.Lerp(star, c, 0.12f);
+
 					float boost = brightness * (0.85f + 0.35f * dens);
 					float warm = (rJitter - 0.5f) * 2f * colorJitter;
 					c.r *= boost * (1f + warm);
@@ -281,20 +380,19 @@ namespace OpenFrontier.IP.Engine
 
 					// sprite variant: a random cell of the ED star sheet
 					// (GalaxyStarSprites, 8x4), except the brightest few,
-					// which draw the high-res ED lens-flare cells - heavy
-					// flare, diffraction spikes, or (rarely) the spiral flare
+					// which use the analytic flare/spike path. Keep this
+					// rare: ED's bright flares are accents, not a texture
+					// over the whole core.
 					float variant;
-					if (dens > 0.85f && rng.NextDouble() < 0.4)
+					if (dens > 0.90f && rng.NextDouble() < 0.12)
 					{
-						double roll = rng.NextDouble();
-						variant = roll < 0.55 ? FlareVariant
-							: roll < 0.9 ? SpikeVariant : SpiralVariant;
+						variant = rng.NextDouble() < 0.6 ? FlareVariant : SpikeVariant;
 					}
 					else
 					{
 						variant = (float)rng.Next(SpriteCellCount);
 					}
-					if (variant > 240f) size *= 1.25f;
+					if (variant > 240f) size *= 1.15f;
 
 					fxOut[i] = new Vector4(
 						(float)(rng.NextDouble() * Math.PI * 2.0),
@@ -387,16 +485,20 @@ namespace OpenFrontier.IP.Engine
 
 		void OnValidate()
 		{
+			_densityPixels = null;
+			_densityPixelsTried = false;
 			if (lookVersion < CurrentLookVersion) ApplyDefaultLook();
 			radius = Mathf.Max(radius, 1f);
 			thickness = Mathf.Max(thickness, 0.1f);
 			sizeMin = Mathf.Max(sizeMin, 0.01f);
 			if (sizeMax < sizeMin) sizeMax = sizeMin;
 			starCount = Mathf.Clamp(starCount, 0, MaxStarCount);
+			fieldStarFraction = Mathf.Clamp01(fieldStarFraction);
 			hazeFraction = Mathf.Clamp01(hazeFraction);
 			if (hazeSizeMax < hazeSizeMin) hazeSizeMax = hazeSizeMin;
 			if (twinkleAmpMax < twinkleAmpMin) twinkleAmpMax = twinkleAmpMin;
 			if (twinkleSpeedMax < twinkleSpeedMin) twinkleSpeedMax = twinkleSpeedMin;
+			Changed?.Invoke();
 		}
 
 		[ContextMenu("Reset To Default Look")]
@@ -417,18 +519,19 @@ namespace OpenFrontier.IP.Engine
 		/// </summary>
 		void ApplyDefaultLook()
 		{
-			coreColor = new Color(1.00f, 0.90f, 0.74f);
-			armColor = new Color(0.85f, 0.90f, 1.00f);
-			edgeColor = new Color(0.50f, 0.60f, 0.85f);
+			coreColor = new Color(1.00f, 0.82f, 0.52f);
+			armColor = new Color(0.95f, 0.58f, 0.28f);
+			edgeColor = new Color(0.44f, 0.37f, 0.46f);
 			colorJitter = 0.09f;
 			brightness = 1f;
 			discFalloff = 1.8f;
 			armPitchDegrees = 22f;
 			armWidthDegrees = 7f;
 			armContrast = 1.6f;
+			fieldStarFraction = 0.35f;
 			hazeFraction = 0.3f;
-			hazeSizeMin = 18f;
-			hazeSizeMax = 60f;
+			hazeSizeMin = 30f;
+			hazeSizeMax = 100f;
 			hazeAlpha = 0.05f;
 			twinkleAmpMin = 0.06f;
 			twinkleAmpMax = 0.22f;
